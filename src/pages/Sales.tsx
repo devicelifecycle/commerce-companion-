@@ -33,7 +33,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Plus, Filter, TrendingUp, Trash2, Edit2 } from 'lucide-react';
+import { Search, Plus, Filter, TrendingUp, Trash2, Link } from 'lucide-react';
+import { EditSaleDialog } from '@/components/sales/EditSaleDialog';
 
 type Marketplace = 'shopify' | 'amazon' | 'bestbuy' | 'other';
 
@@ -77,6 +78,7 @@ export default function Sales() {
   const [searchTerm, setSearchTerm] = useState('');
   const [marketplaceFilter, setMarketplaceFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingSale, setEditingSale] = useState<{id: string; deviceId: string | null; orderNumber: string} | null>(null);
 
   const [formData, setFormData] = useState({
     device_id: '',
@@ -503,7 +505,19 @@ export default function Sales() {
                         }`}>
                           {sale.profit ? formatCurrency(sale.profit) : '-'}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setEditingSale({
+                              id: sale.id,
+                              deviceId: sale.device_id,
+                              orderNumber: sale.order_number,
+                            })}
+                            title="Link device"
+                          >
+                            <Link className="h-4 w-4" />
+                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -521,6 +535,20 @@ export default function Sales() {
             )}
           </CardContent>
         </Card>
+
+        {editingSale && (
+          <EditSaleDialog
+            open={!!editingSale}
+            onOpenChange={(open) => !open && setEditingSale(null)}
+            saleId={editingSale.id}
+            currentDeviceId={editingSale.deviceId}
+            orderNumber={editingSale.orderNumber}
+            onSaved={() => {
+              fetchSales();
+              fetchAvailableDevices();
+            }}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
