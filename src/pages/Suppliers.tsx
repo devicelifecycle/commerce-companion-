@@ -1,0 +1,401 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { Search, Plus, Package, Trash2, Edit2 } from 'lucide-react';
+
+interface Supplier {
+  id: string;
+  name: string;
+  contact_name: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export default function Suppliers() {
+  const { toast } = useToast();
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+
+  const [formData, setFormData] = useState({
+    name: '',
+    contact_name: '',
+    email: '',
+    phone: '',
+    address: '',
+    notes: '',
+  });
+
+  useEffect(() => {
+    fetchSuppliers();
+  }, []);
+
+  const fetchSuppliers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('suppliers')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setSuppliers(data || []);
+    } catch (error) {
+      console.error('Error fetching suppliers:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to fetch suppliers',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddSupplier = async () => {
+    try {
+      const { error } = await supabase.from('suppliers').insert({
+        name: formData.name,
+        contact_name: formData.contact_name || null,
+        email: formData.email || null,
+        phone: formData.phone || null,
+        address: formData.address || null,
+        notes: formData.notes || null,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Supplier added',
+        description: 'The supplier has been added successfully.',
+      });
+
+      setIsAddDialogOpen(false);
+      resetForm();
+      fetchSuppliers();
+    } catch (error: any) {
+      console.error('Error adding supplier:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to add supplier',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleUpdateSupplier = async () => {
+    if (!selectedSupplier) return;
+
+    try {
+      const { error } = await supabase
+        .from('suppliers')
+        .update({
+          name: formData.name,
+          contact_name: formData.contact_name || null,
+          email: formData.email || null,
+          phone: formData.phone || null,
+          address: formData.address || null,
+          notes: formData.notes || null,
+        })
+        .eq('id', selectedSupplier.id);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Supplier updated',
+        description: 'The supplier has been updated.',
+      });
+
+      setIsEditDialogOpen(false);
+      setSelectedSupplier(null);
+      resetForm();
+      fetchSuppliers();
+    } catch (error: any) {
+      console.error('Error updating supplier:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update supplier',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteSupplier = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this supplier?')) return;
+
+    try {
+      const { error } = await supabase.from('suppliers').delete().eq('id', id);
+      if (error) throw error;
+
+      toast({
+        title: 'Supplier deleted',
+        description: 'The supplier has been removed.',
+      });
+
+      fetchSuppliers();
+    } catch (error: any) {
+      console.error('Error deleting supplier:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to delete supplier',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const openEditDialog = (supplier: Supplier) => {
+    setSelectedSupplier(supplier);
+    setFormData({
+      name: supplier.name,
+      contact_name: supplier.contact_name || '',
+      email: supplier.email || '',
+      phone: supplier.phone || '',
+      address: supplier.address || '',
+      notes: supplier.notes || '',
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      contact_name: '',
+      email: '',
+      phone: '',
+      address: '',
+      notes: '',
+    });
+  };
+
+  const filteredSuppliers = suppliers.filter((supplier) => {
+    const matchesSearch =
+      supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supplier.contact_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      supplier.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesSearch;
+  });
+
+  const SupplierForm = ({ onSubmit, submitLabel }: { onSubmit: () => void; submitLabel: string }) => (
+    <div className="grid gap-4 py-4">
+      <div className="space-y-2">
+        <Label htmlFor="name">Company Name *</Label>
+        <Input
+          id="name"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          placeholder="Supplier Inc."
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="contact_name">Contact Name</Label>
+          <Input
+            id="contact_name"
+            value={formData.contact_name}
+            onChange={(e) => setFormData({ ...formData, contact_name: e.target.value })}
+            placeholder="John Smith"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="phone">Phone</Label>
+          <Input
+            id="phone"
+            value={formData.phone}
+            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+            placeholder="+1 (555) 123-4567"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          value={formData.email}
+          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+          placeholder="contact@supplier.com"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="address">Address</Label>
+        <Textarea
+          id="address"
+          value={formData.address}
+          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+          placeholder="123 Business St, City, State, ZIP"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea
+          id="notes"
+          value={formData.notes}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          placeholder="Additional notes..."
+        />
+      </div>
+
+      <DialogFooter>
+        <Button onClick={onSubmit} disabled={!formData.name}>
+          {submitLabel}
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="animate-pulse space-y-6">
+          <div className="h-8 bg-muted rounded w-48" />
+          <div className="h-96 bg-muted rounded-lg" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">Suppliers</h1>
+            <p className="text-muted-foreground">Manage your phone suppliers</p>
+          </div>
+
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button onClick={() => { resetForm(); setIsAddDialogOpen(true); }}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Supplier
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Supplier</DialogTitle>
+                <DialogDescription>
+                  Add a new supplier to your contact list.
+                </DialogDescription>
+              </DialogHeader>
+              <SupplierForm onSubmit={handleAddSupplier} submitLabel="Add Supplier" />
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-4">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search suppliers..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {filteredSuppliers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Package className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-semibold">No suppliers found</h3>
+                <p className="text-muted-foreground">
+                  {searchTerm ? 'Try adjusting your search' : 'Add your first supplier to get started'}
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredSuppliers.map((supplier) => (
+                      <TableRow key={supplier.id}>
+                        <TableCell className="font-medium">{supplier.name}</TableCell>
+                        <TableCell>{supplier.contact_name || '-'}</TableCell>
+                        <TableCell>{supplier.email || '-'}</TableCell>
+                        <TableCell>{supplier.phone || '-'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditDialog(supplier)}
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteSupplier(supplier.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Supplier</DialogTitle>
+              <DialogDescription>
+                Update supplier information.
+              </DialogDescription>
+            </DialogHeader>
+            <SupplierForm onSubmit={handleUpdateSupplier} submitLabel="Update Supplier" />
+          </DialogContent>
+        </Dialog>
+      </div>
+    </DashboardLayout>
+  );
+}
