@@ -122,12 +122,12 @@ export function EditSaleDialog({
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="device">Device</Label>
-            <Select value={deviceId} onValueChange={setDeviceId}>
+            <Select value={deviceId || 'none'} onValueChange={(val) => setDeviceId(val === 'none' ? '' : val)}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a device from inventory" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No device linked</SelectItem>
+                <SelectItem value="none">No device linked</SelectItem>
                 {availableDevices.map((device) => (
                   <SelectItem key={device.id} value={device.id}>
                     {device.brand} {device.model} {device.imei ? `(${device.imei})` : ''} - {formatCurrency(device.cost_price)}
