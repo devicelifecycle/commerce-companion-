@@ -82,6 +82,51 @@ export type Database = {
           },
         ]
       }
+      expenses: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["expense_category"]
+          created_at: string
+          created_by: string | null
+          description: string
+          expense_date: string
+          id: string
+          is_tax_deductible: boolean | null
+          notes: string | null
+          receipt_url: string | null
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          amount: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          created_by?: string | null
+          description: string
+          expense_date?: string
+          id?: string
+          is_tax_deductible?: boolean | null
+          notes?: string | null
+          receipt_url?: string | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["expense_category"]
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          expense_date?: string
+          id?: string
+          is_tax_deductible?: boolean | null
+          notes?: string | null
+          receipt_url?: string | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: []
+      }
       import_batches: {
         Row: {
           created_at: string
@@ -109,6 +154,111 @@ export type Database = {
           imported_by?: string | null
           successful_rows?: number
           total_rows?: number
+        }
+        Relationships: []
+      }
+      invoice_items: {
+        Row: {
+          created_at: string
+          description: string
+          device_id: string | null
+          id: string
+          invoice_id: string
+          quantity: number
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          device_id?: string | null
+          id?: string
+          invoice_id: string
+          quantity?: number
+          total: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          device_id?: string | null
+          id?: string
+          invoice_id?: string
+          quantity?: number
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_items_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoice_items_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      invoices: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_address: string | null
+          customer_email: string | null
+          customer_name: string
+          due_date: string
+          id: string
+          invoice_number: string
+          issue_date: string
+          notes: string | null
+          paid_date: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          subtotal: number
+          tax_amount: number
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_address?: string | null
+          customer_email?: string | null
+          customer_name: string
+          due_date?: string
+          id?: string
+          invoice_number: string
+          issue_date?: string
+          notes?: string | null
+          paid_date?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          tax_amount?: number
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_address?: string | null
+          customer_email?: string | null
+          customer_name?: string
+          due_date?: string
+          id?: string
+          invoice_number?: string
+          issue_date?: string
+          notes?: string | null
+          paid_date?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          subtotal?: number
+          tax_amount?: number
+          total?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -246,6 +396,51 @@ export type Database = {
         }
         Relationships: []
       }
+      tax_records: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          jurisdiction: string | null
+          notes: string | null
+          reference_id: string | null
+          reference_type: string | null
+          tax_period_end: string
+          tax_period_start: string
+          tax_type: Database["public"]["Enums"]["tax_type"]
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          jurisdiction?: string | null
+          notes?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tax_period_end: string
+          tax_period_start: string
+          tax_type: Database["public"]["Enums"]["tax_type"]
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          jurisdiction?: string | null
+          notes?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          tax_period_end?: string
+          tax_period_start?: string
+          tax_type?: Database["public"]["Enums"]["tax_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -285,7 +480,24 @@ export type Database = {
       app_role: "admin" | "manager" | "viewer"
       device_condition: "new" | "refurbished" | "used" | "damaged"
       device_status: "in_stock" | "reserved" | "sold" | "returned"
+      expense_category:
+        | "inventory"
+        | "shipping"
+        | "marketing"
+        | "software"
+        | "equipment"
+        | "office"
+        | "utilities"
+        | "travel"
+        | "professional_services"
+        | "other"
+      invoice_status: "draft" | "sent" | "paid" | "overdue" | "cancelled"
       marketplace: "shopify" | "amazon" | "bestbuy" | "other"
+      tax_type:
+        | "sales_tax_collected"
+        | "sales_tax_paid"
+        | "income_tax"
+        | "other"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -416,7 +628,26 @@ export const Constants = {
       app_role: ["admin", "manager", "viewer"],
       device_condition: ["new", "refurbished", "used", "damaged"],
       device_status: ["in_stock", "reserved", "sold", "returned"],
+      expense_category: [
+        "inventory",
+        "shipping",
+        "marketing",
+        "software",
+        "equipment",
+        "office",
+        "utilities",
+        "travel",
+        "professional_services",
+        "other",
+      ],
+      invoice_status: ["draft", "sent", "paid", "overdue", "cancelled"],
       marketplace: ["shopify", "amazon", "bestbuy", "other"],
+      tax_type: [
+        "sales_tax_collected",
+        "sales_tax_paid",
+        "income_tax",
+        "other",
+      ],
     },
   },
 } as const

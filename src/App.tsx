@@ -12,6 +12,11 @@ import Sales from "./pages/Sales";
 import Suppliers from "./pages/Suppliers";
 import Team from "./pages/Team";
 import Settings from "./pages/Settings";
+import Expenses from "./pages/Expenses";
+import Taxes from "./pages/Taxes";
+import Invoices from "./pages/Invoices";
+import Accounting from "./pages/Accounting";
+import Reports from "./pages/Reports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,7 +27,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+          </div>
+          <p className="text-muted-foreground animate-pulse">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -92,6 +102,47 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/expenses"
+              element={
+                <ProtectedRoute>
+                  <Expenses />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/taxes"
+              element={
+                <ProtectedRoute>
+                  <Taxes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invoices"
+              element={
+                <ProtectedRoute>
+                  <Invoices />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/accounting"
+              element={
+                <ProtectedRoute>
+                  <Accounting />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute>
+                  <Reports />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </TooltipProvider>
       </AuthProvider>
