@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.import-shopify-orders]
 verify_jwt = false
+
+[functions.import-bestbuy-orders]
+verify_jwt = false
