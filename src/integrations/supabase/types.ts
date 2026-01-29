@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      customers: {
+        Row: {
+          address: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          total_purchases: number | null
+          total_spent: number | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          total_purchases?: number | null
+          total_spent?: number | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          total_purchases?: number | null
+          total_spent?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       devices: {
         Row: {
           brand: string
@@ -292,11 +334,48 @@ export type Database = {
         }
         Relationships: []
       }
+      profit_goals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expense_limit: number | null
+          id: string
+          month: string
+          notes: string | null
+          profit_goal: number
+          revenue_goal: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expense_limit?: number | null
+          id?: string
+          month: string
+          notes?: string | null
+          profit_goal?: number
+          revenue_goal?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expense_limit?: number | null
+          id?: string
+          month?: string
+          notes?: string | null
+          profit_goal?: number
+          revenue_goal?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sales: {
         Row: {
           created_at: string
           created_by: string | null
           customer_email: string | null
+          customer_id: string | null
           customer_name: string | null
           device_id: string | null
           id: string
@@ -316,6 +395,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_email?: string | null
+          customer_id?: string | null
           customer_name?: string | null
           device_id?: string | null
           id?: string
@@ -335,6 +415,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           customer_email?: string | null
+          customer_id?: string | null
           customer_name?: string | null
           device_id?: string | null
           id?: string
@@ -351,6 +432,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sales_device_id_fkey"
             columns: ["device_id"]

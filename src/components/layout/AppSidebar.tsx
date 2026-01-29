@@ -13,6 +13,9 @@ import {
   Calculator,
   BarChart3,
   Wallet,
+  Brain,
+  Target,
+  UserCircle,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth';
@@ -36,6 +39,7 @@ const mainNavItems = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Inventory', url: '/inventory', icon: Smartphone },
   { title: 'Sales', url: '/sales', icon: TrendingUp },
+  { title: 'Customers', url: '/customers', icon: UserCircle },
   { title: 'Import', url: '/import', icon: Upload },
 ];
 
@@ -44,6 +48,8 @@ const financeNavItems = [
   { title: 'Expenses', url: '/expenses', icon: Wallet },
   { title: 'Tax Center', url: '/taxes', icon: Receipt },
   { title: 'Invoices', url: '/invoices', icon: FileText },
+  { title: 'Goals', url: '/goals', icon: Target },
+  { title: 'Forecasting', url: '/forecasting', icon: Brain },
   { title: 'Reports', url: '/reports', icon: BarChart3 },
 ];
 

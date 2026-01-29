@@ -17,6 +17,9 @@ import Taxes from "./pages/Taxes";
 import Invoices from "./pages/Invoices";
 import Accounting from "./pages/Accounting";
 import Reports from "./pages/Reports";
+import Forecasting from "./pages/Forecasting";
+import Customers from "./pages/Customers";
+import Goals from "./pages/Goals";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -139,6 +142,30 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Reports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/forecasting"
+              element={
+                <ProtectedRoute>
+                  <Forecasting />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers"
+              element={
+                <ProtectedRoute>
+                  <Customers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/goals"
+              element={
+                <ProtectedRoute>
+                  <Goals />
                 </ProtectedRoute>
               }
             />
