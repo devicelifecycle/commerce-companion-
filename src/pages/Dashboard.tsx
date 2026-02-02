@@ -96,7 +96,8 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 animate-fade-in">
+      <div className="space-y-8 animate-fade-in">
+        {/* Header Section */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-display font-bold gradient-text">Dashboard</h1>
@@ -104,68 +105,98 @@ export default function Dashboard() {
               Welcome back! Here's your business overview.
             </p>
           </div>
-          <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/50 border border-border">
-            <Activity className="h-4 w-4 text-emerald-500 animate-pulse" />
-            <span className="text-sm text-muted-foreground">Live</span>
-          </div>
-        </div>
-
-        {/* Alerts Panel & Quick Stats */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
-            <AlertsPanel />
-          </div>
-          <div className="lg:col-span-2">
-            <QuickStats />
-          </div>
-        </div>
-
-        {/* Executive Dashboard */}
-        <ExecutiveDashboard />
-
-        {/* Recent Sales */}
-        <Card className="border-border/50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 mb-4">
-              <ShoppingCart className="h-5 w-5 text-primary" />
-              <h3 className="font-display font-semibold">Recent Sales</h3>
+          <div className="hidden md:flex items-center gap-3">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success/10 border border-success/30">
+              <Activity className="h-4 w-4 text-success animate-pulse" />
+              <span className="text-sm font-medium text-success">Live</span>
             </div>
-            {recentSales.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <AlertCircle className="h-10 w-10 text-muted-foreground mb-2" />
-                <p className="text-muted-foreground">No sales recorded yet</p>
-                <p className="text-sm text-muted-foreground">Sales will appear here once you start selling</p>
+          </div>
+        </div>
+
+        {/* Section 1: Alerts & Activity */}
+        <section className="section-container">
+          <div className="section-header">
+            <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center">
+              <AlertCircle className="section-icon" />
+            </div>
+            <div>
+              <h2 className="section-title">Alerts & Activity</h2>
+              <p className="text-sm text-muted-foreground">Important notifications and recent actions</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            <div className="lg:col-span-1">
+              <AlertsPanel />
+            </div>
+            <div className="lg:col-span-2">
+              <QuickStats />
+            </div>
+          </div>
+        </section>
+
+        {/* Section 2: Analytics & Performance */}
+        <section className="section-container">
+          <div className="section-header">
+            <div className="h-10 w-10 rounded-xl bg-secondary/15 flex items-center justify-center">
+              <Activity className="h-5 w-5 text-secondary" />
+            </div>
+            <div>
+              <h2 className="section-title">Analytics & Performance</h2>
+              <p className="text-sm text-muted-foreground">Revenue trends and financial insights</p>
+            </div>
+          </div>
+          <ExecutiveDashboard />
+        </section>
+
+        {/* Section 3: Recent Sales */}
+        <section className="section-container">
+          <div className="section-header">
+            <div className="h-10 w-10 rounded-xl bg-accent/15 flex items-center justify-center">
+              <ShoppingCart className="h-5 w-5 text-accent" />
+            </div>
+            <div>
+              <h2 className="section-title">Recent Sales</h2>
+              <p className="text-sm text-muted-foreground">Latest transactions and orders</p>
+            </div>
+          </div>
+          
+          {recentSales.length === 0 ? (
+            <div className="subsection flex flex-col items-center justify-center py-10 text-center">
+              <div className="h-14 w-14 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+                <ShoppingCart className="h-7 w-7 text-muted-foreground" />
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-                {recentSales.map((sale) => (
-                  <div
-                    key={sale.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium truncate text-sm">
-                        {sale.device ? `${sale.device.brand} ${sale.device.model}` : 'Unknown Device'}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground">
-                          #{sale.order_number}
-                        </span>
-                        <MarketplaceBadge marketplace={sale.marketplace} />
-                      </div>
-                    </div>
-                    <div className="text-right ml-2">
-                      <p className="font-semibold text-sm">{formatCurrency(Number(sale.sale_price))}</p>
-                      <p className={`text-xs ${Number(sale.profit) > 0 ? 'text-emerald-500' : 'text-destructive'}`}>
-                        {Number(sale.profit) > 0 ? '+' : ''}{formatCurrency(Number(sale.profit))}
-                      </p>
+              <p className="font-medium text-foreground">No sales recorded yet</p>
+              <p className="text-sm text-muted-foreground mt-1">Sales will appear here once you start selling</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
+              {recentSales.map((sale) => (
+                <div
+                  key={sale.id}
+                  className="interactive-card flex items-center justify-between"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium truncate">
+                      {sale.device ? `${sale.device.brand} ${sale.device.model}` : 'Unknown Device'}
+                    </p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs text-muted-foreground font-mono">
+                        #{sale.order_number}
+                      </span>
+                      <MarketplaceBadge marketplace={sale.marketplace} />
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  <div className="text-right ml-3">
+                    <p className="font-semibold text-primary">{formatCurrency(Number(sale.sale_price))}</p>
+                    <p className={`text-sm font-medium ${Number(sale.profit) > 0 ? 'text-success' : 'text-destructive'}`}>
+                      {Number(sale.profit) > 0 ? '+' : ''}{formatCurrency(Number(sale.profit))}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </DashboardLayout>
   );

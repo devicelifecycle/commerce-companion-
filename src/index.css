@@ -6,104 +6,109 @@
 
 @layer base {
   :root {
-    /* Bold & Vibrant Dark Theme */
-    --background: 240 15% 6%;
-    --foreground: 0 0% 98%;
+    /* Rich & Readable Dark Theme */
+    --background: 230 25% 8%;
+    --foreground: 220 20% 95%;
 
-    --card: 240 15% 9%;
-    --card-foreground: 0 0% 98%;
+    --card: 230 25% 12%;
+    --card-foreground: 220 20% 95%;
 
-    --popover: 240 15% 9%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 230 25% 12%;
+    --popover-foreground: 220 20% 95%;
 
-    /* Vibrant Electric Blue Primary */
-    --primary: 220 100% 60%;
-    --primary-foreground: 0 0% 100%;
+    /* Warm Amber Primary */
+    --primary: 38 95% 55%;
+    --primary-foreground: 230 25% 8%;
 
-    /* Deep Purple Secondary */
-    --secondary: 270 60% 50%;
-    --secondary-foreground: 0 0% 100%;
+    /* Cool Cyan Secondary */
+    --secondary: 185 70% 45%;
+    --secondary-foreground: 230 25% 8%;
 
-    --muted: 240 15% 15%;
-    --muted-foreground: 240 10% 55%;
+    --muted: 230 20% 18%;
+    --muted-foreground: 220 15% 60%;
 
-    /* Vivid Teal Accent */
-    --accent: 175 80% 45%;
-    --accent-foreground: 0 0% 100%;
+    /* Soft Lavender Accent */
+    --accent: 270 60% 65%;
+    --accent-foreground: 230 25% 8%;
 
-    /* Coral Red Destructive */
-    --destructive: 0 85% 60%;
+    /* Rose Destructive */
+    --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 15% 18%;
-    --input: 240 15% 18%;
-    --ring: 220 100% 60%;
+    --border: 230 20% 20%;
+    --input: 230 20% 20%;
+    --ring: 38 95% 55%;
 
     --radius: 0.75rem;
 
-    /* Semantic colors */
-    --success: 155 75% 45%;
-    --success-foreground: 0 0% 100%;
+    /* Semantic colors - more vibrant */
+    --success: 150 80% 45%;
+    --success-foreground: 230 25% 8%;
     --warning: 38 95% 55%;
-    --warning-foreground: 0 0% 0%;
-    --info: 199 90% 55%;
-    --info-foreground: 0 0% 100%;
+    --warning-foreground: 230 25% 8%;
+    --info: 200 90% 55%;
+    --info-foreground: 230 25% 8%;
 
-    /* Status colors */
-    --status-in-stock: 155 75% 45%;
-    --status-reserved: 38 95% 55%;
-    --status-sold: 220 100% 60%;
-    --status-returned: 0 85% 60%;
+    /* Status colors - bright and distinct */
+    --status-in-stock: 150 80% 50%;
+    --status-reserved: 38 95% 60%;
+    --status-sold: 200 90% 55%;
+    --status-returned: 0 75% 55%;
 
     /* Marketplace colors */
-    --shopify: 88 55% 50%;
-    --amazon: 30 100% 50%;
-    --bestbuy: 210 100% 50%;
+    --shopify: 145 65% 50%;
+    --amazon: 32 100% 50%;
+    --bestbuy: 210 100% 55%;
 
     /* Gradient colors */
-    --gradient-start: 220 100% 60%;
-    --gradient-mid: 270 60% 55%;
-    --gradient-end: 175 80% 45%;
+    --gradient-start: 38 95% 55%;
+    --gradient-mid: 185 70% 50%;
+    --gradient-end: 270 60% 60%;
 
-    /* Sidebar */
-    --sidebar-background: 240 15% 5%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 220 100% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 15% 12%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 15% 15%;
-    --sidebar-ring: 220 100% 60%;
+    /* Sidebar - slightly elevated */
+    --sidebar-background: 230 25% 6%;
+    --sidebar-foreground: 220 20% 95%;
+    --sidebar-primary: 38 95% 55%;
+    --sidebar-primary-foreground: 230 25% 8%;
+    --sidebar-accent: 230 20% 15%;
+    --sidebar-accent-foreground: 220 20% 95%;
+    --sidebar-border: 230 20% 18%;
+    --sidebar-ring: 38 95% 55%;
+
+    /* Section colors for visual hierarchy */
+    --section-primary: 230 25% 10%;
+    --section-secondary: 230 22% 14%;
+    --section-tertiary: 230 20% 18%;
   }
 
   .dark {
-    --background: 240 15% 6%;
-    --foreground: 0 0% 98%;
-    --card: 240 15% 9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 15% 9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 220 100% 60%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 270 60% 50%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 240 15% 15%;
-    --muted-foreground: 240 10% 55%;
-    --accent: 175 80% 45%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 85% 60%;
+    --background: 230 25% 8%;
+    --foreground: 220 20% 95%;
+    --card: 230 25% 12%;
+    --card-foreground: 220 20% 95%;
+    --popover: 230 25% 12%;
+    --popover-foreground: 220 20% 95%;
+    --primary: 38 95% 55%;
+    --primary-foreground: 230 25% 8%;
+    --secondary: 185 70% 45%;
+    --secondary-foreground: 230 25% 8%;
+    --muted: 230 20% 18%;
+    --muted-foreground: 220 15% 60%;
+    --accent: 270 60% 65%;
+    --accent-foreground: 230 25% 8%;
+    --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 240 15% 18%;
-    --input: 240 15% 18%;
-    --ring: 220 100% 60%;
-    --sidebar-background: 240 15% 5%;
-    --sidebar-foreground: 0 0% 98%;
-    --sidebar-primary: 220 100% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 15% 12%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 15% 15%;
-    --sidebar-ring: 220 100% 60%;
+    --border: 230 20% 20%;
+    --input: 230 20% 20%;
+    --ring: 38 95% 55%;
+    --sidebar-background: 230 25% 6%;
+    --sidebar-foreground: 220 20% 95%;
+    --sidebar-primary: 38 95% 55%;
+    --sidebar-primary-foreground: 230 25% 8%;
+    --sidebar-accent: 230 20% 15%;
+    --sidebar-accent-foreground: 220 20% 95%;
+    --sidebar-border: 230 20% 18%;
+    --sidebar-ring: 38 95% 55%;
   }
 }
 
@@ -148,7 +153,7 @@
   }
 
   .gradient-accent {
-    background: linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%);
+    background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--accent)) 100%);
   }
 
   .gradient-vibrant {
@@ -157,12 +162,33 @@
 
   .gradient-text {
     @apply bg-clip-text text-transparent;
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
   }
 
-  /* Metric card component */
+  /* Section containers for visual hierarchy */
+  .section-container {
+    @apply bg-card/80 border border-border/60 rounded-2xl p-6 backdrop-blur-sm;
+  }
+
+  .section-header {
+    @apply flex items-center gap-3 mb-5 pb-4 border-b border-border/50;
+  }
+
+  .section-title {
+    @apply font-display font-semibold text-lg text-foreground;
+  }
+
+  .section-icon {
+    @apply h-5 w-5 text-primary;
+  }
+
+  .subsection {
+    @apply bg-muted/30 border border-border/40 rounded-xl p-4;
+  }
+
+  /* Metric card component - enhanced */
   .metric-card {
-    @apply bg-card border border-border rounded-xl p-6 transition-all duration-300 relative overflow-hidden;
+    @apply bg-card border border-border/60 rounded-xl p-5 transition-all duration-300 relative overflow-hidden;
   }
 
   .metric-card::before {
@@ -172,9 +198,8 @@
     left: 0;
     right: 0;
     height: 3px;
-    background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
-    opacity: 0;
-    transition: opacity 0.3s;
+    background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+    opacity: 0.7;
   }
 
   .metric-card:hover::before {
@@ -182,55 +207,55 @@
   }
 
   .metric-card:hover {
-    @apply border-primary/40 shadow-lg;
-    box-shadow: 0 0 30px -10px hsl(var(--primary) / 0.3);
+    @apply border-primary/50 shadow-lg;
+    box-shadow: 0 0 30px -10px hsl(var(--primary) / 0.4);
   }
 
-  /* Status badges */
+  /* Status badges - more vibrant */
   .status-badge {
-    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase;
+    @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide;
   }
 
   .status-in-stock {
-    @apply bg-[hsl(var(--status-in-stock)/.15)] text-[hsl(var(--status-in-stock))] border border-[hsl(var(--status-in-stock)/.3)];
+    @apply bg-[hsl(var(--status-in-stock)/.2)] text-[hsl(var(--status-in-stock))] border border-[hsl(var(--status-in-stock)/.4)];
   }
 
   .status-reserved {
-    @apply bg-[hsl(var(--status-reserved)/.15)] text-[hsl(var(--status-reserved))] border border-[hsl(var(--status-reserved)/.3)];
+    @apply bg-[hsl(var(--status-reserved)/.2)] text-[hsl(var(--status-reserved))] border border-[hsl(var(--status-reserved)/.4)];
   }
 
   .status-sold {
-    @apply bg-[hsl(var(--status-sold)/.15)] text-[hsl(var(--status-sold))] border border-[hsl(var(--status-sold)/.3)];
+    @apply bg-[hsl(var(--status-sold)/.2)] text-[hsl(var(--status-sold))] border border-[hsl(var(--status-sold)/.4)];
   }
 
   .status-returned {
-    @apply bg-[hsl(var(--status-returned)/.15)] text-[hsl(var(--status-returned))] border border-[hsl(var(--status-returned)/.3)];
+    @apply bg-[hsl(var(--status-returned)/.2)] text-[hsl(var(--status-returned))] border border-[hsl(var(--status-returned)/.4)];
   }
 
   /* Marketplace badges */
   .marketplace-shopify {
-    @apply bg-[hsl(var(--shopify)/.15)] text-[hsl(var(--shopify))] border border-[hsl(var(--shopify)/.3)];
+    @apply bg-[hsl(var(--shopify)/.2)] text-[hsl(var(--shopify))] border border-[hsl(var(--shopify)/.4)];
   }
 
   .marketplace-amazon {
-    @apply bg-[hsl(var(--amazon)/.15)] text-[hsl(var(--amazon))] border border-[hsl(var(--amazon)/.3)];
+    @apply bg-[hsl(var(--amazon)/.2)] text-[hsl(var(--amazon))] border border-[hsl(var(--amazon)/.4)];
   }
 
   .marketplace-bestbuy {
-    @apply bg-[hsl(var(--bestbuy)/.15)] text-[hsl(var(--bestbuy))] border border-[hsl(var(--bestbuy)/.3)];
+    @apply bg-[hsl(var(--bestbuy)/.2)] text-[hsl(var(--bestbuy))] border border-[hsl(var(--bestbuy)/.4)];
   }
 
-  /* Data table styles */
+  /* Data table styles - improved readability */
   .data-table {
     @apply w-full text-sm;
   }
 
   .data-table th {
-    @apply text-left text-muted-foreground font-semibold py-4 px-4 border-b border-border uppercase text-xs tracking-wider;
+    @apply text-left text-muted-foreground font-semibold py-4 px-4 border-b border-border uppercase text-xs tracking-wider bg-muted/20;
   }
 
   .data-table td {
-    @apply py-4 px-4 border-b border-border/50;
+    @apply py-4 px-4 border-b border-border/40;
   }
 
   .data-table tr {
@@ -238,42 +263,46 @@
   }
 
   .data-table tr:hover td {
-    @apply bg-muted/30;
+    @apply bg-muted/40;
   }
 
-  /* Glass effect */
+  /* Glass effect - refined */
   .glass {
-    @apply bg-card/60 backdrop-blur-xl border border-border/50;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+    @apply bg-card/70 backdrop-blur-xl border border-border/50;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   }
 
-  /* Glow effects */
+  /* Glow effects - warmer */
   .glow-primary {
-    box-shadow: 0 0 40px -10px hsl(var(--primary) / 0.5);
+    box-shadow: 0 0 40px -10px hsl(var(--primary) / 0.6);
   }
 
   .glow-accent {
     box-shadow: 0 0 40px -10px hsl(var(--accent) / 0.5);
   }
 
-  /* Interactive cards */
+  .glow-secondary {
+    box-shadow: 0 0 40px -10px hsl(var(--secondary) / 0.5);
+  }
+
+  /* Interactive cards - enhanced */
   .interactive-card {
-    @apply bg-card border border-border rounded-xl p-6 transition-all duration-300 cursor-pointer;
+    @apply bg-card border border-border/60 rounded-xl p-5 transition-all duration-300 cursor-pointer;
   }
 
   .interactive-card:hover {
-    @apply border-primary/50 -translate-y-1;
-    box-shadow: 0 20px 40px -15px hsl(var(--primary) / 0.2);
+    @apply border-primary/60 -translate-y-1;
+    box-shadow: 0 20px 40px -15px hsl(var(--primary) / 0.25);
   }
 
-  /* Dashboard section */
+  /* Dashboard section - cleaner */
   .dashboard-section {
-    @apply bg-card/50 border border-border rounded-2xl p-6;
+    @apply bg-card/60 border border-border/50 rounded-2xl p-6;
   }
 
   /* Chart container */
   .chart-container {
-    @apply bg-card border border-border rounded-xl p-4 relative overflow-hidden;
+    @apply bg-card/80 border border-border/50 rounded-xl p-5 relative overflow-hidden;
   }
 
   .chart-container::after {
@@ -282,10 +311,28 @@
     bottom: 0;
     left: 0;
     right: 0;
-    height: 100px;
+    height: 60px;
     background: linear-gradient(180deg, transparent 0%, hsl(var(--card)) 100%);
     pointer-events: none;
-    opacity: 0.5;
+    opacity: 0.3;
+  }
+
+  /* Quick action buttons */
+  .quick-action {
+    @apply flex items-center gap-2 px-4 py-2.5 rounded-lg bg-muted/50 border border-border/50 text-sm font-medium transition-all duration-200;
+  }
+
+  .quick-action:hover {
+    @apply bg-primary/20 border-primary/50 text-primary;
+  }
+
+  /* Info cards */
+  .info-card {
+    @apply flex items-start gap-3 p-4 rounded-xl bg-muted/30 border border-border/40;
+  }
+
+  .info-card-icon {
+    @apply h-9 w-9 rounded-lg flex items-center justify-center shrink-0;
   }
 }
 

@@ -35,13 +35,16 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       <div className="min-h-screen flex w-full bg-background">
         <AppSidebar />
         <main className="flex-1 overflow-auto">
-          <header className="sticky top-0 z-10 h-16 flex items-center gap-4 border-b border-border/50 bg-background/80 backdrop-blur-xl px-6">
-            <SidebarTrigger className="-ml-2 hover:bg-muted/50 transition-colors" />
-            <div className="h-6 w-px bg-border" />
-            <h2 className="font-display font-semibold text-lg">{pageTitle}</h2>
+          <header className="sticky top-0 z-10 h-16 flex items-center gap-4 border-b border-border/40 bg-background/90 backdrop-blur-xl px-6">
+            <SidebarTrigger className="-ml-2 hover:bg-primary/10 hover:text-primary transition-colors rounded-lg" />
+            <div className="h-6 w-px bg-border/50" />
+            <div className="flex items-center gap-3">
+              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              <h2 className="font-display font-semibold text-lg text-foreground">{pageTitle}</h2>
+            </div>
             <div className="flex-1" />
           </header>
-          <div className="p-6">
+          <div className="p-6 lg:p-8">
             {children}
           </div>
         </main>
