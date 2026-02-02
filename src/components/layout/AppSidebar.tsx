@@ -17,10 +17,12 @@ import {
   Target,
   UserCircle,
   ClipboardList,
+  HelpCircle,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth';
 import { CompanySelector } from './CompanySelector';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import {
   Sidebar,
   SidebarContent,
@@ -60,6 +62,7 @@ const settingsNavItems = [
   { title: 'Team', url: '/team', icon: Users },
   { title: 'Audit Logs', url: '/audit-logs', icon: ClipboardList },
   { title: 'Settings', url: '/settings', icon: Settings },
+  { title: 'Help', url: '/help', icon: HelpCircle },
 ];
 
 export function AppSidebar() {
@@ -105,8 +108,11 @@ export function AppSidebar() {
           )}
         </div>
         {!collapsed && (
-          <div className="mt-3">
-            <CompanySelector />
+          <div className="mt-3 flex items-center gap-2">
+            <div className="flex-1">
+              <CompanySelector />
+            </div>
+            <NotificationCenter />
           </div>
         )}
       </SidebarHeader>
