@@ -3,12 +3,18 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { ExecutiveDashboard } from '@/components/reports/ExecutiveDashboard';
 import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
 import { QuickStats } from '@/components/dashboard/QuickStats';
-import { Card, CardContent } from '@/components/ui/card';
+import { CashPosition } from '@/components/dashboard/CashPosition';
+import { InventoryValuation } from '@/components/dashboard/InventoryValuation';
+import { GoalProgress } from '@/components/dashboard/GoalProgress';
+import { RevenueChart } from '@/components/dashboard/RevenueChart';
+import { MarketplaceChart } from '@/components/dashboard/MarketplaceChart';
+import { TopProductsChart } from '@/components/dashboard/TopProductsChart';
 import { StatusBadge, MarketplaceBadge } from '@/components/ui/status-badge';
-import { ShoppingCart, AlertCircle, Activity } from 'lucide-react';
+import { 
+  AlertCircle, Activity, Wallet, BarChart3, ShoppingCart, Target 
+} from 'lucide-react';
 import { format } from 'date-fns';
 
 interface RecentSale {
@@ -116,8 +122,8 @@ export default function Dashboard() {
         {/* Section 1: Alerts & Activity */}
         <section className="section-container">
           <div className="section-header">
-            <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center">
-              <AlertCircle className="section-icon" />
+            <div className="h-10 w-10 rounded-xl bg-destructive/15 flex items-center justify-center">
+              <AlertCircle className="h-5 w-5 text-destructive" />
             </div>
             <div>
               <h2 className="section-title">Alerts & Activity</h2>
@@ -134,21 +140,43 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Section 2: Analytics & Performance */}
+        {/* Section 2: Financial Overview */}
+        <section className="section-container">
+          <div className="section-header">
+            <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center">
+              <Wallet className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="section-title">Financial Overview</h2>
+              <p className="text-sm text-muted-foreground">Cash position, inventory value, and goal tracking</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <CashPosition />
+            <InventoryValuation />
+            <GoalProgress />
+          </div>
+        </section>
+
+        {/* Section 3: Analytics & Performance */}
         <section className="section-container">
           <div className="section-header">
             <div className="h-10 w-10 rounded-xl bg-secondary/15 flex items-center justify-center">
-              <Activity className="h-5 w-5 text-secondary" />
+              <BarChart3 className="h-5 w-5 text-secondary" />
             </div>
             <div>
               <h2 className="section-title">Analytics & Performance</h2>
-              <p className="text-sm text-muted-foreground">Revenue trends and financial insights</p>
+              <p className="text-sm text-muted-foreground">Revenue trends and marketplace insights</p>
             </div>
           </div>
-          <ExecutiveDashboard />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <RevenueChart />
+            <MarketplaceChart />
+            <TopProductsChart />
+          </div>
         </section>
 
-        {/* Section 3: Recent Sales */}
+        {/* Section 4: Recent Sales */}
         <section className="section-container">
           <div className="section-header">
             <div className="h-10 w-10 rounded-xl bg-accent/15 flex items-center justify-center">
