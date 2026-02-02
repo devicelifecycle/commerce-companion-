@@ -18,6 +18,7 @@ import {
   UserCircle,
   ClipboardList,
   HelpCircle,
+  BookOpen,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth';
@@ -49,6 +50,7 @@ const mainNavItems = [
 
 const financeNavItems = [
   { title: 'Accounting', url: '/accounting', icon: Calculator },
+  { title: 'Acct. Guide', url: '/accounting/knowledge', icon: BookOpen },
   { title: 'Expenses', url: '/expenses', icon: Wallet },
   { title: 'Tax Center', url: '/taxes', icon: Receipt },
   { title: 'Invoices', url: '/invoices', icon: FileText },
