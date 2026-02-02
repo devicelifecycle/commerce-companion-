@@ -1,66 +1,95 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/lib/auth';
+import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { ExpenseDashboard } from '@/components/expenses/ExpenseDashboard';
+import { AddExpenseDialog } from '@/components/expenses/AddExpenseDialog';
+import { VendorManagement } from '@/components/expenses/VendorManagement';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
-import { Plus, Wallet, TrendingDown, Receipt, Filter, Download } from 'lucide-react';
+import { 
+  Plus, Search, Filter, Download, LayoutDashboard, List, 
+  Building, MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink
+} from 'lucide-react';
 import { format } from 'date-fns';
 
 interface Expense {
   id: string;
   description: string;
   amount: number;
+  gst_hst_amount: number;
+  pst_amount: number;
+  total_amount: number;
   category: string;
+  subcategory: string | null;
   expense_date: string;
   vendor: string | null;
   notes: string | null;
+  payment_method: string;
   is_tax_deductible: boolean;
+  is_shared: boolean;
+  allocation_ves: number;
+  allocation_tgw: number;
+  is_recurring: boolean;
+  recurring_frequency: string | null;
+  company_id: string | null;
+  receipt_url: string | null;
   created_at: string;
 }
 
 const EXPENSE_CATEGORIES = [
   { value: 'inventory', label: 'Inventory Purchase' },
   { value: 'shipping', label: 'Shipping & Logistics' },
-  { value: 'marketing', label: 'Marketing & Advertising' },
+  { value: 'utilities', label: 'Utilities' },
+  { value: 'office', label: 'Office Supplies' },
   { value: 'software', label: 'Software & Subscriptions' },
   { value: 'equipment', label: 'Equipment & Tools' },
-  { value: 'office', label: 'Office Supplies' },
-  { value: 'utilities', label: 'Utilities' },
-  { value: 'travel', label: 'Travel & Transportation' },
   { value: 'professional_services', label: 'Professional Services' },
+  { value: 'marketing', label: 'Marketing & Advertising' },
+  { value: 'travel', label: 'Travel & Transportation' },
   { value: 'other', label: 'Other' },
 ];
 
 export default function Expenses() {
-  const { user } = useAuth();
+  const { selectedCompany, isSuperAdmin, companies } = useCompany();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
-  
-  const [formData, setFormData] = useState({
-    description: '',
-    amount: '',
-    category: 'other',
-    expense_date: new Date().toISOString().split('T')[0],
-    vendor: '',
-    notes: '',
-    is_tax_deductible: true,
-  });
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   useEffect(() => {
     fetchExpenses();
-  }, [filterCategory]);
+  }, [filterCategory, selectedCompany]);
 
   const fetchExpenses = async () => {
+    setLoading(true);
     try {
       let query = supabase
         .from('expenses')
@@ -68,12 +97,16 @@ export default function Expenses() {
         .order('expense_date', { ascending: false });
 
       if (filterCategory !== 'all') {
-        query = query.eq('category', filterCategory as 'inventory' | 'shipping' | 'marketing' | 'software' | 'equipment' | 'office' | 'utilities' | 'travel' | 'professional_services' | 'other');
+        query = query.eq('category', filterCategory as any);
+      }
+
+      if (selectedCompany && !isSuperAdmin) {
+        query = query.or(`company_id.eq.${selectedCompany.id},is_shared.eq.true`);
       }
 
       const { data, error } = await query;
       if (error) throw error;
-      setExpenses(data || []);
+      setExpenses((data || []) as Expense[]);
     } catch (error) {
       console.error('Error fetching expenses:', error);
       toast.error('Failed to load expenses');
@@ -82,131 +115,138 @@ export default function Expenses() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleDelete = async (id: string) => {
+    if (!confirm('Delete this expense?')) return;
     try {
-      const { error } = await supabase.from('expenses').insert([{
-        description: formData.description,
-        amount: parseFloat(formData.amount),
-        category: formData.category as 'inventory' | 'shipping' | 'marketing' | 'software' | 'equipment' | 'office' | 'utilities' | 'travel' | 'professional_services' | 'other',
-        expense_date: formData.expense_date,
-        vendor: formData.vendor || null,
-        notes: formData.notes || null,
-        is_tax_deductible: formData.is_tax_deductible,
-        created_by: user?.id,
-      }]);
-
+      const { error } = await supabase.from('expenses').delete().eq('id', id);
       if (error) throw error;
-      
-      toast.success('Expense added successfully');
-      setDialogOpen(false);
-      setFormData({
-        description: '',
-        amount: '',
-        category: 'other',
-        expense_date: new Date().toISOString().split('T')[0],
-        vendor: '',
-        notes: '',
-        is_tax_deductible: true,
-      });
+      toast.success('Expense deleted');
       fetchExpenses();
-    } catch (error) {
-      console.error('Error adding expense:', error);
-      toast.error('Failed to add expense');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete expense');
     }
   };
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
-  const taxDeductible = expenses.filter(e => e.is_tax_deductible).reduce((sum, e) => sum + Number(e.amount), 0);
-  const thisMonth = expenses
-    .filter(e => new Date(e.expense_date).getMonth() === new Date().getMonth())
-    .reduce((sum, e) => sum + Number(e.amount), 0);
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+  const handleEdit = (expense: Expense) => {
+    setEditingExpense(expense);
+    setDialogOpen(true);
   };
 
-  const getCategoryLabel = (value: string) => {
-    return EXPENSE_CATEGORIES.find(c => c.value === value)?.label || value;
+  const handleExport = () => {
+    const headers = ['Date', 'Description', 'Category', 'Vendor', 'Amount', 'GST/HST', 'PST', 'Total', 'Company', 'Tax Deductible'];
+    const rows = expenses.map(e => {
+      const company = e.is_shared 
+        ? 'Shared' 
+        : companies.find(c => c.id === e.company_id)?.code || '-';
+      return [
+        e.expense_date,
+        e.description,
+        e.category,
+        e.vendor || '-',
+        e.amount.toFixed(2),
+        (e.gst_hst_amount || 0).toFixed(2),
+        (e.pst_amount || 0).toFixed(2),
+        (e.total_amount || e.amount).toFixed(2),
+        company,
+        e.is_tax_deductible ? 'Yes' : 'No',
+      ];
+    });
+
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `expenses-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-muted rounded w-48" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-32 bg-muted rounded-xl" />
-            ))}
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const filteredExpenses = expenses.filter((expense) =>
+    expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    expense.vendor?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
+
+  const getCategoryLabel = (value: string) =>
+    EXPENSE_CATEGORIES.find(c => c.value === value)?.label || value;
+
+  const getCompanyBadge = (expense: Expense) => {
+    if (expense.is_shared) {
+      return (
+        <Badge variant="outline" className="text-xs">
+          VES {expense.allocation_ves}% / TGW {expense.allocation_tgw}%
+        </Badge>
+      );
+    }
+    const company = companies.find(c => c.id === expense.company_id);
+    return company ? (
+      <Badge variant="secondary" className="text-xs">{company.code}</Badge>
+    ) : null;
+  };
 
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-display font-bold gradient-text">Expense Management</h1>
-            <p className="text-muted-foreground mt-1">Track and categorize your business expenses</p>
+            <h1 className="text-2xl font-bold">Expense Management</h1>
+            <p className="text-muted-foreground">Track and categorize business expenses</p>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gradient-primary">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Expense
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="font-display">Add New Expense</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Description</Label>
-                  <Input
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="What was this expense for?"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Amount</Label>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+            <Button onClick={() => { setEditingExpense(null); setDialogOpen(true); }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Expense
+            </Button>
+          </div>
+        </div>
+
+        <Tabs defaultValue="dashboard" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="list" className="flex items-center gap-2">
+              <List className="h-4 w-4" />
+              All Expenses
+            </TabsTrigger>
+            <TabsTrigger value="vendors" className="flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              Vendors
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="dashboard">
+            <ExpenseDashboard />
+          </TabsContent>
+
+          <TabsContent value="list">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="relative flex-1 min-w-[200px] max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                      placeholder="0.00"
-                      required
+                      placeholder="Search expenses..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Date</Label>
-                    <Input
-                      type="date"
-                      value={formData.expense_date}
-                      onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Category</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData({ ...formData, category: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
+                  <Select value={filterCategory} onValueChange={setFilterCategory}>
+                    <SelectTrigger className="w-[180px]">
+                      <Filter className="h-4 w-4 mr-2" />
+                      <SelectValue placeholder="Category" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
                       {EXPENSE_CATEGORIES.map((cat) => (
                         <SelectItem key={cat.value} value={cat.value}>
                           {cat.label}
@@ -215,146 +255,129 @@ export default function Expenses() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Vendor (optional)</Label>
-                  <Input
-                    value={formData.vendor}
-                    onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
-                    placeholder="Vendor or supplier name"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Notes (optional)</Label>
-                  <Textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Additional details..."
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="tax_deductible"
-                    checked={formData.is_tax_deductible}
-                    onChange={(e) => setFormData({ ...formData, is_tax_deductible: e.target.checked })}
-                    className="h-4 w-4 rounded border-border"
-                  />
-                  <Label htmlFor="tax_deductible" className="text-sm">Tax deductible</Label>
-                </div>
-                <Button type="submit" className="w-full gradient-primary">Add Expense</Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="metric-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Expenses</p>
-                  <p className="text-2xl font-bold font-display">{formatCurrency(totalExpenses)}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-destructive/10">
-                  <TrendingDown className="h-5 w-5 text-destructive" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="metric-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">This Month</p>
-                  <p className="text-2xl font-bold font-display">{formatCurrency(thisMonth)}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-warning/10">
-                  <Wallet className="h-5 w-5 text-warning" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="metric-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Tax Deductible</p>
-                  <p className="text-2xl font-bold font-display">{formatCurrency(taxDeductible)}</p>
-                </div>
-                <div className="p-3 rounded-xl bg-success/10">
-                  <Receipt className="h-5 w-5 text-success" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="border-border/50">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="font-display">Expense History</CardTitle>
-            <div className="flex gap-2">
-              <Select value={filterCategory} onValueChange={setFilterCategory}>
-                <SelectTrigger className="w-[180px]">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Filter" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {EXPENSE_CATEGORIES.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {expenses.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      No expenses recorded yet
-                    </TableCell>
-                  </TableRow>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                  </div>
+                ) : filteredExpenses.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Receipt className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">No expenses found</p>
+                  </div>
                 ) : (
-                  expenses.map((expense) => (
-                    <TableRow key={expense.id}>
-                      <TableCell>{format(new Date(expense.expense_date), 'MMM d, yyyy')}</TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{expense.description}</p>
-                          {expense.is_tax_deductible && (
-                            <span className="text-xs text-success">Tax deductible</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="px-2 py-1 rounded-full text-xs bg-muted">
-                          {getCategoryLabel(expense.category)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{expense.vendor || '-'}</TableCell>
-                      <TableCell className="text-right font-medium text-destructive">
-                        -{formatCurrency(Number(expense.amount))}
-                      </TableCell>
-                    </TableRow>
-                  ))
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Vendor</TableHead>
+                          <TableHead>Company</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                          <TableHead className="w-[50px]" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredExpenses.map((expense) => (
+                          <TableRow key={expense.id}>
+                            <TableCell>{format(new Date(expense.expense_date), 'MMM d, yyyy')}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div>
+                                  <p className="font-medium">{expense.description}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    {expense.is_tax_deductible && (
+                                      <span className="text-xs text-emerald-600">Tax deductible</span>
+                                    )}
+                                    {expense.is_recurring && (
+                                      <Badge variant="outline" className="text-xs">
+                                        <Repeat className="h-3 w-3 mr-1" />
+                                        {expense.recurring_frequency}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="capitalize">
+                                {getCategoryLabel(expense.category)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {expense.vendor || '-'}
+                            </TableCell>
+                            <TableCell>{getCompanyBadge(expense)}</TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(expense.amount)}
+                              {(expense.gst_hst_amount > 0 || expense.pst_amount > 0) && (
+                                <p className="text-xs text-muted-foreground">
+                                  +${((expense.gst_hst_amount || 0) + (expense.pst_amount || 0)).toFixed(2)} tax
+                                </p>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-destructive">
+                              -{formatCurrency(expense.total_amount || expense.amount)}
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleEdit(expense)}>
+                                    <Edit2 className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                  {expense.receipt_url && (
+                                    <DropdownMenuItem asChild>
+                                      <a 
+                                        href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/receipts/${expense.receipt_url}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                      >
+                                        <ExternalLink className="h-4 w-4 mr-2" />
+                                        View Receipt
+                                      </a>
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => handleDelete(expense.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="vendors">
+            <VendorManagement />
+          </TabsContent>
+        </Tabs>
+
+        <AddExpenseDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          onSuccess={fetchExpenses}
+          editExpense={editingExpense}
+        />
       </div>
     </DashboardLayout>
   );

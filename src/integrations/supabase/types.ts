@@ -228,49 +228,142 @@ export type Database = {
           },
         ]
       }
+      expense_allocation_rules: {
+        Row: {
+          category: string
+          created_at: string
+          default_tgw_percentage: number
+          default_ves_percentage: number
+          description: string | null
+          id: string
+          subcategory: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          default_tgw_percentage?: number
+          default_ves_percentage?: number
+          description?: string | null
+          id?: string
+          subcategory?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          default_tgw_percentage?: number
+          default_ves_percentage?: number
+          description?: string | null
+          id?: string
+          subcategory?: string | null
+        }
+        Relationships: []
+      }
+      expense_subcategories: {
+        Row: {
+          category: string
+          description: string | null
+          id: string
+          subcategory: string
+        }
+        Insert: {
+          category: string
+          description?: string | null
+          id?: string
+          subcategory: string
+        }
+        Update: {
+          category?: string
+          description?: string | null
+          id?: string
+          subcategory?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
+          allocation_tgw: number | null
+          allocation_ves: number | null
           amount: number
+          approval_status: string | null
+          approved_by: string | null
           category: Database["public"]["Enums"]["expense_category"]
           company_id: string | null
           created_at: string
           created_by: string | null
           description: string
           expense_date: string
+          gst_hst_amount: number | null
           id: string
+          is_recurring: boolean | null
+          is_shared: boolean | null
           is_tax_deductible: boolean | null
           notes: string | null
+          parent_expense_id: string | null
+          payment_method: string | null
+          pst_amount: number | null
           receipt_url: string | null
+          recurring_end_date: string | null
+          recurring_frequency: string | null
+          subcategory: string | null
+          total_amount: number | null
           updated_at: string
           vendor: string | null
         }
         Insert: {
+          allocation_tgw?: number | null
+          allocation_ves?: number | null
           amount: number
+          approval_status?: string | null
+          approved_by?: string | null
           category?: Database["public"]["Enums"]["expense_category"]
           company_id?: string | null
           created_at?: string
           created_by?: string | null
           description: string
           expense_date?: string
+          gst_hst_amount?: number | null
           id?: string
+          is_recurring?: boolean | null
+          is_shared?: boolean | null
           is_tax_deductible?: boolean | null
           notes?: string | null
+          parent_expense_id?: string | null
+          payment_method?: string | null
+          pst_amount?: number | null
           receipt_url?: string | null
+          recurring_end_date?: string | null
+          recurring_frequency?: string | null
+          subcategory?: string | null
+          total_amount?: number | null
           updated_at?: string
           vendor?: string | null
         }
         Update: {
+          allocation_tgw?: number | null
+          allocation_ves?: number | null
           amount?: number
+          approval_status?: string | null
+          approved_by?: string | null
           category?: Database["public"]["Enums"]["expense_category"]
           company_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
           expense_date?: string
+          gst_hst_amount?: number | null
           id?: string
+          is_recurring?: boolean | null
+          is_shared?: boolean | null
           is_tax_deductible?: boolean | null
           notes?: string | null
+          parent_expense_id?: string | null
+          payment_method?: string | null
+          pst_amount?: number | null
           receipt_url?: string | null
+          recurring_end_date?: string | null
+          recurring_frequency?: string | null
+          subcategory?: string | null
+          total_amount?: number | null
           updated_at?: string
           vendor?: string | null
         }
@@ -280,6 +373,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_parent_expense_id_fkey"
+            columns: ["parent_expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
             referencedColumns: ["id"]
           },
         ]
@@ -883,6 +983,48 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      vendors: {
+        Row: {
+          address: string | null
+          category: string | null
+          contact_name: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          total_spent: number | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          category?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          total_spent?: number | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          category?: string | null
+          contact_name?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          total_spent?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
