@@ -16,9 +16,11 @@ import {
   Brain,
   Target,
   UserCircle,
+  ClipboardList,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth';
+import { CompanySelector } from './CompanySelector';
 import {
   Sidebar,
   SidebarContent,
@@ -56,6 +58,7 @@ const financeNavItems = [
 const settingsNavItems = [
   { title: 'Suppliers', url: '/suppliers', icon: Package },
   { title: 'Team', url: '/team', icon: Users },
+  { title: 'Audit Logs', url: '/audit-logs', icon: ClipboardList },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
 
@@ -101,6 +104,11 @@ export function AppSidebar() {
             </div>
           )}
         </div>
+        {!collapsed && (
+          <div className="mt-3">
+            <CompanySelector />
+          </div>
+        )}
       </SidebarHeader>
 
       <SidebarContent className="px-2">
