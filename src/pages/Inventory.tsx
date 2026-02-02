@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
+import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { InventoryDashboard } from '@/components/inventory/InventoryDashboard';
+import { InventoryTransferDialog } from '@/components/inventory/InventoryTransferDialog';
+import { InventoryLabelDialog } from '@/components/inventory/InventoryLabelDialog';
+import { AgingInventoryReport } from '@/components/inventory/AgingInventoryReport';
 import { StatusBadge, ConditionBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Table,
   TableBody,
@@ -24,6 +30,13 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -32,8 +45,13 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { Search, Plus, Filter, Smartphone, Trash2, Edit2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
+import { 
+  Search, Plus, Filter, Smartphone, Trash2, Edit2, MoreHorizontal,
+  LayoutDashboard, List, Clock, ArrowRightLeft, QrCode, Link, Upload
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 type DeviceCondition = 'new' | 'refurbished' | 'used' | 'damaged';
 type DeviceStatus = 'in_stock' | 'reserved' | 'sold' | 'returned';
@@ -41,6 +59,8 @@ type DeviceStatus = 'in_stock' | 'reserved' | 'sold' | 'returned';
 interface Device {
   id: string;
   imei: string | null;
+  sku: string | null;
+  category: string;
   model: string;
   brand: string;
   storage: string | null;
@@ -53,6 +73,7 @@ interface Device {
   purchase_date: string | null;
   warehouse_location: string | null;
   notes: string | null;
+  company_id: string | null;
   created_at: string;
   suppliers?: { name: string } | null;
 }
@@ -62,20 +83,33 @@ interface Supplier {
   name: string;
 }
 
+const CATEGORIES = ['phone', 'laptop', 'tablet', 'accessory', 'smartwatch', 'other'];
+
 export default function Inventory() {
   const { user } = useAuth();
-  const { toast } = useToast();
+  const { selectedCompany, isSuperAdmin, hasPermission, companies } = useCompany();
+  const navigate = useNavigate();
   const [devices, setDevices] = useState<Device[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
+  const [transferDevice, setTransferDevice] = useState<Device | null>(null);
+  const [showLabelDialog, setShowLabelDialog] = useState(false);
+  const [labelDevice, setLabelDevice] = useState<Device | null>(null);
+
+  const canManage = hasPermission('inventory_manage', 'edit') || isSuperAdmin;
+  const canView = hasPermission('inventory_view', 'view') || isSuperAdmin;
 
   const [formData, setFormData] = useState({
     imei: '',
+    sku: '',
+    category: 'phone',
     model: '',
     brand: '',
     storage: '',
@@ -91,22 +125,30 @@ export default function Inventory() {
   });
 
   useEffect(() => {
-    fetchDevices();
-    fetchSuppliers();
-  }, [statusFilter]);
+    if (canView) {
+      fetchDevices();
+      fetchSuppliers();
+    }
+  }, [statusFilter, categoryFilter, selectedCompany, canView]);
 
   const fetchDevices = async () => {
+    setLoading(true);
     try {
       let query = supabase
         .from('devices')
-        .select(`
-          *,
-          suppliers (name)
-        `)
+        .select(`*, suppliers (name)`)
         .order('created_at', { ascending: false });
 
       if (statusFilter !== 'all') {
         query = query.eq('status', statusFilter as DeviceStatus);
+      }
+
+      if (categoryFilter !== 'all') {
+        query = query.eq('category', categoryFilter);
+      }
+
+      if (selectedCompany && !isSuperAdmin) {
+        query = query.eq('company_id', selectedCompany.id);
       }
 
       const { data, error } = await query;
@@ -114,33 +156,32 @@ export default function Inventory() {
       setDevices((data || []) as Device[]);
     } catch (error) {
       console.error('Error fetching devices:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch devices',
-        variant: 'destructive',
-      });
+      toast.error('Failed to fetch devices');
     } finally {
       setLoading(false);
     }
   };
 
   const fetchSuppliers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('suppliers')
-        .select('id, name')
-        .order('name');
-      if (error) throw error;
-      setSuppliers(data || []);
-    } catch (error) {
-      console.error('Error fetching suppliers:', error);
+    let query = supabase.from('suppliers').select('id, name').order('name');
+    if (selectedCompany && !isSuperAdmin) {
+      query = query.eq('company_id', selectedCompany.id);
     }
+    const { data } = await query;
+    setSuppliers(data || []);
   };
 
   const handleAddDevice = async () => {
+    if (!selectedCompany && !isSuperAdmin) {
+      toast.error('Please select a company');
+      return;
+    }
+
     try {
       const { error } = await supabase.from('devices').insert({
         imei: formData.imei || null,
+        sku: formData.sku || null,
+        category: formData.category,
         model: formData.model,
         brand: formData.brand,
         storage: formData.storage || null,
@@ -153,26 +194,19 @@ export default function Inventory() {
         purchase_date: formData.purchase_date,
         warehouse_location: formData.warehouse_location || null,
         notes: formData.notes || null,
+        company_id: selectedCompany?.id,
         created_by: user?.id,
       });
 
       if (error) throw error;
 
-      toast({
-        title: 'Device added',
-        description: 'The device has been added to inventory.',
-      });
-
+      toast.success('Device added to inventory');
       setIsAddDialogOpen(false);
       resetForm();
       fetchDevices();
     } catch (error: any) {
       console.error('Error adding device:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to add device',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Failed to add device');
     }
   };
 
@@ -184,6 +218,8 @@ export default function Inventory() {
         .from('devices')
         .update({
           imei: formData.imei || null,
+          sku: formData.sku || null,
+          category: formData.category,
           model: formData.model,
           brand: formData.brand,
           storage: formData.storage || null,
@@ -201,22 +237,14 @@ export default function Inventory() {
 
       if (error) throw error;
 
-      toast({
-        title: 'Device updated',
-        description: 'The device has been updated.',
-      });
-
+      toast.success('Device updated');
       setIsEditDialogOpen(false);
       setSelectedDevice(null);
       resetForm();
       fetchDevices();
     } catch (error: any) {
       console.error('Error updating device:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to update device',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Failed to update device');
     }
   };
 
@@ -226,20 +254,24 @@ export default function Inventory() {
     try {
       const { error } = await supabase.from('devices').delete().eq('id', id);
       if (error) throw error;
-
-      toast({
-        title: 'Device deleted',
-        description: 'The device has been removed from inventory.',
-      });
-
+      toast.success('Device deleted');
       fetchDevices();
     } catch (error: any) {
-      console.error('Error deleting device:', error);
-      toast({
-        title: 'Error',
-        description: error.message || 'Failed to delete device',
-        variant: 'destructive',
-      });
+      toast.error(error.message || 'Failed to delete device');
+    }
+  };
+
+  const handleQuickStatusChange = async (id: string, newStatus: DeviceStatus) => {
+    try {
+      const { error } = await supabase
+        .from('devices')
+        .update({ status: newStatus })
+        .eq('id', id);
+      if (error) throw error;
+      toast.success(`Device marked as ${newStatus.replace('_', ' ')}`);
+      fetchDevices();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update status');
     }
   };
 
@@ -247,6 +279,8 @@ export default function Inventory() {
     setSelectedDevice(device);
     setFormData({
       imei: device.imei || '',
+      sku: device.sku || '',
+      category: device.category || 'phone',
       model: device.model,
       brand: device.brand,
       storage: device.storage || '',
@@ -266,6 +300,8 @@ export default function Inventory() {
   const resetForm = () => {
     setFormData({
       imei: '',
+      sku: '',
+      category: 'phone',
       model: '',
       brand: '',
       storage: '',
@@ -286,16 +322,13 @@ export default function Inventory() {
       device.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
       device.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
       device.imei?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      device.sku?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       device.color?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(value);
-  };
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
 
   const DeviceForm = ({ onSubmit, submitLabel }: { onSubmit: () => void; submitLabel: string }) => (
     <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
@@ -322,7 +355,35 @@ export default function Inventory() {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="imei">IMEI</Label>
+          <Label htmlFor="category">Category</Label>
+          <Select
+            value={formData.category}
+            onValueChange={(value) => setFormData({ ...formData, category: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORIES.map(cat => (
+                <SelectItem key={cat} value={cat} className="capitalize">{cat}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="sku">SKU</Label>
+          <Input
+            id="sku"
+            value={formData.sku}
+            onChange={(e) => setFormData({ ...formData, sku: e.target.value })}
+            placeholder="SKU-12345"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="imei">IMEI / Serial Number</Label>
           <Input
             id="imei"
             value={formData.imei}
@@ -470,12 +531,11 @@ export default function Inventory() {
     </div>
   );
 
-  if (loading) {
+  if (!canView) {
     return (
       <DashboardLayout>
-        <div className="animate-pulse space-y-6">
-          <div className="h-8 bg-muted rounded w-48" />
-          <div className="h-96 bg-muted rounded-lg" />
+        <div className="flex items-center justify-center py-12">
+          <p className="text-muted-foreground">You don't have permission to view inventory.</p>
         </div>
       </DashboardLayout>
     );
@@ -487,143 +547,265 @@ export default function Inventory() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Inventory</h1>
-            <p className="text-muted-foreground">Manage your phone inventory</p>
+            <p className="text-muted-foreground">
+              {selectedCompany ? `${selectedCompany.code} inventory` : 'Manage your device inventory'}
+            </p>
           </div>
 
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => { resetForm(); setIsAddDialogOpen(true); }}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Device
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>Add New Device</DialogTitle>
-                <DialogDescription>
-                  Add a new device to your inventory. Fill in the details below.
-                </DialogDescription>
-              </DialogHeader>
-              <DeviceForm onSubmit={handleAddDevice} submitLabel="Add Device" />
-            </DialogContent>
-          </Dialog>
+          <div className="flex gap-2">
+            {canManage && (
+              <>
+                <Button variant="outline" onClick={() => navigate('/import')}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Bulk Import
+                </Button>
+                {isSuperAdmin && (
+                  <Button variant="outline" onClick={() => setShowTransferDialog(true)}>
+                    <ArrowRightLeft className="h-4 w-4 mr-2" />
+                    Transfer
+                  </Button>
+                )}
+                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button onClick={() => { resetForm(); setIsAddDialogOpen(true); }}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Device
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Add New Device</DialogTitle>
+                      <DialogDescription>Add a new device to your inventory</DialogDescription>
+                    </DialogHeader>
+                    <DeviceForm onSubmit={handleAddDevice} submitLabel="Add Device" />
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+          </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search devices..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="in_stock">In Stock</SelectItem>
-                  <SelectItem value="reserved">Reserved</SelectItem>
-                  <SelectItem value="sold">Sold</SelectItem>
-                  <SelectItem value="returned">Returned</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {filteredDevices.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Smartphone className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold">No devices found</h3>
-                <p className="text-muted-foreground">
-                  {searchTerm ? 'Try adjusting your search' : 'Add your first device to get started'}
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Device</TableHead>
-                      <TableHead>IMEI</TableHead>
-                      <TableHead>Condition</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Supplier</TableHead>
-                      <TableHead className="text-right">Cost</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredDevices.map((device) => (
-                      <TableRow key={device.id}>
-                        <TableCell>
-                          <div>
-                            <p className="font-medium">{device.brand} {device.model}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {[device.storage, device.color].filter(Boolean).join(' • ')}
-                            </p>
-                          </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">
-                          {device.imei || '-'}
-                        </TableCell>
-                        <TableCell>
-                          <ConditionBadge condition={device.condition} />
-                        </TableCell>
-                        <TableCell>
-                          <StatusBadge status={device.status} />
-                        </TableCell>
-                        <TableCell>
-                          {device.suppliers?.name || '-'}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(device.cost_price)}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditDialog(device)}
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteDevice(device.id)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <Tabs defaultValue="dashboard" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              Dashboard
+            </TabsTrigger>
+            <TabsTrigger value="list" className="flex items-center gap-2">
+              <List className="h-4 w-4" />
+              All Devices
+            </TabsTrigger>
+            <TabsTrigger value="aging" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Aging Report
+            </TabsTrigger>
+          </TabsList>
 
+          <TabsContent value="dashboard">
+            <InventoryDashboard />
+          </TabsContent>
+
+          <TabsContent value="list">
+            <Card>
+              <CardHeader>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="relative flex-1 min-w-[200px] max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search devices..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-36">
+                      <Filter className="h-4 w-4 mr-2" />
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="in_stock">In Stock</SelectItem>
+                      <SelectItem value="reserved">Reserved</SelectItem>
+                      <SelectItem value="sold">Sold</SelectItem>
+                      <SelectItem value="returned">Returned</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {CATEGORIES.map(cat => (
+                        <SelectItem key={cat} value={cat} className="capitalize">{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                  </div>
+                ) : filteredDevices.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Smartphone className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold">No devices found</h3>
+                    <p className="text-muted-foreground">
+                      {searchTerm ? 'Try adjusting your search' : 'Add your first device to get started'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Device</TableHead>
+                          <TableHead>IMEI/SKU</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Condition</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Cost</TableHead>
+                          {isSuperAdmin && <TableHead>Company</TableHead>}
+                          {canManage && <TableHead className="w-[50px]" />}
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredDevices.map((device) => {
+                          const company = companies.find(c => c.id === device.company_id);
+                          return (
+                            <TableRow key={device.id}>
+                              <TableCell>
+                                <div>
+                                  <p className="font-medium">{device.brand} {device.model}</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {[device.storage, device.color].filter(Boolean).join(' • ')}
+                                  </p>
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-mono text-sm">
+                                {device.imei || device.sku || '-'}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="capitalize">{device.category}</Badge>
+                              </TableCell>
+                              <TableCell>
+                                <ConditionBadge condition={device.condition} />
+                              </TableCell>
+                              <TableCell>
+                                <StatusBadge status={device.status} />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {formatCurrency(device.cost_price)}
+                              </TableCell>
+                              {isSuperAdmin && (
+                                <TableCell>
+                                  <Badge variant="secondary">{company?.code || '-'}</Badge>
+                                </TableCell>
+                              )}
+                              {canManage && (
+                                <TableCell>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem onClick={() => openEditDialog(device)}>
+                                        <Edit2 className="h-4 w-4 mr-2" />
+                                        Edit
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => {
+                                        setLabelDevice(device);
+                                        setShowLabelDialog(true);
+                                      }}>
+                                        <QrCode className="h-4 w-4 mr-2" />
+                                        Print Label
+                                      </DropdownMenuItem>
+                                      {device.status === 'in_stock' && (
+                                        <>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem onClick={() => handleQuickStatusChange(device.id, 'reserved')}>
+                                            Mark Reserved
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleQuickStatusChange(device.id, 'sold')}>
+                                            Mark Sold
+                                          </DropdownMenuItem>
+                                          {isSuperAdmin && (
+                                            <DropdownMenuItem onClick={() => {
+                                              setTransferDevice(device);
+                                              setShowTransferDialog(true);
+                                            }}>
+                                              <ArrowRightLeft className="h-4 w-4 mr-2" />
+                                              Transfer
+                                            </DropdownMenuItem>
+                                          )}
+                                        </>
+                                      )}
+                                      {device.status === 'reserved' && (
+                                        <>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem onClick={() => handleQuickStatusChange(device.id, 'in_stock')}>
+                                            Return to Stock
+                                          </DropdownMenuItem>
+                                        </>
+                                      )}
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        className="text-destructive"
+                                        onClick={() => handleDeleteDevice(device.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              )}
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="aging">
+            <AgingInventoryReport />
+          </TabsContent>
+        </Tabs>
+
+        {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Edit Device</DialogTitle>
-              <DialogDescription>
-                Update device information.
-              </DialogDescription>
+              <DialogDescription>Update device information</DialogDescription>
             </DialogHeader>
-            <DeviceForm onSubmit={handleUpdateDevice} submitLabel="Update Device" />
+            <DeviceForm onSubmit={handleUpdateDevice} submitLabel="Save Changes" />
           </DialogContent>
         </Dialog>
+
+        {/* Transfer Dialog */}
+        <InventoryTransferDialog
+          open={showTransferDialog}
+          onOpenChange={setShowTransferDialog}
+          onSuccess={fetchDevices}
+          preselectedDevice={transferDevice}
+        />
+
+        {/* Label Dialog */}
+        <InventoryLabelDialog
+          open={showLabelDialog}
+          onOpenChange={setShowLabelDialog}
+          device={labelDevice}
+        />
       </div>
     </DashboardLayout>
   );
