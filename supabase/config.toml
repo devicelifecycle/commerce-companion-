@@ -9,5 +9,8 @@ verify_jwt = false
 [functions.import-bestbuy-orders]
 verify_jwt = false
 
+[functions.import-amazon-orders]
+verify_jwt = false
+
 [functions.ai-forecast]
 verify_jwt = false

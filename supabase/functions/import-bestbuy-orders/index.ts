@@ -89,6 +89,20 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Get TGW company ID (BestBuy is for TGW)
+    const { data: tgwCompany, error: companyError } = await supabase
+      .from("companies")
+      .select("id")
+      .eq("code", "TGW")
+      .single();
+
+    if (companyError || !tgwCompany) {
+      throw new Error("TGW company not found");
+    }
+
+    const companyId = tgwCompany.id;
+    console.log(`Using TGW company ID: ${companyId}`);
+
     // Calculate date 7 days ago for filtering recent orders
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -97,8 +111,6 @@ serve(async (req) => {
     console.log(`Fetching Best Buy Canada orders since ${startDate}`);
 
     // Best Buy Canada uses Mirakl platform
-    // API endpoint: https://marketplace.bestbuy.ca/api/orders
-    // Using OR11 - List orders with pagination
     const baseUrl = "https://marketplace.bestbuy.ca/api/orders";
     
     const params = new URLSearchParams({
@@ -170,11 +182,14 @@ serve(async (req) => {
           const shippingCost = lineItem.shipping_price || 0;
           const marketplaceFees = lineItem.commission_fee || 0;
           
-          // Best Buy Canada charges tax separately - estimate from commission taxes
+          // Best Buy Canada charges tax separately
           const taxAmount = lineItem.commission_taxes?.reduce(
             (sum, tax) => sum + (tax.amount || 0),
             0
           ) || 0;
+
+          // Extract province for tax purposes
+          const province = order.shipping_address?.state || null;
 
           // Build customer address
           const addr = order.shipping_address;
@@ -194,7 +209,26 @@ serve(async (req) => {
             ? `${order.customer.firstname} ${order.customer.lastname}`.trim()
             : null;
 
-          const notes = `Best Buy Order #${order.commercial_id} | ${lineItem.product_title} (x${lineItem.quantity})`;
+          // Map order state to status
+          let status = "pending";
+          switch (order.order_state?.toUpperCase()) {
+            case "SHIPPED":
+              status = "shipped";
+              break;
+            case "RECEIVED":
+            case "CLOSED":
+              status = "delivered";
+              break;
+            case "REFUSED":
+            case "CANCELED":
+              status = "cancelled";
+              break;
+            case "REFUNDED":
+              status = "refunded";
+              break;
+          }
+
+          const notes = `Best Buy Order #${order.commercial_id} | Status: ${status} | Province: ${province || 'N/A'} | ${lineItem.product_title} (x${lineItem.quantity}) | Commission: ${(lineItem.commission_fee / salePrice * 100).toFixed(1)}%`;
 
           // Try to match device by SKU (IMEI)
           let deviceId = null;
@@ -204,6 +238,7 @@ serve(async (req) => {
               .select("id")
               .eq("imei", lineItem.offer_sku)
               .eq("status", "in_stock")
+              .eq("company_id", companyId)
               .maybeSingle();
 
             if (device) {
@@ -212,7 +247,7 @@ serve(async (req) => {
             }
           }
 
-          // Insert the sale
+          // Insert the sale with company_id
           const { error: insertError } = await supabase.from("sales").insert({
             order_number: lineOrderNumber,
             marketplace: "bestbuy",
@@ -226,6 +261,7 @@ serve(async (req) => {
             shipping_address: shippingAddress,
             notes: notes,
             device_id: deviceId,
+            company_id: companyId,
           });
 
           if (insertError) {
@@ -246,6 +282,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
+        company: "TGW",
         imported: importedOrders.length,
         skipped: skippedOrders.length,
         errors: errors.length,
