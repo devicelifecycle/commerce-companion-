@@ -7,6 +7,7 @@ import { InventoryDashboard } from '@/components/inventory/InventoryDashboard';
 import { InventoryTransferDialog } from '@/components/inventory/InventoryTransferDialog';
 import { InventoryLabelDialog } from '@/components/inventory/InventoryLabelDialog';
 import { AgingInventoryReport } from '@/components/inventory/AgingInventoryReport';
+import { ReturnsManagement } from '@/components/inventory/ReturnsManagement';
 import { StatusBadge, ConditionBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,7 +50,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
   Search, Plus, Filter, Smartphone, Trash2, Edit2, MoreHorizontal,
-  LayoutDashboard, List, Clock, ArrowRightLeft, QrCode, Link, Upload
+  LayoutDashboard, List, Clock, ArrowRightLeft, QrCode, Link, Upload, RotateCcw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -599,6 +600,10 @@ export default function Inventory() {
               <Clock className="h-4 w-4" />
               Aging Report
             </TabsTrigger>
+            <TabsTrigger value="returns" className="flex items-center gap-2">
+              <RotateCcw className="h-4 w-4" />
+              Returns
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
@@ -778,6 +783,10 @@ export default function Inventory() {
 
           <TabsContent value="aging">
             <AgingInventoryReport />
+          </TabsContent>
+
+          <TabsContent value="returns">
+            <ReturnsManagement />
           </TabsContent>
         </Tabs>
 
