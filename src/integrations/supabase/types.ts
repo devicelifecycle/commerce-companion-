@@ -147,6 +147,7 @@ export type Database = {
       devices: {
         Row: {
           brand: string
+          category: string | null
           color: string | null
           company_id: string | null
           condition: Database["public"]["Enums"]["device_condition"]
@@ -159,6 +160,7 @@ export type Database = {
           notes: string | null
           purchase_date: string | null
           sale_price: number | null
+          sku: string | null
           status: Database["public"]["Enums"]["device_status"]
           storage: string | null
           supplier_id: string | null
@@ -167,6 +169,7 @@ export type Database = {
         }
         Insert: {
           brand: string
+          category?: string | null
           color?: string | null
           company_id?: string | null
           condition?: Database["public"]["Enums"]["device_condition"]
@@ -179,6 +182,7 @@ export type Database = {
           notes?: string | null
           purchase_date?: string | null
           sale_price?: number | null
+          sku?: string | null
           status?: Database["public"]["Enums"]["device_status"]
           storage?: string | null
           supplier_id?: string | null
@@ -187,6 +191,7 @@ export type Database = {
         }
         Update: {
           brand?: string
+          category?: string | null
           color?: string | null
           company_id?: string | null
           condition?: Database["public"]["Enums"]["device_condition"]
@@ -199,6 +204,7 @@ export type Database = {
           notes?: string | null
           purchase_date?: string | null
           sale_price?: number | null
+          sku?: string | null
           status?: Database["public"]["Enums"]["device_status"]
           storage?: string | null
           supplier_id?: string | null
@@ -307,6 +313,67 @@ export type Database = {
           total_rows?: number
         }
         Relationships: []
+      }
+      inventory_transfers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          device_id: string | null
+          from_company_id: string | null
+          id: string
+          notes: string | null
+          reason: string | null
+          to_company_id: string | null
+          transfer_date: string
+          transfer_price: number | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          device_id?: string | null
+          from_company_id?: string | null
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          to_company_id?: string | null
+          transfer_date?: string
+          transfer_price?: number | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          device_id?: string | null
+          from_company_id?: string | null
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          to_company_id?: string | null
+          transfer_date?: string
+          transfer_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_transfers_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transfers_from_company_id_fkey"
+            columns: ["from_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_transfers_to_company_id_fkey"
+            columns: ["to_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invoice_items: {
         Row: {
