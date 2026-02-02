@@ -23,6 +23,7 @@ import Customers from "./pages/Customers";
 import Goals from "./pages/Goals";
 import NotFound from "./pages/NotFound";
 import AuditLogs from "./pages/AuditLogs";
+import Help from "./pages/Help";
 
 const queryClient = new QueryClient();
 
@@ -177,6 +178,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <AuditLogs />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/help"
+                element={
+                  <ProtectedRoute>
+                    <Help />
                   </ProtectedRoute>
                 }
               />

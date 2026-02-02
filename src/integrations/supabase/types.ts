@@ -217,6 +217,53 @@ export type Database = {
           },
         ]
       }
+      app_settings: {
+        Row: {
+          auto_approve_expenses_under: number | null
+          company_id: string
+          created_at: string | null
+          default_payment_terms: number | null
+          default_tgw_allocation: number | null
+          default_ves_allocation: number | null
+          id: string
+          large_expense_threshold: number | null
+          low_inventory_threshold: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_approve_expenses_under?: number | null
+          company_id: string
+          created_at?: string | null
+          default_payment_terms?: number | null
+          default_tgw_allocation?: number | null
+          default_ves_allocation?: number | null
+          id?: string
+          large_expense_threshold?: number | null
+          low_inventory_threshold?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_approve_expenses_under?: number | null
+          company_id?: string
+          created_at?: string | null
+          default_payment_terms?: number | null
+          default_tgw_allocation?: number | null
+          default_ves_allocation?: number | null
+          id?: string
+          large_expense_threshold?: number | null
+          low_inventory_threshold?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ar_payments: {
         Row: {
           accounts_receivable_id: string
@@ -541,6 +588,86 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      company_settings: {
+        Row: {
+          address_line1: string | null
+          address_line2: string | null
+          business_number: string | null
+          city: string | null
+          company_id: string
+          created_at: string | null
+          default_currency: string | null
+          email: string | null
+          fiscal_year_start: number | null
+          gst_hst_number: string | null
+          id: string
+          invoice_next_number: number | null
+          invoice_prefix: string | null
+          legal_name: string | null
+          logo_url: string | null
+          phone: string | null
+          postal_code: string | null
+          province: string | null
+          qst_number: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          address_line1?: string | null
+          address_line2?: string | null
+          business_number?: string | null
+          city?: string | null
+          company_id: string
+          created_at?: string | null
+          default_currency?: string | null
+          email?: string | null
+          fiscal_year_start?: number | null
+          gst_hst_number?: string | null
+          id?: string
+          invoice_next_number?: number | null
+          invoice_prefix?: string | null
+          legal_name?: string | null
+          logo_url?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          province?: string | null
+          qst_number?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          address_line1?: string | null
+          address_line2?: string | null
+          business_number?: string | null
+          city?: string | null
+          company_id?: string
+          created_at?: string | null
+          default_currency?: string | null
+          email?: string | null
+          fiscal_year_start?: number | null
+          gst_hst_number?: string | null
+          id?: string
+          invoice_next_number?: number | null
+          invoice_prefix?: string | null
+          legal_name?: string | null
+          logo_url?: string | null
+          phone?: string | null
+          postal_code?: string | null
+          province?: string | null
+          qst_number?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customers: {
         Row: {
@@ -1247,6 +1374,98 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          created_at: string | null
+          email_failed_sync: boolean | null
+          email_large_expenses: boolean | null
+          email_low_inventory: boolean | null
+          email_monthly_summary: boolean | null
+          email_tax_due_dates: boolean | null
+          email_unusual_login: boolean | null
+          id: string
+          in_app_all: boolean | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          email_failed_sync?: boolean | null
+          email_large_expenses?: boolean | null
+          email_low_inventory?: boolean | null
+          email_monthly_summary?: boolean | null
+          email_tax_due_dates?: boolean | null
+          email_unusual_login?: boolean | null
+          id?: string
+          in_app_all?: boolean | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          email_failed_sync?: boolean | null
+          email_large_expenses?: boolean | null
+          email_low_inventory?: boolean | null
+          email_monthly_summary?: boolean | null
+          email_tax_due_dates?: boolean | null
+          email_unusual_login?: boolean | null
+          id?: string
+          in_app_all?: boolean | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          link: string | null
+          message: string
+          priority: string | null
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          link?: string | null
+          message: string
+          priority?: string | null
+          read_at?: string | null
+          title: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          link?: string | null
+          message?: string
+          priority?: string | null
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       permissions: {
         Row: {
           code: string
@@ -1922,6 +2141,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_notification: {
+        Args: {
+          p_company_id: string
+          p_link?: string
+          p_message: string
+          p_priority?: string
+          p_title: string
+          p_type: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       get_user_role: {
         Args: { _company_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["user_role"]
