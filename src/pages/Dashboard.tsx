@@ -4,6 +4,8 @@ import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ExecutiveDashboard } from '@/components/reports/ExecutiveDashboard';
+import { AlertsPanel } from '@/components/dashboard/AlertsPanel';
+import { QuickStats } from '@/components/dashboard/QuickStats';
 import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge, MarketplaceBadge } from '@/components/ui/status-badge';
 import { ShoppingCart, AlertCircle, Activity } from 'lucide-react';
@@ -105,6 +107,16 @@ export default function Dashboard() {
           <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/50 border border-border">
             <Activity className="h-4 w-4 text-emerald-500 animate-pulse" />
             <span className="text-sm text-muted-foreground">Live</span>
+          </div>
+        </div>
+
+        {/* Alerts Panel & Quick Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <AlertsPanel />
+          </div>
+          <div className="lg:col-span-2">
+            <QuickStats />
           </div>
         </div>
 
