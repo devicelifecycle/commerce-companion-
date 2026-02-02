@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { CompanyProvider } from "@/contexts/CompanyContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Inventory from "./pages/Inventory";
@@ -21,6 +22,7 @@ import Forecasting from "./pages/Forecasting";
 import Customers from "./pages/Customers";
 import Goals from "./pages/Goals";
 import NotFound from "./pages/NotFound";
+import AuditLogs from "./pages/AuditLogs";
 
 const queryClient = new QueryClient();
 
@@ -51,11 +53,12 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <BrowserRouter>
       <AuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
+        <CompanyProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<Index />} />
             <Route
               path="/inventory"
@@ -161,17 +164,26 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-            <Route
-              path="/goals"
-              element={
-                <ProtectedRoute>
-                  <Goals />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </TooltipProvider>
+              <Route
+                path="/goals"
+                element={
+                  <ProtectedRoute>
+                    <Goals />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/audit-logs"
+                element={
+                  <ProtectedRoute>
+                    <AuditLogs />
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </TooltipProvider>
+        </CompanyProvider>
       </AuthProvider>
     </BrowserRouter>
   </QueryClientProvider>
