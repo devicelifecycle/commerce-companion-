@@ -865,6 +865,95 @@ export type Database = {
         }
         Relationships: []
       }
+      input_tax_credits: {
+        Row: {
+          ap_id: string | null
+          category: string | null
+          claimable_amount: number | null
+          company_id: string | null
+          created_at: string | null
+          eligibility_percentage: number | null
+          expense_date: string
+          expense_id: string | null
+          filing_period_id: string | null
+          gst_hst_amount: number
+          id: string
+          is_eligible: boolean | null
+          notes: string | null
+          qst_amount: number | null
+          reference_number: string | null
+          reference_type: string
+          vendor_name: string | null
+        }
+        Insert: {
+          ap_id?: string | null
+          category?: string | null
+          claimable_amount?: number | null
+          company_id?: string | null
+          created_at?: string | null
+          eligibility_percentage?: number | null
+          expense_date: string
+          expense_id?: string | null
+          filing_period_id?: string | null
+          gst_hst_amount?: number
+          id?: string
+          is_eligible?: boolean | null
+          notes?: string | null
+          qst_amount?: number | null
+          reference_number?: string | null
+          reference_type: string
+          vendor_name?: string | null
+        }
+        Update: {
+          ap_id?: string | null
+          category?: string | null
+          claimable_amount?: number | null
+          company_id?: string | null
+          created_at?: string | null
+          eligibility_percentage?: number | null
+          expense_date?: string
+          expense_id?: string | null
+          filing_period_id?: string | null
+          gst_hst_amount?: number
+          id?: string
+          is_eligible?: boolean | null
+          notes?: string | null
+          qst_amount?: number | null
+          reference_number?: string | null
+          reference_type?: string
+          vendor_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "input_tax_credits_ap_id_fkey"
+            columns: ["ap_id"]
+            isOneToOne: false
+            referencedRelation: "accounts_payable"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "input_tax_credits_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "input_tax_credits_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "input_tax_credits_filing_period_id_fkey"
+            columns: ["filing_period_id"]
+            isOneToOne: false
+            referencedRelation: "tax_filing_periods"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inventory_transfers: {
         Row: {
           created_at: string
@@ -1268,6 +1357,45 @@ export type Database = {
           },
         ]
       }
+      provincial_tax_rates: {
+        Row: {
+          created_at: string | null
+          gst_rate: number
+          hst_rate: number | null
+          id: string
+          is_hst_province: boolean | null
+          province_code: string
+          province_name: string
+          pst_rate: number | null
+          qst_rate: number | null
+          total_rate: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          gst_rate?: number
+          hst_rate?: number | null
+          id?: string
+          is_hst_province?: boolean | null
+          province_code: string
+          province_name: string
+          pst_rate?: number | null
+          qst_rate?: number | null
+          total_rate?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          gst_rate?: number
+          hst_rate?: number | null
+          id?: string
+          is_hst_province?: boolean | null
+          province_code?: string
+          province_name?: string
+          pst_rate?: number | null
+          qst_rate?: number | null
+          total_rate?: number | null
+        }
+        Relationships: []
+      }
       role_permissions: {
         Row: {
           can_create: boolean
@@ -1394,6 +1522,66 @@ export type Database = {
           },
         ]
       }
+      sales_tax_details: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          customer_province: string | null
+          gst_amount: number | null
+          hst_amount: number | null
+          id: string
+          is_marketplace_collected: boolean | null
+          marketplace: string | null
+          pst_amount: number | null
+          qst_amount: number | null
+          sale_id: string | null
+          total_tax: number | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          customer_province?: string | null
+          gst_amount?: number | null
+          hst_amount?: number | null
+          id?: string
+          is_marketplace_collected?: boolean | null
+          marketplace?: string | null
+          pst_amount?: number | null
+          qst_amount?: number | null
+          sale_id?: string | null
+          total_tax?: number | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          customer_province?: string | null
+          gst_amount?: number | null
+          hst_amount?: number | null
+          id?: string
+          is_marketplace_collected?: boolean | null
+          marketplace?: string | null
+          pst_amount?: number | null
+          qst_amount?: number | null
+          sale_id?: string | null
+          total_tax?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_tax_details_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_tax_details_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       suppliers: {
         Row: {
           address: string | null
@@ -1434,6 +1622,83 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "suppliers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_filing_periods: {
+        Row: {
+          company_id: string | null
+          created_at: string | null
+          filed_by: string | null
+          filed_date: string | null
+          filing_due_date: string
+          gst_hst_collected: number | null
+          id: string
+          itc_claimed: number | null
+          net_tax_payable: number | null
+          notes: string | null
+          payment_amount: number | null
+          payment_date: string | null
+          payment_reference: string | null
+          period_end: string
+          period_start: string
+          period_type: string
+          pst_collected: number | null
+          qst_collected: number | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string | null
+          filed_by?: string | null
+          filed_date?: string | null
+          filing_due_date: string
+          gst_hst_collected?: number | null
+          id?: string
+          itc_claimed?: number | null
+          net_tax_payable?: number | null
+          notes?: string | null
+          payment_amount?: number | null
+          payment_date?: string | null
+          payment_reference?: string | null
+          period_end: string
+          period_start: string
+          period_type: string
+          pst_collected?: number | null
+          qst_collected?: number | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string | null
+          filed_by?: string | null
+          filed_date?: string | null
+          filing_due_date?: string
+          gst_hst_collected?: number | null
+          id?: string
+          itc_claimed?: number | null
+          net_tax_payable?: number | null
+          notes?: string | null
+          payment_amount?: number | null
+          payment_date?: string | null
+          payment_reference?: string | null
+          period_end?: string
+          period_start?: string
+          period_type?: string
+          pst_collected?: number | null
+          qst_collected?: number | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_filing_periods_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
@@ -1493,6 +1758,63 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tax_remittances: {
+        Row: {
+          amount: number
+          company_id: string | null
+          confirmation_number: string | null
+          created_at: string | null
+          created_by: string | null
+          filing_period_id: string | null
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string | null
+          tax_type: string
+        }
+        Insert: {
+          amount: number
+          company_id?: string | null
+          confirmation_number?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          filing_period_id?: string | null
+          id?: string
+          notes?: string | null
+          payment_date: string
+          payment_method?: string | null
+          tax_type: string
+        }
+        Update: {
+          amount?: number
+          company_id?: string | null
+          confirmation_number?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          filing_period_id?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          tax_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tax_remittances_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tax_remittances_filing_period_id_fkey"
+            columns: ["filing_period_id"]
+            isOneToOne: false
+            referencedRelation: "tax_filing_periods"
             referencedColumns: ["id"]
           },
         ]
