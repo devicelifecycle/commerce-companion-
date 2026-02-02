@@ -57,53 +57,77 @@ const ACCOUNT_TYPES = [
   { value: 'equity', label: 'Equity', color: 'bg-purple-500' },
   { value: 'revenue', label: 'Revenue', color: 'bg-emerald-500' },
   { value: 'expense', label: 'Expenses', color: 'bg-destructive' },
+  { value: 'tax_paid', label: 'Tax Paid (ITC)', color: 'bg-violet-500' },
 ];
 
 const SUBTYPES: Record<string, string[]> = {
   asset: ['Current Assets', 'Fixed Assets', 'Other Assets'],
   liability: ['Current Liabilities', 'Long-term Liabilities'],
   equity: ["Owner's Equity", 'Retained Earnings'],
-  revenue: ['Sales Revenue', 'Other Income'],
+  revenue: ['Sales Revenue', 'Tax Revenue', 'Other Income'],
   expense: ['COGS', 'Operating Expenses', 'Other Expenses'],
+  tax_paid: ['Input Tax Credits'],
 };
 
+// Cash-Basis Chart of Accounts for VES and TGW
 const DEFAULT_ACCOUNTS = [
-  // Assets
-  { code: '1000', name: 'Cash and Cash Equivalents', type: 'asset', subtype: 'Current Assets', normal: 'debit' },
-  { code: '1100', name: 'Accounts Receivable - Amazon', type: 'asset', subtype: 'Current Assets', normal: 'debit' },
-  { code: '1110', name: 'Accounts Receivable - BestBuy', type: 'asset', subtype: 'Current Assets', normal: 'debit' },
-  { code: '1120', name: 'Accounts Receivable - Shopify', type: 'asset', subtype: 'Current Assets', normal: 'debit' },
-  { code: '1200', name: 'Inventory', type: 'asset', subtype: 'Current Assets', normal: 'debit' },
-  { code: '1300', name: 'Prepaid Expenses', type: 'asset', subtype: 'Current Assets', normal: 'debit' },
-  { code: '1500', name: 'Equipment', type: 'asset', subtype: 'Fixed Assets', normal: 'debit' },
-  { code: '1510', name: 'Accumulated Depreciation', type: 'asset', subtype: 'Fixed Assets', normal: 'credit' },
-  // Liabilities
-  { code: '2000', name: 'Accounts Payable', type: 'liability', subtype: 'Current Liabilities', normal: 'credit' },
-  { code: '2100', name: 'GST/HST Payable', type: 'liability', subtype: 'Current Liabilities', normal: 'credit' },
-  { code: '2110', name: 'PST Payable', type: 'liability', subtype: 'Current Liabilities', normal: 'credit' },
-  { code: '2200', name: 'Income Tax Payable', type: 'liability', subtype: 'Current Liabilities', normal: 'credit' },
-  { code: '2300', name: 'Accrued Expenses', type: 'liability', subtype: 'Current Liabilities', normal: 'credit' },
-  { code: '2500', name: 'Long-term Loans', type: 'liability', subtype: 'Long-term Liabilities', normal: 'credit' },
-  // Equity
-  { code: '3000', name: "Owner's Equity", type: 'equity', subtype: "Owner's Equity", normal: 'credit' },
-  { code: '3100', name: 'Retained Earnings', type: 'equity', subtype: 'Retained Earnings', normal: 'credit' },
-  { code: '3200', name: 'Current Year Earnings', type: 'equity', subtype: 'Retained Earnings', normal: 'credit' },
-  // Revenue
-  { code: '4000', name: 'Sales Revenue - Shopify', type: 'revenue', subtype: 'Sales Revenue', normal: 'credit' },
-  { code: '4010', name: 'Sales Revenue - Amazon', type: 'revenue', subtype: 'Sales Revenue', normal: 'credit' },
-  { code: '4020', name: 'Sales Revenue - BestBuy', type: 'revenue', subtype: 'Sales Revenue', normal: 'credit' },
-  { code: '4100', name: 'Other Income', type: 'revenue', subtype: 'Other Income', normal: 'credit' },
-  // Expenses
-  { code: '5000', name: 'Cost of Goods Sold', type: 'expense', subtype: 'COGS', normal: 'debit' },
-  { code: '6000', name: 'Shipping Expenses', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
-  { code: '6100', name: 'Marketing & Advertising', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
-  { code: '6200', name: 'Software & Subscriptions', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
-  { code: '6300', name: 'Office Supplies', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
-  { code: '6400', name: 'Professional Fees', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
-  { code: '6500', name: 'Rent & Utilities', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
-  { code: '6600', name: 'Bank Fees', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
-  { code: '6700', name: 'Marketplace Fees', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
-  { code: '6800', name: 'Travel & Entertainment', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  // ASSETS (1xxx)
+  { code: '1000', name: 'Cash - VES', type: 'asset', subtype: 'Current Assets', normal: 'debit' },
+  { code: '1001', name: 'Cash - TGW', type: 'asset', subtype: 'Current Assets', normal: 'debit' },
+  { code: '1100', name: 'Inventory - VES (FIFO)', type: 'asset', subtype: 'Current Assets', normal: 'debit' },
+  { code: '1101', name: 'Inventory - TGW (FIFO)', type: 'asset', subtype: 'Current Assets', normal: 'debit' },
+  { code: '1200', name: 'Prepaid Expenses - VES', type: 'asset', subtype: 'Current Assets', normal: 'debit' },
+  { code: '1201', name: 'Prepaid Expenses - TGW', type: 'asset', subtype: 'Current Assets', normal: 'debit' },
+  
+  // LIABILITIES (2xxx)
+  { code: '2000', name: 'GST/HST Payable - VES', type: 'liability', subtype: 'Current Liabilities', normal: 'credit' },
+  { code: '2001', name: 'GST/HST Payable - TGW', type: 'liability', subtype: 'Current Liabilities', normal: 'credit' },
+  { code: '2100', name: 'QST Payable - VES', type: 'liability', subtype: 'Current Liabilities', normal: 'credit' },
+  { code: '2101', name: 'QST Payable - TGW', type: 'liability', subtype: 'Current Liabilities', normal: 'credit' },
+  { code: '2200', name: 'Inter-company Payable - VES to TGW', type: 'liability', subtype: 'Current Liabilities', normal: 'credit' },
+  { code: '2201', name: 'Inter-company Receivable - TGW from VES', type: 'asset', subtype: 'Current Assets', normal: 'debit' },
+  
+  // EQUITY (3xxx)
+  { code: '3000', name: "Owner's Equity - VES", type: 'equity', subtype: "Owner's Equity", normal: 'credit' },
+  { code: '3001', name: "Owner's Equity - TGW", type: 'equity', subtype: "Owner's Equity", normal: 'credit' },
+  { code: '3100', name: 'Retained Earnings - VES', type: 'equity', subtype: 'Retained Earnings', normal: 'credit' },
+  { code: '3101', name: 'Retained Earnings - TGW', type: 'equity', subtype: 'Retained Earnings', normal: 'credit' },
+  { code: '3200', name: 'Current Year Profit/Loss - VES', type: 'equity', subtype: 'Retained Earnings', normal: 'credit' },
+  { code: '3201', name: 'Current Year Profit/Loss - TGW', type: 'equity', subtype: 'Retained Earnings', normal: 'credit' },
+  
+  // REVENUE (4xxx)
+  { code: '4000', name: 'Sales Revenue - Amazon - VES', type: 'revenue', subtype: 'Sales Revenue', normal: 'credit' },
+  { code: '4100', name: 'Sales Revenue - BestBuy - TGW', type: 'revenue', subtype: 'Sales Revenue', normal: 'credit' },
+  { code: '4101', name: 'Sales Revenue - Shopify - TGW', type: 'revenue', subtype: 'Sales Revenue', normal: 'credit' },
+  { code: '4200', name: 'Tax Collected on Sales - VES', type: 'revenue', subtype: 'Tax Revenue', normal: 'credit' },
+  { code: '4201', name: 'Tax Collected on Sales - TGW', type: 'revenue', subtype: 'Tax Revenue', normal: 'credit' },
+  { code: '4300', name: 'Inter-company Revenue', type: 'revenue', subtype: 'Other Income', normal: 'credit' },
+  
+  // COGS (5xxx)
+  { code: '5000', name: 'COGS - VES', type: 'expense', subtype: 'COGS', normal: 'debit' },
+  { code: '5001', name: 'COGS - TGW', type: 'expense', subtype: 'COGS', normal: 'debit' },
+  
+  // EXPENSES (6xxx-7xxx)
+  { code: '6000', name: 'Marketplace Fees - VES', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  { code: '6001', name: 'Marketplace Fees - TGW', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  { code: '6100', name: 'Shipping Costs - VES', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  { code: '6101', name: 'Shipping Costs - TGW', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  { code: '6200', name: 'Rent and Utilities', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  { code: '6300', name: 'Salaries and Wages', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  { code: '6400', name: 'Marketing and Advertising', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  { code: '6500', name: 'Office and Supplies', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  { code: '6600', name: 'Professional Fees', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  { code: '6700', name: 'Insurance', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  { code: '6800', name: 'Bank Fees', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  { code: '6900', name: 'Software and Subscriptions', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  { code: '7000', name: 'Telecommunications', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  { code: '7100', name: 'Other Operating Expenses', type: 'expense', subtype: 'Operating Expenses', normal: 'debit' },
+  
+  // TAX PAID / ITC (8xxx)
+  { code: '8000', name: 'GST/HST Paid on Purchases - VES', type: 'tax_paid', subtype: 'Input Tax Credits', normal: 'debit' },
+  { code: '8001', name: 'GST/HST Paid on Purchases - TGW', type: 'tax_paid', subtype: 'Input Tax Credits', normal: 'debit' },
+  { code: '8100', name: 'QST Paid on Purchases - VES', type: 'tax_paid', subtype: 'Input Tax Credits', normal: 'debit' },
+  { code: '8101', name: 'QST Paid on Purchases - TGW', type: 'tax_paid', subtype: 'Input Tax Credits', normal: 'debit' },
 ];
 
 export function ChartOfAccounts() {

@@ -1,0 +1,331 @@
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/contexts/CompanyContext';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { Download, Printer, Building2 } from 'lucide-react';
+import { format } from 'date-fns';
+
+interface BalanceSheetData {
+  assets: {
+    cash: number;
+    inventory: number;
+    prepaidExpenses: number;
+    intercompanyReceivable: number;
+    totalAssets: number;
+  };
+  liabilities: {
+    gstPayable: number;
+    qstPayable: number;
+    intercompanyPayable: number;
+    totalLiabilities: number;
+  };
+  equity: {
+    ownersEquity: number;
+    retainedEarnings: number;
+    currentYearPL: number;
+    totalEquity: number;
+  };
+  totalLiabilitiesEquity: number;
+  isBalanced: boolean;
+}
+
+export function BalanceSheetReport() {
+  const { selectedCompany } = useCompany();
+  const [loading, setLoading] = useState(true);
+  const [asOfDate, setAsOfDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [data, setData] = useState<BalanceSheetData | null>(null);
+
+  useEffect(() => {
+    fetchBalanceSheet();
+  }, [selectedCompany, asOfDate]);
+
+  const fetchBalanceSheet = async () => {
+    setLoading(true);
+    try {
+      // Fetch all account balances
+      let query = supabase
+        .from('chart_of_accounts')
+        .select('account_code, account_name, account_type, current_balance, normal_balance')
+        .eq('is_active', true);
+
+      if (selectedCompany) {
+        query = query.eq('company_id', selectedCompany.id);
+      }
+
+      const { data: accounts, error } = await query;
+      if (error) throw error;
+
+      const bs: BalanceSheetData = {
+        assets: {
+          cash: 0,
+          inventory: 0,
+          prepaidExpenses: 0,
+          intercompanyReceivable: 0,
+          totalAssets: 0,
+        },
+        liabilities: {
+          gstPayable: 0,
+          qstPayable: 0,
+          intercompanyPayable: 0,
+          totalLiabilities: 0,
+        },
+        equity: {
+          ownersEquity: 0,
+          retainedEarnings: 0,
+          currentYearPL: 0,
+          totalEquity: 0,
+        },
+        totalLiabilitiesEquity: 0,
+        isBalanced: false,
+      };
+
+      // Process accounts
+      (accounts || []).forEach((acc: any) => {
+        const code = acc.account_code;
+        const balance = Number(acc.current_balance || 0);
+
+        // Assets
+        if (code === '1000' || code === '1001') bs.assets.cash += balance;
+        else if (code === '1100' || code === '1101') bs.assets.inventory += balance;
+        else if (code === '1200' || code === '1201') bs.assets.prepaidExpenses += balance;
+        else if (code === '2201') bs.assets.intercompanyReceivable += balance;
+
+        // Liabilities
+        else if (code === '2000' || code === '2001') bs.liabilities.gstPayable += balance;
+        else if (code === '2100' || code === '2101') bs.liabilities.qstPayable += balance;
+        else if (code === '2200') bs.liabilities.intercompanyPayable += balance;
+
+        // Equity
+        else if (code === '3000' || code === '3001') bs.equity.ownersEquity += balance;
+        else if (code === '3100' || code === '3101') bs.equity.retainedEarnings += balance;
+        else if (code === '3200' || code === '3201') bs.equity.currentYearPL += balance;
+      });
+
+      // Calculate totals
+      bs.assets.totalAssets = bs.assets.cash + bs.assets.inventory + 
+        bs.assets.prepaidExpenses + bs.assets.intercompanyReceivable;
+      
+      bs.liabilities.totalLiabilities = bs.liabilities.gstPayable + 
+        bs.liabilities.qstPayable + bs.liabilities.intercompanyPayable;
+      
+      bs.equity.totalEquity = bs.equity.ownersEquity + 
+        bs.equity.retainedEarnings + bs.equity.currentYearPL;
+      
+      bs.totalLiabilitiesEquity = bs.liabilities.totalLiabilities + bs.equity.totalEquity;
+      bs.isBalanced = Math.abs(bs.assets.totalAssets - bs.totalLiabilitiesEquity) < 0.01;
+
+      setData(bs);
+    } catch (error) {
+      console.error('Error fetching balance sheet:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
+
+  const handleExport = () => {
+    if (!data) return;
+    
+    const lines = [
+      `Balance Sheet`,
+      `${selectedCompany?.name || 'All Companies'}`,
+      `As of: ${format(new Date(asOfDate), 'MMMM d, yyyy')}`,
+      '',
+      'ASSETS',
+      `Cash,${data.assets.cash.toFixed(2)}`,
+      `Inventory (FIFO),${data.assets.inventory.toFixed(2)}`,
+      `Prepaid Expenses,${data.assets.prepaidExpenses.toFixed(2)}`,
+      `Inter-company Receivable,${data.assets.intercompanyReceivable.toFixed(2)}`,
+      `Total Assets,${data.assets.totalAssets.toFixed(2)}`,
+      '',
+      'LIABILITIES',
+      `GST/HST Payable,${data.liabilities.gstPayable.toFixed(2)}`,
+      `QST Payable,${data.liabilities.qstPayable.toFixed(2)}`,
+      `Inter-company Payable,${data.liabilities.intercompanyPayable.toFixed(2)}`,
+      `Total Liabilities,${data.liabilities.totalLiabilities.toFixed(2)}`,
+      '',
+      'EQUITY',
+      `Owner's Equity,${data.equity.ownersEquity.toFixed(2)}`,
+      `Retained Earnings,${data.equity.retainedEarnings.toFixed(2)}`,
+      `Current Year P/L,${data.equity.currentYearPL.toFixed(2)}`,
+      `Total Equity,${data.equity.totalEquity.toFixed(2)}`,
+      '',
+      `Total Liabilities + Equity,${data.totalLiabilitiesEquity.toFixed(2)}`,
+    ];
+
+    const csv = lines.join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `balance-sheet-${asOfDate}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-12">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Controls */}
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="space-y-2">
+          <Label>As of Date</Label>
+          <Input
+            type="date"
+            value={asOfDate}
+            onChange={(e) => setAsOfDate(e.target.value)}
+            className="w-[180px]"
+          />
+        </div>
+        <div className="ml-auto flex gap-2">
+          <Button variant="outline" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Button variant="outline" onClick={() => window.print()}>
+            <Printer className="h-4 w-4 mr-2" />
+            Print
+          </Button>
+        </div>
+      </div>
+
+      {/* Balance Sheet */}
+      <Card className="print:shadow-none">
+        <CardHeader className="text-center border-b">
+          <CardTitle className="text-2xl flex items-center justify-center gap-2">
+            <Building2 className="h-6 w-6" />
+            Balance Sheet
+          </CardTitle>
+          <CardDescription>
+            {selectedCompany?.name || 'All Companies'} | As of {format(new Date(asOfDate), 'MMMM d, yyyy')}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          {data ? (
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Assets */}
+              <div>
+                <h3 className="font-bold text-lg text-blue-600 mb-4 pb-2 border-b">ASSETS</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span>Cash</span>
+                    <span className="font-medium">{formatCurrency(data.assets.cash)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Inventory (FIFO valuation)</span>
+                    <span className="font-medium">{formatCurrency(data.assets.inventory)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Prepaid Expenses</span>
+                    <span className="font-medium">{formatCurrency(data.assets.prepaidExpenses)}</span>
+                  </div>
+                  {data.assets.intercompanyReceivable > 0 && (
+                    <div className="flex justify-between">
+                      <span>Inter-company Receivable</span>
+                      <span className="font-medium">{formatCurrency(data.assets.intercompanyReceivable)}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-between font-bold text-lg mt-4 pt-4 border-t-2 border-blue-200">
+                  <span>Total Assets</span>
+                  <span>{formatCurrency(data.assets.totalAssets)}</span>
+                </div>
+              </div>
+
+              {/* Liabilities & Equity */}
+              <div>
+                <h3 className="font-bold text-lg text-amber-600 mb-4 pb-2 border-b">LIABILITIES</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span>GST/HST Payable</span>
+                    <span className="font-medium">{formatCurrency(data.liabilities.gstPayable)}</span>
+                  </div>
+                  {data.liabilities.qstPayable > 0 && (
+                    <div className="flex justify-between">
+                      <span>QST Payable</span>
+                      <span className="font-medium">{formatCurrency(data.liabilities.qstPayable)}</span>
+                    </div>
+                  )}
+                  {data.liabilities.intercompanyPayable > 0 && (
+                    <div className="flex justify-between">
+                      <span>Inter-company Payable</span>
+                      <span className="font-medium">{formatCurrency(data.liabilities.intercompanyPayable)}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-between font-bold mt-4 pt-2 border-t">
+                  <span>Total Liabilities</span>
+                  <span>{formatCurrency(data.liabilities.totalLiabilities)}</span>
+                </div>
+
+                <Separator className="my-6" />
+
+                <h3 className="font-bold text-lg text-purple-600 mb-4 pb-2 border-b">EQUITY</h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span>Owner's Equity</span>
+                    <span className="font-medium">{formatCurrency(data.equity.ownersEquity)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Retained Earnings</span>
+                    <span className="font-medium">{formatCurrency(data.equity.retainedEarnings)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Current Year Profit/Loss</span>
+                    <span className={`font-medium ${data.equity.currentYearPL >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                      {formatCurrency(data.equity.currentYearPL)}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex justify-between font-bold mt-4 pt-2 border-t">
+                  <span>Total Equity</span>
+                  <span>{formatCurrency(data.equity.totalEquity)}</span>
+                </div>
+
+                <div className={`flex justify-between font-bold text-lg mt-6 pt-4 border-t-2 ${data.isBalanced ? 'border-emerald-200' : 'border-destructive'}`}>
+                  <span>Total Liabilities + Equity</span>
+                  <span>{formatCurrency(data.totalLiabilitiesEquity)}</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-center py-8 text-muted-foreground">
+              No data available. Initialize Chart of Accounts first.
+            </p>
+          )}
+
+          {data && (
+            <div className={`mt-6 p-4 rounded-lg text-center ${data.isBalanced ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+              {data.isBalanced ? (
+                <p className="text-emerald-700 dark:text-emerald-300 font-medium">
+                  ✓ Balance Sheet is balanced (Assets = Liabilities + Equity)
+                </p>
+              ) : (
+                <p className="text-destructive font-medium">
+                  ⚠ Balance Sheet is NOT balanced. Difference: {formatCurrency(Math.abs(data.assets.totalAssets - data.totalLiabilitiesEquity))}
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

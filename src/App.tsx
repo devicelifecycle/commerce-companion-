@@ -17,6 +17,7 @@ import Expenses from "./pages/Expenses";
 import Taxes from "./pages/Taxes";
 import Invoices from "./pages/Invoices";
 import Accounting from "./pages/Accounting";
+import AccountingKnowledge from "./pages/AccountingKnowledge";
 import Reports from "./pages/Reports";
 import Forecasting from "./pages/Forecasting";
 import Customers from "./pages/Customers";
@@ -138,6 +139,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Accounting />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/accounting/knowledge"
+              element={
+                <ProtectedRoute>
+                  <AccountingKnowledge />
                 </ProtectedRoute>
               }
             />
