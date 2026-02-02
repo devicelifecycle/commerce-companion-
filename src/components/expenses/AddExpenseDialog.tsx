@@ -398,14 +398,14 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
             <div className="space-y-2">
               <Label>Subcategory</Label>
               <Select 
-                value={formData.subcategory} 
-                onValueChange={handleSubcategoryChange}
+                value={formData.subcategory || 'none'} 
+                onValueChange={(v) => handleSubcategoryChange(v === 'none' ? '' : v)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {filteredSubcategories.map(sub => (
                     <SelectItem key={sub.subcategory} value={sub.subcategory}>
                       {sub.subcategory.replace(/_/g, ' ')}
