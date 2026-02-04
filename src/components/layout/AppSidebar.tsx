@@ -104,10 +104,7 @@ export function AppSidebar() {
             <Warehouse className="h-5 w-5 text-white" />
           </div>
           {!collapsed && (
-            <div>
-              <h2 className="font-display font-bold text-foreground tracking-tight">Warehouse</h2>
-              <p className="text-xs text-muted-foreground">Inventory & Accounting</p>
-            </div>
+            <h2 className="font-display font-bold text-foreground tracking-tight">Warehouse</h2>
           )}
         </div>
         {!collapsed && (
