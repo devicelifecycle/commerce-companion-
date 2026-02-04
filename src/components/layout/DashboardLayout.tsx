@@ -28,7 +28,7 @@ const PAGE_TITLES: Record<string, string> = {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
-  const pageTitle = PAGE_TITLES[location.pathname] || 'PhoneStock';
+  const pageTitle = PAGE_TITLES[location.pathname] || 'Warehouse';
 
   return (
     <SidebarProvider>

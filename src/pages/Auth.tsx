@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Smartphone, Lock, Mail, User, ArrowRight, Sparkles } from 'lucide-react';
+import { Warehouse, Lock, Mail, User, ArrowRight, Sparkles } from 'lucide-react';
 import { z } from 'zod';
 
 const emailSchema = z.string().email('Please enter a valid email address');
@@ -127,7 +127,7 @@ export default function Auth() {
     } else {
       toast({
         title: 'Account created!',
-        description: 'Welcome to PhoneStock. You can now access the dashboard.',
+        description: 'Welcome to Warehouse. You can now access the dashboard.',
       });
     }
   };
@@ -141,15 +141,15 @@ export default function Auth() {
         
         <div className="relative z-10 flex flex-col justify-center p-12 max-w-lg mx-auto">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-primary mb-8 glow-primary">
-            <Smartphone className="w-8 h-8 text-white" />
+            <Warehouse className="w-8 h-8 text-white" />
           </div>
           
           <h1 className="text-5xl font-display font-bold gradient-text mb-4">
-            PhoneStock Pro
+            Warehouse
           </h1>
           
           <p className="text-xl text-muted-foreground mb-8">
-            The complete inventory and accounting solution for mobile device resellers.
+            The complete inventory and accounting solution for your business.
           </p>
           
           <div className="space-y-4">
@@ -184,9 +184,9 @@ export default function Auth() {
         <div className="w-full max-w-md animate-fade-in">
           <div className="text-center mb-8 lg:hidden">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-primary mb-4">
-              <Smartphone className="w-8 h-8 text-white" />
+              <Warehouse className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-display font-bold gradient-text">PhoneStock</h1>
+            <h1 className="text-3xl font-display font-bold gradient-text">Warehouse</h1>
             <p className="text-muted-foreground mt-2">Inventory & Accounting</p>
           </div>
 

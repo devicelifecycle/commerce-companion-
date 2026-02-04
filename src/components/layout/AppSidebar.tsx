@@ -1,7 +1,7 @@
 import { useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Smartphone,
+  Warehouse,
   Upload,
   TrendingUp,
   Users,
@@ -19,6 +19,7 @@ import {
   ClipboardList,
   HelpCircle,
   BookOpen,
+  Smartphone,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth';
@@ -100,12 +101,12 @@ export function AppSidebar() {
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary">
-            <Smartphone className="h-5 w-5 text-white" />
+            <Warehouse className="h-5 w-5 text-white" />
           </div>
           {!collapsed && (
             <div>
-              <h2 className="font-display font-bold text-foreground tracking-tight">PhoneStock</h2>
-              <p className="text-xs text-muted-foreground">Pro Accounting</p>
+              <h2 className="font-display font-bold text-foreground tracking-tight">Warehouse</h2>
+              <p className="text-xs text-muted-foreground">Inventory & Accounting</p>
             </div>
           )}
         </div>
