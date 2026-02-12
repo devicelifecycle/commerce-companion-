@@ -226,7 +226,7 @@ export function AppSettings() {
                 name="default_ves_allocation"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>VES / TGW Split</FormLabel>
+                    <FormLabel>Virtual eShop / Tech Genius Warehouse Split</FormLabel>
                     <div className="space-y-4">
                       <Slider
                         value={[field.value]}
@@ -238,8 +238,8 @@ export function AppSettings() {
                         className="mt-2"
                       />
                       <div className="flex justify-between text-sm">
-                        <span className="font-medium">VES: {field.value}%</span>
-                        <span className="font-medium">TGW: {100 - field.value}%</span>
+                        <span className="font-medium">Virtual eShop: {field.value}%</span>
+                        <span className="font-medium">Tech Genius Warehouse: {100 - field.value}%</span>
                       </div>
                     </div>
                     <FormDescription>

@@ -156,7 +156,7 @@ export function ExpenseReports({ companyView = 'consolidated' }: ExpenseReportsP
   const totalShared = vesAllocation + tgwAllocation;
 
   const handleExport = () => {
-    const headers = ['Date', 'Category', 'Vendor', 'Amount', 'GST/HST', 'PST', 'Total', 'Shared', 'VES %', 'TGW %'];
+    const headers = ['Date', 'Category', 'Vendor', 'Amount', 'GST/HST', 'PST', 'Total', 'Shared', 'Virtual eShop %', 'Tech Genius Warehouse %'];
     const rows = expenses.map(e => [
       e.expense_date,
       e.category,
@@ -435,8 +435,8 @@ export function ExpenseReports({ companyView = 'consolidated' }: ExpenseReportsP
                     <PieChart>
                       <Pie
                         data={[
-                          { name: 'VES', value: vesAllocation, fill: COLORS[0] },
-                          { name: 'TGW', value: tgwAllocation, fill: COLORS[1] },
+                          { name: 'Virtual eShop', value: vesAllocation, fill: COLORS[0] },
+                          { name: 'Tech Genius Warehouse', value: tgwAllocation, fill: COLORS[1] },
                         ]}
                         cx="50%"
                         cy="50%"
@@ -468,14 +468,14 @@ export function ExpenseReports({ companyView = 'consolidated' }: ExpenseReportsP
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center p-4 rounded-lg bg-primary/10">
                       <p className="text-2xl font-bold">{formatCurrency(vesAllocation)}</p>
-                      <p className="text-sm text-muted-foreground">VES Allocation</p>
+                      <p className="text-sm text-muted-foreground">Virtual eShop Allocation</p>
                       <Badge variant="outline" className="mt-2">
                         {totalShared > 0 ? ((vesAllocation / totalShared) * 100).toFixed(0) : 0}%
                       </Badge>
                     </div>
                     <div className="text-center p-4 rounded-lg bg-secondary/10">
                       <p className="text-2xl font-bold">{formatCurrency(tgwAllocation)}</p>
-                      <p className="text-sm text-muted-foreground">TGW Allocation</p>
+                      <p className="text-sm text-muted-foreground">Tech Genius Warehouse Allocation</p>
                       <Badge variant="outline" className="mt-2">
                         {totalShared > 0 ? ((tgwAllocation / totalShared) * 100).toFixed(0) : 0}%
                       </Badge>

@@ -177,7 +177,7 @@ export default function Expenses() {
     if (expense.is_shared) {
       return (
         <Badge variant="outline" className="text-xs">
-          VES {expense.allocation_ves}% / TGW {expense.allocation_tgw}%
+          Virtual eShop {expense.allocation_ves}% / Tech Genius Warehouse {expense.allocation_tgw}%
         </Badge>
       );
     }

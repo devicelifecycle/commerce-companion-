@@ -158,7 +158,7 @@ export function InventoryTransferDialog({
             Transfer Inventory
           </DialogTitle>
           <DialogDescription>
-            Transfer a device between VES and TGW companies
+            Transfer a device between Virtual eShop and Tech Genius Warehouse
           </DialogDescription>
         </DialogHeader>
 

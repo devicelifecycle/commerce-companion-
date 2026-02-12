@@ -255,19 +255,19 @@ export default function Sales() {
                       onClick={() => handleImport('shopify')}
                       disabled={importingFrom !== null}
                     >
-                      Import from Shopify (TGW)
+                      Import from Shopify (Tech Genius Warehouse)
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => handleImport('bestbuy')}
                       disabled={importingFrom !== null}
                     >
-                      Import from Best Buy (TGW)
+                      Import from Best Buy (Tech Genius Warehouse)
                     </DropdownMenuItem>
                     <DropdownMenuItem 
                       onClick={() => handleImport('amazon')}
                       disabled={importingFrom !== null}
                     >
-                      Import from Amazon (VES)
+                      Import from Amazon (Virtual eShop)
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
