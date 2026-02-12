@@ -252,6 +252,25 @@ serve(async (req) => {
           .maybeSingle();
 
         if (existingOrder) {
+          // Backfill customer data on existing orders
+          const customerName = order.ShippingAddress?.Name || order.BuyerInfo?.BuyerName || null;
+          const customerEmail = order.BuyerInfo?.BuyerEmail || null;
+          const customerPhone = order.ShippingAddress?.Phone || null;
+          const addr = order.ShippingAddress;
+          const shippingAddress = addr
+            ? [addr.AddressLine1, addr.AddressLine2,
+               `${addr.City || ""}, ${addr.StateOrRegion || ""} ${addr.PostalCode || ""}`.trim(),
+               addr.CountryCode].filter(Boolean).join("\n")
+            : null;
+
+          if (customerName || customerEmail || shippingAddress) {
+            const updates: any = {};
+            if (customerEmail) updates.customer_email = customerEmail;
+            if (shippingAddress) updates.shipping_address = shippingAddress;
+            if (customerName) updates.customer_name = customerName;
+            await supabase.from("sales").update(updates).eq("order_number", orderNumber);
+            await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "amazon", 0);
+          }
           skippedOrders.push(orderNumber);
           continue;
         }
