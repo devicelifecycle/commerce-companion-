@@ -677,6 +677,7 @@ export type Database = {
           created_by: string | null
           email: string | null
           id: string
+          marketplace_source: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -691,6 +692,7 @@ export type Database = {
           created_by?: string | null
           email?: string | null
           id?: string
+          marketplace_source?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -705,6 +707,7 @@ export type Database = {
           created_by?: string | null
           email?: string | null
           id?: string
+          marketplace_source?: string | null
           name?: string
           notes?: string | null
           phone?: string | null

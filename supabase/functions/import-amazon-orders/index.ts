@@ -23,6 +23,7 @@ interface AmazonOrder {
     StateOrRegion?: string;
     PostalCode?: string;
     CountryCode?: string;
+    Phone?: string;
   };
   BuyerInfo?: {
     BuyerEmail?: string;
@@ -79,6 +80,83 @@ async function getAccessToken(
 
   const data = await response.json();
   return data.access_token;
+}
+
+async function upsertCustomer(
+  supabase: any,
+  customerName: string | null,
+  customerEmail: string | null,
+  customerPhone: string | null,
+  customerAddress: string | null,
+  companyId: string,
+  marketplace: string,
+  saleAmount: number
+): Promise<string | null> {
+  if (!customerName) return null;
+
+  try {
+    let existingCustomer = null;
+    if (customerEmail) {
+      const { data } = await supabase
+        .from("customers")
+        .select("id, total_spent, total_purchases")
+        .eq("email", customerEmail)
+        .eq("company_id", companyId)
+        .maybeSingle();
+      existingCustomer = data;
+    }
+
+    if (!existingCustomer) {
+      const { data } = await supabase
+        .from("customers")
+        .select("id, total_spent, total_purchases")
+        .eq("name", customerName)
+        .eq("company_id", companyId)
+        .maybeSingle();
+      existingCustomer = data;
+    }
+
+    if (existingCustomer) {
+      const updates: any = {
+        total_spent: (existingCustomer.total_spent || 0) + saleAmount,
+        total_purchases: (existingCustomer.total_purchases || 0) + 1,
+      };
+      if (customerEmail) updates.email = customerEmail;
+      if (customerPhone) updates.phone = customerPhone;
+      if (customerAddress) updates.address = customerAddress;
+
+      await supabase
+        .from("customers")
+        .update(updates)
+        .eq("id", existingCustomer.id);
+
+      return existingCustomer.id;
+    } else {
+      const { data: newCustomer, error } = await supabase
+        .from("customers")
+        .insert({
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone,
+          address: customerAddress,
+          company_id: companyId,
+          marketplace_source: marketplace,
+          total_spent: saleAmount,
+          total_purchases: 1,
+        })
+        .select("id")
+        .single();
+
+      if (error) {
+        console.error("Error creating customer:", error);
+        return null;
+      }
+      return newCustomer?.id || null;
+    }
+  } catch (err) {
+    console.error("Error upserting customer:", err);
+    return null;
+  }
 }
 
 serve(async (req) => {
@@ -231,6 +309,23 @@ serve(async (req) => {
               .join("\n")
           : null;
 
+        // Customer info
+        const customerName = order.ShippingAddress?.Name || order.BuyerInfo?.BuyerName || null;
+        const customerEmail = order.BuyerInfo?.BuyerEmail || null;
+        const customerPhone = order.ShippingAddress?.Phone || null;
+
+        // Upsert customer
+        const customerId = await upsertCustomer(
+          supabase,
+          customerName,
+          customerEmail,
+          customerPhone,
+          shippingAddress,
+          companyId,
+          "amazon",
+          totalSalePrice
+        );
+
         // Map order status
         let status = "pending";
         switch (order.OrderStatus) {
@@ -271,7 +366,7 @@ serve(async (req) => {
           }
         }
 
-        // Insert the sale with company_id
+        // Insert the sale with customer_id
         const { error: insertError } = await supabase.from("sales").insert({
           order_number: orderNumber,
           marketplace: "amazon",
@@ -280,12 +375,13 @@ serve(async (req) => {
           marketplace_fees: parseFloat(marketplaceFees.toFixed(2)),
           tax_amount: totalTax,
           sale_date: order.PurchaseDate,
-          customer_name: order.ShippingAddress?.Name || order.BuyerInfo?.BuyerName || null,
-          customer_email: order.BuyerInfo?.BuyerEmail || null,
+          customer_name: customerName,
+          customer_email: customerEmail,
           shipping_address: shippingAddress,
           notes: notes,
           device_id: deviceId,
           company_id: companyId,
+          customer_id: customerId,
         });
 
         if (insertError) {
