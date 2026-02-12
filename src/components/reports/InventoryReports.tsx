@@ -43,7 +43,11 @@ interface Device {
   company_id: string | null;
 }
 
-export function InventoryReports() {
+interface InventoryReportsProps {
+  companyView?: 'consolidated' | string;
+}
+
+export function InventoryReports({ companyView = 'consolidated' }: InventoryReportsProps) {
   const { selectedCompany, companies, isSuperAdmin } = useCompany();
   const [loading, setLoading] = useState(true);
   const [viewType, setViewType] = useState<'valuation' | 'category' | 'brand' | 'aging' | 'turnover'>('valuation');
@@ -52,15 +56,15 @@ export function InventoryReports() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedCompany]);
+  }, [companyView]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       let query = supabase.from('devices').select('*');
       
-      if (selectedCompany && !isSuperAdmin) {
-        query = query.eq('company_id', selectedCompany.id);
+      if (companyView !== 'consolidated') {
+        query = query.eq('company_id', companyView);
       }
 
       const { data: devicesData } = await query;

@@ -55,7 +55,11 @@ interface Expense {
   allocation_tgw: number;
 }
 
-export function ExpenseReports() {
+interface ExpenseReportsProps {
+  companyView?: 'consolidated' | string;
+}
+
+export function ExpenseReports({ companyView = 'consolidated' }: ExpenseReportsProps) {
   const { selectedCompany, companies, isSuperAdmin } = useCompany();
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('6');
@@ -64,7 +68,7 @@ export function ExpenseReports() {
 
   useEffect(() => {
     fetchExpenses();
-  }, [dateRange, selectedCompany]);
+  }, [dateRange, companyView]);
 
   const fetchExpenses = async () => {
     setLoading(true);
@@ -77,8 +81,8 @@ export function ExpenseReports() {
         .select('id, amount, gst_hst_amount, pst_amount, category, vendor, expense_date, company_id, is_shared, allocation_ves, allocation_tgw')
         .gte('expense_date', startDate.toISOString().split('T')[0]);
 
-      if (selectedCompany && !isSuperAdmin) {
-        query = query.or(`company_id.eq.${selectedCompany.id},is_shared.eq.true`);
+      if (companyView !== 'consolidated') {
+        query = query.or(`company_id.eq.${companyView},is_shared.eq.true`);
       }
 
       const { data, error } = await query;
@@ -99,9 +103,9 @@ export function ExpenseReports() {
   const getEffectiveAmount = (exp: Expense) => {
     const total = (exp.amount || 0) + (exp.gst_hst_amount || 0) + (exp.pst_amount || 0);
     if (!exp.is_shared) return total;
-    if (selectedCompany && !isSuperAdmin) {
+    if (companyView !== 'consolidated') {
       const vesCompany = companies.find(c => c.code === 'VES');
-      return selectedCompany.id === vesCompany?.id
+      return companyView === vesCompany?.id
         ? total * ((exp.allocation_ves || 0) / 100)
         : total * ((exp.allocation_tgw || 0) / 100);
     }

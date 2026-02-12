@@ -44,8 +44,12 @@ interface SalesData {
   device?: { brand: string; model: string; category: string | null };
 }
 
-export function SalesReports() {
-  const { selectedCompany, isSuperAdmin } = useCompany();
+interface SalesReportsProps {
+  companyView?: 'consolidated' | string;
+}
+
+export function SalesReports({ companyView = 'consolidated' }: SalesReportsProps) {
+  const { selectedCompany, companies, isSuperAdmin } = useCompany();
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('6');
   const [viewType, setViewType] = useState<'marketplace' | 'category' | 'product' | 'province' | 'time'>('marketplace');
@@ -53,7 +57,7 @@ export function SalesReports() {
 
   useEffect(() => {
     fetchSales();
-  }, [dateRange, selectedCompany]);
+  }, [dateRange, companyView]);
 
   const fetchSales = async () => {
     setLoading(true);
@@ -66,8 +70,8 @@ export function SalesReports() {
         .select('id, sale_price, profit, marketplace, sale_date, shipping_address, devices(brand, model, category)')
         .gte('sale_date', startDate.toISOString());
 
-      if (selectedCompany && !isSuperAdmin) {
-        query = query.eq('company_id', selectedCompany.id);
+      if (companyView !== 'consolidated') {
+        query = query.eq('company_id', companyView);
       }
 
       const { data, error } = await query;
