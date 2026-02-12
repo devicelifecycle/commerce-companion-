@@ -46,11 +46,15 @@ const MARKETPLACE_COLORS: Record<string, string> = {
   other: '#94A3B8',
 };
 
-export function ExecutiveDashboard() {
+interface ExecutiveDashboardProps {
+  companyView?: 'consolidated' | string;
+}
+
+export function ExecutiveDashboard({ companyView = 'consolidated' }: ExecutiveDashboardProps) {
   const { selectedCompany, companies, isSuperAdmin } = useCompany();
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('12'); // months
-  const [viewMode, setViewMode] = useState<'consolidated' | 'company'>('consolidated');
+  const viewMode = companyView;
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalRevenue: 0, totalExpenses: 0, netProfit: 0, profitMargin: 0,
     totalOrders: 0, avgOrderValue: 0, inventoryValue: 0,
@@ -65,7 +69,7 @@ export function ExecutiveDashboard() {
 
   useEffect(() => {
     fetchData();
-  }, [dateRange, selectedCompany, viewMode]);
+  }, [dateRange, companyView]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -80,8 +84,8 @@ export function ExecutiveDashboard() {
       const prevMtdEnd = endOfMonth(subMonths(now, 1));
 
       // Build company filter
-      const companyFilter = viewMode === 'company' && selectedCompany 
-        ? `company_id.eq.${selectedCompany.id}`
+      const companyFilter = viewMode !== 'consolidated'
+        ? `company_id.eq.${viewMode}`
         : null;
 
       // Fetch sales
@@ -115,9 +119,9 @@ export function ExecutiveDashboard() {
       const getEffectiveExpense = (exp: any) => {
         const total = (exp.amount || 0) + (exp.gst_hst_amount || 0) + (exp.pst_amount || 0);
         if (!exp.is_shared) return total;
-        if (viewMode === 'company' && selectedCompany) {
+        if (viewMode !== 'consolidated') {
           const vesCompany = companies.find(c => c.code === 'VES');
-          return selectedCompany.id === vesCompany?.id
+          return viewMode === vesCompany?.id
             ? total * ((exp.allocation_ves || 0) / 100)
             : total * ((exp.allocation_tgw || 0) / 100);
         }
@@ -253,20 +257,6 @@ export function ExecutiveDashboard() {
     <div className="space-y-6">
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-4">
-        <Select value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="consolidated">Consolidated (All)</SelectItem>
-            {companies.map(c => (
-              <SelectItem key={c.id} value="company" onClick={() => setViewMode('company')}>
-                {c.code} - {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
         <Select value={dateRange} onValueChange={setDateRange}>
           <SelectTrigger className="w-[150px]">
             <SelectValue />

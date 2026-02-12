@@ -48,10 +48,14 @@ const EXPENSE_CATEGORY_ORDER = [
   'utilities', 'travel', 'professional_services', 'other'
 ];
 
-export function ProfitLossStatement() {
+interface ProfitLossStatementProps {
+  companyView?: 'consolidated' | string;
+}
+
+export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLossStatementProps) {
   const { selectedCompany, companies, isSuperAdmin } = useCompany();
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'consolidated' | string>('consolidated');
+  const viewMode = companyView;
   const [periodType, setPeriodType] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const [selectedPeriod, setSelectedPeriod] = useState(format(new Date(), 'yyyy-MM'));
   const [showComparison, setShowComparison] = useState(false);
@@ -375,18 +379,6 @@ export function ProfitLossStatement() {
     <div className="space-y-6">
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-4">
-        <Select value={viewMode} onValueChange={setViewMode}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Select company" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="consolidated">Consolidated (All)</SelectItem>
-            {companies.map(c => (
-              <SelectItem key={c.id} value={c.id}>{c.code} - {c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
         <Select value={periodType} onValueChange={(v) => setPeriodType(v as any)}>
           <SelectTrigger className="w-[140px]">
             <SelectValue />

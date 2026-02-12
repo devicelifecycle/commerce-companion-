@@ -6,19 +6,45 @@ import { ProfitLossStatement } from '@/components/reports/ProfitLossStatement';
 import { SalesReports } from '@/components/reports/SalesReports';
 import { InventoryReports } from '@/components/reports/InventoryReports';
 import { ExpenseReports } from '@/components/reports/ExpenseReports';
+import { useCompany } from '@/contexts/CompanyContext';
 import { 
-  LayoutDashboard, FileText, ShoppingCart, Package, Wallet
+  LayoutDashboard, FileText, ShoppingCart, Package, Wallet, Building2
 } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 export default function Reports() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const { companies } = useCompany();
+  const [companyView, setCompanyView] = useState<'consolidated' | string>('consolidated');
 
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
-        <div>
-          <h1 className="text-3xl font-display font-bold gradient-text">Reports & Analytics</h1>
-          <p className="text-muted-foreground mt-1">Comprehensive financial reporting and business insights</p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-display font-bold gradient-text">Reports & Analytics</h1>
+            <p className="text-muted-foreground mt-1">Comprehensive financial reporting and business insights</p>
+          </div>
+
+          {/* Company View Toggle */}
+          <div className="flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+            <ToggleGroup
+              type="single"
+              value={companyView}
+              onValueChange={(v) => { if (v) setCompanyView(v); }}
+              className="bg-muted rounded-lg p-1"
+            >
+              <ToggleGroupItem value="consolidated" className="text-xs px-3 py-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                Consolidated
+              </ToggleGroupItem>
+              {companies.map(c => (
+                <ToggleGroupItem key={c.id} value={c.id} className="text-xs px-3 py-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                  {c.code}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -46,23 +72,23 @@ export default function Reports() {
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
-            <ExecutiveDashboard />
+            <ExecutiveDashboard companyView={companyView} />
           </TabsContent>
 
           <TabsContent value="pnl" className="space-y-6">
-            <ProfitLossStatement />
+            <ProfitLossStatement companyView={companyView} />
           </TabsContent>
 
           <TabsContent value="sales" className="space-y-6">
-            <SalesReports />
+            <SalesReports companyView={companyView} />
           </TabsContent>
 
           <TabsContent value="inventory" className="space-y-6">
-            <InventoryReports />
+            <InventoryReports companyView={companyView} />
           </TabsContent>
 
           <TabsContent value="expenses" className="space-y-6">
-            <ExpenseReports />
+            <ExpenseReports companyView={companyView} />
           </TabsContent>
         </Tabs>
       </div>
