@@ -69,6 +69,86 @@ interface MiraklOrdersResponse {
   next_page_token?: string;
 }
 
+async function upsertCustomer(
+  supabase: any,
+  customerName: string | null,
+  customerEmail: string | null,
+  customerPhone: string | null,
+  customerAddress: string | null,
+  companyId: string,
+  marketplace: string,
+  saleAmount: number
+): Promise<string | null> {
+  if (!customerName) return null;
+
+  try {
+    // Try to find existing customer by email first, then by name
+    let existingCustomer = null;
+    if (customerEmail) {
+      const { data } = await supabase
+        .from("customers")
+        .select("id, total_spent, total_purchases")
+        .eq("email", customerEmail)
+        .eq("company_id", companyId)
+        .maybeSingle();
+      existingCustomer = data;
+    }
+
+    if (!existingCustomer) {
+      const { data } = await supabase
+        .from("customers")
+        .select("id, total_spent, total_purchases")
+        .eq("name", customerName)
+        .eq("company_id", companyId)
+        .maybeSingle();
+      existingCustomer = data;
+    }
+
+    if (existingCustomer) {
+      // Update existing customer
+      const updates: any = {
+        total_spent: (existingCustomer.total_spent || 0) + saleAmount,
+        total_purchases: (existingCustomer.total_purchases || 0) + 1,
+      };
+      if (customerEmail) updates.email = customerEmail;
+      if (customerPhone) updates.phone = customerPhone;
+      if (customerAddress) updates.address = customerAddress;
+
+      await supabase
+        .from("customers")
+        .update(updates)
+        .eq("id", existingCustomer.id);
+
+      return existingCustomer.id;
+    } else {
+      // Create new customer
+      const { data: newCustomer, error } = await supabase
+        .from("customers")
+        .insert({
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone,
+          address: customerAddress,
+          company_id: companyId,
+          marketplace_source: marketplace,
+          total_spent: saleAmount,
+          total_purchases: 1,
+        })
+        .select("id")
+        .single();
+
+      if (error) {
+        console.error("Error creating customer:", error);
+        return null;
+      }
+      return newCustomer?.id || null;
+    }
+  } catch (err) {
+    console.error("Error upserting customer:", err);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -162,6 +242,26 @@ serve(async (req) => {
           continue;
         }
 
+        // Customer info
+        const customerName = order.customer
+          ? `${order.customer.firstname} ${order.customer.lastname}`.trim()
+          : null;
+        const customerEmail = order.customer?.email || null;
+        const customerPhone = order.shipping_address?.phone || null;
+
+        // Build customer address
+        const addr = order.shipping_address;
+        const shippingAddress = addr
+          ? [
+              addr.street_1,
+              addr.street_2,
+              `${addr.city}, ${addr.state || ""} ${addr.zip_code}`.trim(),
+              addr.country,
+            ]
+              .filter(Boolean)
+              .join("\n")
+          : null;
+
         // Process each line item as a sale
         for (const lineItem of order.order_lines) {
           const lineOrderNumber = `BBY-${order.commercial_id}-${lineItem.order_line_id}`;
@@ -191,23 +291,17 @@ serve(async (req) => {
           // Extract province for tax purposes
           const province = order.shipping_address?.state || null;
 
-          // Build customer address
-          const addr = order.shipping_address;
-          const shippingAddress = addr
-            ? [
-                addr.street_1,
-                addr.street_2,
-                `${addr.city}, ${addr.state || ""} ${addr.zip_code}`.trim(),
-                addr.country,
-              ]
-                .filter(Boolean)
-                .join("\n")
-            : null;
-
-          // Customer name
-          const customerName = order.customer
-            ? `${order.customer.firstname} ${order.customer.lastname}`.trim()
-            : null;
+          // Upsert customer
+          const customerId = await upsertCustomer(
+            supabase,
+            customerName,
+            customerEmail,
+            customerPhone,
+            shippingAddress,
+            companyId,
+            "bestbuy",
+            salePrice
+          );
 
           // Map order state to status
           let status = "pending";
@@ -247,7 +341,7 @@ serve(async (req) => {
             }
           }
 
-          // Insert the sale with company_id
+          // Insert the sale with customer_id
           const { error: insertError } = await supabase.from("sales").insert({
             order_number: lineOrderNumber,
             marketplace: "bestbuy",
@@ -257,11 +351,12 @@ serve(async (req) => {
             tax_amount: taxAmount,
             sale_date: order.created_date,
             customer_name: customerName,
-            customer_email: order.customer?.email || null,
+            customer_email: customerEmail,
             shipping_address: shippingAddress,
             notes: notes,
             device_id: deviceId,
             company_id: companyId,
+            customer_id: customerId,
           });
 
           if (insertError) {

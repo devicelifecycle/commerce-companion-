@@ -25,11 +25,13 @@ interface ShopifyOrder {
     province: string;
     zip: string;
     country: string;
+    phone?: string;
   };
   customer?: {
     first_name: string;
     last_name: string;
     email: string;
+    phone?: string;
   };
   line_items: Array<{
     id: number;
@@ -60,6 +62,83 @@ function formatShippingAddress(address: ShopifyOrder["shipping_address"]): strin
     address.country,
   ].filter(Boolean);
   return parts.join("\n");
+}
+
+async function upsertCustomer(
+  supabase: any,
+  customerName: string | null,
+  customerEmail: string | null,
+  customerPhone: string | null,
+  customerAddress: string | null,
+  companyId: string,
+  marketplace: string,
+  saleAmount: number
+): Promise<string | null> {
+  if (!customerName) return null;
+
+  try {
+    let existingCustomer = null;
+    if (customerEmail) {
+      const { data } = await supabase
+        .from("customers")
+        .select("id, total_spent, total_purchases")
+        .eq("email", customerEmail)
+        .eq("company_id", companyId)
+        .maybeSingle();
+      existingCustomer = data;
+    }
+
+    if (!existingCustomer) {
+      const { data } = await supabase
+        .from("customers")
+        .select("id, total_spent, total_purchases")
+        .eq("name", customerName)
+        .eq("company_id", companyId)
+        .maybeSingle();
+      existingCustomer = data;
+    }
+
+    if (existingCustomer) {
+      const updates: any = {
+        total_spent: (existingCustomer.total_spent || 0) + saleAmount,
+        total_purchases: (existingCustomer.total_purchases || 0) + 1,
+      };
+      if (customerEmail) updates.email = customerEmail;
+      if (customerPhone) updates.phone = customerPhone;
+      if (customerAddress) updates.address = customerAddress;
+
+      await supabase
+        .from("customers")
+        .update(updates)
+        .eq("id", existingCustomer.id);
+
+      return existingCustomer.id;
+    } else {
+      const { data: newCustomer, error } = await supabase
+        .from("customers")
+        .insert({
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone,
+          address: customerAddress,
+          company_id: companyId,
+          marketplace_source: marketplace,
+          total_spent: saleAmount,
+          total_purchases: 1,
+        })
+        .select("id")
+        .single();
+
+      if (error) {
+        console.error("Error creating customer:", error);
+        return null;
+      }
+      return newCustomer?.id || null;
+    }
+  } catch (err) {
+    console.error("Error upserting customer:", err);
+    return null;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -126,6 +205,39 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Get TGW company ID
+    const { data: tgwCompany } = await supabase
+      .from("companies")
+      .select("id")
+      .eq("code", "TGW")
+      .single();
+
+    const companyId = tgwCompany?.id || null;
+
+    // Customer info
+    const customerName = order.customer
+      ? `${order.customer.first_name} ${order.customer.last_name}`.trim()
+      : null;
+    const customerEmail = order.email || order.customer?.email || null;
+    const customerPhone = order.customer?.phone || order.shipping_address?.phone || null;
+    const shippingAddress = formatShippingAddress(order.shipping_address);
+    const totalPrice = parseFloat(order.total_price || "0");
+
+    // Upsert customer
+    let customerId: string | null = null;
+    if (companyId) {
+      customerId = await upsertCustomer(
+        supabase,
+        customerName,
+        customerEmail,
+        customerPhone,
+        shippingAddress,
+        companyId,
+        "shopify",
+        totalPrice
+      );
+    }
+
     // Process each line item as a separate sale
     const salesInserts = [];
     for (const item of order.line_items) {
@@ -170,12 +282,12 @@ Deno.serve(async (req) => {
         marketplace_fees: estimatedFees,
         tax_amount: taxPerItem,
         sale_date: order.created_at,
-        customer_name: order.customer
-          ? `${order.customer.first_name} ${order.customer.last_name}`
-          : null,
-        customer_email: order.email || order.customer?.email || null,
-        shipping_address: formatShippingAddress(order.shipping_address),
+        customer_name: customerName,
+        customer_email: customerEmail,
+        shipping_address: shippingAddress,
         notes: `Shopify Order #${order.order_number} | Item: ${item.title}`,
+        company_id: companyId,
+        customer_id: customerId,
       });
     }
 

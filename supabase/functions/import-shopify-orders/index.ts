@@ -7,6 +7,83 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+async function upsertCustomer(
+  supabase: any,
+  customerName: string | null,
+  customerEmail: string | null,
+  customerPhone: string | null,
+  customerAddress: string | null,
+  companyId: string,
+  marketplace: string,
+  saleAmount: number
+): Promise<string | null> {
+  if (!customerName) return null;
+
+  try {
+    let existingCustomer = null;
+    if (customerEmail) {
+      const { data } = await supabase
+        .from("customers")
+        .select("id, total_spent, total_purchases")
+        .eq("email", customerEmail)
+        .eq("company_id", companyId)
+        .maybeSingle();
+      existingCustomer = data;
+    }
+
+    if (!existingCustomer) {
+      const { data } = await supabase
+        .from("customers")
+        .select("id, total_spent, total_purchases")
+        .eq("name", customerName)
+        .eq("company_id", companyId)
+        .maybeSingle();
+      existingCustomer = data;
+    }
+
+    if (existingCustomer) {
+      const updates: any = {
+        total_spent: (existingCustomer.total_spent || 0) + saleAmount,
+        total_purchases: (existingCustomer.total_purchases || 0) + 1,
+      };
+      if (customerEmail) updates.email = customerEmail;
+      if (customerPhone) updates.phone = customerPhone;
+      if (customerAddress) updates.address = customerAddress;
+
+      await supabase
+        .from("customers")
+        .update(updates)
+        .eq("id", existingCustomer.id);
+
+      return existingCustomer.id;
+    } else {
+      const { data: newCustomer, error } = await supabase
+        .from("customers")
+        .insert({
+          name: customerName,
+          email: customerEmail,
+          phone: customerPhone,
+          address: customerAddress,
+          company_id: companyId,
+          marketplace_source: marketplace,
+          total_spent: saleAmount,
+          total_purchases: 1,
+        })
+        .select("id")
+        .single();
+
+      if (error) {
+        console.error("Error creating customer:", error);
+        return null;
+      }
+      return newCustomer?.id || null;
+    }
+  } catch (err) {
+    console.error("Error upserting customer:", err);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -49,7 +126,7 @@ serve(async (req) => {
 
     console.log(`Fetching Shopify orders since ${createdAtMin}`);
 
-    // Build Shopify API URL - handle different URL formats
+    // Build Shopify API URL
     let shopifyBaseUrl = SHOPIFY_STORE_URL.trim();
     if (!shopifyBaseUrl.startsWith("https://")) {
       shopifyBaseUrl = `https://${shopifyBaseUrl}`;
@@ -110,10 +187,6 @@ serve(async (req) => {
         // Estimate marketplace fees (Shopify Payments ~2.9% + $0.30)
         const marketplaceFees = salePrice * 0.029 + 0.30;
 
-        // Extract province for tax purposes
-        const province = order.shipping_address?.province_code || 
-                        order.billing_address?.province_code || null;
-
         // Build customer address
         const shippingAddress = order.shipping_address
           ? [
@@ -125,6 +198,25 @@ serve(async (req) => {
               .filter(Boolean)
               .join("\n")
           : null;
+
+        // Customer info
+        const customerName = order.customer?.first_name
+          ? `${order.customer.first_name} ${order.customer.last_name || ""}`.trim()
+          : null;
+        const customerEmail = order.customer?.email || order.email || null;
+        const customerPhone = order.customer?.phone || order.shipping_address?.phone || null;
+
+        // Upsert customer
+        const customerId = await upsertCustomer(
+          supabase,
+          customerName,
+          customerEmail,
+          customerPhone,
+          shippingAddress,
+          companyId,
+          "shopify",
+          salePrice
+        );
 
         // Build notes with line items
         const lineItemsStr = order.line_items
@@ -142,6 +234,9 @@ serve(async (req) => {
         } else if (order.fulfillment_status === "partial") {
           status = "shipped";
         }
+
+        const province = order.shipping_address?.province_code || 
+                        order.billing_address?.province_code || null;
 
         const notes = `Shopify Order #${order.order_number} | Status: ${status} | Province: ${province || 'N/A'} | ${lineItemsStr}`;
 
@@ -164,7 +259,7 @@ serve(async (req) => {
           }
         }
 
-        // Insert the sale with company_id
+        // Insert the sale with customer_id
         const { error: insertError } = await supabase.from("sales").insert({
           order_number: `SHOP-${order.order_number}`,
           marketplace: "shopify",
@@ -173,14 +268,13 @@ serve(async (req) => {
           marketplace_fees: parseFloat(marketplaceFees.toFixed(2)),
           tax_amount: taxAmount,
           sale_date: order.created_at,
-          customer_name: order.customer?.first_name
-            ? `${order.customer.first_name} ${order.customer.last_name || ""}`.trim()
-            : null,
-          customer_email: order.customer?.email || null,
+          customer_name: customerName,
+          customer_email: customerEmail,
           shipping_address: shippingAddress,
           notes: notes,
           device_id: deviceId,
           company_id: companyId,
+          customer_id: customerId,
         });
 
         if (insertError) {
