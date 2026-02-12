@@ -114,7 +114,7 @@ export function ShopifyIntegration() {
         <CardContent>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Shopify orders are automatically synced via webhook when new orders are placed. 
+              Shopify orders are automatically synced every 15 minutes and via webhook when new orders are placed. 
               You can also trigger a manual sync to import orders from the last 7 days.
             </p>
 
@@ -217,7 +217,7 @@ export function ShopifyIntegration() {
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Sync Method</span>
-              <span className="font-medium">Webhook + Manual Import</span>
+              <span className="font-medium">Auto (15 min) + Webhook + Manual</span>
             </div>
             <Separator />
             <div className="flex justify-between">
