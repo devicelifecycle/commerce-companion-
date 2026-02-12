@@ -172,6 +172,26 @@ serve(async (req) => {
           .maybeSingle();
 
         if (existingOrder) {
+          // Backfill customer data on existing orders
+          const customerName = order.customer?.first_name
+            ? `${order.customer.first_name} ${order.customer.last_name || ""}`.trim()
+            : null;
+          const customerEmail = order.customer?.email || order.email || null;
+          const customerPhone = order.customer?.phone || order.shipping_address?.phone || null;
+          const shippingAddress = order.shipping_address
+            ? [order.shipping_address.address1, order.shipping_address.address2,
+               `${order.shipping_address.city}, ${order.shipping_address.province} ${order.shipping_address.zip}`,
+               order.shipping_address.country].filter(Boolean).join("\n")
+            : null;
+
+          if (customerName || customerEmail || shippingAddress) {
+            const updates: any = {};
+            if (customerEmail) updates.customer_email = customerEmail;
+            if (shippingAddress) updates.shipping_address = shippingAddress;
+            if (customerName) updates.customer_name = customerName;
+            await supabase.from("sales").update(updates).eq("order_number", `SHOP-${order.order_number}`);
+            await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "shopify", 0);
+          }
           skippedOrders.push(`SHOP-${order.order_number}`);
           continue;
         }

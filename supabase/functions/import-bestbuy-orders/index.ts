@@ -7,6 +7,24 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+interface MiraklAddress {
+  additional_info?: string;
+  city: string;
+  civility?: string;
+  company?: string;
+  company_2?: string | null;
+  country: string;
+  country_iso_code?: string | null;
+  firstname: string;
+  lastname: string;
+  phone?: string;
+  phone_secondary?: string;
+  state?: string;
+  street_1: string;
+  street_2?: string;
+  zip_code: string;
+}
+
 interface MiraklOrder {
   id: string;
   order_id: string;
@@ -18,24 +36,13 @@ interface MiraklOrder {
   order_state_reason_label?: string;
   customer: {
     civility?: string;
+    customer_id?: string;
     firstname: string;
     lastname: string;
     email?: string;
-  };
-  shipping_address: {
-    city: string;
-    civility?: string;
-    company?: string;
-    country: string;
-    country_iso_code: string;
-    firstname: string;
-    lastname: string;
-    phone?: string;
-    phone_secondary?: string;
-    state?: string;
-    street_1: string;
-    street_2?: string;
-    zip_code: string;
+    locale?: string;
+    billing_address?: MiraklAddress;
+    shipping_address?: MiraklAddress;
   };
   order_lines: MiraklOrderLine[];
   price: number;
@@ -237,30 +244,75 @@ serve(async (req) => {
           .eq("order_number", orderNumber)
           .maybeSingle();
 
-        if (existingOrder) {
-          skippedOrders.push(orderNumber);
-          continue;
-        }
-
         // Customer info
         const customerName = order.customer
           ? `${order.customer.firstname} ${order.customer.lastname}`.trim()
           : null;
         const customerEmail = order.customer?.email || null;
-        const customerPhone = order.shipping_address?.phone || null;
+        // Shipping address is nested inside customer object
+        const shippingAddr = order.customer?.shipping_address || order.shipping_address;
+        const customerPhone = shippingAddr?.phone || null;
 
         // Build customer address
-        const addr = order.shipping_address;
-        const shippingAddress = addr
+        const shippingAddress = shippingAddr
           ? [
-              addr.street_1,
-              addr.street_2,
-              `${addr.city}, ${addr.state || ""} ${addr.zip_code}`.trim(),
-              addr.country,
+              shippingAddr.street_1,
+              shippingAddr.street_2,
+              `${shippingAddr.city}, ${shippingAddr.state || ""} ${shippingAddr.zip_code}`.trim(),
+              shippingAddr.country,
             ]
               .filter(Boolean)
               .join("\n")
           : null;
+
+        
+
+        if (existingOrder) {
+          // Backfill customer data on existing orders
+          if (customerName || customerEmail || shippingAddress) {
+            const updates: any = {};
+            if (customerEmail) updates.customer_email = customerEmail;
+            if (shippingAddress) updates.shipping_address = shippingAddress;
+            if (customerName) updates.customer_name = customerName;
+
+            await supabase
+              .from("sales")
+              .update(updates)
+              .eq("order_number", orderNumber);
+
+            // Also update all line-item sales for this order
+            await supabase
+              .from("sales")
+              .update(updates)
+              .like("order_number", `BBY-${order.commercial_id}-%`);
+
+            // Upsert customer record
+            await upsertCustomer(
+              supabase,
+              customerName,
+              customerEmail,
+              customerPhone,
+              shippingAddress,
+              companyId,
+              "bestbuy",
+              0 // Don't add to total_spent for existing orders
+            );
+          }
+          skippedOrders.push(orderNumber);
+          continue;
+        }
+
+        // Upsert customer record (once per order, before processing line items)
+        const customerId = await upsertCustomer(
+          supabase,
+          customerName,
+          customerEmail,
+          customerPhone,
+          shippingAddress,
+          companyId,
+          "bestbuy",
+          0 // Will be updated per line item below if new
+        );
 
         // Process each line item as a sale
         for (const lineItem of order.order_lines) {
@@ -274,6 +326,14 @@ serve(async (req) => {
             .maybeSingle();
 
           if (existingLineOrder) {
+            // Backfill customer data on existing line-item sales
+            if (customerName || customerPhone || shippingAddress) {
+              const updates: any = {};
+              if (customerEmail) updates.customer_email = customerEmail;
+              if (shippingAddress) updates.shipping_address = shippingAddress;
+              if (customerName) updates.customer_name = customerName;
+              await supabase.from("sales").update(updates).eq("id", existingLineOrder.id);
+            }
             continue;
           }
 
@@ -289,7 +349,7 @@ serve(async (req) => {
           ) || 0;
 
           // Extract province for tax purposes
-          const province = order.shipping_address?.state || null;
+          const province = shippingAddr?.state || null;
 
           // Upsert customer
           const customerId = await upsertCustomer(
