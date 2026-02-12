@@ -20,7 +20,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'How does the inter-company transfer work?',
-    answer: 'Inter-company transfers allow you to move inventory between VES and TGW. Go to Inventory, select a device, and click "Transfer". This automatically creates the corresponding accounting entries.',
+    answer: 'Inter-company transfers allow you to move inventory between Virtual eShop and Tech Genius Warehouse. Go to Inventory, select a device, and click "Transfer". This automatically creates the corresponding accounting entries.',
     category: 'inventory',
   },
   {
@@ -40,7 +40,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'How do shared expenses work?',
-    answer: 'Shared expenses can be split between VES and TGW. When adding an expense, enable "Shared Expense" and set the allocation percentage. The system will create separate entries for each company.',
+    answer: 'Shared expenses can be split between Virtual eShop and Tech Genius Warehouse. When adding an expense, enable "Shared Expense" and set the allocation percentage. The system will create separate entries for each company.',
     category: 'expenses',
   },
   {

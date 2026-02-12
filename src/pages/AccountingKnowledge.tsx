@@ -135,7 +135,7 @@ export default function AccountingKnowledge() {
               <CardHeader>
                 <CardTitle>Chart of Accounts Structure</CardTitle>
                 <CardDescription>
-                  Simplified cash-basis accounts for VES and TGW companies
+                  Simplified cash-basis accounts for Virtual eShop and Tech Genius Warehouse
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -144,20 +144,20 @@ export default function AccountingKnowledge() {
                   <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-2">ASSETS (1xxx)</h4>
                   <div className="grid gap-2 text-sm">
                     <div className="flex justify-between p-2 bg-blue-50 dark:bg-blue-950/30 rounded">
-                      <span>1000 - Cash - VES</span>
-                      <Badge variant="outline">VES</Badge>
+                      <span>1000 - Cash - Virtual eShop</span>
+                      <Badge variant="outline">Virtual eShop</Badge>
                     </div>
                     <div className="flex justify-between p-2 bg-blue-50 dark:bg-blue-950/30 rounded">
-                      <span>1001 - Cash - TGW</span>
-                      <Badge variant="outline">TGW</Badge>
+                      <span>1001 - Cash - Tech Genius Warehouse</span>
+                      <Badge variant="outline">Tech Genius Warehouse</Badge>
                     </div>
                     <div className="flex justify-between p-2 bg-blue-50 dark:bg-blue-950/30 rounded">
-                      <span>1100 - Inventory - VES (FIFO)</span>
-                      <Badge variant="outline">VES</Badge>
+                      <span>1100 - Inventory - Virtual eShop (FIFO)</span>
+                      <Badge variant="outline">Virtual eShop</Badge>
                     </div>
                     <div className="flex justify-between p-2 bg-blue-50 dark:bg-blue-950/30 rounded">
-                      <span>1101 - Inventory - TGW (FIFO)</span>
-                      <Badge variant="outline">TGW</Badge>
+                      <span>1101 - Inventory - Tech Genius Warehouse (FIFO)</span>
+                      <Badge variant="outline">Tech Genius Warehouse</Badge>
                     </div>
                     <div className="flex justify-between p-2 bg-blue-50 dark:bg-blue-950/30 rounded">
                       <span>1200/1201 - Prepaid Expenses</span>
@@ -194,16 +194,16 @@ export default function AccountingKnowledge() {
                   <h4 className="font-semibold text-emerald-600 dark:text-emerald-400 mb-2">REVENUE (4xxx)</h4>
                   <div className="grid gap-2 text-sm">
                     <div className="flex justify-between p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded">
-                      <span>4000 - Sales Revenue - Amazon - VES</span>
-                      <Badge variant="outline">VES</Badge>
+                      <span>4000 - Sales Revenue - Amazon - Virtual eShop</span>
+                      <Badge variant="outline">Virtual eShop</Badge>
                     </div>
                     <div className="flex justify-between p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded">
-                      <span>4100 - Sales Revenue - BestBuy - TGW</span>
-                      <Badge variant="outline">TGW</Badge>
+                      <span>4100 - Sales Revenue - BestBuy - Tech Genius Warehouse</span>
+                      <Badge variant="outline">Tech Genius Warehouse</Badge>
                     </div>
                     <div className="flex justify-between p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded">
-                      <span>4101 - Sales Revenue - Shopify - TGW</span>
-                      <Badge variant="outline">TGW</Badge>
+                      <span>4101 - Sales Revenue - Shopify - Tech Genius Warehouse</span>
+                      <Badge variant="outline">Tech Genius Warehouse</Badge>
                     </div>
                     <div className="flex justify-between p-2 bg-emerald-50 dark:bg-emerald-950/30 rounded">
                       <span>4200/4201 - Tax Collected on Sales</span>
@@ -271,10 +271,10 @@ export default function AccountingKnowledge() {
                   When you upload inventory with a Payment Date filled in:
                 </p>
                 <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm">
-                  <p className="text-blue-600">Dr. Inventory - VES/TGW &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Unit Cost × Qty]</p>
+                  <p className="text-blue-600">Dr. Inventory - [Company] &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Unit Cost × Qty]</p>
                   <p className="text-blue-600">Dr. GST/HST Paid on Purchases &nbsp;&nbsp;[GST/HST Amount]</p>
                   <p className="text-blue-600">Dr. QST Paid on Purchases &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[QST Amount, if applicable]</p>
-                  <p className="text-emerald-600">&nbsp;&nbsp;&nbsp;&nbsp;Cr. Cash - VES/TGW &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Total Cost]</p>
+                  <p className="text-emerald-600">&nbsp;&nbsp;&nbsp;&nbsp;Cr. Cash - [Company] &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Total Cost]</p>
                 </div>
                 <p className="text-xs text-muted-foreground italic">
                   Description: "Inventory purchase from [Supplier] - PO#[PO-XXX]"
@@ -295,15 +295,15 @@ export default function AccountingKnowledge() {
                 </p>
                 <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm">
                   <p className="font-semibold mb-2">Entry 1 - Revenue Recognition:</p>
-                  <p className="text-blue-600">Dr. Cash - VES/TGW &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Settlement Amount]</p>
+                  <p className="text-blue-600">Dr. Cash - [Company] &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Settlement Amount]</p>
                   <p className="text-blue-600">Dr. Marketplace Fees &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Fee Amount]</p>
                   <p className="text-emerald-600">&nbsp;&nbsp;&nbsp;&nbsp;Cr. Sales Revenue &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Sale Price - Tax]</p>
                   <p className="text-emerald-600">&nbsp;&nbsp;&nbsp;&nbsp;Cr. Tax Collected on Sales &nbsp;&nbsp;&nbsp;[Tax Amount]</p>
                 </div>
                 <div className="bg-muted/50 p-4 rounded-lg font-mono text-sm">
                   <p className="font-semibold mb-2">Entry 2 - COGS (FIFO):</p>
-                  <p className="text-blue-600">Dr. COGS - VES/TGW &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Purchase Cost from FIFO]</p>
-                  <p className="text-emerald-600">&nbsp;&nbsp;&nbsp;&nbsp;Cr. Inventory - VES/TGW &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Purchase Cost]</p>
+                  <p className="text-blue-600">Dr. COGS - [Company] &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Purchase Cost from FIFO]</p>
+                  <p className="text-emerald-600">&nbsp;&nbsp;&nbsp;&nbsp;Cr. Inventory - [Company] &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Purchase Cost]</p>
                 </div>
               </CardContent>
             </Card>
@@ -323,12 +323,12 @@ export default function AccountingKnowledge() {
                   <p className="text-blue-600">Dr. [Expense Category Account] &nbsp;&nbsp;&nbsp;[Amount]</p>
                   <p className="text-blue-600">Dr. GST/HST Paid on Purchases &nbsp;&nbsp;&nbsp;[GST/HST]</p>
                   <p className="text-blue-600">Dr. QST Paid on Purchases &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[QST, if applicable]</p>
-                  <p className="text-emerald-600">&nbsp;&nbsp;&nbsp;&nbsp;Cr. Cash - VES/TGW &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Total Amount]</p>
+                  <p className="text-emerald-600">&nbsp;&nbsp;&nbsp;&nbsp;Cr. Cash - [Company] &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[Total Amount]</p>
                 </div>
                 <div className="bg-amber-500/10 p-3 rounded border border-amber-500/20">
                   <p className="text-sm font-medium">Shared Expense Allocation</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    For shared expenses, enter allocation % (e.g., 50% VES, 50% TGW).
+                    For shared expenses, enter allocation % (e.g., 50% Virtual eShop, 50% Tech Genius Warehouse).
                     The system creates TWO journal entries, one for each company.
                   </p>
                 </div>

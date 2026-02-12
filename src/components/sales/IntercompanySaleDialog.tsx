@@ -124,7 +124,7 @@ export function IntercompanySaleDialog({ open, onOpenChange, onSuccess }: Interc
             Record Intercompany Sale
           </DialogTitle>
           <DialogDescription>
-            Record a sale between VES and TGW companies
+            Record a sale between Virtual eShop and Tech Genius Warehouse
           </DialogDescription>
         </DialogHeader>
 
@@ -147,13 +147,13 @@ export function IntercompanySaleDialog({ open, onOpenChange, onSuccess }: Interc
                         <SelectItem value="VES">
                           <div className="flex items-center gap-2">
                             <Building2 className="h-4 w-4" />
-                            VES
+                            Virtual eShop
                           </div>
                         </SelectItem>
                         <SelectItem value="TGW">
                           <div className="flex items-center gap-2">
                             <Building2 className="h-4 w-4" />
-                            TGW
+                            Tech Genius Warehouse
                           </div>
                         </SelectItem>
                       </SelectContent>
@@ -179,13 +179,13 @@ export function IntercompanySaleDialog({ open, onOpenChange, onSuccess }: Interc
                         <SelectItem value="VES">
                           <div className="flex items-center gap-2">
                             <Building2 className="h-4 w-4" />
-                            VES
+                            Virtual eShop
                           </div>
                         </SelectItem>
                         <SelectItem value="TGW">
                           <div className="flex items-center gap-2">
                             <Building2 className="h-4 w-4" />
-                            TGW
+                            Tech Genius Warehouse
                           </div>
                         </SelectItem>
                       </SelectContent>

@@ -340,14 +340,14 @@ export function ExpenseDashboard() {
               </div>
               <div className="text-center p-4 rounded-lg bg-primary/10">
                 <p className="text-3xl font-bold">{formatCurrency(metrics.vesAllocation)}</p>
-                <p className="text-sm text-muted-foreground mt-1">VES Allocation</p>
+                <p className="text-sm text-muted-foreground mt-1">Virtual eShop Allocation</p>
                 <Badge variant="outline" className="mt-2">
                   {metrics.sharedTotal > 0 ? ((metrics.vesAllocation / metrics.sharedTotal) * 100).toFixed(0) : 0}%
                 </Badge>
               </div>
               <div className="text-center p-4 rounded-lg bg-secondary/10">
                 <p className="text-3xl font-bold">{formatCurrency(metrics.tgwAllocation)}</p>
-                <p className="text-sm text-muted-foreground mt-1">TGW Allocation</p>
+                <p className="text-sm text-muted-foreground mt-1">Tech Genius Warehouse Allocation</p>
                 <Badge variant="outline" className="mt-2">
                   {metrics.sharedTotal > 0 ? ((metrics.tgwAllocation / metrics.sharedTotal) * 100).toFixed(0) : 0}%
                 </Badge>

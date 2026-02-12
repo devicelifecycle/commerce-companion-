@@ -348,8 +348,8 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
             {formData.is_shared ? (
               <div className="space-y-4">
                 <div className="flex justify-between text-sm">
-                  <span>VES: {formData.allocation_ves}%</span>
-                  <span>TGW: {formData.allocation_tgw}%</span>
+                  <span>Virtual eShop: {formData.allocation_ves}%</span>
+                  <span>Tech Genius Warehouse: {formData.allocation_tgw}%</span>
                 </div>
                 <Slider
                   value={[formData.allocation_ves]}
@@ -359,8 +359,8 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
                   className="w-full"
                 />
                 <p className="text-xs text-muted-foreground">
-                  VES pays {((totals.total * formData.allocation_ves) / 100).toFixed(2)} • 
-                  TGW pays {((totals.total * formData.allocation_tgw) / 100).toFixed(2)}
+                  Virtual eShop pays {((totals.total * formData.allocation_ves) / 100).toFixed(2)} • 
+                  Tech Genius Warehouse pays {((totals.total * formData.allocation_tgw) / 100).toFixed(2)}
                 </p>
               </div>
             ) : (
