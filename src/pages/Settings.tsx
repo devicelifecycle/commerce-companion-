@@ -8,7 +8,8 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { CompanyProfile } from '@/components/settings/CompanyProfile';
 import { NotificationPreferences } from '@/components/settings/NotificationPreferences';
 import { AppSettings } from '@/components/settings/AppSettings';
-import { Settings as SettingsIcon, User, Bell, Shield, Building2, Sliders } from 'lucide-react';
+import { Settings as SettingsIcon, User, Bell, Shield, Building2, Sliders, Plug } from 'lucide-react';
+import { ShopifyIntegration } from '@/components/settings/ShopifyIntegration';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -35,7 +36,7 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
             <TabsTrigger value="profile" className="gap-2">
               <User className="h-4 w-4" />
               <span className="hidden sm:inline">Profile</span>
@@ -43,6 +44,10 @@ export default function Settings() {
             <TabsTrigger value="company" className="gap-2">
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Company</span>
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="gap-2">
+              <Plug className="h-4 w-4" />
+              <span className="hidden sm:inline">Integrations</span>
             </TabsTrigger>
             <TabsTrigger value="notifications" className="gap-2">
               <Bell className="h-4 w-4" />
@@ -107,6 +112,22 @@ export default function Settings() {
                   <div className="text-center text-muted-foreground">
                     <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>Select a company to view settings</p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Integrations Tab */}
+          <TabsContent value="integrations">
+            {selectedCompany ? (
+              <ShopifyIntegration />
+            ) : (
+              <Card>
+                <CardContent className="py-12">
+                  <div className="text-center text-muted-foreground">
+                    <Plug className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Select a company to view integrations</p>
                   </div>
                 </CardContent>
               </Card>
