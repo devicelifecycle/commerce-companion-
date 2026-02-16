@@ -365,11 +365,12 @@ serve(async (req) => {
 
         const notes = `Amazon Order #${order.AmazonOrderId} | Status: ${status} | Province: ${province || 'N/A'} | ${itemDescriptions.join(", ")}`;
 
-        // Try to match device by SKU (IMEI)
+        // Try to match device by SKU/IMEI with multiple fallback strategies
         let deviceId = null;
         for (const item of orderItems) {
           if (item.SellerSKU) {
-            const { data: device } = await supabase
+            // Strategy 1: Match by IMEI
+            const { data: deviceByImei } = await supabase
               .from("devices")
               .select("id")
               .eq("imei", item.SellerSKU)
@@ -377,10 +378,43 @@ serve(async (req) => {
               .eq("company_id", companyId)
               .maybeSingle();
 
-            if (device) {
-              deviceId = device.id;
-              console.log(`Matched device ${device.id} for SKU ${item.SellerSKU}`);
+            if (deviceByImei) {
+              deviceId = deviceByImei.id;
+              console.log(`Matched device ${deviceByImei.id} by IMEI for SKU ${item.SellerSKU}`);
               break;
+            }
+
+            // Strategy 2: Match by SKU field
+            const { data: deviceBySku } = await supabase
+              .from("devices")
+              .select("id")
+              .eq("sku", item.SellerSKU)
+              .eq("status", "in_stock")
+              .eq("company_id", companyId)
+              .maybeSingle();
+
+            if (deviceBySku) {
+              deviceId = deviceBySku.id;
+              console.log(`Matched device ${deviceBySku.id} by SKU for ${item.SellerSKU}`);
+              break;
+            }
+
+            // Strategy 3: Match by model name from item title
+            if (item.Title) {
+              const { data: deviceByModel } = await supabase
+                .from("devices")
+                .select("id")
+                .ilike("model", `%${item.Title.split(" ").slice(0, 3).join(" ")}%`)
+                .eq("status", "in_stock")
+                .eq("company_id", companyId)
+                .limit(1)
+                .maybeSingle();
+
+              if (deviceByModel) {
+                deviceId = deviceByModel.id;
+                console.log(`Matched device ${deviceByModel.id} by model for "${item.Title}"`);
+                break;
+              }
             }
           }
         }
