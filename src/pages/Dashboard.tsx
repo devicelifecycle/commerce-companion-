@@ -32,7 +32,10 @@ interface RecentSale {
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { selectedCompany, loading: companyLoading } = useCompany();
+  const { selectedCompany, loading: companyLoading, isSuperAdmin, assignments } = useCompany();
+  const isAdmin = isSuperAdmin || assignments.some(a =>
+    ['super_admin', 'company_admin'].includes(a.role)
+  );
   const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -140,41 +143,45 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Section 2: Financial Overview */}
-        <section className="section-container">
-          <div className="section-header">
-            <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center">
-              <Wallet className="h-5 w-5 text-primary" />
+        {/* Section 2: Financial Overview (Admin only) */}
+        {isAdmin && (
+          <section className="section-container">
+            <div className="section-header">
+              <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center">
+                <Wallet className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="section-title">Financial Overview</h2>
+                <p className="text-sm text-muted-foreground">Cash position, inventory value, and goal tracking</p>
+              </div>
             </div>
-            <div>
-              <h2 className="section-title">Financial Overview</h2>
-              <p className="text-sm text-muted-foreground">Cash position, inventory value, and goal tracking</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <CashPosition />
+              <InventoryValuation />
+              <GoalProgress />
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            <CashPosition />
-            <InventoryValuation />
-            <GoalProgress />
-          </div>
-        </section>
+          </section>
+        )}
 
-        {/* Section 3: Analytics & Performance */}
-        <section className="section-container">
-          <div className="section-header">
-            <div className="h-10 w-10 rounded-xl bg-secondary/15 flex items-center justify-center">
-              <BarChart3 className="h-5 w-5 text-secondary" />
+        {/* Section 3: Analytics & Performance (Admin only) */}
+        {isAdmin && (
+          <section className="section-container">
+            <div className="section-header">
+              <div className="h-10 w-10 rounded-xl bg-secondary/15 flex items-center justify-center">
+                <BarChart3 className="h-5 w-5 text-secondary" />
+              </div>
+              <div>
+                <h2 className="section-title">Analytics & Performance</h2>
+                <p className="text-sm text-muted-foreground">Revenue trends and marketplace insights</p>
+              </div>
             </div>
-            <div>
-              <h2 className="section-title">Analytics & Performance</h2>
-              <p className="text-sm text-muted-foreground">Revenue trends and marketplace insights</p>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              <RevenueChart />
+              <MarketplaceChart />
+              <TopProductsChart />
             </div>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <RevenueChart />
-            <MarketplaceChart />
-            <TopProductsChart />
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Section 4: Recent Sales */}
         <section className="section-container">
