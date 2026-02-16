@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -36,6 +36,9 @@ import {
   Plus, Search, Filter, Download, LayoutDashboard, List, 
   Building, MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
+import { useTableSelection } from '@/hooks/useTableSelection';
 import { format } from 'date-fns';
 
 interface Expense {
@@ -167,6 +170,32 @@ export default function Expenses() {
     expense.vendor?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const selection = useTableSelection(filteredExpenses);
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Delete ${selection.count} selected expense(s)?`)) return;
+    try {
+      const { error } = await supabase.from('expenses').delete().in('id', Array.from(selection.selectedIds));
+      if (error) throw error;
+      toast.success(`${selection.count} expense(s) deleted`);
+      selection.clear();
+      fetchExpenses();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete expenses');
+    }
+  };
+
+  const handleExportSelected = () => {
+    const items = selection.count > 0 ? selection.selectedItems : filteredExpenses;
+    const headers = ['Date', 'Description', 'Category', 'Vendor', 'Amount', 'GST/HST', 'PST', 'Total', 'Company', 'Tax Deductible'];
+    const rows = items.map(e => {
+      const company = e.is_shared ? 'Shared' : companies.find(c => c.id === e.company_id)?.code || '-';
+      return [e.expense_date, e.description, e.category, e.vendor || '-', e.amount, (e.gst_hst_amount || 0), (e.pst_amount || 0), (e.total_amount || e.amount), company, e.is_tax_deductible ? 'Yes' : 'No'];
+    });
+    exportToCsv(headers, rows, `expenses-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    toast.success(`${items.length} expense(s) exported`);
+  };
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
 
@@ -271,6 +300,12 @@ export default function Expenses() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-[40px]">
+                            <Checkbox
+                              checked={selection.isAllSelected}
+                              onCheckedChange={selection.toggleAll}
+                            />
+                          </TableHead>
                           <TableHead>Date</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
@@ -283,7 +318,13 @@ export default function Expenses() {
                       </TableHeader>
                       <TableBody>
                         {filteredExpenses.map((expense) => (
-                          <TableRow key={expense.id}>
+                          <TableRow key={expense.id} data-state={selection.selectedIds.has(expense.id) ? 'selected' : undefined}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selection.selectedIds.has(expense.id)}
+                                onCheckedChange={() => selection.toggle(expense.id)}
+                              />
+                            </TableCell>
                             <TableCell>{format(new Date(expense.expense_date), 'MMM d, yyyy')}</TableCell>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -377,6 +418,14 @@ export default function Expenses() {
           onOpenChange={setDialogOpen}
           onSuccess={fetchExpenses}
           editExpense={editingExpense}
+        />
+        <BatchActionBar
+          count={selection.count}
+          onClear={selection.clear}
+          actions={[
+            { label: 'Export', icon: <Download className="h-4 w-4 mr-1" />, onClick: handleExportSelected },
+            { label: 'Delete', icon: <Trash2 className="h-4 w-4 mr-1" />, onClick: handleBulkDelete, variant: 'destructive' as const },
+          ]}
         />
       </div>
     </DashboardLayout>
