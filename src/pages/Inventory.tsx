@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuditLog } from '@/hooks/useAuditLog';
+import { ActivityLog } from '@/components/audit/ActivityLog';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
 import { CompanySelector } from '@/components/layout/CompanySelector';
@@ -58,7 +60,7 @@ import { toast } from 'sonner';
 import { 
   Search, Plus, Filter, Smartphone, Trash2, Edit2, MoreHorizontal,
   LayoutDashboard, List, Clock, ArrowRightLeft, QrCode, Link, Upload, RotateCcw, Boxes,
-  FileText, Download,
+  FileText, Download, Send,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -98,6 +100,7 @@ export default function Inventory() {
   const { user } = useAuth();
   const { selectedCompany, isSuperAdmin, hasPermission, companies } = useCompany();
   const navigate = useNavigate();
+  const { logEvent } = useAuditLog();
   const [devices, setDevices] = useState<Device[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,6 +213,7 @@ export default function Inventory() {
 
       if (error) throw error;
 
+      logEvent({ action: 'INSERT' as any, tableName: 'devices', module: 'Inventory', notes: `Added ${formData.brand} ${formData.model}` });
       toast.success('Device added to inventory');
       setIsAddDialogOpen(false);
       resetForm();
@@ -247,6 +251,7 @@ export default function Inventory() {
 
       if (error) throw error;
 
+      logEvent({ action: 'UPDATE' as any, tableName: 'devices', recordId: selectedDevice.id, module: 'Inventory', notes: `Updated ${formData.brand} ${formData.model}` });
       toast.success('Device updated');
       setIsEditDialogOpen(false);
       setSelectedDevice(null);
@@ -264,6 +269,7 @@ export default function Inventory() {
     try {
       const { error } = await supabase.from('devices').delete().eq('id', id);
       if (error) throw error;
+      logEvent({ action: 'DELETE' as any, tableName: 'devices', recordId: id, module: 'Inventory', notes: 'Device deleted' });
       toast.success('Device deleted');
       fetchDevices();
     } catch (error: any) {
@@ -832,6 +838,20 @@ export default function Inventory() {
                                               Transfer
                                             </DropdownMenuItem>
                                           )}
+                                          {/* Send to FBA for VES devices */}
+                                          {companies.find(c => c.id === device.company_id)?.code === 'VES' && (
+                                            <DropdownMenuItem onClick={async () => {
+                                              try {
+                                                await supabase.from('devices').update({ fulfillment_channel: 'in_transit_fba' }).eq('id', device.id);
+                                                logEvent({ action: 'UPDATE' as any, tableName: 'devices', recordId: device.id, module: 'Inventory', notes: 'Sent to FBA' });
+                                                toast.success('Device marked as in transit to FBA');
+                                                fetchDevices();
+                                              } catch (e: any) { toast.error(e.message); }
+                                            }}>
+                                              <Send className="h-4 w-4 mr-2" />
+                                              Send to FBA
+                                            </DropdownMenuItem>
+                                          )}
                                         </>
                                       )}
                                       {device.status === 'reserved' && (
@@ -892,6 +912,9 @@ export default function Inventory() {
             </TabsContent>
           )}
         </Tabs>
+
+        {/* Activity Log */}
+        <ActivityLog tableName="devices" title="Inventory Activity" limit={10} />
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
