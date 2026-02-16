@@ -423,6 +423,7 @@ serve(async (req) => {
         }
 
         // Insert the sale with marketplace status
+        // Amazon marketplace-facilitated tax: Amazon withholds and remits on most CA orders
         const { error: insertError } = await supabase.from("sales").insert({
           order_number: orderNumber,
           marketplace: "amazon",
@@ -440,6 +441,8 @@ serve(async (req) => {
           customer_id: customerId,
           marketplace_status: amazonMarketplaceStatus,
           fulfillment_status: fulfillmentStatus,
+          is_marketplace_remitted: true, // Amazon generally withholds and remits tax to CRA
+          accounting_status: "unprocessed",
         });
 
         if (insertError) {

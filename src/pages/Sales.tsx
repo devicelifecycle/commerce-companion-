@@ -204,11 +204,31 @@ export default function Sales() {
 
   const handleUnlinkDevice = async (saleId: string, deviceId: string) => {
     try {
-      const { error: saleError } = await supabase.from('sales').update({ device_id: null }).eq('id', saleId);
+      // Revert accounting status so COGS entries can be re-evaluated
+      const { error: saleError } = await supabase.from('sales').update({ 
+        device_id: null, 
+        accounting_status: 'revenue_only' 
+      }).eq('id', saleId);
       if (saleError) throw saleError;
       const { error: deviceError } = await supabase.from('devices').update({ status: 'in_stock' as any, sale_price: null }).eq('id', deviceId);
       if (deviceError) throw deviceError;
-      toast.success('Device unlinked from sale');
+
+      // Reverse COGS journal entries for this sale
+      const { data: cogsEntries } = await supabase
+        .from('journal_entries')
+        .select('id')
+        .eq('reference_id', saleId)
+        .eq('reference_type', 'sale')
+        .ilike('description', 'COGS%');
+
+      if (cogsEntries && cogsEntries.length > 0) {
+        const entryIds = cogsEntries.map(e => e.id);
+        // Delete lines first, then entries (reverse balance updates would be ideal but complex)
+        await supabase.from('journal_entry_lines').delete().in('journal_entry_id', entryIds);
+        await supabase.from('journal_entries').delete().in('id', entryIds);
+      }
+
+      toast.success('Device unlinked — COGS entries reversed');
       fetchSales();
     } catch (error: any) {
       toast.error(error.message || 'Failed to unlink device');

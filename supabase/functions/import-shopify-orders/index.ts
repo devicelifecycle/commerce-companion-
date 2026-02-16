@@ -337,6 +337,7 @@ serve(async (req) => {
         }
 
         // Insert the sale with customer_id and marketplace status
+        // Shopify passes ALL tax through to you — you must remit to CRA
         const { error: insertError } = await supabase.from("sales").insert({
           order_number: `SHOP-${order.order_number}`,
           marketplace: "shopify",
@@ -354,6 +355,8 @@ serve(async (req) => {
           customer_id: customerId,
           marketplace_status: shopifyMarketplaceStatus,
           fulfillment_status: fulfillmentStatus,
+          is_marketplace_remitted: false, // Shopify never remits tax — you owe CRA
+          accounting_status: "unprocessed",
         });
 
         if (insertError) {

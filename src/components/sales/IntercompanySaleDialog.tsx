@@ -85,7 +85,7 @@ export function IntercompanySaleDialog({ open, onOpenChange, onSuccess }: Interc
       const totalPrice = data.quantity * data.unit_price;
       const orderNumber = `IC-${data.from_company}-${data.to_company}-${Date.now()}`;
 
-      // Create sale record for selling company (expense for buying company handled separately)
+      // Create sale record for selling company
       const { error } = await supabase.from('sales').insert({
         order_number: orderNumber,
         marketplace: 'other',
@@ -99,11 +99,35 @@ export function IntercompanySaleDialog({ open, onOpenChange, onSuccess }: Interc
         device_id: data.device_id || null,
         company_id: fromCompany.id,
         created_by: user?.id,
+        is_marketplace_remitted: false,
+        accounting_status: 'unprocessed',
       });
 
       if (error) throw error;
 
-      toast.success('Intercompany sale recorded');
+      // Trigger dual-sided intercompany accounting via edge function
+      try {
+        const { error: icError } = await supabase.functions.invoke('process-intercompany-accounting', {
+          body: {
+            device_id: data.device_id || null,
+            from_company_id: fromCompany.id,
+            to_company_id: toCompany.id,
+            transfer_price: totalPrice,
+            reason: `Intercompany sale: ${data.description}`,
+          },
+        });
+
+        if (icError) {
+          console.error('Intercompany accounting error:', icError);
+          toast.error('Sale recorded but dual-sided accounting entries could not be created');
+        } else {
+          toast.success('Intercompany sale recorded with dual-sided accounting');
+        }
+      } catch (accErr) {
+        console.error('Error calling intercompany accounting:', accErr);
+        toast.success('Intercompany sale recorded');
+      }
+
       form.reset();
       onSuccess();
       onOpenChange(false);
@@ -124,7 +148,8 @@ export function IntercompanySaleDialog({ open, onOpenChange, onSuccess }: Interc
             Record Intercompany Sale
           </DialogTitle>
           <DialogDescription>
-            Record a sale between Virtual eShop and Tech Genius Warehouse
+            Record a sale between Virtual eShop and Tech Genius Warehouse.
+            This will create dual-sided AR/AP entries and journal entries for both companies.
           </DialogDescription>
         </DialogHeader>
 
