@@ -113,18 +113,18 @@ export function AppSidebar() {
   );
 
   return (
-    <Sidebar className={collapsed ? 'w-16' : 'w-64'} collapsible="icon">
-      <SidebarHeader className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary">
-            <Warehouse className="h-5 w-5 text-white" />
+    <Sidebar className={collapsed ? 'w-14' : 'w-56'} collapsible="icon">
+      <SidebarHeader className="p-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
+            <Warehouse className="h-4 w-4 text-white" />
           </div>
           {!collapsed && (
-            <h2 className="font-display font-bold text-foreground tracking-tight">Warehouse</h2>
+            <h2 className="font-display font-bold text-sm text-foreground tracking-tight">Warehouse</h2>
           )}
         </div>
         {!collapsed && (
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-2 flex items-center gap-1.5">
             <div className="flex-1">
               <CompanySelector />
             </div>
@@ -133,9 +133,9 @@ export function AppSidebar() {
         )}
       </SidebarHeader>
 
-      <SidebarContent className="px-2">
+      <SidebarContent className="px-1.5">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
             Operations
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -143,11 +143,11 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <Separator className="my-3 bg-border/50" />
+        <Separator className="my-1.5 bg-border/50" />
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Expense Management
+          <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
+            Expenses
           </SidebarGroupLabel>
           <SidebarGroupContent>
             {renderNavItems(expenseNav)}
@@ -156,30 +156,30 @@ export function AppSidebar() {
 
         {isAdmin && (
           <>
-            <Separator className="my-3 bg-border/50" />
+            <Separator className="my-1.5 bg-border/50" />
 
             <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
                 Finance
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 {!collapsed && (
-                  <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 pt-2 pb-1">
+                  <p className="text-[9px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-2 pt-1 pb-0.5">
                     Statements
                   </p>
                 )}
                 {renderNavItems(statementsNav)}
                 {!collapsed && (
-                  <Separator className="my-2 bg-border/30 mx-3" />
+                  <Separator className="my-1 bg-border/30 mx-2" />
                 )}
                 {renderNavItems(financeNav)}
               </SidebarGroupContent>
             </SidebarGroup>
 
-            <Separator className="my-3 bg-border/50" />
+            <Separator className="my-1.5 bg-border/50" />
 
             <SidebarGroup>
-              <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
                 Admin
               </SidebarGroupLabel>
               <SidebarGroupContent>
@@ -190,21 +190,21 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-border/50">
+      <SidebarFooter className="p-3 border-t border-border/50">
         {!collapsed && user && (
-          <div className="mb-3 px-2 py-2 rounded-lg bg-muted/30">
-            <p className="text-sm font-medium truncate">{user.email}</p>
-            <p className="text-xs text-muted-foreground">Team Member</p>
+          <div className="mb-2 px-2 py-1.5 rounded-md bg-muted/30">
+            <p className="text-xs font-medium truncate">{user.email}</p>
+            <p className="text-[10px] text-muted-foreground">Team Member</p>
           </div>
         )}
         <Button
           variant="ghost"
-          size={collapsed ? 'icon' : 'default'}
+          size={collapsed ? 'icon' : 'sm'}
           onClick={signOut}
-          className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-destructive/10"
+          className="w-full justify-start text-muted-foreground hover:text-foreground hover:bg-destructive/10 h-8"
         >
-          <LogOut className="h-4 w-4" />
-          {!collapsed && <span className="ml-2">Sign Out</span>}
+          <LogOut className="h-3.5 w-3.5" />
+          {!collapsed && <span className="ml-1.5 text-xs">Sign Out</span>}
         </Button>
       </SidebarFooter>
     </Sidebar>
