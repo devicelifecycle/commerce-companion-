@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Receipt, Upload, Building2, Calendar, CreditCard } from 'lucide-react';
+import { createExpenseJournalEntry } from '@/lib/accounting/journalAutomation';
 
 interface Subcategory {
   category: string;
@@ -58,6 +59,20 @@ const EXPENSE_CATEGORIES = [
   { value: 'travel', label: 'Travel & Transportation', group: 'Operating' },
   { value: 'other', label: 'Other / Marketplace Fees', group: 'Other' },
 ];
+
+// Map expense categories to chart of accounts codes
+const CATEGORY_ACCOUNT_MAP: Record<string, string> = {
+  inventory: '5000', // COGS (will be company-specific at runtime)
+  shipping: '6100',
+  utilities: '6200',
+  office: '6500',
+  software: '6900',
+  equipment: '7100',
+  professional_services: '6600',
+  marketing: '6400',
+  travel: '7100',
+  other: '7100',
+};
 
 const PAYMENT_METHODS = [
   { value: 'credit_card', label: 'Credit Card' },
@@ -284,8 +299,40 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
         if (error) throw error;
         toast.success('Expense updated');
       } else {
-        const { error } = await supabase.from('expenses').insert(expenseData);
+        const { data: insertedExpense, error } = await supabase.from('expenses').insert(expenseData).select('id').single();
         if (error) throw error;
+
+        // Create journal entry for new expenses
+        if (insertedExpense) {
+          const targetCompanyId = formData.is_shared ? null : formData.company_id;
+          const isVES = companies.find(c => c.id === targetCompanyId)?.code === 'VES';
+          const baseAccountCode = CATEGORY_ACCOUNT_MAP[formData.category] || '7100';
+          // Adjust account code for TGW company
+          const accountCode = !isVES && ['6200','6300','6400','6500','6600','6700','6800','6900','7000','7100'].includes(baseAccountCode)
+            ? (parseInt(baseAccountCode) + 2).toString()
+            : isVES ? baseAccountCode : baseAccountCode.replace(/0$/, '1');
+
+          if (targetCompanyId) {
+            try {
+              await createExpenseJournalEntry({
+                companyId: targetCompanyId,
+                expenseId: insertedExpense.id,
+                expenseDate: formData.expense_date,
+                vendor: formData.vendor || 'Unknown',
+                description: formData.description,
+                expenseAccountCode: accountCode,
+                amount: parseFloat(formData.amount) || 0,
+                gstHstAmount: parseFloat(formData.gst_hst_amount) || 0,
+                qstAmount: parseFloat(formData.pst_amount) || 0,
+                totalAmount: (parseFloat(formData.amount) || 0) + (parseFloat(formData.gst_hst_amount) || 0) + (parseFloat(formData.pst_amount) || 0),
+                isVES: isVES ?? true,
+                isPaidImmediately: ['credit_card', 'debit_card', 'cash'].includes(formData.payment_method),
+              });
+            } catch (jeError) {
+              console.error('Journal entry creation failed:', jeError);
+            }
+          }
+        }
         toast.success('Expense added');
       }
 

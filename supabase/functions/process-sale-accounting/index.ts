@@ -22,9 +22,10 @@ function generateEntryNumber(): string {
 }
 
 // Account code map: marketplace → account codes
+// Account code map: marketplace → account codes (accrual: use AR, not Cash)
 const ACCOUNT_MAP = {
   amazon: {
-    cash: "1000",
+    ar: "1050",
     revenue: "4000",
     taxCollected: "4200",
     fees: "6000",
@@ -33,7 +34,7 @@ const ACCOUNT_MAP = {
     inventory: "1100",
   },
   bestbuy: {
-    cash: "1001",
+    ar: "1051",
     revenue: "4100",
     taxCollected: "4201",
     fees: "6001",
@@ -42,7 +43,7 @@ const ACCOUNT_MAP = {
     inventory: "1101",
   },
   shopify: {
-    cash: "1001",
+    ar: "1051",
     revenue: "4101",
     taxCollected: "4201",
     fees: "6001",
@@ -255,9 +256,9 @@ serve(async (req) => {
       const codes = ACCOUNT_MAP[marketplace as keyof typeof ACCOUNT_MAP];
       if (!codes) return null;
 
-      const [cashId, revenueId, taxId, feesId, shippingId, cogsId, inventoryId] =
+      const [arId, revenueId, taxId, feesId, shippingId, cogsId, inventoryId] =
         await Promise.all([
-          getAccountId(supabase, companyId, codes.cash),
+          getAccountId(supabase, companyId, codes.ar),
           getAccountId(supabase, companyId, codes.revenue),
           getAccountId(supabase, companyId, codes.taxCollected),
           getAccountId(supabase, companyId, codes.fees),
@@ -267,7 +268,7 @@ serve(async (req) => {
         ]);
 
       const result = {
-        cash: cashId,
+        ar: arId,
         revenue: revenueId,
         taxCollected: taxId,
         fees: feesId,
@@ -285,7 +286,7 @@ serve(async (req) => {
     for (const sale of unaccountedSales) {
       try {
         const accounts = await getAccounts(sale.company_id, sale.marketplace);
-        if (!accounts || !accounts.cash || !accounts.revenue || !accounts.cogs || !accounts.inventory) {
+        if (!accounts || !accounts.ar || !accounts.revenue || !accounts.cogs || !accounts.inventory) {
           errors.push(`${sale.order_number}: Missing chart of accounts for ${sale.marketplace}`);
           continue;
         }
@@ -305,8 +306,8 @@ serve(async (req) => {
           ? new Date(sale.sale_date).toISOString().split("T")[0]
           : new Date().toISOString().split("T")[0];
 
-        // Entry 1: Revenue recognition
-        // Dr. Cash (net settlement)
+        // Entry 1: Revenue recognition (Accrual)
+        // Dr. Accounts Receivable (net settlement expected)
         // Dr. Marketplace Fees
         // Dr. Shipping Cost
         // Cr. Sales Revenue
@@ -314,8 +315,8 @@ serve(async (req) => {
         const revenueLines: JournalLine[] = [];
 
         revenueLines.push({
-          account_id: accounts.cash!,
-          description: `Cash received - ${sale.order_number}`,
+          account_id: accounts.ar!,
+          description: `Receivable from ${sale.marketplace} - ${sale.order_number}`,
           debit_amount: settlementAmount,
           credit_amount: 0,
         });
@@ -388,6 +389,33 @@ serve(async (req) => {
               },
             ]
           );
+        }
+
+        // Create Accounts Receivable record
+        const arDueDate = new Date(saleDate);
+        arDueDate.setDate(arDueDate.getDate() + 14); // Marketplace typically pays within 14 days
+        
+        // Check if AR already exists for this sale
+        const { data: existingAR } = await supabase
+          .from("accounts_receivable")
+          .select("id")
+          .eq("source_reference", sale.id)
+          .maybeSingle();
+
+        if (!existingAR) {
+          await supabase.from("accounts_receivable").insert({
+            company_id: sale.company_id,
+            source_type: "marketplace_sale",
+            source_reference: sale.id,
+            marketplace: sale.marketplace,
+            customer_name: `${sale.marketplace} Marketplace`,
+            original_amount: settlementAmount,
+            paid_amount: 0,
+            balance_due: settlementAmount,
+            due_date: arDueDate.toISOString().split("T")[0],
+            status: "outstanding",
+            notes: `Order #${sale.order_number} - ${device.desc}`,
+          });
         }
 
         processed.push(sale.order_number);
