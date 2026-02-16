@@ -86,6 +86,7 @@ interface Device {
   notes: string | null;
   company_id: string | null;
   created_at: string;
+  fulfillment_channel: string | null;
   suppliers?: { name: string } | null;
 }
 
@@ -107,6 +108,7 @@ export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [channelFilter, setChannelFilter] = useState<string>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
@@ -142,7 +144,7 @@ export default function Inventory() {
       fetchDevices();
       fetchSuppliers();
     }
-  }, [statusFilter, categoryFilter, selectedCompany, canView]);
+  }, [statusFilter, categoryFilter, channelFilter, selectedCompany, canView]);
 
   const fetchDevices = async () => {
     setLoading(true);
@@ -158,6 +160,14 @@ export default function Inventory() {
 
       if (categoryFilter !== 'all') {
         query = query.eq('category', categoryFilter);
+      }
+
+      if (channelFilter !== 'all') {
+        if (channelFilter === 'local') {
+          query = query.or('fulfillment_channel.eq.local,fulfillment_channel.is.null');
+        } else {
+          query = query.eq('fulfillment_channel', channelFilter);
+        }
       }
 
       if (selectedCompany) {
@@ -715,6 +725,17 @@ export default function Inventory() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <Select value={channelFilter} onValueChange={setChannelFilter}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Channel" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Channels</SelectItem>
+                      <SelectItem value="local">Local Warehouse</SelectItem>
+                      <SelectItem value="fba">At FBA</SelectItem>
+                      <SelectItem value="in_transit_fba">In Transit to FBA</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button variant="outline" size="sm" onClick={handleExportDevices}>
                     <Download className="h-4 w-4 mr-2" />
                     Export
@@ -751,6 +772,7 @@ export default function Inventory() {
                           <TableHead>Category</TableHead>
                           <TableHead>Condition</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Channel</TableHead>
                           <TableHead className="text-right">Cost</TableHead>
                           {!selectedCompany && <TableHead>Company</TableHead>}
                           {canManage && <TableHead className="w-[50px]" />}
@@ -787,6 +809,15 @@ export default function Inventory() {
                               </TableCell>
                               <TableCell>
                                 <StatusBadge status={device.status} />
+                              </TableCell>
+                              <TableCell>
+                                {device.fulfillment_channel === 'fba' ? (
+                                  <Badge className="bg-orange-500/15 text-orange-600 border-orange-500/30 text-[10px]">FBA</Badge>
+                                ) : device.fulfillment_channel === 'in_transit_fba' ? (
+                                  <Badge className="bg-blue-500/15 text-blue-600 border-blue-500/30 text-[10px]">In Transit</Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="text-[10px]">Local</Badge>
+                                )}
                               </TableCell>
                               <TableCell className="text-right">
                                 {formatCurrency(device.cost_price)}
