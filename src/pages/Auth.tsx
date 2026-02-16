@@ -72,7 +72,11 @@ export default function Auth() {
       <div className="absolute top-[40%] left-[50%] -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-accent/5 blur-[150px] pointer-events-none" />
 
       {/* Left branding panel (desktop) */}
-      <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center">
+      <div className="hidden lg:flex lg:w-1/2 relative items-center justify-center bg-card/40 border-r border-border/30">
+        {/* Ambient glows inside branding panel */}
+        <div className="absolute top-[10%] left-[20%] w-[300px] h-[300px] rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[15%] right-[10%] w-[250px] h-[250px] rounded-full bg-secondary/10 blur-[100px] pointer-events-none" />
+        <div className="absolute top-[50%] left-[50%] -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-accent/8 blur-[120px] pointer-events-none" />
         {/* Subtle grid pattern */}
         <div
           className="absolute inset-0 opacity-[0.03]"
