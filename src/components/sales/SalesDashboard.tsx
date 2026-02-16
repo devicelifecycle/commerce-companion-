@@ -66,6 +66,30 @@ export function SalesDashboard() {
     fetchSales();
   }, [selectedCompany, dateRange]);
 
+  // Realtime subscription for live sales updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('sales-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sales',
+        },
+        (payload) => {
+          console.log('Realtime sale event:', payload.eventType);
+          // Refetch to get properly filtered data
+          fetchSales();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedCompany, dateRange]);
+
   const getDateRange = (range: DateRange): { start: Date; end: Date; previousStart: Date; previousEnd: Date } => {
     const now = new Date();
     const end = now;

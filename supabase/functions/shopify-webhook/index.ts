@@ -241,20 +241,54 @@ Deno.serve(async (req) => {
     // Process each line item as a separate sale
     const salesInserts = [];
     for (const item of order.line_items) {
-      // Try to find matching device by SKU (IMEI)
+      // Try to find matching device with multiple fallback strategies
       let deviceId = null;
       if (item.sku) {
-        const { data: device } = await supabase
+        // Strategy 1: Match by IMEI
+        const { data: deviceByImei } = await supabase
           .from("devices")
           .select("id")
           .eq("imei", item.sku)
           .eq("status", "in_stock")
-          .single();
+          .maybeSingle();
 
-        if (device) {
-          deviceId = device.id;
-          console.log(`Matched device ${device.id} for SKU ${item.sku}`);
-        } else {
+        if (deviceByImei) {
+          deviceId = deviceByImei.id;
+          console.log(`Matched device ${deviceByImei.id} by IMEI for SKU ${item.sku}`);
+        }
+
+        // Strategy 2: Match by SKU field
+        if (!deviceId) {
+          const { data: deviceBySku } = await supabase
+            .from("devices")
+            .select("id")
+            .eq("sku", item.sku)
+            .eq("status", "in_stock")
+            .maybeSingle();
+
+          if (deviceBySku) {
+            deviceId = deviceBySku.id;
+            console.log(`Matched device ${deviceBySku.id} by SKU for ${item.sku}`);
+          }
+        }
+
+        // Strategy 3: Match by model from product title
+        if (!deviceId && item.title) {
+          const { data: deviceByModel } = await supabase
+            .from("devices")
+            .select("id")
+            .ilike("model", `%${item.title.split(" ").slice(0, 3).join(" ")}%`)
+            .eq("status", "in_stock")
+            .limit(1)
+            .maybeSingle();
+
+          if (deviceByModel) {
+            deviceId = deviceByModel.id;
+            console.log(`Matched device ${deviceByModel.id} by model for "${item.title}"`);
+          }
+        }
+
+        if (!deviceId) {
           console.log(`No in-stock device found for SKU: ${item.sku}`);
         }
       }

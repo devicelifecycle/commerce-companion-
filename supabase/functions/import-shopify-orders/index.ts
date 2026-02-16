@@ -260,11 +260,12 @@ serve(async (req) => {
 
         const notes = `Shopify Order #${order.order_number} | Status: ${status} | Province: ${province || 'N/A'} | ${lineItemsStr}`;
 
-        // Try to match device by SKU/IMEI
+        // Try to match device by SKU/IMEI with multiple fallback strategies
         let deviceId = null;
         for (const item of order.line_items || []) {
           if (item.sku) {
-            const { data: device } = await supabase
+            // Strategy 1: Match by IMEI
+            const { data: deviceByImei } = await supabase
               .from("devices")
               .select("id")
               .eq("imei", item.sku)
@@ -272,9 +273,43 @@ serve(async (req) => {
               .eq("company_id", companyId)
               .maybeSingle();
 
-            if (device) {
-              deviceId = device.id;
+            if (deviceByImei) {
+              deviceId = deviceByImei.id;
+              console.log(`Matched device ${deviceByImei.id} by IMEI for SKU ${item.sku}`);
               break;
+            }
+
+            // Strategy 2: Match by SKU field
+            const { data: deviceBySku } = await supabase
+              .from("devices")
+              .select("id")
+              .eq("sku", item.sku)
+              .eq("status", "in_stock")
+              .eq("company_id", companyId)
+              .maybeSingle();
+
+            if (deviceBySku) {
+              deviceId = deviceBySku.id;
+              console.log(`Matched device ${deviceBySku.id} by SKU for ${item.sku}`);
+              break;
+            }
+
+            // Strategy 3: Match by model name from item title
+            if (item.name) {
+              const { data: deviceByModel } = await supabase
+                .from("devices")
+                .select("id")
+                .ilike("model", `%${item.name.split(" ").slice(0, 3).join(" ")}%`)
+                .eq("status", "in_stock")
+                .eq("company_id", companyId)
+                .limit(1)
+                .maybeSingle();
+
+              if (deviceByModel) {
+                deviceId = deviceByModel.id;
+                console.log(`Matched device ${deviceByModel.id} by model for "${item.name}"`);
+                break;
+              }
             }
           }
         }

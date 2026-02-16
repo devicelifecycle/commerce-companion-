@@ -384,10 +384,11 @@ serve(async (req) => {
 
           const notes = `Best Buy Order #${order.commercial_id} | Status: ${status} | Province: ${province || 'N/A'} | ${lineItem.product_title} (x${lineItem.quantity}) | Commission: ${(lineItem.commission_fee / salePrice * 100).toFixed(1)}%`;
 
-          // Try to match device by SKU (IMEI)
+          // Try to match device by SKU/IMEI with multiple fallback strategies
           let deviceId = null;
           if (lineItem.offer_sku) {
-            const { data: device } = await supabase
+            // Strategy 1: Match by IMEI
+            const { data: deviceByImei } = await supabase
               .from("devices")
               .select("id")
               .eq("imei", lineItem.offer_sku)
@@ -395,9 +396,42 @@ serve(async (req) => {
               .eq("company_id", companyId)
               .maybeSingle();
 
-            if (device) {
-              deviceId = device.id;
-              console.log(`Matched device ${device.id} for SKU ${lineItem.offer_sku}`);
+            if (deviceByImei) {
+              deviceId = deviceByImei.id;
+              console.log(`Matched device ${deviceByImei.id} by IMEI for SKU ${lineItem.offer_sku}`);
+            }
+
+            // Strategy 2: Match by SKU field
+            if (!deviceId) {
+              const { data: deviceBySku } = await supabase
+                .from("devices")
+                .select("id")
+                .eq("sku", lineItem.offer_sku)
+                .eq("status", "in_stock")
+                .eq("company_id", companyId)
+                .maybeSingle();
+
+              if (deviceBySku) {
+                deviceId = deviceBySku.id;
+                console.log(`Matched device ${deviceBySku.id} by SKU for ${lineItem.offer_sku}`);
+              }
+            }
+
+            // Strategy 3: Match by model from product title
+            if (!deviceId && lineItem.product_title) {
+              const { data: deviceByModel } = await supabase
+                .from("devices")
+                .select("id")
+                .ilike("model", `%${lineItem.product_title.split(" ").slice(0, 3).join(" ")}%`)
+                .eq("status", "in_stock")
+                .eq("company_id", companyId)
+                .limit(1)
+                .maybeSingle();
+
+              if (deviceByModel) {
+                deviceId = deviceByModel.id;
+                console.log(`Matched device ${deviceByModel.id} by model for "${lineItem.product_title}"`);
+              }
             }
           }
 
