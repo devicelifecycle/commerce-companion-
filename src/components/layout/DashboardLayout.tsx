@@ -17,7 +17,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/expenses': 'Expenses',
   '/taxes': 'Tax Center',
   '/invoices': 'Invoices',
-  '/goals': 'Profit Goals',
+  
   '/forecasting': 'AI Forecasting',
   '/reports': 'Reports',
   '/suppliers': 'Suppliers',

@@ -21,7 +21,7 @@ import AccountingKnowledge from "./pages/AccountingKnowledge";
 import Reports from "./pages/Reports";
 import Forecasting from "./pages/Forecasting";
 import Customers from "./pages/Customers";
-import Goals from "./pages/Goals";
+
 import NotFound from "./pages/NotFound";
 import AuditLogs from "./pages/AuditLogs";
 import Help from "./pages/Help";
@@ -174,14 +174,6 @@ const App = () => (
                 </ProtectedRoute>
               }
             />
-              <Route
-                path="/goals"
-                element={
-                  <ProtectedRoute>
-                    <Goals />
-                  </ProtectedRoute>
-                }
-              />
               <Route
                 path="/audit-logs"
                 element={
