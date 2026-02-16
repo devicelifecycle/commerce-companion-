@@ -434,6 +434,26 @@ serve(async (req) => {
 
     console.log(`Import complete: ${importedOrders.length} imported, ${skippedOrders.length} skipped, ${errors.length} errors`);
 
+    // Trigger accounting processor for newly imported sales
+    let accountingResult = null;
+    if (importedOrders.length > 0) {
+      try {
+        const accountingUrl = `${SUPABASE_URL}/functions/v1/process-sale-accounting`;
+        const accountingResponse = await fetch(accountingUrl, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}),
+        });
+        accountingResult = await accountingResponse.json();
+        console.log("Accounting processor result:", accountingResult);
+      } catch (accError: any) {
+        console.error("Accounting processor error:", accError.message);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -441,6 +461,7 @@ serve(async (req) => {
         imported: importedOrders.length,
         skipped: skippedOrders.length,
         errors: errors.length,
+        accounting: accountingResult,
         details: {
           imported: importedOrders,
           skipped: skippedOrders,

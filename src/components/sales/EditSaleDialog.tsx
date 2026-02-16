@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useSaleAccounting } from '@/hooks/useSaleAccounting';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -45,6 +46,7 @@ export function EditSaleDialog({
   onSaved,
 }: EditSaleDialogProps) {
   const { toast } = useToast();
+  const { processSaleAccounting } = useSaleAccounting();
   const [deviceId, setDeviceId] = useState<string>(currentDeviceId || '');
   const [availableDevices, setAvailableDevices] = useState<AvailableDevice[]>([]);
   const [loading, setLoading] = useState(false);
@@ -88,10 +90,15 @@ export function EditSaleDialog({
 
       if (error) throw error;
 
+      // Trigger COGS journal entry creation if a device was linked
+      if (deviceId) {
+        await processSaleAccounting([saleId]);
+      }
+
       toast({
         title: 'Sale updated',
         description: deviceId 
-          ? 'Device linked and profit recalculated.' 
+          ? 'Device linked — profit recalculated and journal entries created.' 
           : 'Device unlinked from sale.',
       });
 
