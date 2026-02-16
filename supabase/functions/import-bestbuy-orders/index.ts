@@ -362,11 +362,17 @@ serve(async (req) => {
           const shippingCost = lineItem.shipping_price || 0;
           const marketplaceFees = lineItem.commission_fee || 0;
           
-          // Best Buy Canada charges tax separately
-          const taxAmount = lineItem.commission_taxes?.reduce(
-            (sum, tax) => sum + (tax.amount || 0),
+          // Best Buy commission taxes are taxes ON the commission, not product tax
+          // Product tax is collected and remitted by Best Buy (marketplace-facilitated)
+          const commissionTaxAmount = lineItem.commission_taxes?.reduce(
+            (sum: number, tax: { amount: number; code: string }) => sum + (tax.amount || 0),
             0
           ) || 0;
+          // Total tax to customer is separate — Best Buy withholds it
+          // We store 0 as tax_amount since marketplace remits; the commission tax is part of our fee cost
+          const taxAmount = 0; // Marketplace-remitted — not our liability
+          // Add commission tax to fees since it's our cost
+          const totalFees = marketplaceFees + commissionTaxAmount;
 
           // Extract province for tax purposes
           const province = shippingAddr?.state || null;
@@ -448,7 +454,7 @@ serve(async (req) => {
             marketplace: "bestbuy",
             sale_price: salePrice,
             shipping_cost: shippingCost,
-            marketplace_fees: parseFloat(marketplaceFees.toFixed(2)),
+            marketplace_fees: parseFloat(totalFees.toFixed(2)),
             tax_amount: taxAmount,
             sale_date: order.created_date,
             customer_name: customerName,

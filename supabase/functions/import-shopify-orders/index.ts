@@ -234,8 +234,41 @@ serve(async (req) => {
         ) || 0;
         const taxAmount = parseFloat(order.total_tax || "0");
         
-        // Estimate marketplace fees (Shopify Payments ~2.9% + $0.30)
-        const marketplaceFees = salePrice * 0.029 + 0.30;
+        // Extract actual transaction fees from Shopify order transactions
+        let marketplaceFees = 0;
+        try {
+          const txnUrl = `${shopifyBaseUrl}/admin/api/2024-01/orders/${order.id}/transactions.json`;
+          const txnResponse = await fetch(txnUrl, {
+            headers: {
+              "X-Shopify-Access-Token": SHOPIFY_ADMIN_API_TOKEN,
+              "Content-Type": "application/json",
+            },
+          });
+          if (txnResponse.ok) {
+            const txnData = await txnResponse.json();
+            const transactions = txnData.transactions || [];
+            // Sum all receipt.fee values from successful transactions
+            for (const txn of transactions) {
+              if (txn.status === "success" && txn.receipt?.fee) {
+                marketplaceFees += parseFloat(txn.receipt.fee);
+              }
+            }
+            // Also check for fees in the transaction fee field
+            if (marketplaceFees === 0) {
+              for (const txn of transactions) {
+                if (txn.status === "success" && txn.fees) {
+                  marketplaceFees += parseFloat(txn.fees);
+                }
+              }
+            }
+          }
+        } catch (feeErr) {
+          console.warn(`Could not fetch transaction fees for order ${order.order_number}:`, feeErr);
+        }
+        // Fallback to estimate if no actual fee data
+        if (marketplaceFees === 0) {
+          marketplaceFees = salePrice * 0.029 + 0.30;
+        }
 
         // Build customer address
         const shippingAddress = order.shipping_address
