@@ -1,137 +1,101 @@
 
 
-# Restructure Sidebar, Roles, and Remove Customers
+## Orders Page Redesign
 
-## Summary
-This plan reorganizes the entire sidebar navigation based on two user types (Admin and Associate), removes the Customers section, breaks the monolithic Accounting page into separate routes, and restructures sidebar groupings to match the requested layout.
+### Overview
+Completely restructure the Orders page to be company-driven (Virtual eShop vs Tech Genius Warehouse), remove the admin-only Dashboard tab, add fulfillment status tracking, show IMEI for linked devices, allow unlinking devices, and add summary metrics at the top.
 
----
+### Database Migration
+Add a `fulfillment_status` column to the `sales` table to track order shipping status:
+- Column: `fulfillment_status TEXT DEFAULT 'received'`
+- Valid values: `received`, `pending`, `shipped`, `delivered`, `cancelled`
 
-## New Sidebar Structure
+### UI Changes (Sales.tsx - Full Rewrite)
 
-```text
-OPERATIONS (visible to all)
-  - Dashboard (/)              -- operational order overview
-  - Orders (/orders)           -- renamed from "Sales", order-centric view
-  - Inventory (/inventory)
-  - Import (/import)
-  - Suppliers (/suppliers)
-  - Invoices (/invoices)
+**1. Remove Dashboard Tab**
+- Remove the `SalesDashboard` import and the entire Tabs/TabsList/TabsContent structure
+- Page opens directly to the orders list (no tabs)
 
-EXPENSE MANAGEMENT (visible to all)
-  - Expenses (/expenses)
+**2. Company Selector (Primary Navigation)**
+- Replace the current marketplace filter dropdown with a company toggle at the top:
+  - "Virtual eShop" -- filters to `company_id` = VES, shows only Amazon orders
+  - "Tech Genius Warehouse" -- filters to `company_id` = TGW, shows Shopify + Best Buy orders
+  - "All Companies" option for admins
+- Use a button group or segmented control for quick switching
+- When a company is selected, the marketplace filter auto-adjusts to show only relevant marketplaces
 
-FINANCE (admin only)
-  - Statements
-    - Profit & Loss (/statements/profit-loss)
-    - Balance Sheet (/statements/balance-sheet)
-    - Cash Flow (/statements/cash-flow)        [new page]
-  - Accounts Payable (/accounting/ap)
-  - Accounts Receivable (/accounting/ar)
-  - Tax Center (/taxes)
-  - Accounting Guide (/accounting/knowledge)
-  - Reports (/reports)
-  - Forecasting (/forecasting)
+**3. Summary Metrics Strip**
+- Before the table, show 4-5 compact metric cards:
+  - Total Orders (count)
+  - Orders Received (fulfillment_status = 'received')
+  - Pending Shipment (fulfillment_status = 'pending')
+  - Shipped (fulfillment_status = 'shipped')
+  - Delivered (fulfillment_status = 'delivered')
+- These are simple counts, not revenue analytics -- appropriate for all users
 
-ADMIN (admin only)
-  - Team (/team)
-  - Audit Logs (/audit-logs)
-  - Settings (/settings)
-  - Help (/help)
+**4. Enhanced Filters**
+- Search: order number, customer name, IMEI, device brand/model
+- Marketplace filter (contextual to selected company)
+- Fulfillment status filter (All, Received, Pending, Shipped, Delivered, Cancelled)
+- Date range filter
+
+**5. Table Columns Update**
+- Checkbox (for bulk actions)
+- Order Number + Customer Name
+- Device: show `brand model` AND IMEI if linked; "Not linked" badge if not
+- Marketplace badge
+- Fulfillment Status badge (color-coded)
+- Date
+- Sale Price
+- Actions dropdown:
+  - Link Device (if not linked)
+  - Unlink Device (if linked) -- new action
+  - Update Status (submenu for status changes)
+  - Delete
+
+**6. Unlink Device Action**
+- New menu item "Unlink Device" when `device_id` is not null
+- Sets `device_id` to null on the sale, updates device status back to `in_stock`, and clears `sale_price` on the device
+
+**7. Fulfillment Status Badge**
+- Add to `status-badge.tsx` or inline:
+  - Received: blue
+  - Pending: yellow/amber
+  - Shipped: green
+  - Delivered: emerald
+  - Cancelled: red
+
+### Technical Details
+
+**Files to modify:**
+- `src/pages/Sales.tsx` -- major rewrite removing dashboard, adding company selector, status filter, IMEI display, unlink action
+- `src/components/sales/EditSaleDialog.tsx` -- minor: already handles link/unlink via "none" option
+- `src/components/ui/status-badge.tsx` -- add `FulfillmentBadge` component
+
+**New migration:**
+```sql
+ALTER TABLE public.sales 
+ADD COLUMN fulfillment_status text DEFAULT 'received';
 ```
 
----
+**Device query update:**
+- Change the select to include IMEI: `devices (brand, model, cost_price, imei)`
 
-## Role Simplification
-
-The existing 6-role system (super_admin, company_admin, accountant, sales_manager, operations_staff, view_only) will be simplified in the UI to two conceptual roles:
-
-- **Admin** = `super_admin` or `company_admin` -- sees everything
-- **Associate** = all other roles -- sees Operations + Expense Management + Invoices only
-
-The sidebar will conditionally render Finance and Admin sections based on whether the user is an admin. No database migration is needed; this is purely a UI-level filtering using the existing `useCompany` hook's role data.
-
----
-
-## Detailed Changes
-
-### 1. Remove Customers
-- **Delete** `src/pages/Customers.tsx` (or leave file but remove route)
-- **Remove** the `/customers` route from `App.tsx`
-- **Remove** Customers entry from sidebar nav items
-
-### 2. Restructure AppSidebar.tsx
-- Define nav item groups with a `role` flag (`'all'` or `'admin'`)
-- Use `useCompany()` to check `isSuperAdmin` or if any assignment role is `company_admin`/`super_admin`
-- Conditionally render Finance and Admin groups
-- Rename "Sales" to "Orders"
-- Move Expenses into its own "Expense Management" group
-- Move Suppliers into Operations
-- Create a sub-label for "Statements" under Finance
-
-### 3. Break Accounting Page into Separate Routes
-Currently `/accounting` is a single tabbed page. We need individual routes:
-- `/statements/profit-loss` -- renders `ProfitLossReport`
-- `/statements/balance-sheet` -- renders `BalanceSheetReport`
-- `/statements/cash-flow` -- new `CashFlowStatement` page (placeholder initially)
-- `/accounting/ap` -- renders `AccountsPayable`
-- `/accounting/ar` -- renders `AccountsReceivable`
-- Keep `/accounting/knowledge` as is
-
-Create thin wrapper pages for each:
-- `src/pages/ProfitLoss.tsx`
-- `src/pages/BalanceSheet.tsx`
-- `src/pages/CashFlow.tsx`
-- `src/pages/AccountsPayablePage.tsx`
-- `src/pages/AccountsReceivablePage.tsx`
-
-### 4. Update App.tsx Routes
-- Remove `/customers` route
-- Remove `/sales` route, add `/orders` route (same component, renamed)
-- Add new routes: `/statements/profit-loss`, `/statements/balance-sheet`, `/statements/cash-flow`, `/accounting/ap`, `/accounting/ar`
-- Remove the monolithic `/accounting` route (keep `/accounting/knowledge`, `/accounting/ap`, `/accounting/ar`)
-
-### 5. Rename Sales to Orders
-- Update the `Sales.tsx` page heading from "Sales" to "Orders"
-- Update sidebar label from "Sales" to "Orders"
-- Update route from `/sales` to `/orders`
-
-### 6. Dashboard as Operational View
-- The existing Dashboard already shows order data (recent sales). It will remain the default view for everyone. The "Financial Overview" and "Analytics" sections will be conditionally shown only for admin users by checking the role in `Dashboard.tsx`.
-
----
-
-## Technical Details
-
-### Files to Create
-| File | Purpose |
-|------|---------|
-| `src/pages/ProfitLoss.tsx` | Wrapper rendering `ProfitLossReport` in `DashboardLayout` |
-| `src/pages/BalanceSheet.tsx` | Wrapper rendering `BalanceSheetReport` in `DashboardLayout` |
-| `src/pages/CashFlow.tsx` | Cash Flow Statement page (new, using journal entry data) |
-| `src/pages/AccountsPayablePage.tsx` | Wrapper rendering `AccountsPayable` in `DashboardLayout` |
-| `src/pages/AccountsReceivablePage.tsx` | Wrapper rendering `AccountsReceivable` in `DashboardLayout` |
-
-### Files to Modify
-| File | Change |
-|------|--------|
-| `src/components/layout/AppSidebar.tsx` | Complete restructure of nav groups with role-based visibility |
-| `src/App.tsx` | Update routes: remove `/customers`, `/sales`, `/accounting`; add `/orders`, statement routes, AP/AR routes |
-| `src/pages/Sales.tsx` | Rename heading to "Orders", keep component logic |
-| `src/pages/Dashboard.tsx` | Conditionally hide Financial Overview and Analytics sections for non-admin users |
-
-### Files to Remove (route only)
-| File | Action |
-|------|--------|
-| `src/pages/Customers.tsx` | Remove route from App.tsx (can delete file) |
-| `src/pages/Accounting.tsx` | Remove route (functionality split into individual pages) |
-
-### Admin Check Logic (in AppSidebar)
+**Unlink handler:**
 ```typescript
-const isAdmin = isSuperAdmin || assignments.some(a =>
-  ['super_admin', 'company_admin'].includes(a.role)
-);
+const handleUnlinkDevice = async (saleId: string, deviceId: string) => {
+  // Update sale to remove device link
+  await supabase.from('sales').update({ device_id: null }).eq('id', saleId);
+  // Reset device status back to in_stock
+  await supabase.from('devices').update({ status: 'in_stock', sale_price: null }).eq('id', deviceId);
+  fetchSales();
+};
 ```
 
-This uses the existing `useCompany()` context -- no new database queries needed.
-
+**Company filtering logic:**
+```typescript
+const companyFilter = 'VES' | 'TGW' | 'all';
+// VES -> query.eq('company_id', vesId)
+// TGW -> query.eq('company_id', tgwId) 
+// Uses the company IDs from the companies table
+```
