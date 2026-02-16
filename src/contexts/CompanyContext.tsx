@@ -24,6 +24,7 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
     assignments,
     loading,
     isSuperAdmin,
+    isAdmin,
     getUserRole,
     hasPermission,
     getAccessibleCompanies,

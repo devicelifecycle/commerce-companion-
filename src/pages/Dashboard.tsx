@@ -33,9 +33,7 @@ interface RecentSale {
 export default function Dashboard() {
   const { user } = useAuth();
   const { selectedCompany, loading: companyLoading, isSuperAdmin, assignments } = useCompany();
-  const isAdmin = isSuperAdmin || assignments.some(a =>
-    ['super_admin', 'company_admin'].includes(a.role)
-  );
+  const isAdmin = isSuperAdmin || assignments.some(a => a.role === 'admin');
   const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
   const [loading, setLoading] = useState(true);
 

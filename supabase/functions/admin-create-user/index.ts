@@ -38,18 +38,18 @@ serve(async (req) => {
       );
     }
 
-    // Check if caller is super_admin
+    // Check if caller is admin
     const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { data: callerAssignment } = await adminClient
       .from("user_company_assignments")
       .select("role")
       .eq("user_id", caller.id)
-      .eq("role", "super_admin")
+      .eq("role", "admin")
       .maybeSingle();
 
     if (!callerAssignment) {
       return new Response(
-        JSON.stringify({ error: "Only super admins can create users" }),
+        JSON.stringify({ error: "Only admins can create users" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -93,14 +93,8 @@ serve(async (req) => {
       );
     }
 
-    // Get all companies if super_admin role, otherwise use provided company_ids
+    // Use provided company_ids for all roles
     let companiesToAssign = company_ids || [];
-    if (role === "super_admin") {
-      const { data: allCompanies } = await adminClient
-        .from("companies")
-        .select("id");
-      companiesToAssign = allCompanies?.map((c: any) => c.id) || [];
-    }
 
     // Create company assignments
     if (companiesToAssign.length > 0) {

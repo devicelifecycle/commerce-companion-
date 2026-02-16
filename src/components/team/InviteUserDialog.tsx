@@ -44,23 +44,16 @@ const inviteSchema = z.object({
   email: z.string().email('Invalid email address'),
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['super_admin', 'company_admin', 'accountant', 'sales_manager', 'operations_staff', 'view_only']),
+  role: z.enum(['admin', 'associate']),
   companies: z.array(z.string()).min(1, 'Select at least one company'),
 });
 
 type InviteFormData = z.infer<typeof inviteSchema>;
 
-const ROLES: UserRole[] = [
-  'super_admin',
-  'company_admin',
-  'accountant',
-  'sales_manager',
-  'operations_staff',
-  'view_only',
-];
+const ROLES: UserRole[] = ['admin', 'associate'];
 
 export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDialogProps) {
-  const { companies, isSuperAdmin } = useCompany();
+  const { companies } = useCompany();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<InviteFormData>({
@@ -69,7 +62,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       email: '',
       full_name: '',
       password: '',
-      role: 'view_only',
+      role: 'associate',
       companies: [],
     },
   });
@@ -80,17 +73,13 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
   const handleSubmit = async (data: InviteFormData) => {
     setLoading(true);
     try {
-      const companiesToAssign = data.role === 'super_admin' 
-        ? companies.map(c => c.id)
-        : data.companies;
-
       const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
         body: {
           email: data.email,
           password: data.password,
           full_name: data.full_name,
           role: data.role,
-          company_ids: companiesToAssign,
+          company_ids: data.companies,
         },
       });
 
@@ -136,7 +125,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
             Create New User
           </DialogTitle>
           <DialogDescription>
-            Create a new user account with role and company access. The user will be able to sign in immediately.
+            Create a new user account with role and company access.
           </DialogDescription>
         </DialogHeader>
 
@@ -198,11 +187,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
                     </FormControl>
                     <SelectContent>
                       {ROLES.map((role) => (
-                        <SelectItem 
-                          key={role} 
-                          value={role}
-                          disabled={role === 'super_admin' && !isSuperAdmin}
-                        >
+                        <SelectItem key={role} value={role}>
                           <div className="flex flex-col">
                             <span className="font-medium">{ROLE_LABELS[role]}</span>
                           </div>
@@ -218,37 +203,35 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
               )}
             />
 
-            {selectedRole !== 'super_admin' && (
-              <FormField
-                control={form.control}
-                name="companies"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Company Access</FormLabel>
-                    <div className="space-y-2">
-                      {companies.map((company) => (
-                        <div
-                          key={company.id}
-                          className="flex items-center space-x-3 rounded-lg border p-3 hover:bg-muted/50 cursor-pointer"
-                          onClick={() => handleCompanyToggle(company.id)}
-                        >
-                          <Checkbox
-                            checked={selectedCompanies.includes(company.id)}
-                            onCheckedChange={() => handleCompanyToggle(company.id)}
-                          />
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          <div className="flex-1">
-                            <p className="font-medium">{company.code}</p>
-                            <p className="text-sm text-muted-foreground">{company.name}</p>
-                          </div>
+            <FormField
+              control={form.control}
+              name="companies"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Company Access</FormLabel>
+                  <div className="space-y-2">
+                    {companies.map((company) => (
+                      <div
+                        key={company.id}
+                        className="flex items-center space-x-3 rounded-lg border p-3 hover:bg-muted/50 cursor-pointer"
+                        onClick={() => handleCompanyToggle(company.id)}
+                      >
+                        <Checkbox
+                          checked={selectedCompanies.includes(company.id)}
+                          onCheckedChange={() => handleCompanyToggle(company.id)}
+                        />
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex-1">
+                          <p className="font-medium">{company.code}</p>
+                          <p className="text-sm text-muted-foreground">{company.name}</p>
                         </div>
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
+                      </div>
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

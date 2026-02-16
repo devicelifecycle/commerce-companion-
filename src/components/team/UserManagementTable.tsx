@@ -55,7 +55,6 @@ export function UserManagementTable() {
   const loadUsers = async () => {
     setLoading(true);
     try {
-      // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -63,14 +62,12 @@ export function UserManagementTable() {
 
       if (profilesError) throw profilesError;
 
-      // Get all assignments with company info
       const { data: assignments, error: assignmentsError } = await supabase
         .from('user_company_assignments')
         .select('*, company:companies(code)');
 
       if (assignmentsError) throw assignmentsError;
 
-      // Combine data
       const usersWithAssignments: UserWithAssignments[] = (profiles || []).map((profile: any) => {
         const userAssignments = (assignments || [])
           .filter((a: any) => a.user_id === profile.user_id)
@@ -91,7 +88,6 @@ export function UserManagementTable() {
         };
       });
 
-      // Filter by selected company if not super admin
       if (selectedCompany && !isSuperAdmin) {
         setUsers(usersWithAssignments.filter(u => 
           u.assignments.some(a => a.company_id === selectedCompany.id)
@@ -120,18 +116,6 @@ export function UserManagementTable() {
     } catch (error) {
       console.error('Error removing assignment:', error);
       toast.error('Failed to remove assignment');
-    }
-  };
-
-  const getRoleBadgeVariant = (role: UserRole) => {
-    switch (role) {
-      case 'super_admin': return 'default';
-      case 'company_admin': return 'secondary';
-      case 'accountant': return 'outline';
-      case 'sales_manager': return 'outline';
-      case 'operations_staff': return 'outline';
-      case 'view_only': return 'outline';
-      default: return 'outline';
     }
   };
 
@@ -203,11 +187,11 @@ export function UserManagementTable() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {user.assignments.map((a) => (
-                        <Badge key={a.id} variant={getRoleBadgeVariant(a.role)} className="text-xs">
-                          {ROLE_LABELS[a.role]}
+                      {user.assignments.length > 0 && (
+                        <Badge variant={user.assignments[0].role === 'admin' ? 'default' : 'secondary'} className="text-xs">
+                          {ROLE_LABELS[user.assignments[0].role]}
                         </Badge>
-                      ))}
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -231,7 +215,7 @@ export function UserManagementTable() {
                             }}
                           >
                             <Shield className="h-4 w-4 mr-2" />
-                            Manage Roles
+                            Manage Role
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           {user.assignments.map((a) => (

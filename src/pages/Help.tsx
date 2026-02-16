@@ -55,7 +55,7 @@ const FAQ_ITEMS = [
   },
   {
     question: 'How do user roles and permissions work?',
-    answer: 'Go to Team to manage users. Roles include Super Admin (full access), Company Admin, Accountant, Sales Manager, Operations Staff, and View Only. Each role has predefined permissions.',
+    answer: 'Go to Team to manage users. There are two roles: Admin (full access to all features) and Associate (operational access to orders, inventory, expenses, and invoices). Each role has predefined permissions.',
     category: 'team',
   },
   {

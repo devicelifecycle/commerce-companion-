@@ -88,9 +88,7 @@ export function AppSidebar() {
   const { signOut, user } = useAuth();
   const { isSuperAdmin, assignments } = useCompany();
 
-  const isAdmin = isSuperAdmin || assignments.some(a =>
-    ['super_admin', 'company_admin'].includes(a.role)
-  );
+  const isAdmin = isSuperAdmin || assignments.some(a => a.role === 'admin');
 
   const isActive = (path: string) => location.pathname === path;
 
