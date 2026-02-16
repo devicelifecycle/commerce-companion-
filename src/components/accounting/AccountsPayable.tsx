@@ -4,6 +4,9 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
+import { useTableSelection } from '@/hooks/useTableSelection';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,7 +33,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { Plus, DollarSign, Download, ArrowDownRight, FileText } from 'lucide-react';
+import { Plus, DollarSign, Download, ArrowDownRight, FileText, Search, Trash2 } from 'lucide-react';
 import { format, differenceInDays, addDays } from 'date-fns';
 
 interface Vendor {
@@ -77,6 +80,7 @@ export function AccountsPayable() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<APRecord | null>(null);

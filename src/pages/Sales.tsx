@@ -7,6 +7,7 @@ import { ManualSaleDialog } from '@/components/sales/ManualSaleDialog';
 import { IntercompanySaleDialog } from '@/components/sales/IntercompanySaleDialog';
 import { EditSaleDialog } from '@/components/sales/EditSaleDialog';
 import { MarketplaceBadge, FulfillmentBadge, MarketplaceStatusBadge } from '@/components/ui/status-badge';
+import { BatchActionBar } from '@/components/ui/batch-action-bar';
 import { MetricCard } from '@/components/ui/metric-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -480,19 +481,6 @@ export default function Sales() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                {selectedIds.size > 0 && canManageSales && (
-                  <div className="flex items-center gap-3 px-3 py-2 mb-2 rounded-lg bg-primary/10 border border-primary/20">
-                    <CheckSquare className="h-4 w-4 text-primary" />
-                    <span className="text-sm font-medium">{selectedIds.size} selected</span>
-                    <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
-                      <Trash2 className="h-3 w-3 mr-1" />
-                      Delete Selected
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
-                      Clear
-                    </Button>
-                  </div>
-                )}
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -636,6 +624,17 @@ export default function Sales() {
           onSaved={fetchSales}
         />
       )}
+
+      <BatchActionBar
+        count={selectedIds.size}
+        onClear={() => setSelectedIds(new Set())}
+        actions={[
+          { label: 'Export', icon: <Download className="h-4 w-4 mr-1" />, onClick: handleExport },
+          ...(canManageSales ? [
+            { label: 'Delete', icon: <Trash2 className="h-4 w-4 mr-1" />, onClick: handleBulkDelete, variant: 'destructive' as const },
+          ] : []),
+        ]}
+      />
     </DashboardLayout>
   );
 }

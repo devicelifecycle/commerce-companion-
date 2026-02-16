@@ -11,7 +11,11 @@ import { AgingInventoryReport } from '@/components/inventory/AgingInventoryRepor
 import { ReturnsManagement } from '@/components/inventory/ReturnsManagement';
 import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker';
 import { FBAFeeAnalytics } from '@/components/inventory/FBAFeeAnalytics';
+import { DeviceProcurementDialog } from '@/components/inventory/DeviceProcurementDialog';
 import { StatusBadge, ConditionBadge } from '@/components/ui/status-badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
+import { useTableSelection } from '@/hooks/useTableSelection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,7 +57,8 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
   Search, Plus, Filter, Smartphone, Trash2, Edit2, MoreHorizontal,
-  LayoutDashboard, List, Clock, ArrowRightLeft, QrCode, Link, Upload, RotateCcw, Boxes
+  LayoutDashboard, List, Clock, ArrowRightLeft, QrCode, Link, Upload, RotateCcw, Boxes,
+  FileText, Download,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -106,6 +111,7 @@ export default function Inventory() {
   const [transferDevice, setTransferDevice] = useState<Device | null>(null);
   const [showLabelDialog, setShowLabelDialog] = useState(false);
   const [labelDevice, setLabelDevice] = useState<Device | null>(null);
+  const [procurementDevice, setProcurementDevice] = useState<{ id: string; label: string } | null>(null);
 
   const canManage = hasPermission('inventory_manage', 'edit') || isSuperAdmin;
   const canView = hasPermission('inventory_view', 'view') || isSuperAdmin;
@@ -330,6 +336,44 @@ export default function Inventory() {
       device.color?.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesSearch;
   });
+
+  const selection = useTableSelection(filteredDevices);
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Delete ${selection.count} selected device(s)?`)) return;
+    try {
+      const { error } = await supabase.from('devices').delete().in('id', Array.from(selection.selectedIds));
+      if (error) throw error;
+      toast.success(`${selection.count} device(s) deleted`);
+      selection.clear();
+      fetchDevices();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete devices');
+    }
+  };
+
+  const handleBulkStatusChange = async (status: DeviceStatus) => {
+    try {
+      const { error } = await supabase.from('devices').update({ status }).in('id', Array.from(selection.selectedIds));
+      if (error) throw error;
+      toast.success(`${selection.count} device(s) updated to ${status.replace('_', ' ')}`);
+      selection.clear();
+      fetchDevices();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update devices');
+    }
+  };
+
+  const handleExportDevices = () => {
+    const items = selection.count > 0 ? selection.selectedItems : filteredDevices;
+    const headers = ['Brand', 'Model', 'IMEI', 'SKU', 'Category', 'Condition', 'Status', 'Cost', 'Sale Price', 'Storage', 'Color', 'Supplier'];
+    const rows = items.map(d => [
+      d.brand, d.model, d.imei || '', d.sku || '', d.category, d.condition, d.status,
+      d.cost_price, d.sale_price || '', d.storage || '', d.color || '', d.suppliers?.name || '',
+    ]);
+    exportToCsv(headers, rows, `inventory-${new Date().toISOString().split('T')[0]}.csv`);
+    toast.success(`${items.length} device(s) exported`);
+  };
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
@@ -665,6 +709,10 @@ export default function Inventory() {
                       ))}
                     </SelectContent>
                   </Select>
+                  <Button variant="outline" size="sm" onClick={handleExportDevices}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -685,6 +733,13 @@ export default function Inventory() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-[40px]">
+                            <Checkbox
+                              checked={selection.isAllSelected}
+                              onCheckedChange={selection.toggleAll}
+                              aria-label="Select all"
+                            />
+                          </TableHead>
                           <TableHead>Device</TableHead>
                           <TableHead>IMEI/SKU</TableHead>
                           <TableHead>Category</TableHead>
@@ -699,7 +754,14 @@ export default function Inventory() {
                         {filteredDevices.map((device) => {
                           const company = companies.find(c => c.id === device.company_id);
                           return (
-                            <TableRow key={device.id}>
+                            <TableRow key={device.id} data-state={selection.selectedIds.has(device.id) ? 'selected' : undefined}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selection.selectedIds.has(device.id)}
+                                  onCheckedChange={() => selection.toggle(device.id)}
+                                  aria-label={`Select ${device.brand} ${device.model}`}
+                                />
+                              </TableCell>
                               <TableCell>
                                 <div>
                                   <p className="font-medium">{device.brand} {device.model}</p>
@@ -747,6 +809,10 @@ export default function Inventory() {
                                       }}>
                                         <QrCode className="h-4 w-4 mr-2" />
                                         Print Label
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setProcurementDevice({ id: device.id, label: `${device.brand} ${device.model}` })}>
+                                        <FileText className="h-4 w-4 mr-2" />
+                                        View PO / GRN
                                       </DropdownMenuItem>
                                       {device.status === 'in_stock' && (
                                         <>
@@ -851,6 +917,28 @@ export default function Inventory() {
           open={showLabelDialog}
           onOpenChange={setShowLabelDialog}
           device={labelDevice}
+        />
+
+        {/* Procurement Dialog */}
+        <DeviceProcurementDialog
+          open={!!procurementDevice}
+          onOpenChange={(open) => !open && setProcurementDevice(null)}
+          deviceId={procurementDevice?.id || ''}
+          deviceLabel={procurementDevice?.label || ''}
+        />
+
+        {/* Batch Action Bar */}
+        <BatchActionBar
+          count={selection.count}
+          onClear={selection.clear}
+          actions={[
+            { label: 'Export', icon: <Download className="h-4 w-4 mr-1" />, onClick: handleExportDevices },
+            ...(canManage ? [
+              { label: 'Mark In Stock', onClick: () => handleBulkStatusChange('in_stock') },
+              { label: 'Mark Sold', onClick: () => handleBulkStatusChange('sold') },
+              { label: 'Delete', icon: <Trash2 className="h-4 w-4 mr-1" />, onClick: handleBulkDelete, variant: 'destructive' as const },
+            ] : []),
+          ]}
         />
       </div>
     </DashboardLayout>
