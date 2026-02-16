@@ -81,7 +81,7 @@ export function InventoryDashboard() {
         .select('id, sale_date, device_id, company_id')
         .not('device_id', 'is', null);
 
-      if (selectedCompany && !isSuperAdmin) {
+      if (selectedCompany) {
         devicesQuery = devicesQuery.eq('company_id', selectedCompany.id);
         salesQuery = salesQuery.eq('company_id', selectedCompany.id);
       }
@@ -267,23 +267,37 @@ export function InventoryDashboard() {
           </CardContent>
         </Card>
 
-        {/* Value by Company */}
-        {isSuperAdmin && metrics.byCompany.length > 1 && (
+        {/* Value by Company — shown in consolidated view */}
+        {!selectedCompany && metrics.byCompany.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle>Inventory by Company</CardTitle>
               <CardDescription>Stock distribution across companies</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-[280px]">
+              {/* Per-company summary cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                {metrics.byCompany.map((entry, index) => {
+                  const fullName = companies.find(c => c.code === entry.name)?.name || entry.name;
+                  return (
+                    <div key={entry.name} className="p-4 rounded-xl border border-border/60 bg-muted/30 space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">{fullName}</p>
+                      <p className="text-2xl font-bold">{entry.count} <span className="text-sm font-normal text-muted-foreground">units</span></p>
+                      <p className="text-sm text-muted-foreground">{formatCurrency(entry.value)} at cost</p>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Pie chart */}
+              <div className="h-[240px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={metrics.byCompany}
                       cx="50%"
                       cy="50%"
-                      innerRadius={60}
-                      outerRadius={90}
+                      innerRadius={55}
+                      outerRadius={85}
                       paddingAngle={5}
                       dataKey="value"
                       nameKey="name"

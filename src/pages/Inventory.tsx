@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
+import { CompanySelector } from '@/components/layout/CompanySelector';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { InventoryDashboard } from '@/components/inventory/InventoryDashboard';
 import { InventoryTransferDialog } from '@/components/inventory/InventoryTransferDialog';
@@ -148,7 +149,7 @@ export default function Inventory() {
         query = query.eq('category', categoryFilter);
       }
 
-      if (selectedCompany && !isSuperAdmin) {
+      if (selectedCompany) {
         query = query.eq('company_id', selectedCompany.id);
       }
 
@@ -165,7 +166,7 @@ export default function Inventory() {
 
   const fetchSuppliers = async () => {
     let query = supabase.from('suppliers').select('id, name').order('name');
-    if (selectedCompany && !isSuperAdmin) {
+    if (selectedCompany) {
       query = query.eq('company_id', selectedCompany.id);
     }
     const { data } = await query;
@@ -546,11 +547,14 @@ export default function Inventory() {
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Inventory</h1>
-            <p className="text-muted-foreground">
-              {selectedCompany ? `${selectedCompany.code} inventory` : 'Manage your device inventory'}
-            </p>
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-2xl font-bold">Inventory</h1>
+              <p className="text-muted-foreground">
+                {selectedCompany ? `${selectedCompany.name} inventory` : 'Consolidated view across all companies'}
+              </p>
+            </div>
+            <CompanySelector />
           </div>
 
           <div className="flex gap-2">
@@ -673,7 +677,7 @@ export default function Inventory() {
                           <TableHead>Condition</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead className="text-right">Cost</TableHead>
-                          {isSuperAdmin && <TableHead>Company</TableHead>}
+                          {!selectedCompany && <TableHead>Company</TableHead>}
                           {canManage && <TableHead className="w-[50px]" />}
                         </TableRow>
                       </TableHeader>
@@ -705,7 +709,7 @@ export default function Inventory() {
                               <TableCell className="text-right">
                                 {formatCurrency(device.cost_price)}
                               </TableCell>
-                              {isSuperAdmin && (
+                              {!selectedCompany && (
                                 <TableCell>
                                   <Badge variant="secondary">{company?.code || '-'}</Badge>
                                 </TableCell>
