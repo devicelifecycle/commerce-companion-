@@ -13,7 +13,7 @@ import {
   LayoutDashboard, ShoppingCart, Smartphone, Upload, Package, FileText,
   Wallet, TrendingUp, Building2, DollarSign, BarChart3, Brain,
   ArrowDownRight, ArrowUpRight, Receipt, BookOpen, Users, ClipboardList,
-  Settings, HelpCircle, Search,
+  Settings, HelpCircle, Search, ClipboardCheck, PackageCheck, RotateCcw,
 } from 'lucide-react';
 
 const routes = [
@@ -24,6 +24,9 @@ const routes = [
   { title: 'Suppliers', url: '/suppliers', icon: Package, group: 'Operations' },
   { title: 'Invoices', url: '/invoices', icon: FileText, group: 'Operations' },
   { title: 'Expenses', url: '/expenses', icon: Wallet, group: 'Expenses' },
+  { title: 'Purchase Orders', url: '/purchase-orders', icon: ClipboardCheck, group: 'Procurement' },
+  { title: 'Goods Received', url: '/goods-received', icon: PackageCheck, group: 'Procurement' },
+  { title: 'Returns / RMA', url: '/returns', icon: RotateCcw, group: 'Procurement' },
   { title: 'Profit & Loss', url: '/statements/profit-loss', icon: TrendingUp, group: 'Analytics' },
   { title: 'Balance Sheet', url: '/statements/balance-sheet', icon: Building2, group: 'Analytics' },
   { title: 'Cash Flow', url: '/statements/cash-flow', icon: DollarSign, group: 'Analytics' },
@@ -59,7 +62,7 @@ export function CommandPalette() {
     navigate(url);
   };
 
-  const groups = ['Operations', 'Expenses', 'Analytics', 'Finance', 'Admin'];
+  const groups = ['Operations', 'Procurement', 'Expenses', 'Analytics', 'Finance', 'Admin'];
 
   return (
     <>
