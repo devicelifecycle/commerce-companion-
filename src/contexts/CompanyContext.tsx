@@ -3,7 +3,7 @@ import { usePermissions, Company, UserCompanyAssignment, UserRole } from '@/hook
 
 interface CompanyContextType {
   selectedCompany: Company | null;
-  setSelectedCompanyId: (id: string) => void;
+  setSelectedCompanyId: (id: string | null) => void;
   companies: Company[];
   accessibleCompanies: Company[];
   assignments: UserCompanyAssignment[];
