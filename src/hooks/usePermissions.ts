@@ -43,7 +43,7 @@ export function usePermissions() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [permissions, setPermissions] = useState<RolePermission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null); // null = consolidated view
 
   useEffect(() => {
     if (user) {
@@ -74,10 +74,7 @@ export function usePermissions() {
       if (assignmentsData) {
         setAssignments(assignmentsData as unknown as UserCompanyAssignment[]);
         
-        // Auto-select first company if not set
-        if (!selectedCompanyId && assignmentsData.length > 0) {
-          setSelectedCompanyId(assignmentsData[0].company_id);
-        }
+        // Default to consolidated view (null = all companies)
       }
 
       // Load role permissions for user's roles

@@ -15,7 +15,7 @@ export function CompanySelector() {
     return null;
   }
 
-  // If only one company, show it as a badge
+  // If only one company and not super admin, show as badge
   if (accessibleCompanies.length === 1 && !isSuperAdmin) {
     return (
       <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-lg">
@@ -25,20 +25,29 @@ export function CompanySelector() {
     );
   }
 
+  const handleChange = (value: string) => {
+    if (value === 'consolidated') {
+      setSelectedCompanyId(null as any);
+    } else {
+      setSelectedCompanyId(value);
+    }
+  };
+
   return (
-    <Select value={selectedCompany?.id || ''} onValueChange={setSelectedCompanyId}>
-      <SelectTrigger className="w-[140px] h-9">
+    <Select value={selectedCompany?.id || 'consolidated'} onValueChange={handleChange}>
+      <SelectTrigger className="w-[200px] h-9">
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4" />
-          <SelectValue placeholder="Select company" />
+          <SelectValue placeholder="Consolidated View" />
         </div>
       </SelectTrigger>
-      <SelectContent>
-        {isSuperAdmin && (
-          <SelectItem value="all" disabled className="text-muted-foreground">
-            All Companies
-          </SelectItem>
-        )}
+      <SelectContent className="bg-popover z-50">
+        <SelectItem value="consolidated">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Consolidated</span>
+            <span className="text-muted-foreground text-xs">(All)</span>
+          </div>
+        </SelectItem>
         {accessibleCompanies.map((company) => (
           <SelectItem key={company.id} value={company.id}>
             <div className="flex items-center gap-2">
