@@ -1,5 +1,5 @@
-// Cash-Basis Chart of Accounts for VES and TGW
-// Following IFRS Cash-Basis Accounting Principles
+// Accrual-Basis Chart of Accounts for VES and TGW
+// Following IFRS Accrual Accounting Principles
 
 export interface AccountDefinition {
   code: string;
@@ -17,6 +17,10 @@ export const ASSET_ACCOUNTS: AccountDefinition[] = [
   { code: '1000', name: 'Cash - VES', type: 'asset', subtype: 'Current Assets', normalBalance: 'debit', company: 'VES', description: 'VES operating cash account' },
   { code: '1001', name: 'Cash - TGW', type: 'asset', subtype: 'Current Assets', normalBalance: 'debit', company: 'TGW', description: 'TGW operating cash account' },
   
+  // Accounts Receivable
+  { code: '1050', name: 'Accounts Receivable - VES', type: 'asset', subtype: 'Current Assets', normalBalance: 'debit', company: 'VES', description: 'VES amounts owed by customers/marketplaces' },
+  { code: '1051', name: 'Accounts Receivable - TGW', type: 'asset', subtype: 'Current Assets', normalBalance: 'debit', company: 'TGW', description: 'TGW amounts owed by customers/marketplaces' },
+  
   // Inventory Accounts (FIFO valuation)
   { code: '1100', name: 'Inventory - VES', type: 'asset', subtype: 'Current Assets', normalBalance: 'debit', company: 'VES', description: 'VES inventory at cost (FIFO)' },
   { code: '1101', name: 'Inventory - TGW', type: 'asset', subtype: 'Current Assets', normalBalance: 'debit', company: 'TGW', description: 'TGW inventory at cost (FIFO)' },
@@ -28,6 +32,10 @@ export const ASSET_ACCOUNTS: AccountDefinition[] = [
 
 // LIABILITIES (2xxx)
 export const LIABILITY_ACCOUNTS: AccountDefinition[] = [
+  // Accounts Payable
+  { code: '2010', name: 'Accounts Payable - VES', type: 'liability', subtype: 'Current Liabilities', normalBalance: 'credit', company: 'VES', description: 'VES amounts owed to suppliers' },
+  { code: '2011', name: 'Accounts Payable - TGW', type: 'liability', subtype: 'Current Liabilities', normalBalance: 'credit', company: 'TGW', description: 'TGW amounts owed to suppliers' },
+  
   // GST/HST Payable
   { code: '2000', name: 'GST/HST Payable - VES', type: 'liability', subtype: 'Current Liabilities', normalBalance: 'credit', company: 'VES', description: 'VES GST/HST collected on sales' },
   { code: '2001', name: 'GST/HST Payable - TGW', type: 'liability', subtype: 'Current Liabilities', normalBalance: 'credit', company: 'TGW', description: 'TGW GST/HST collected on sales' },
@@ -116,6 +124,9 @@ export const CASH_BASIS_CHART_OF_ACCOUNTS: AccountDefinition[] = [
   ...EXPENSE_ACCOUNTS,
   ...TAX_PAID_ACCOUNTS,
 ];
+
+// Alias for backward compatibility
+export const ACCRUAL_CHART_OF_ACCOUNTS = CASH_BASIS_CHART_OF_ACCOUNTS;
 
 // Helper to get account by code
 export function getAccountByCode(code: string): AccountDefinition | undefined {
