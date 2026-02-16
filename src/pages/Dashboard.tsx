@@ -12,11 +12,17 @@ import { ProfitabilityKPIs } from '@/components/dashboard/ProfitabilityKPIs';
 import { RevenueChart } from '@/components/dashboard/RevenueChart';
 import { MarketplaceChart } from '@/components/dashboard/MarketplaceChart';
 import { TopProductsChart } from '@/components/dashboard/TopProductsChart';
-import { StatusBadge, MarketplaceBadge } from '@/components/ui/status-badge';
+import { MarketplaceBadge } from '@/components/ui/status-badge';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { 
-  AlertCircle, Activity, Wallet, BarChart3, ShoppingCart, Target, Percent
+  Activity, ShoppingCart, Download, CalendarIcon
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, subDays, subMonths, startOfMonth, startOfYear } from 'date-fns';
+import { DateRange } from 'react-day-picker';
 
 interface RecentSale {
   id: string;
@@ -37,6 +43,11 @@ export default function Dashboard() {
   const isAdmin = isSuperAdmin || assignments.some(a => a.role === 'admin');
   const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
   const [loading, setLoading] = useState(true);
+  const [datePreset, setDatePreset] = useState('30days');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 30),
+    to: new Date(),
+  });
 
   useEffect(() => {
     fetchRecentSales();
@@ -79,6 +90,37 @@ export default function Dashboard() {
     }
   };
 
+  const handlePresetChange = (preset: string) => {
+    setDatePreset(preset);
+    const now = new Date();
+    switch (preset) {
+      case '7days': setDateRange({ from: subDays(now, 7), to: now }); break;
+      case '30days': setDateRange({ from: subDays(now, 30), to: now }); break;
+      case '90days': setDateRange({ from: subDays(now, 90), to: now }); break;
+      case 'mtd': setDateRange({ from: startOfMonth(now), to: now }); break;
+      case 'ytd': setDateRange({ from: startOfYear(now), to: now }); break;
+    }
+  };
+
+  const handleExportCSV = () => {
+    const headers = ['Device', 'Order #', 'Channel', 'Revenue', 'Profit'];
+    const rows = recentSales.map(s => [
+      s.device ? `${s.device.brand} ${s.device.model}` : 'Unknown',
+      s.order_number,
+      s.marketplace,
+      Number(s.sale_price).toFixed(2),
+      Number(s.profit).toFixed(2),
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dashboard-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-CA', {
       style: 'currency',
@@ -114,6 +156,46 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="hidden md:flex items-center gap-2">
+            <Select value={datePreset} onValueChange={handlePresetChange}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7days">Last 7 Days</SelectItem>
+                <SelectItem value="30days">Last 30 Days</SelectItem>
+                <SelectItem value="90days">Last 90 Days</SelectItem>
+                <SelectItem value="mtd">Month to Date</SelectItem>
+                <SelectItem value="ytd">Year to Date</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+                  <CalendarIcon className="h-3 w-3" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>{format(dateRange.from, 'MMM d')} – {format(dateRange.to, 'MMM d')}</>
+                    ) : format(dateRange.from, 'MMM d')
+                  ) : 'Pick dates'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={dateRange}
+                  onSelect={setDateRange}
+                  numberOfMonths={2}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+
+            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExportCSV}>
+              <Download className="h-3 w-3" />
+              Export
+            </Button>
+
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 border border-success/30">
               <Activity className="h-3 w-3 text-success animate-pulse" />
               <span className="text-xs font-medium text-success">Live</span>

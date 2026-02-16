@@ -39,8 +39,9 @@ import { toast } from 'sonner';
 import { 
   Search, Plus, Filter, TrendingUp, Trash2, Link, MoreHorizontal, 
   Download, ArrowRightLeft, RefreshCw, LayoutDashboard, List,
-  FileSpreadsheet, AlertCircle
+  FileSpreadsheet, AlertCircle, CheckSquare
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type Marketplace = 'shopify' | 'amazon' | 'bestbuy' | 'other';
 
@@ -79,6 +80,7 @@ export default function Sales() {
   const [showIntercompanySale, setShowIntercompanySale] = useState(false);
   const [editingSale, setEditingSale] = useState<{id: string; deviceId: string | null; orderNumber: string} | null>(null);
   const [importingFrom, setImportingFrom] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const canManageSales = hasPermission('sales_manage', 'edit');
   const canViewSales = hasPermission('sales_view', 'view');
@@ -124,10 +126,41 @@ export default function Sales() {
       const { error } = await supabase.from('sales').delete().eq('id', id);
       if (error) throw error;
       toast.success('Sale deleted');
+      setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
       fetchSales();
     } catch (error: any) {
       console.error('Error deleting sale:', error);
       toast.error(error.message || 'Failed to delete sale');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Delete ${selectedIds.size} selected sale(s)?`)) return;
+    try {
+      const { error } = await supabase.from('sales').delete().in('id', Array.from(selectedIds));
+      if (error) throw error;
+      toast.success(`${selectedIds.size} sale(s) deleted`);
+      setSelectedIds(new Set());
+      fetchSales();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete sales');
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredSales.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredSales.map(s => s.id)));
     }
   };
 
@@ -356,9 +389,30 @@ export default function Sales() {
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
+                    {selectedIds.size > 0 && canManageSales && (
+                      <div className="flex items-center gap-3 px-3 py-2 mb-2 rounded-lg bg-primary/10 border border-primary/20">
+                        <CheckSquare className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                        <Button variant="destructive" size="sm" onClick={handleBulkDelete}>
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Delete Selected
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+                          Clear
+                        </Button>
+                      </div>
+                    )}
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          {canManageSales && (
+                            <TableHead className="w-[40px]">
+                              <Checkbox
+                                checked={filteredSales.length > 0 && selectedIds.size === filteredSales.length}
+                                onCheckedChange={toggleSelectAll}
+                              />
+                            </TableHead>
+                          )}
                           <TableHead>Order</TableHead>
                           <TableHead>Device</TableHead>
                           <TableHead>Marketplace</TableHead>
@@ -371,7 +425,15 @@ export default function Sales() {
                       </TableHeader>
                       <TableBody>
                         {filteredSales.map((sale) => (
-                          <TableRow key={sale.id}>
+                          <TableRow key={sale.id} data-state={selectedIds.has(sale.id) ? 'selected' : undefined}>
+                            {canManageSales && (
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedIds.has(sale.id)}
+                                  onCheckedChange={() => toggleSelect(sale.id)}
+                                />
+                              </TableCell>
+                            )}
                             <TableCell>
                               <div>
                                 <p className="font-medium">{sale.order_number}</p>

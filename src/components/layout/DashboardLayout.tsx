@@ -1,6 +1,8 @@
 import { ReactNode } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
+import { Breadcrumbs } from './Breadcrumbs';
+import { CommandPalette } from '@/components/CommandPalette';
 import { useLocation } from 'react-router-dom';
 
 interface DashboardLayoutProps {
@@ -46,7 +48,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
               <h2 className="font-display font-semibold text-sm text-foreground">{pageTitle}</h2>
             </div>
+            <Breadcrumbs />
             <div className="flex-1" />
+            <CommandPalette />
           </header>
           <div className="p-4 lg:p-5">
             {children}
