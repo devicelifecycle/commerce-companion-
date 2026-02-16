@@ -47,7 +47,6 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
 const operationsNav = [
-  { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Orders', url: '/orders', icon: ShoppingCart },
   { title: 'Inventory', url: '/inventory', icon: Smartphone },
   { title: 'Import', url: '/import', icon: Upload },
@@ -59,10 +58,13 @@ const expenseNav = [
   { title: 'Expenses', url: '/expenses', icon: Wallet },
 ];
 
-const statementsNav = [
+const analyticsNav = [
+  { title: 'Dashboard', url: '/', icon: LayoutDashboard },
   { title: 'Profit & Loss', url: '/statements/profit-loss', icon: TrendingUp },
   { title: 'Balance Sheet', url: '/statements/balance-sheet', icon: Building2 },
   { title: 'Cash Flow', url: '/statements/cash-flow', icon: DollarSign },
+  { title: 'Reports', url: '/reports', icon: BarChart3 },
+  { title: 'Forecasting', url: '/forecasting', icon: Brain },
 ];
 
 const financeNav = [
@@ -70,8 +72,6 @@ const financeNav = [
   { title: 'Accounts Receivable', url: '/accounting/ar', icon: ArrowUpRight },
   { title: 'Tax Center', url: '/taxes', icon: Receipt },
   { title: 'Acct. Guide', url: '/accounting/knowledge', icon: BookOpen },
-  { title: 'Reports', url: '/reports', icon: BarChart3 },
-  { title: 'Forecasting', url: '/forecasting', icon: Brain },
 ];
 
 const adminNav = [
@@ -160,18 +160,20 @@ export function AppSidebar() {
 
             <SidebarGroup>
               <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
+                Analytics & Metrics
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                {renderNavItems(analyticsNav)}
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <Separator className="my-1.5 bg-border/50" />
+
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
                 Finance
               </SidebarGroupLabel>
               <SidebarGroupContent>
-                {!collapsed && (
-                  <p className="text-[9px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-2 pt-1 pb-0.5">
-                    Statements
-                  </p>
-                )}
-                {renderNavItems(statementsNav)}
-                {!collapsed && (
-                  <Separator className="my-1 bg-border/30 mx-2" />
-                )}
                 {renderNavItems(financeNav)}
               </SidebarGroupContent>
             </SidebarGroup>
