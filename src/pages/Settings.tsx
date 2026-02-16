@@ -8,7 +8,8 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { CompanyProfile } from '@/components/settings/CompanyProfile';
 import { NotificationPreferences } from '@/components/settings/NotificationPreferences';
 import { AppSettings } from '@/components/settings/AppSettings';
-import { Settings as SettingsIcon, User, Bell, Shield, Building2, Sliders, Plug } from 'lucide-react';
+import { UserManagementTable } from '@/components/team/UserManagementTable';
+import { Settings as SettingsIcon, User, Bell, Shield, Building2, Sliders, Plug, Users } from 'lucide-react';
 import { ShopifyIntegration } from '@/components/settings/ShopifyIntegration';
 
 export default function Settings() {
@@ -36,7 +37,7 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-grid">
+          <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-7' : 'grid-cols-6'} lg:w-auto lg:inline-grid`}>
             <TabsTrigger value="profile" className="gap-2">
               <User className="h-4 w-4" />
               <span className="hidden sm:inline">Profile</span>
@@ -45,6 +46,12 @@ export default function Settings() {
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Company</span>
             </TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger value="users" className="gap-2">
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Users</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="integrations" className="gap-2">
               <Plug className="h-4 w-4" />
               <span className="hidden sm:inline">Integrations</span>
@@ -117,6 +124,26 @@ export default function Settings() {
               </Card>
             )}
           </TabsContent>
+
+          {/* Users Tab (Super Admin only) */}
+          {isSuperAdmin && (
+            <TabsContent value="users">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    User Management
+                  </CardTitle>
+                  <CardDescription>
+                    Create and manage user accounts. Public signup is disabled — only admins can provision new accounts.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <UserManagementTable />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           {/* Integrations Tab */}
           <TabsContent value="integrations">
