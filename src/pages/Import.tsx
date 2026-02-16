@@ -37,6 +37,7 @@ import {
   Download, AlertTriangle, Building2, Info, ChevronDown, ChevronUp, DollarSign
 } from 'lucide-react';
 import { createPurchaseOrder, createGoodsReceivedNote } from '@/lib/import/automatedImport';
+import { createPurchaseJournalEntry } from '@/lib/accounting/journalAutomation';
 
 interface ExcelRow {
   [key: string]: string | number | null;
@@ -671,6 +672,26 @@ export default function Import() {
         grnNumber = gn;
       }
 
+      // Create journal entry: Dr. Inventory + Dr. GST/HST Paid → Cr. Accounts Payable
+      const isVES = company?.code === 'VES';
+      try {
+        await createPurchaseJournalEntry({
+          companyId: batchInfo.company_id,
+          purchaseId: apRecord.id,
+          receiveDate: new Date().toISOString().split('T')[0],
+          supplierName,
+          poNumber,
+          unitCost: summary.subtotal + shipping + other,
+          gstHstAmount: estimatedGstHst,
+          qstAmount: 0,
+          totalAmount: invoiceTotal,
+          deviceDescription: `${summary.totalItems} devices (Batch import)`,
+          isVES,
+        });
+      } catch (jeError) {
+        console.error('Journal entry creation failed:', jeError);
+      }
+
       setFinalizeResult({
         apId: apRecord.id,
         poNumber,
@@ -679,7 +700,7 @@ export default function Import() {
         supplierName,
       });
 
-      toast.success('AP, Purchase Order, and GRN created — batch locked!');
+      toast.success('AP, Purchase Order, GRN, and Journal Entry created — batch locked!');
     } catch (error: any) {
       console.error('Finalize error:', error);
       toast.error(error.message || 'Failed to finalize');
