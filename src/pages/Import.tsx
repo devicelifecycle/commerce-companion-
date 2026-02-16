@@ -599,7 +599,6 @@ export default function Import() {
         bill_date: new Date().toISOString().split('T')[0],
         due_date: dueDate.toISOString().split('T')[0],
         original_amount: invoiceTotal,
-        balance_due: invoiceTotal,
         gst_hst_amount: estimatedGstHst,
         category: 'inventory_purchase',
         description: `Inventory purchase — ${summary.totalItems} devices`,
