@@ -1,5 +1,5 @@
-// Automated Journal Entry Creation for Cash-Basis Accounting
-// All entries are created AUTOMATICALLY from business transactions
+// Automated Journal Entry Creation for Accrual-Basis Accounting
+// Revenue recognized when earned (sale occurs), expenses when incurred (bill received)
 
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
@@ -16,7 +16,7 @@ interface AutoJournalEntryParams {
   companyId: string;
   entryDate: string;
   description: string;
-  referenceType: 'sale' | 'purchase' | 'expense' | 'return' | 'transfer' | 'tax_payment';
+  referenceType: 'sale' | 'purchase' | 'expense' | 'return' | 'transfer' | 'tax_payment' | 'payment_received' | 'payment_made';
   referenceId: string;
   lines: JournalEntryLine[];
 }
@@ -54,7 +54,7 @@ export async function createAutoJournalEntry(params: AutoJournalEntryParams) {
         total_debit: totalDebit,
         total_credit: totalCredit,
         is_auto_generated: true,
-        status: 'posted', // Auto-entries are immediately posted
+        status: 'posted',
         posted_at: new Date().toISOString(),
       })
       .select()
@@ -92,7 +92,6 @@ export async function createAutoJournalEntry(params: AutoJournalEntryParams) {
 // Update account balance based on debit/credit and normal balance
 async function updateAccountBalance(accountId: string, debitAmount: number, creditAmount: number) {
   try {
-    // Get account details
     const { data: account, error: fetchError } = await supabase
       .from('chart_of_accounts')
       .select('current_balance, normal_balance')
@@ -104,16 +103,12 @@ async function updateAccountBalance(accountId: string, debitAmount: number, cred
     const currentBalance = Number(account.current_balance || 0);
     let newBalance: number;
 
-    // Calculate new balance based on normal balance type
     if (account.normal_balance === 'debit') {
-      // Debit increases, credit decreases
       newBalance = currentBalance + debitAmount - creditAmount;
     } else {
-      // Credit increases, debit decreases
       newBalance = currentBalance + creditAmount - debitAmount;
     }
 
-    // Update the balance
     const { error: updateError } = await supabase
       .from('chart_of_accounts')
       .update({ current_balance: newBalance })
@@ -140,18 +135,22 @@ export async function getAccountIdByCode(companyId: string, accountCode: string)
 }
 
 // ============================================
-// SALE AUTOMATION - When cash is received from marketplace
+// SALE AUTOMATION (Accrual) - Revenue recognized when sale occurs
+// Dr. Accounts Receivable  (amount owed by marketplace)
+// Dr. Marketplace Fees     (deducted from settlement)
+// Cr. Sales Revenue        (sale price excl. tax)
+// Cr. Tax Collected        (tax amount)
 // ============================================
 export interface SaleJournalParams {
   companyId: string;
   saleId: string;
   saleDate: string;
   marketplace: 'amazon' | 'bestbuy' | 'shopify';
-  settlementAmount: number; // Net cash received
+  settlementAmount: number; // Net amount expected from marketplace
   salePrice: number; // Gross sale price before tax
-  taxCollected: number; // Tax collected by marketplace
+  taxCollected: number;
   marketplaceFees: number;
-  shippingCost: number; // Shipping costs paid
+  shippingCost: number;
   deviceCost: number; // FIFO cost of device
   deviceDescription: string;
   orderNumber: string;
@@ -163,9 +162,8 @@ export async function createSaleJournalEntries(params: SaleJournalParams) {
     salePrice, taxCollected, marketplaceFees, shippingCost, deviceCost, deviceDescription, orderNumber
   } = params;
 
-  // Determine accounts based on marketplace (VES = Amazon, TGW = BestBuy/Shopify)
   const isVES = marketplace === 'amazon';
-  const cashAccount = isVES ? '1000' : '1001';
+  const arAccount = isVES ? '1050' : '1051';
   const revenueAccount = marketplace === 'amazon' ? '4000' : (marketplace === 'bestbuy' ? '4100' : '4101');
   const taxCollectedAccount = isVES ? '4200' : '4201';
   const feesAccount = isVES ? '6000' : '6001';
@@ -173,9 +171,8 @@ export async function createSaleJournalEntries(params: SaleJournalParams) {
   const cogsAccount = isVES ? '5000' : '5001';
   const inventoryAccount = isVES ? '1100' : '1101';
 
-  // Get account IDs
-  const [cashId, revenueId, taxId, feesId, shippingId, cogsId, inventoryId] = await Promise.all([
-    getAccountIdByCode(companyId, cashAccount),
+  const [arId, revenueId, taxId, feesId, shippingId, cogsId, inventoryId] = await Promise.all([
+    getAccountIdByCode(companyId, arAccount),
     getAccountIdByCode(companyId, revenueAccount),
     getAccountIdByCode(companyId, taxCollectedAccount),
     getAccountIdByCode(companyId, feesAccount),
@@ -184,26 +181,22 @@ export async function createSaleJournalEntries(params: SaleJournalParams) {
     getAccountIdByCode(companyId, inventoryAccount),
   ]);
 
-  if (!cashId || !revenueId || !cogsId || !inventoryId) {
+  if (!arId || !revenueId || !cogsId || !inventoryId) {
     throw new Error('Required accounts not found. Please initialize Chart of Accounts first.');
   }
 
   const lines: JournalEntryLine[] = [];
 
-  // Entry 1: Cash received from sale
-  // Dr. Cash (settlement amount)
-  // Dr. Marketplace Fees
-  // Cr. Sales Revenue (sale price - tax)
-  // Cr. Tax Collected (tax amount)
-  
+  // Dr. Accounts Receivable (net settlement expected from marketplace)
   lines.push({
-    accountCode: cashAccount,
-    accountId: cashId,
-    description: `Cash received - ${orderNumber}`,
+    accountCode: arAccount,
+    accountId: arId,
+    description: `Receivable from ${marketplace} - ${orderNumber}`,
     debitAmount: settlementAmount,
     creditAmount: 0,
   });
 
+  // Dr. Marketplace Fees (deducted by marketplace)
   if (marketplaceFees > 0 && feesId) {
     lines.push({
       accountCode: feesAccount,
@@ -214,6 +207,7 @@ export async function createSaleJournalEntries(params: SaleJournalParams) {
     });
   }
 
+  // Dr. Shipping Costs
   if (shippingCost > 0 && shippingId) {
     lines.push({
       accountCode: shippingAccount,
@@ -224,6 +218,7 @@ export async function createSaleJournalEntries(params: SaleJournalParams) {
     });
   }
 
+  // Cr. Sales Revenue
   lines.push({
     accountCode: revenueAccount,
     accountId: revenueId,
@@ -232,6 +227,7 @@ export async function createSaleJournalEntries(params: SaleJournalParams) {
     creditAmount: salePrice,
   });
 
+  // Cr. Tax Collected
   if (taxCollected > 0 && taxId) {
     lines.push({
       accountCode: taxCollectedAccount,
@@ -252,10 +248,7 @@ export async function createSaleJournalEntries(params: SaleJournalParams) {
     lines,
   });
 
-  // Entry 2: COGS and Inventory reduction
-  // Dr. COGS (device cost)
-  // Cr. Inventory (device cost)
-  
+  // Entry 2: COGS and Inventory reduction (recognized at time of sale)
   if (deviceCost > 0) {
     await createAutoJournalEntry({
       companyId,
@@ -284,47 +277,104 @@ export async function createSaleJournalEntries(params: SaleJournalParams) {
 }
 
 // ============================================
-// PURCHASE AUTOMATION - When cash is paid to supplier
+// PAYMENT RECEIVED - When marketplace settles / customer pays
+// Dr. Cash
+// Cr. Accounts Receivable
+// ============================================
+export interface PaymentReceivedParams {
+  companyId: string;
+  paymentDate: string;
+  amount: number;
+  referenceId: string;
+  description: string;
+  isVES: boolean;
+}
+
+export async function createPaymentReceivedJournalEntry(params: PaymentReceivedParams) {
+  const { companyId, paymentDate, amount, referenceId, description, isVES } = params;
+
+  const cashAccount = isVES ? '1000' : '1001';
+  const arAccount = isVES ? '1050' : '1051';
+
+  const [cashId, arId] = await Promise.all([
+    getAccountIdByCode(companyId, cashAccount),
+    getAccountIdByCode(companyId, arAccount),
+  ]);
+
+  if (!cashId || !arId) {
+    throw new Error('Required accounts not found.');
+  }
+
+  await createAutoJournalEntry({
+    companyId,
+    entryDate: paymentDate,
+    description,
+    referenceType: 'payment_received',
+    referenceId,
+    lines: [
+      {
+        accountCode: cashAccount,
+        accountId: cashId,
+        description: `Cash received - ${description}`,
+        debitAmount: amount,
+        creditAmount: 0,
+      },
+      {
+        accountCode: arAccount,
+        accountId: arId,
+        description: `AR cleared - ${description}`,
+        debitAmount: 0,
+        creditAmount: amount,
+      },
+    ],
+  });
+}
+
+// ============================================
+// PURCHASE AUTOMATION (Accrual) - Expense recognized when goods received
+// Dr. Inventory
+// Dr. GST/HST Paid (ITC)
+// Cr. Accounts Payable
 // ============================================
 export interface PurchaseJournalParams {
   companyId: string;
   purchaseId: string;
-  paymentDate: string;
+  receiveDate: string;
   supplierName: string;
   poNumber: string;
   unitCost: number;
   gstHstAmount: number;
   qstAmount: number;
-  totalPaid: number;
+  totalAmount: number;
   deviceDescription: string;
   isVES: boolean;
 }
 
 export async function createPurchaseJournalEntry(params: PurchaseJournalParams) {
   const {
-    companyId, purchaseId, paymentDate, supplierName, poNumber,
-    unitCost, gstHstAmount, qstAmount, totalPaid, deviceDescription, isVES
+    companyId, purchaseId, receiveDate, supplierName, poNumber,
+    unitCost, gstHstAmount, qstAmount, totalAmount, deviceDescription, isVES
   } = params;
 
   const inventoryAccount = isVES ? '1100' : '1101';
   const gstPaidAccount = isVES ? '8000' : '8001';
   const qstPaidAccount = isVES ? '8100' : '8101';
-  const cashAccount = isVES ? '1000' : '1001';
+  const apAccount = isVES ? '2010' : '2011';
 
-  const [inventoryId, gstId, qstId, cashId] = await Promise.all([
+  const [inventoryId, gstId, qstId, apId] = await Promise.all([
     getAccountIdByCode(companyId, inventoryAccount),
     getAccountIdByCode(companyId, gstPaidAccount),
     getAccountIdByCode(companyId, qstPaidAccount),
-    getAccountIdByCode(companyId, cashAccount),
+    getAccountIdByCode(companyId, apAccount),
   ]);
 
-  if (!inventoryId || !cashId) {
+  if (!inventoryId || !apId) {
     throw new Error('Required accounts not found. Please initialize Chart of Accounts first.');
   }
 
   const lines: JournalEntryLine[] = [];
 
-  // Dr. Inventory (unit cost)
+  // Dr. Inventory
   lines.push({
     accountCode: inventoryAccount,
     accountId: inventoryId,
@@ -355,18 +405,18 @@ export async function createPurchaseJournalEntry(params: PurchaseJournalParams) 
     });
   }
 
-  // Cr. Cash (total paid)
+  // Cr. Accounts Payable
   lines.push({
-    accountCode: cashAccount,
-    accountId: cashId,
-    description: `Payment to ${supplierName} - ${poNumber}`,
+    accountCode: apAccount,
+    accountId: apId,
+    description: `Payable to ${supplierName} - ${poNumber}`,
     debitAmount: 0,
-    creditAmount: totalPaid,
+    creditAmount: totalAmount,
   });
 
   await createAutoJournalEntry({
     companyId,
-    entryDate: paymentDate,
+    entryDate: receiveDate,
     description: `Inventory purchase from ${supplierName} - PO#${poNumber}`,
     referenceType: 'purchase',
     referenceId: purchaseId,
@@ -375,43 +425,101 @@ export async function createPurchaseJournalEntry(params: PurchaseJournalParams) 
 }
 
 // ============================================
-// EXPENSE AUTOMATION - When cash is paid for expenses
+// PAYMENT MADE - When supplier is paid (clears AP)
+// Dr. Accounts Payable
+// Cr. Cash
+// ============================================
+export interface PaymentMadeParams {
+  companyId: string;
+  paymentDate: string;
+  amount: number;
+  referenceId: string;
+  supplierName: string;
+  isVES: boolean;
+}
+
+export async function createPaymentMadeJournalEntry(params: PaymentMadeParams) {
+  const { companyId, paymentDate, amount, referenceId, supplierName, isVES } = params;
+
+  const apAccount = isVES ? '2010' : '2011';
+  const cashAccount = isVES ? '1000' : '1001';
+
+  const [apId, cashId] = await Promise.all([
+    getAccountIdByCode(companyId, apAccount),
+    getAccountIdByCode(companyId, cashAccount),
+  ]);
+
+  if (!apId || !cashId) {
+    throw new Error('Required accounts not found.');
+  }
+
+  await createAutoJournalEntry({
+    companyId,
+    entryDate: paymentDate,
+    description: `Payment to ${supplierName}`,
+    referenceType: 'payment_made',
+    referenceId,
+    lines: [
+      {
+        accountCode: apAccount,
+        accountId: apId,
+        description: `AP cleared - ${supplierName}`,
+        debitAmount: amount,
+        creditAmount: 0,
+      },
+      {
+        accountCode: cashAccount,
+        accountId: cashId,
+        description: `Cash payment to ${supplierName}`,
+        debitAmount: 0,
+        creditAmount: amount,
+      },
+    ],
+  });
+}
+
+// ============================================
+// EXPENSE AUTOMATION (Accrual) - Expense recognized when incurred
+// Dr. Expense Account
+// Dr. GST/HST Paid (ITC)
+// Cr. Accounts Payable (or Cash if paid immediately)
 // ============================================
 export interface ExpenseJournalParams {
   companyId: string;
   expenseId: string;
-  paymentDate: string;
+  expenseDate: string;
   vendor: string;
   description: string;
   expenseAccountCode: string;
   amount: number;
   gstHstAmount: number;
   qstAmount: number;
-  totalPaid: number;
+  totalAmount: number;
   isVES: boolean;
-  allocationVES?: number; // Percentage for VES if shared
-  allocationTGW?: number; // Percentage for TGW if shared
+  isPaidImmediately?: boolean;
+  allocationVES?: number;
+  allocationTGW?: number;
 }
 
 export async function createExpenseJournalEntry(params: ExpenseJournalParams) {
   const {
-    companyId, expenseId, paymentDate, vendor, description,
-    expenseAccountCode, amount, gstHstAmount, qstAmount, totalPaid,
-    isVES, allocationVES = 100, allocationTGW = 0
+    companyId, expenseId, expenseDate, vendor, description,
+    expenseAccountCode, amount, gstHstAmount, qstAmount, totalAmount,
+    isVES, isPaidImmediately = true, allocationVES = 100, allocationTGW = 0
   } = params;
 
   const gstPaidAccount = isVES ? '8000' : '8001';
   const qstPaidAccount = isVES ? '8100' : '8101';
-  const cashAccount = isVES ? '1000' : '1001';
+  const creditAccount = isPaidImmediately ? (isVES ? '1000' : '1001') : (isVES ? '2010' : '2011');
 
-  const [expenseId_, gstId, qstId, cashId] = await Promise.all([
+  const [expenseAccId, gstId, qstId, creditId] = await Promise.all([
     getAccountIdByCode(companyId, expenseAccountCode),
     getAccountIdByCode(companyId, gstPaidAccount),
     getAccountIdByCode(companyId, qstPaidAccount),
-    getAccountIdByCode(companyId, cashAccount),
+    getAccountIdByCode(companyId, creditAccount),
   ]);
 
-  if (!expenseId_ || !cashId) {
+  if (!expenseAccId || !creditId) {
     throw new Error('Required accounts not found. Please initialize Chart of Accounts first.');
   }
 
@@ -420,7 +528,7 @@ export async function createExpenseJournalEntry(params: ExpenseJournalParams) {
   // Dr. Expense Account
   lines.push({
     accountCode: expenseAccountCode,
-    accountId: expenseId_,
+    accountId: expenseAccId,
     description: `${description} - ${vendor}`,
     debitAmount: amount,
     creditAmount: 0,
@@ -448,18 +556,18 @@ export async function createExpenseJournalEntry(params: ExpenseJournalParams) {
     });
   }
 
-  // Cr. Cash
+  // Cr. Cash or Accounts Payable
   lines.push({
-    accountCode: cashAccount,
-    accountId: cashId,
-    description: `Payment to ${vendor}`,
+    accountCode: creditAccount,
+    accountId: creditId,
+    description: isPaidImmediately ? `Payment to ${vendor}` : `Payable to ${vendor}`,
     debitAmount: 0,
-    creditAmount: totalPaid,
+    creditAmount: totalAmount,
   });
 
   await createAutoJournalEntry({
     companyId,
-    entryDate: paymentDate,
+    entryDate: expenseDate,
     description: `Expense: ${description} - ${vendor}`,
     referenceType: 'expense',
     referenceId: expenseId,
