@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
+import { useAuditLog } from '@/hooks/useAuditLog';
+import { ActivityLog } from '@/components/audit/ActivityLog';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ManualSaleDialog } from '@/components/sales/ManualSaleDialog';
@@ -67,6 +69,7 @@ interface Sale {
 export default function Sales() {
   const { user } = useAuth();
   const { selectedCompany, companies, isSuperAdmin, hasPermission, loading: permLoading } = useCompany();
+  const { logEvent, logExport } = useAuditLog();
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -180,6 +183,7 @@ export default function Sales() {
     try {
       const { error } = await supabase.from('sales').delete().eq('id', id);
       if (error) throw error;
+      logEvent({ action: 'DELETE' as any, tableName: 'sales', recordId: id, module: 'Sales', notes: 'Sale record deleted' });
       toast.success('Sale deleted');
       setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
       fetchSales();
@@ -239,6 +243,7 @@ export default function Sales() {
     try {
       const { error } = await supabase.from('sales').update({ fulfillment_status: status }).eq('id', saleId);
       if (error) throw error;
+      logEvent({ action: 'UPDATE' as any, tableName: 'sales', recordId: saleId, module: 'Sales', notes: `Status changed to ${status}` });
       toast.success(`Status updated to ${status}`);
       fetchSales();
     } catch (error: any) {
@@ -311,6 +316,7 @@ export default function Sales() {
     a.download = `orders-export-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    logExport('sales', sales.length, 'CSV');
     toast.success('Orders exported to CSV');
   };
 
@@ -629,6 +635,9 @@ export default function Sales() {
             )}
           </CardContent>
         </Card>
+
+        {/* Activity Log */}
+        <ActivityLog tableName="sales" title="Orders Activity" limit={10} />
       </div>
 
       <ManualSaleDialog open={showManualSale} onOpenChange={setShowManualSale} onSuccess={fetchSales} />

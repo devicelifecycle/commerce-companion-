@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { useAuditLog } from '@/hooks/useAuditLog';
+import { ActivityLog } from '@/components/audit/ActivityLog';
 import { ExpenseDashboard } from '@/components/expenses/ExpenseDashboard';
 import { AddExpenseDialog } from '@/components/expenses/AddExpenseDialog';
 import { VendorManagement } from '@/components/expenses/VendorManagement';
@@ -80,6 +82,7 @@ const EXPENSE_CATEGORIES = [
 
 export default function Expenses() {
   const { selectedCompany, isSuperAdmin, companies } = useCompany();
+  const { logEvent } = useAuditLog();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -123,6 +126,7 @@ export default function Expenses() {
     try {
       const { error } = await supabase.from('expenses').delete().eq('id', id);
       if (error) throw error;
+      logEvent({ action: 'DELETE' as any, tableName: 'expenses', recordId: id, module: 'Expenses', notes: 'Expense deleted' });
       toast.success('Expense deleted');
       fetchExpenses();
     } catch (error: any) {
@@ -412,6 +416,9 @@ export default function Expenses() {
             <VendorManagement />
           </TabsContent>
         </Tabs>
+
+        {/* Activity Log */}
+        <ActivityLog tableName="expenses" title="Expense Activity" limit={10} />
 
         <AddExpenseDialog
           open={dialogOpen}

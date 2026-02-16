@@ -315,9 +315,12 @@ export type Database = {
           created_at: string
           id: string
           ip_address: string | null
+          module: string | null
           new_data: Json | null
+          notes: string | null
           old_data: Json | null
           record_id: string | null
+          status: string | null
           table_name: string
           user_agent: string | null
           user_id: string | null
@@ -328,9 +331,12 @@ export type Database = {
           created_at?: string
           id?: string
           ip_address?: string | null
+          module?: string | null
           new_data?: Json | null
+          notes?: string | null
           old_data?: Json | null
           record_id?: string | null
+          status?: string | null
           table_name: string
           user_agent?: string | null
           user_id?: string | null
@@ -341,9 +347,12 @@ export type Database = {
           created_at?: string
           id?: string
           ip_address?: string | null
+          module?: string | null
           new_data?: Json | null
+          notes?: string | null
           old_data?: Json | null
           record_id?: string | null
+          status?: string | null
           table_name?: string
           user_agent?: string | null
           user_id?: string | null

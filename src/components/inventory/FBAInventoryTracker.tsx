@@ -4,14 +4,21 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { MetricCard } from '@/components/ui/metric-card';
 import {
-  Package, Search, AlertTriangle, TrendingDown, Boxes, BarChart3,
+  Package, Search, AlertTriangle, TrendingDown, Boxes, BarChart3, Send,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { toast } from 'sonner';
+
+type FulfillmentChannel = 'local' | 'fba' | 'in_transit_fba';
 
 interface FBADevice {
   id: string;
@@ -25,6 +32,7 @@ interface FBADevice {
   category: string;
   purchase_date: string | null;
   created_at: string;
+  fulfillment_channel: string | null;
 }
 
 export function FBAInventoryTracker() {
@@ -32,31 +40,68 @@ export function FBAInventoryTracker() {
   const [devices, setDevices] = useState<FBADevice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [channelFilter, setChannelFilter] = useState<string>('fba');
 
   // VES company = Amazon FBA
   const vesCompany = companies.find(c => c.code === 'VES');
 
   useEffect(() => {
     if (vesCompany) fetchFBAInventory();
-  }, [vesCompany]);
+  }, [vesCompany, channelFilter]);
 
   const fetchFBAInventory = async () => {
     if (!vesCompany) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('devices')
-        .select('id, brand, model, storage, color, condition, cost_price, sku, category, purchase_date, created_at')
+        .select('id, brand, model, storage, color, condition, cost_price, sku, category, purchase_date, created_at, fulfillment_channel')
         .eq('company_id', vesCompany.id)
         .eq('status', 'in_stock')
         .order('brand', { ascending: true });
 
+      if (channelFilter !== 'all') {
+        query = query.eq('fulfillment_channel', channelFilter);
+      } else {
+        // Show FBA-related channels only
+        query = query.in('fulfillment_channel', ['fba', 'in_transit_fba']);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
       setDevices((data || []) as FBADevice[]);
     } catch (err) {
       console.error('Error fetching FBA inventory:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSendToFBA = async (deviceIds: string[]) => {
+    try {
+      const { error } = await supabase
+        .from('devices')
+        .update({ fulfillment_channel: 'in_transit_fba' })
+        .in('id', deviceIds);
+      if (error) throw error;
+      toast.success(`${deviceIds.length} device(s) marked as in transit to FBA`);
+      fetchFBAInventory();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update');
+    }
+  };
+
+  const handleConfirmAtFBA = async (deviceIds: string[]) => {
+    try {
+      const { error } = await supabase
+        .from('devices')
+        .update({ fulfillment_channel: 'fba' })
+        .in('id', deviceIds);
+      if (error) throw error;
+      toast.success(`${deviceIds.length} device(s) confirmed at FBA warehouse`);
+      fetchFBAInventory();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update');
     }
   };
 
@@ -120,8 +165,24 @@ export function FBAInventoryTracker() {
     );
   }
 
+  const inTransitCount = devices.filter(d => d.fulfillment_channel === 'in_transit_fba').length;
+
   return (
     <div className="space-y-6">
+      {/* Channel filter */}
+      <div className="flex items-center gap-3">
+        <Select value={channelFilter} onValueChange={setChannelFilter}>
+          <SelectTrigger className="w-[200px]">
+            <SelectValue placeholder="Filter by channel" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="fba">At FBA Warehouse</SelectItem>
+            <SelectItem value="in_transit_fba">In Transit to FBA</SelectItem>
+            <SelectItem value="all">All FBA-Related</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
