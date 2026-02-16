@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.import-amazon-orders]
 verify_jwt = false
 
+[functions.admin-create-user]
+verify_jwt = false
+
 [functions.process-sale-accounting]
 verify_jwt = false
 

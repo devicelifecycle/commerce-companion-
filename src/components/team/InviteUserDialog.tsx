@@ -80,47 +80,38 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
   const handleSubmit = async (data: InviteFormData) => {
     setLoading(true);
     try {
-      // Create the user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          data: {
-            full_name: data.full_name,
-          },
-        },
-      });
-
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Failed to create user');
-
-      // Assign company roles
       const companiesToAssign = data.role === 'super_admin' 
         ? companies.map(c => c.id)
         : data.companies;
 
-      const assignments = companiesToAssign.map(companyId => ({
-        user_id: authData.user!.id,
-        company_id: companyId,
-        role: data.role,
-      }));
+      const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
+        body: {
+          email: data.email,
+          password: data.password,
+          full_name: data.full_name,
+          role: data.role,
+          company_ids: companiesToAssign,
+        },
+      });
 
-      const { error: assignError } = await supabase
-        .from('user_company_assignments')
-        .insert(assignments);
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
 
-      if (assignError) throw assignError;
+      if (result?.warning) {
+        toast.warning(result.warning);
+      } else {
+        toast.success('User account created successfully');
+      }
 
-      toast.success('User invited successfully');
       form.reset();
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
-      console.error('Error inviting user:', error);
-      if (error.message?.includes('already registered')) {
+      console.error('Error creating user:', error);
+      if (error.message?.includes('already been registered') || error.message?.includes('already registered')) {
         toast.error('This email is already registered');
       } else {
-        toast.error('Failed to invite user');
+        toast.error(error.message || 'Failed to create user');
       }
     } finally {
       setLoading(false);
@@ -142,10 +133,10 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
-            Invite New User
+            Create New User
           </DialogTitle>
           <DialogDescription>
-            Create a new user account with role and company access
+            Create a new user account with role and company access. The user will be able to sign in immediately.
           </DialogDescription>
         </DialogHeader>
 
