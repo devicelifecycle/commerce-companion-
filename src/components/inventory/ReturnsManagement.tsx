@@ -225,6 +225,21 @@ export function ReturnsManagement() {
             .update({ status: rma.return_type === 'purchase_return' ? 'returned' : 'in_stock' })
             .eq('id', rma.device_id);
         }
+
+        // Trigger return accounting reversal (journal entries)
+        try {
+          const { error: accError } = await supabase.functions.invoke('process-return-accounting', {
+            body: { return_id: id },
+          });
+          if (accError) {
+            console.error('Return accounting error:', accError);
+            toast.error('Return saved but accounting entries could not be created');
+          } else {
+            toast.success('Return processed with accounting reversal entries');
+          }
+        } catch (accErr) {
+          console.error('Error calling return accounting:', accErr);
+        }
       }
 
       const { error } = await supabase
@@ -234,7 +249,9 @@ export function ReturnsManagement() {
 
       if (error) throw error;
 
-      toast.success('Return status updated');
+      if (newStatus !== 'refunded') {
+        toast.success('Return status updated');
+      }
       fetchData();
     } catch (error: any) {
       toast.error(error.message || 'Failed to update status');

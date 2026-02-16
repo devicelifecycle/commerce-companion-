@@ -21,9 +21,8 @@ function generateEntryNumber(): string {
   return `AUTO-${date}-${rand}`;
 }
 
-// Account code map: marketplace → account codes
 // Account code map: marketplace → account codes (accrual: use AR, not Cash)
-const ACCOUNT_MAP = {
+const ACCOUNT_MAP: Record<string, Record<string, string>> = {
   amazon: {
     ar: "1050",
     revenue: "4000",
@@ -51,7 +50,17 @@ const ACCOUNT_MAP = {
     cogs: "5001",
     inventory: "1101",
   },
-} as const;
+  // Private/storefront/other sales use TGW accounts by default
+  other: {
+    ar: "1051",
+    revenue: "4101",
+    taxCollected: "4201",
+    fees: "6001",
+    shipping: "6101",
+    cogs: "5001",
+    inventory: "1101",
+  },
+};
 
 async function getAccountId(
   supabase: any,
@@ -99,6 +108,7 @@ async function createJournalEntry(
   entryDate: string,
   description: string,
   referenceId: string,
+  referenceType: string,
   lines: JournalLine[]
 ) {
   const totalDebit = lines.reduce((s, l) => s + l.debit_amount, 0);
@@ -118,7 +128,7 @@ async function createJournalEntry(
       entry_number: generateEntryNumber(),
       entry_date: entryDate,
       description,
-      reference_type: "sale",
+      reference_type: referenceType,
       reference_id: referenceId,
       total_debit: totalDebit,
       total_credit: totalCredit,
@@ -134,7 +144,6 @@ async function createJournalEntry(
     return null;
   }
 
-  // Insert lines
   const lineInserts = lines.map((l) => ({
     journal_entry_id: entry.id,
     account_id: l.account_id,
@@ -152,7 +161,6 @@ async function createJournalEntry(
     return null;
   }
 
-  // Update account balances
   for (const line of lines) {
     await updateAccountBalance(
       supabase,
@@ -175,7 +183,6 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Accept optional sale_ids to process specific sales, otherwise process all unaccounted
     let saleIds: string[] | null = null;
     try {
       const body = await req.json();
@@ -184,13 +191,16 @@ serve(async (req) => {
       // No body — process all unaccounted
     }
 
-    // Find sales that have a device linked but NO journal entries yet
+    // Find sales that need accounting processing
+    // Phase 1 fix: process ALL sales, not just ones with device_id
+    // - 'unprocessed' sales get revenue/AR entries (with or without device)
+    // - 'revenue_only' sales with a device_id now linked get COGS entries added
     let salesQuery = supabase
       .from("sales")
       .select(
-        "id, order_number, marketplace, sale_price, shipping_cost, marketplace_fees, tax_amount, sale_date, device_id, company_id"
+        "id, order_number, marketplace, sale_price, shipping_cost, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status"
       )
-      .not("device_id", "is", null);
+      .in("accounting_status", ["unprocessed", "revenue_only"]);
 
     if (saleIds && saleIds.length > 0) {
       salesQuery = salesQuery.in("id", saleIds);
@@ -209,42 +219,45 @@ serve(async (req) => {
       );
     }
 
-    // Check which sales already have journal entries
+    // Check which sales already have journal entries (belt and suspenders)
     const allSaleIds = sales.map((s) => s.id);
     const { data: existingEntries } = await supabase
       .from("journal_entries")
-      .select("reference_id")
+      .select("reference_id, description")
       .eq("reference_type", "sale")
       .in("reference_id", allSaleIds);
 
-    const salesWithJE = new Set(existingEntries?.map((e) => e.reference_id) || []);
-
-    // Filter to unaccounted sales
-    const unaccountedSales = sales.filter((s) => !salesWithJE.has(s.id));
-
-    if (unaccountedSales.length === 0) {
-      return new Response(
-        JSON.stringify({ success: true, processed: 0, message: "All sales already have journal entries" }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log(`Processing ${unaccountedSales.length} unaccounted sales`);
-
-    // Fetch device costs in bulk
-    const deviceIds = unaccountedSales.map((s) => s.device_id!);
-    const { data: devices } = await supabase
-      .from("devices")
-      .select("id, cost_price, brand, model")
-      .in("id", deviceIds);
-
-    const deviceMap: Record<string, { cost: number; desc: string }> = {};
-    devices?.forEach((d) => {
-      deviceMap[d.id] = {
-        cost: Number(d.cost_price),
-        desc: `${d.brand} ${d.model}`,
-      };
+    // Track which sales have revenue entries vs COGS entries
+    const salesWithRevenue = new Set<string>();
+    const salesWithCOGS = new Set<string>();
+    existingEntries?.forEach((e) => {
+      if (e.description?.startsWith("COGS")) {
+        salesWithCOGS.add(e.reference_id);
+      } else {
+        salesWithRevenue.add(e.reference_id);
+      }
     });
+
+    console.log(`Processing ${sales.length} sales (${sales.filter(s => s.accounting_status === 'unprocessed').length} unprocessed, ${sales.filter(s => s.accounting_status === 'revenue_only').length} revenue_only)`);
+
+    // Fetch device costs in bulk for sales that have devices
+    const deviceIds = sales.filter((s) => s.device_id).map((s) => s.device_id!);
+    const deviceMap: Record<string, { cost: number; desc: string; companyId: string }> = {};
+    
+    if (deviceIds.length > 0) {
+      const { data: devices } = await supabase
+        .from("devices")
+        .select("id, cost_price, brand, model, company_id")
+        .in("id", deviceIds);
+
+      devices?.forEach((d) => {
+        deviceMap[d.id] = {
+          cost: Number(d.cost_price),
+          desc: `${d.brand} ${d.model}`,
+          companyId: d.company_id,
+        };
+      });
+    }
 
     // Cache account IDs per company
     const accountCache: Record<string, Record<string, string | null>> = {};
@@ -253,8 +266,7 @@ serve(async (req) => {
       const key = `${companyId}-${marketplace}`;
       if (accountCache[key]) return accountCache[key];
 
-      const codes = ACCOUNT_MAP[marketplace as keyof typeof ACCOUNT_MAP];
-      if (!codes) return null;
+      const codes = ACCOUNT_MAP[marketplace] || ACCOUNT_MAP["other"];
 
       const [arId, revenueId, taxId, feesId, shippingId, cogsId, inventoryId] =
         await Promise.all([
@@ -283,17 +295,11 @@ serve(async (req) => {
     const processed: string[] = [];
     const errors: string[] = [];
 
-    for (const sale of unaccountedSales) {
+    for (const sale of sales) {
       try {
         const accounts = await getAccounts(sale.company_id, sale.marketplace);
-        if (!accounts || !accounts.ar || !accounts.revenue || !accounts.cogs || !accounts.inventory) {
+        if (!accounts || !accounts.ar || !accounts.revenue) {
           errors.push(`${sale.order_number}: Missing chart of accounts for ${sale.marketplace}`);
-          continue;
-        }
-
-        const device = deviceMap[sale.device_id!];
-        if (!device) {
-          errors.push(`${sale.order_number}: Device ${sale.device_id} not found`);
           continue;
         }
 
@@ -306,117 +312,153 @@ serve(async (req) => {
           ? new Date(sale.sale_date).toISOString().split("T")[0]
           : new Date().toISOString().split("T")[0];
 
-        // Entry 1: Revenue recognition (Accrual)
-        // Dr. Accounts Receivable (net settlement expected)
-        // Dr. Marketplace Fees
-        // Dr. Shipping Cost
-        // Cr. Sales Revenue
-        // Cr. Tax Collected
-        const revenueLines: JournalLine[] = [];
+        const device = sale.device_id ? deviceMap[sale.device_id] : null;
+        const deviceDesc = device?.desc || "Unlinked item";
 
-        revenueLines.push({
-          account_id: accounts.ar!,
-          description: `Receivable from ${sale.marketplace} - ${sale.order_number}`,
-          debit_amount: settlementAmount,
-          credit_amount: 0,
-        });
-
-        if (fees > 0 && accounts.fees) {
-          revenueLines.push({
-            account_id: accounts.fees,
-            description: `${sale.marketplace} fees - ${sale.order_number}`,
-            debit_amount: fees,
-            credit_amount: 0,
-          });
+        // Check for cross-company device linkage
+        if (device && device.companyId && device.companyId !== sale.company_id) {
+          console.log(`Cross-company detected: Device ${sale.device_id} belongs to ${device.companyId}, sale is for ${sale.company_id}`);
+          // Auto-create intercompany transfer
+          try {
+            const icUrl = `${SUPABASE_URL}/functions/v1/process-intercompany-accounting`;
+            await fetch(icUrl, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                device_id: sale.device_id,
+                from_company_id: device.companyId,
+                to_company_id: sale.company_id,
+                transfer_price: device.cost,
+                reason: `Auto-transfer for cross-company sale ${sale.order_number}`,
+              }),
+            });
+          } catch (icErr: any) {
+            console.error("Intercompany transfer error:", icErr.message);
+          }
         }
 
-        if (shipping > 0 && accounts.shipping) {
+        // === Entry 1: Revenue recognition (create if not already done) ===
+        if (!salesWithRevenue.has(sale.id)) {
+          const revenueLines: JournalLine[] = [];
+
           revenueLines.push({
-            account_id: accounts.shipping,
-            description: `Shipping cost - ${sale.order_number}`,
-            debit_amount: shipping,
+            account_id: accounts.ar!,
+            description: `Receivable from ${sale.marketplace} - ${sale.order_number}`,
+            debit_amount: settlementAmount,
             credit_amount: 0,
           });
-        }
 
-        revenueLines.push({
-          account_id: accounts.revenue!,
-          description: `Sale - ${device.desc} - ${sale.order_number}`,
-          debit_amount: 0,
-          credit_amount: salePrice,
-        });
+          if (fees > 0 && accounts.fees) {
+            revenueLines.push({
+              account_id: accounts.fees,
+              description: `${sale.marketplace} fees - ${sale.order_number}`,
+              debit_amount: fees,
+              credit_amount: 0,
+            });
+          }
 
-        if (tax > 0 && accounts.taxCollected) {
+          if (shipping > 0 && accounts.shipping) {
+            revenueLines.push({
+              account_id: accounts.shipping,
+              description: `Shipping cost - ${sale.order_number}`,
+              debit_amount: shipping,
+              credit_amount: 0,
+            });
+          }
+
           revenueLines.push({
-            account_id: accounts.taxCollected,
-            description: `Tax collected - ${sale.order_number}`,
+            account_id: accounts.revenue!,
+            description: `Sale - ${deviceDesc} - ${sale.order_number}`,
             debit_amount: 0,
-            credit_amount: tax,
+            credit_amount: salePrice,
           });
-        }
 
-        await createJournalEntry(
-          supabase,
-          sale.company_id,
-          saleDate,
-          `Sale via ${sale.marketplace} - Order#${sale.order_number} - ${device.desc}`,
-          sale.id,
-          revenueLines
-        );
+          if (tax > 0 && accounts.taxCollected) {
+            revenueLines.push({
+              account_id: accounts.taxCollected,
+              description: `Tax collected - ${sale.order_number}`,
+              debit_amount: 0,
+              credit_amount: tax,
+            });
+          }
 
-        // Entry 2: COGS
-        // Dr. COGS (device cost)
-        // Cr. Inventory (device cost)
-        if (device.cost > 0) {
           await createJournalEntry(
             supabase,
             sale.company_id,
             saleDate,
-            `COGS - ${device.desc} - Order#${sale.order_number}`,
+            `Sale via ${sale.marketplace} - Order#${sale.order_number} - ${deviceDesc}`,
             sale.id,
-            [
-              {
-                account_id: accounts.cogs!,
-                description: `Cost of goods sold - ${device.desc}`,
-                debit_amount: device.cost,
-                credit_amount: 0,
-              },
-              {
-                account_id: accounts.inventory!,
-                description: `Inventory reduction - ${device.desc}`,
-                debit_amount: 0,
-                credit_amount: device.cost,
-              },
-            ]
+            "sale",
+            revenueLines
           );
+
+          // Create Accounts Receivable record
+          const arDueDate = new Date(saleDate);
+          arDueDate.setDate(arDueDate.getDate() + 14);
+
+          const { data: existingAR } = await supabase
+            .from("accounts_receivable")
+            .select("id")
+            .eq("source_reference", sale.id)
+            .maybeSingle();
+
+          if (!existingAR) {
+            await supabase.from("accounts_receivable").insert({
+              company_id: sale.company_id,
+              source_type: "marketplace_sale",
+              source_reference: sale.id,
+              marketplace: sale.marketplace,
+              customer_name: `${sale.marketplace} Marketplace`,
+              original_amount: settlementAmount,
+              paid_amount: 0,
+              balance_due: settlementAmount,
+              due_date: arDueDate.toISOString().split("T")[0],
+              status: "outstanding",
+              notes: `Order #${sale.order_number} - ${deviceDesc}`,
+            });
+          }
         }
 
-        // Create Accounts Receivable record
-        const arDueDate = new Date(saleDate);
-        arDueDate.setDate(arDueDate.getDate() + 14); // Marketplace typically pays within 14 days
-        
-        // Check if AR already exists for this sale
-        const { data: existingAR } = await supabase
-          .from("accounts_receivable")
-          .select("id")
-          .eq("source_reference", sale.id)
-          .maybeSingle();
-
-        if (!existingAR) {
-          await supabase.from("accounts_receivable").insert({
-            company_id: sale.company_id,
-            source_type: "marketplace_sale",
-            source_reference: sale.id,
-            marketplace: sale.marketplace,
-            customer_name: `${sale.marketplace} Marketplace`,
-            original_amount: settlementAmount,
-            paid_amount: 0,
-            balance_due: settlementAmount,
-            due_date: arDueDate.toISOString().split("T")[0],
-            status: "outstanding",
-            notes: `Order #${sale.order_number} - ${device.desc}`,
-          });
+        // === Entry 2: COGS (only if device is linked and COGS not yet created) ===
+        let newStatus = "revenue_only";
+        if (device && device.cost > 0 && !salesWithCOGS.has(sale.id)) {
+          if (accounts.cogs && accounts.inventory) {
+            await createJournalEntry(
+              supabase,
+              sale.company_id,
+              saleDate,
+              `COGS - ${device.desc} - Order#${sale.order_number}`,
+              sale.id,
+              "sale",
+              [
+                {
+                  account_id: accounts.cogs!,
+                  description: `Cost of goods sold - ${device.desc}`,
+                  debit_amount: device.cost,
+                  credit_amount: 0,
+                },
+                {
+                  account_id: accounts.inventory!,
+                  description: `Inventory reduction - ${device.desc}`,
+                  debit_amount: 0,
+                  credit_amount: device.cost,
+                },
+              ]
+            );
+            newStatus = "fully_processed";
+          }
+        } else if (device && salesWithCOGS.has(sale.id)) {
+          newStatus = "fully_processed";
         }
+
+        // Update accounting_status
+        await supabase
+          .from("sales")
+          .update({ accounting_status: newStatus })
+          .eq("id", sale.id);
 
         processed.push(sale.order_number);
       } catch (saleError: any) {

@@ -40,10 +40,10 @@ export function TaxDashboard() {
       const periodEnd = endOfQuarter(now);
       const filingDue = addMonths(periodEnd, 1);
 
-      // Fetch sales with tax
+      // Fetch sales with tax — separate marketplace-remitted vs seller-owed
       let salesQuery = supabase
         .from('sales')
-        .select('tax_amount, sale_price')
+        .select('tax_amount, sale_price, is_marketplace_remitted')
         .gte('sale_date', periodStart.toISOString())
         .lte('sale_date', periodEnd.toISOString());
 
@@ -66,19 +66,24 @@ export function TaxDashboard() {
 
       const { data: expenseData } = await expenseQuery;
 
-      // Calculate totals
-      const taxCollected = (salesData || []).reduce((sum, s) => sum + Number(s.tax_amount || 0), 0);
+      // Calculate totals — only non-marketplace-remitted tax counts as your liability
+      const taxYouOwe = (salesData || [])
+        .filter(s => !s.is_marketplace_remitted)
+        .reduce((sum, s) => sum + Number(s.tax_amount || 0), 0);
+      const taxMarketplaceRemits = (salesData || [])
+        .filter(s => s.is_marketplace_remitted)
+        .reduce((sum, s) => sum + Number(s.tax_amount || 0), 0);
       const itcTotal = (expenseData || []).reduce((sum, e) => 
         sum + Number(e.gst_hst_amount || 0) + Number(e.pst_amount || 0), 0
       );
 
       setSummary({
-        totalCollected: taxCollected,
-        gstHstCollected: taxCollected, // Simplified - would need detailed breakdown
+        totalCollected: taxYouOwe + taxMarketplaceRemits,
+        gstHstCollected: taxYouOwe,
         qstCollected: 0,
-        pstCollected: 0,
+        pstCollected: taxMarketplaceRemits,
         totalITC: itcTotal,
-        netPayable: taxCollected - itcTotal,
+        netPayable: taxYouOwe - itcTotal,
         currentPeriodStart: periodStart,
         currentPeriodEnd: periodEnd,
         filingDueDate: filingDue,
@@ -192,18 +197,18 @@ export function TaxDashboard() {
           <CardContent>
             <div className="space-y-4">
               <div className="flex justify-between items-center py-2 border-b">
-                <span>GST/HST Collected</span>
+                <span>Tax You Owe to CRA (Shopify)</span>
                 <span className="font-semibold">{formatCurrency(summary?.gstHstCollected || 0)}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b">
-                <span>QST Collected (Quebec)</span>
-                <span className="font-semibold">{formatCurrency(summary?.qstCollected || 0)}</span>
+                <span>Tax Remitted by Marketplace (Amazon/BBY)</span>
+                <span className="font-semibold text-muted-foreground">{formatCurrency(summary?.pstCollected || 0)}</span>
               </div>
               <div className="flex justify-between items-center py-2 border-b">
-                <span>PST Collected</span>
-                <span className="font-semibold">{formatCurrency(summary?.pstCollected || 0)}</span>
+                <span>Total Tax Collected (All)</span>
+                <span className="font-semibold">{formatCurrency(summary?.totalCollected || 0)}</span>
               </div>
-              <div className="flex justify-between items-center py-2 border-b text-emerald-500">
+              <div className="flex justify-between items-center py-2 border-b text-primary">
                 <span>Less: Input Tax Credits</span>
                 <span className="font-semibold">({formatCurrency(summary?.totalITC || 0)})</span>
               </div>

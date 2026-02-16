@@ -442,6 +442,7 @@ serve(async (req) => {
           }
 
           // Insert the sale with marketplace status
+          // Best Buy generally withholds and remits tax on marketplace-facilitated orders
           const { error: insertError } = await supabase.from("sales").insert({
             order_number: lineOrderNumber,
             marketplace: "bestbuy",
@@ -459,6 +460,8 @@ serve(async (req) => {
             customer_id: customerId,
             marketplace_status: lineItemStatus,
             fulfillment_status: fulfillmentStatus,
+            is_marketplace_remitted: true, // Best Buy withholds and remits tax to CRA
+            accounting_status: "unprocessed",
           });
 
           if (insertError) {

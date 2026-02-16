@@ -735,6 +735,7 @@ export type Database = {
           cost_price: number
           created_at: string
           created_by: string | null
+          fulfillment_channel: string | null
           id: string
           imei: string | null
           import_batch_id: string | null
@@ -760,6 +761,7 @@ export type Database = {
           cost_price: number
           created_at?: string
           created_by?: string | null
+          fulfillment_channel?: string | null
           id?: string
           imei?: string | null
           import_batch_id?: string | null
@@ -785,6 +787,7 @@ export type Database = {
           cost_price?: number
           created_at?: string
           created_by?: string | null
+          fulfillment_channel?: string | null
           id?: string
           imei?: string | null
           import_batch_id?: string | null
@@ -1926,6 +1929,7 @@ export type Database = {
       }
       return_authorizations: {
         Row: {
+          accounting_status: string | null
           company_id: string | null
           created_at: string | null
           created_by: string | null
@@ -1949,6 +1953,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          accounting_status?: string | null
           company_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -1972,6 +1977,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          accounting_status?: string | null
           company_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -2072,6 +2078,7 @@ export type Database = {
       }
       sales: {
         Row: {
+          accounting_status: string | null
           company_id: string | null
           created_at: string
           created_by: string | null
@@ -2081,6 +2088,7 @@ export type Database = {
           device_id: string | null
           fulfillment_status: string | null
           id: string
+          is_marketplace_remitted: boolean | null
           marketplace: Database["public"]["Enums"]["marketplace"]
           marketplace_fees: number | null
           marketplace_status: string | null
@@ -2095,6 +2103,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          accounting_status?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -2104,6 +2113,7 @@ export type Database = {
           device_id?: string | null
           fulfillment_status?: string | null
           id?: string
+          is_marketplace_remitted?: boolean | null
           marketplace: Database["public"]["Enums"]["marketplace"]
           marketplace_fees?: number | null
           marketplace_status?: string | null
@@ -2118,6 +2128,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          accounting_status?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -2127,6 +2138,7 @@ export type Database = {
           device_id?: string | null
           fulfillment_status?: string | null
           id?: string
+          is_marketplace_remitted?: boolean | null
           marketplace?: Database["public"]["Enums"]["marketplace"]
           marketplace_fees?: number | null
           marketplace_status?: string | null
