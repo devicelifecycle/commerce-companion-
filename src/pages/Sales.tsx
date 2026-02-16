@@ -293,21 +293,25 @@ export default function Sales() {
           </div>
         </div>
 
-        <Tabs defaultValue="dashboard" className="space-y-4">
+        <Tabs defaultValue={isSuperAdmin ? "dashboard" : "list"} className="space-y-4">
           <TabsList>
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboard
-            </TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger value="dashboard" className="flex items-center gap-2">
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </TabsTrigger>
+            )}
             <TabsTrigger value="list" className="flex items-center gap-2">
               <List className="h-4 w-4" />
               All Sales
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard">
-            <SalesDashboard />
-          </TabsContent>
+          {isSuperAdmin && (
+            <TabsContent value="dashboard">
+              <SalesDashboard />
+            </TabsContent>
+          )}
 
           <TabsContent value="list">
             <Card>

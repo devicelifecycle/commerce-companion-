@@ -590,29 +590,35 @@ export default function Inventory() {
           </div>
         </div>
 
-        <Tabs defaultValue="dashboard" className="space-y-4">
+        <Tabs defaultValue={isSuperAdmin ? "dashboard" : "list"} className="space-y-4">
           <TabsList>
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
-              <LayoutDashboard className="h-4 w-4" />
-              Dashboard
-            </TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger value="dashboard" className="flex items-center gap-2">
+                <LayoutDashboard className="h-4 w-4" />
+                Dashboard
+              </TabsTrigger>
+            )}
             <TabsTrigger value="list" className="flex items-center gap-2">
               <List className="h-4 w-4" />
               All Devices
             </TabsTrigger>
-            <TabsTrigger value="aging" className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Aging Report
-            </TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger value="aging" className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Aging Report
+              </TabsTrigger>
+            )}
             <TabsTrigger value="returns" className="flex items-center gap-2">
               <RotateCcw className="h-4 w-4" />
               Returns
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="dashboard">
-            <InventoryDashboard />
-          </TabsContent>
+          {isSuperAdmin && (
+            <TabsContent value="dashboard">
+              <InventoryDashboard />
+            </TabsContent>
+          )}
 
           <TabsContent value="list">
             <Card>
@@ -785,9 +791,11 @@ export default function Inventory() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="aging">
-            <AgingInventoryReport />
-          </TabsContent>
+          {isSuperAdmin && (
+            <TabsContent value="aging">
+              <AgingInventoryReport />
+            </TabsContent>
+          )}
 
           <TabsContent value="returns">
             <ReturnsManagement />

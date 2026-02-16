@@ -9,21 +9,25 @@ interface DashboardLayoutProps {
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Dashboard',
+  '/orders': 'Orders',
   '/inventory': 'Inventory',
-  '/sales': 'Sales',
-  '/customers': 'Customers',
   '/import': 'Import Devices',
-  '/accounting': 'Accounting',
-  '/expenses': 'Expenses',
-  '/taxes': 'Tax Center',
-  '/invoices': 'Invoices',
-  
-  '/forecasting': 'AI Forecasting',
-  '/reports': 'Reports',
   '/suppliers': 'Suppliers',
+  '/invoices': 'Invoices',
+  '/expenses': 'Expenses',
+  '/statements/profit-loss': 'Profit & Loss',
+  '/statements/balance-sheet': 'Balance Sheet',
+  '/statements/cash-flow': 'Cash Flow',
+  '/accounting/ap': 'Accounts Payable',
+  '/accounting/ar': 'Accounts Receivable',
+  '/taxes': 'Tax Center',
+  '/accounting/knowledge': 'Accounting Guide',
+  '/reports': 'Reports & Analytics',
+  '/forecasting': 'AI Forecasting',
   '/team': 'Team',
   '/audit-logs': 'Audit Logs',
   '/settings': 'Settings',
+  '/help': 'Help',
 };
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
