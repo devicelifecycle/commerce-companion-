@@ -2,15 +2,11 @@ import { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExecutiveDashboard } from '@/components/reports/ExecutiveDashboard';
-import { ProfitLossStatement } from '@/components/reports/ProfitLossStatement';
-import { SalesReports } from '@/components/reports/SalesReports';
-import { InventoryReports } from '@/components/reports/InventoryReports';
-import { ExpenseReports } from '@/components/reports/ExpenseReports';
 import { MarketplaceAccounting } from '@/components/reports/MarketplaceAccounting';
 import { MarketplaceReconciliation } from '@/components/reports/MarketplaceReconciliation';
 import { useCompany } from '@/contexts/CompanyContext';
 import { 
-  LayoutDashboard, FileText, ShoppingCart, Package, Wallet, Building2, Store, CheckSquare
+  LayoutDashboard, Store, CheckSquare, Building2
 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
@@ -50,14 +46,10 @@ export default function Reports() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
-              <span className="hidden sm:inline">Dashboard</span>
-            </TabsTrigger>
-            <TabsTrigger value="pnl" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">P&L</span>
+              <span className="hidden sm:inline">Executive</span>
             </TabsTrigger>
             <TabsTrigger value="marketplace" className="flex items-center gap-2">
               <Store className="h-4 w-4" />
@@ -65,28 +57,12 @@ export default function Reports() {
             </TabsTrigger>
             <TabsTrigger value="reconciliation" className="flex items-center gap-2">
               <CheckSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">Reconcile</span>
-            </TabsTrigger>
-            <TabsTrigger value="sales" className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4" />
-              <span className="hidden sm:inline">Sales</span>
-            </TabsTrigger>
-            <TabsTrigger value="inventory" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              <span className="hidden sm:inline">Inventory</span>
-            </TabsTrigger>
-            <TabsTrigger value="expenses" className="flex items-center gap-2">
-              <Wallet className="h-4 w-4" />
-              <span className="hidden sm:inline">Expenses</span>
+              <span className="hidden sm:inline">Reconciliation</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard" className="space-y-6">
             <ExecutiveDashboard companyView={companyView} />
-          </TabsContent>
-
-          <TabsContent value="pnl" className="space-y-6">
-            <ProfitLossStatement companyView={companyView} />
           </TabsContent>
 
           <TabsContent value="marketplace" className="space-y-6">
@@ -95,18 +71,6 @@ export default function Reports() {
 
           <TabsContent value="reconciliation" className="space-y-6">
             <MarketplaceReconciliation companyView={companyView} />
-          </TabsContent>
-
-          <TabsContent value="sales" className="space-y-6">
-            <SalesReports companyView={companyView} />
-          </TabsContent>
-
-          <TabsContent value="inventory" className="space-y-6">
-            <InventoryReports companyView={companyView} />
-          </TabsContent>
-
-          <TabsContent value="expenses" className="space-y-6">
-            <ExpenseReports companyView={companyView} />
           </TabsContent>
         </Tabs>
       </div>

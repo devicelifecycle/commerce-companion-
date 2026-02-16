@@ -8,12 +8,13 @@ import { QuickStats } from '@/components/dashboard/QuickStats';
 import { CashPosition } from '@/components/dashboard/CashPosition';
 import { InventoryValuation } from '@/components/dashboard/InventoryValuation';
 import { GoalProgress } from '@/components/dashboard/GoalProgress';
+import { ProfitabilityKPIs } from '@/components/dashboard/ProfitabilityKPIs';
 import { RevenueChart } from '@/components/dashboard/RevenueChart';
 import { MarketplaceChart } from '@/components/dashboard/MarketplaceChart';
 import { TopProductsChart } from '@/components/dashboard/TopProductsChart';
 import { StatusBadge, MarketplaceBadge } from '@/components/ui/status-badge';
 import { 
-  AlertCircle, Activity, Wallet, BarChart3, ShoppingCart, Target 
+  AlertCircle, Activity, Wallet, BarChart3, ShoppingCart, Target, Percent
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -141,12 +142,28 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Section 2: Financial Overview (Admin only) */}
+        {/* Section 2: Profitability KPIs (Admin only) */}
         {isAdmin && (
           <section className="section-container">
             <div className="section-header">
               <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <Wallet className="h-5 w-5 text-primary" />
+                <Percent className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="section-title">Profitability</h2>
+                <p className="text-sm text-muted-foreground">Key performance indicators for the current month</p>
+              </div>
+            </div>
+            <ProfitabilityKPIs />
+          </section>
+        )}
+
+        {/* Section 3: Financial Overview (Admin only) */}
+        {isAdmin && (
+          <section className="section-container">
+            <div className="section-header">
+              <div className="h-10 w-10 rounded-xl bg-secondary/15 flex items-center justify-center">
+                <Wallet className="h-5 w-5 text-secondary" />
               </div>
               <div>
                 <h2 className="section-title">Financial Overview</h2>
