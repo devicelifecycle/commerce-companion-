@@ -9,6 +9,8 @@ import { InventoryTransferDialog } from '@/components/inventory/InventoryTransfe
 import { InventoryLabelDialog } from '@/components/inventory/InventoryLabelDialog';
 import { AgingInventoryReport } from '@/components/inventory/AgingInventoryReport';
 import { ReturnsManagement } from '@/components/inventory/ReturnsManagement';
+import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker';
+import { FBAFeeAnalytics } from '@/components/inventory/FBAFeeAnalytics';
 import { StatusBadge, ConditionBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,7 +53,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
   Search, Plus, Filter, Smartphone, Trash2, Edit2, MoreHorizontal,
-  LayoutDashboard, List, Clock, ArrowRightLeft, QrCode, Link, Upload, RotateCcw
+  LayoutDashboard, List, Clock, ArrowRightLeft, QrCode, Link, Upload, RotateCcw, Boxes
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -612,6 +614,12 @@ export default function Inventory() {
               <RotateCcw className="h-4 w-4" />
               Returns
             </TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger value="fba" className="flex items-center gap-2">
+                <Boxes className="h-4 w-4" />
+                FBA Management
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {isSuperAdmin && (
@@ -800,6 +808,23 @@ export default function Inventory() {
           <TabsContent value="returns">
             <ReturnsManagement />
           </TabsContent>
+
+          {isSuperAdmin && (
+            <TabsContent value="fba" className="space-y-6">
+              <Tabs defaultValue="inventory">
+                <TabsList>
+                  <TabsTrigger value="inventory">FBA Inventory</TabsTrigger>
+                  <TabsTrigger value="fees">Fee Analytics</TabsTrigger>
+                </TabsList>
+                <TabsContent value="inventory" className="mt-4">
+                  <FBAInventoryTracker />
+                </TabsContent>
+                <TabsContent value="fees" className="mt-4">
+                  <FBAFeeAnalytics />
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+          )}
         </Tabs>
 
         {/* Edit Dialog */}
