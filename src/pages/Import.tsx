@@ -141,6 +141,13 @@ export default function Import() {
   const [otherCharges, setOtherCharges] = useState('0');
   const [reviewInvoiceNumber, setReviewInvoiceNumber] = useState('');
   const [isFinalizingAP, setIsFinalizingAP] = useState(false);
+  const [finalizeResult, setFinalizeResult] = useState<{
+    apId: string;
+    poNumber: string;
+    grnNumber: string;
+    invoiceTotal: number;
+    supplierName: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchSuppliers();
@@ -490,6 +497,11 @@ export default function Import() {
 
     const successCount = results.filter(r => r.success).length;
     toast.success(`Imported ${successCount} of ${results.length} devices`);
+
+    // Auto-advance to review if there are successful imports
+    if (successCount > 0) {
+      setStep('review');
+    }
   };
 
   const getImportedSummary = () => {
@@ -500,7 +512,7 @@ export default function Import() {
     }, 0);
 
     // Group by supplier
-    const supplierGroups = new Map<string, { name: string; count: number; subtotal: number }>();
+    const supplierGroups = new Map<string, { name: string; count: number; subtotal: number; id: string | null }>();
     for (const r of successfulRows) {
       if (!r.data) continue;
       const code = mapping.supplier_id_code
@@ -508,7 +520,7 @@ export default function Import() {
         : '000';
       const supplier = suppliers.find(s => s.supplier_code === code);
       const name = supplier?.name || 'Unknown';
-      const existing = supplierGroups.get(code) || { name, count: 0, subtotal: 0 };
+      const existing = supplierGroups.get(code) || { name, count: 0, subtotal: 0, id: supplier?.id || null };
       existing.count++;
       existing.subtotal += mapping.cost_price ? parseFloat(String(r.data[mapping.cost_price] || '0')) : 0;
       supplierGroups.set(code, existing);
@@ -516,47 +528,34 @@ export default function Import() {
 
     // Tax breakdown
     let taxIncludedCount = 0, zeroRatedCount = 0, gstPaidCount = 0, hstPaidCount = 0;
+    let estimatedTax = 0;
     for (const r of successfulRows) {
       if (!r.data || !mapping.tax_status) continue;
       const ts = String(r.data[mapping.tax_status] || '').trim();
+      const cost = mapping.cost_price ? parseFloat(String(r.data[mapping.cost_price] || '0')) : 0;
       if (ts === 'Tax Included') taxIncludedCount++;
-      else if (ts === 'Zero-Rated') zeroRatedCount++;
-      else if (ts === 'GST Paid') gstPaidCount++;
-      else if (ts === 'HST Paid') hstPaidCount++;
+      else if (ts === 'Zero-Rated') { zeroRatedCount++; estimatedTax += cost * 0.05; }
+      else if (ts === 'GST Paid') { gstPaidCount++; estimatedTax += cost * 0.05; }
+      else if (ts === 'HST Paid') { hstPaidCount++; estimatedTax += cost * 0.13; }
     }
 
-    return { subtotal, supplierGroups, taxIncludedCount, zeroRatedCount, gstPaidCount, hstPaidCount, totalItems: successfulRows.length };
+    return { subtotal, supplierGroups, taxIncludedCount, zeroRatedCount, gstPaidCount, hstPaidCount, totalItems: successfulRows.length, estimatedTax };
   };
+
 
   const handleFinalizeAP = async () => {
     if (!batchId) return;
     setIsFinalizingAP(true);
+    setFinalizeResult(null);
 
     try {
       const summary = getImportedSummary();
       const shipping = parseFloat(shippingCost) || 0;
       const other = parseFloat(otherCharges) || 0;
-
-      // Estimate GST/HST based on tax status
-      let estimatedGstHst = 0;
-      const successfulRows = importResults.filter(r => r.success);
-      for (const r of successfulRows) {
-        if (!r.data || !mapping.tax_status) continue;
-        const ts = String(r.data[mapping.tax_status] || '').trim();
-        const cost = mapping.cost_price ? parseFloat(String(r.data[mapping.cost_price] || '0')) : 0;
-        if (ts === 'Zero-Rated') {
-          estimatedGstHst += cost * 0.05; // GST implied
-        } else if (ts === 'GST Paid') {
-          estimatedGstHst += cost * 0.05;
-        } else if (ts === 'HST Paid') {
-          estimatedGstHst += cost * 0.13;
-        }
-        // Tax Included means tax is already in the cost, no additional tax
-      }
-
+      const estimatedGstHst = summary.estimatedTax;
       const invoiceTotal = summary.subtotal + estimatedGstHst + shipping + other;
 
-      // Update batch
+      // Update batch with charges and lock it
       await supabase
         .from('import_batches')
         .update({
@@ -567,7 +566,7 @@ export default function Import() {
         })
         .eq('id', batchId);
 
-      // Get the batch info for AP creation
+      // Get the batch info
       const { data: batchInfo } = await supabase
         .from('import_batches')
         .select('company_id, supplier_id')
@@ -590,8 +589,8 @@ export default function Import() {
       // Create AP record
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 30);
-      
-      await supabase.from('accounts_payable').insert({
+
+      const { data: apRecord, error: apError } = await supabase.from('accounts_payable').insert({
         company_id: batchInfo.company_id,
         vendor_name: supplierName,
         vendor_id: batchInfo.supplier_id,
@@ -600,20 +599,43 @@ export default function Import() {
         due_date: dueDate.toISOString().split('T')[0],
         original_amount: invoiceTotal,
         gst_hst_amount: estimatedGstHst,
+        pst_amount: 0,
         category: 'inventory_purchase',
         description: `Inventory purchase — ${summary.totalItems} devices`,
         status: 'outstanding',
         created_by: user?.id,
-      });
+      }).select('id').single();
 
-      // Create PO and GRN via existing automation
-      const importedDevices = [];
+      if (apError) throw apError;
+
+      // Build device data for PO items with proper tax per item
+      const successfulRows = importResults.filter(r => r.success);
+      const poItems: Array<{
+        description: string;
+        quantity: number;
+        unitCost: number;
+        gstHstAmount: number;
+        pstQstAmount: number;
+      }> = [];
+
       for (const r of successfulRows) {
         if (!r.data) continue;
         const brand = mapping.brand ? String(r.data[mapping.brand] || '').trim() : '';
         const model = mapping.model ? String(r.data[mapping.model] || '').trim() : '';
         const cost = mapping.cost_price ? parseFloat(String(r.data[mapping.cost_price] || '0')) : 0;
-        importedDevices.push({ brand, model, costPrice: cost });
+        let itemGst = 0;
+        if (mapping.tax_status) {
+          const ts = String(r.data[mapping.tax_status] || '').trim();
+          if (ts === 'Zero-Rated' || ts === 'GST Paid') itemGst = cost * 0.05;
+          else if (ts === 'HST Paid') itemGst = cost * 0.13;
+        }
+        poItems.push({
+          description: `${brand} ${model}`,
+          quantity: 1,
+          unitCost: cost,
+          gstHstAmount: itemGst,
+          pstQstAmount: 0,
+        });
       }
 
       // Get company code
@@ -623,36 +645,41 @@ export default function Import() {
         .eq('id', batchInfo.company_id)
         .single();
 
-      if (company && importedDevices.length > 0) {
-        const { purchaseOrder } = await createPurchaseOrder({
+      let poNumber = '';
+      let grnNumber = '';
+
+      if (company && poItems.length > 0) {
+        const { purchaseOrder, poNumber: pn } = await createPurchaseOrder({
           companyId: batchInfo.company_id,
           supplierId: batchInfo.supplier_id || undefined,
           supplierName,
-          items: importedDevices.map(d => ({
-            description: `${d.brand} ${d.model}`,
-            quantity: 1,
-            unitCost: d.costPrice,
-            gstHstAmount: 0,
-            pstQstAmount: 0,
-          })),
+          items: poItems,
           createdBy: user?.id,
         });
+        poNumber = pn;
 
-        await createGoodsReceivedNote({
+        const { grnNumber: gn } = await createGoodsReceivedNote({
           companyId: batchInfo.company_id,
           purchaseOrderId: purchaseOrder.id,
           supplierId: batchInfo.supplier_id || undefined,
-          items: importedDevices.map(() => ({
+          items: poItems.map(() => ({
             quantityReceived: 1,
             conditionStatus: 'passed' as const,
           })),
           receivedBy: user?.id,
         });
+        grnNumber = gn;
       }
 
-      toast.success('Accounts Payable created, Purchase Order and GRN generated!');
-      setStep('upload');
-      resetImport();
+      setFinalizeResult({
+        apId: apRecord.id,
+        poNumber,
+        grnNumber,
+        invoiceTotal,
+        supplierName,
+      });
+
+      toast.success('AP, Purchase Order, and GRN created — batch locked!');
     } catch (error: any) {
       console.error('Finalize error:', error);
       toast.error(error.message || 'Failed to finalize');
@@ -701,6 +728,7 @@ export default function Import() {
     setShippingCost('0');
     setOtherCharges('0');
     setReviewInvoiceNumber('');
+    setFinalizeResult(null);
     setStep('upload');
   };
 
@@ -1123,7 +1151,7 @@ export default function Import() {
                     {importResults.filter(r => r.success).length > 0 && (
                       <Button onClick={() => setStep('review')}>
                         <DollarSign className="h-4 w-4 mr-2" />
-                        Review & Create AP
+                        Continue to Review & AP
                       </Button>
                     )}
                   </div>
@@ -1134,161 +1162,248 @@ export default function Import() {
         )}
 
         {step === 'review' && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Review & Finalize Import
-              </CardTitle>
-              <CardDescription>
-                Add shipping/charges, match to supplier invoice, and create Accounts Payable
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {(() => {
-                const summary = getImportedSummary();
-                const shipping = parseFloat(shippingCost) || 0;
-                const other = parseFloat(otherCharges) || 0;
+          <>
+            {/* Finalization success confirmation */}
+            {finalizeResult && (
+              <Card className="border-2 border-primary/30">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-primary">
+                    <CheckCircle className="h-6 w-6" />
+                    Batch Finalized & Locked
+                  </CardTitle>
+                  <CardDescription>
+                    All accounting records have been created successfully
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                    <div className="p-4 rounded-lg border bg-muted/30 text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Accounts Payable</p>
+                      <p className="font-bold text-lg">${finalizeResult.invoiceTotal.toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">{finalizeResult.supplierName}</p>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-muted/30 text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Purchase Order</p>
+                      <p className="font-bold font-mono">{finalizeResult.poNumber || '—'}</p>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-muted/30 text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Goods Received Note</p>
+                      <p className="font-bold font-mono">{finalizeResult.grnNumber || '—'}</p>
+                    </div>
+                    <div className="p-4 rounded-lg border bg-muted/30 text-center">
+                      <p className="text-xs text-muted-foreground mb-1">Status</p>
+                      <Badge className="mt-1">Outstanding</Badge>
+                    </div>
+                  </div>
 
-                // Estimate tax
-                let estimatedTax = 0;
-                const successfulRows = importResults.filter(r => r.success);
-                for (const r of successfulRows) {
-                  if (!r.data || !mapping.tax_status) continue;
-                  const ts = String(r.data[mapping.tax_status] || '').trim();
-                  const cost = mapping.cost_price ? parseFloat(String(r.data[mapping.cost_price] || '0')) : 0;
-                  if (ts === 'Zero-Rated') estimatedTax += cost * 0.05;
-                  else if (ts === 'GST Paid') estimatedTax += cost * 0.05;
-                  else if (ts === 'HST Paid') estimatedTax += cost * 0.13;
-                }
+                  <Alert>
+                    <CheckCircle className="h-4 w-4" />
+                    <AlertTitle>What was created</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc list-inside mt-1 space-y-1 text-sm">
+                        <li>AP entry for <strong>{finalizeResult.supplierName}</strong> — ${finalizeResult.invoiceTotal.toFixed(2)} due in 30 days</li>
+                        <li>Purchase Order <strong>{finalizeResult.poNumber}</strong> with line items for each device</li>
+                        <li>Goods Received Note <strong>{finalizeResult.grnNumber}</strong> — all items marked as received</li>
+                        <li>Batch locked — devices cannot be re-imported</li>
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
 
-                const invoiceTotal = summary.subtotal + estimatedTax + shipping + other;
+                  <Button onClick={resetImport} className="w-full">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import Another Batch
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
 
-                return (
-                  <>
-                    {/* Summary by supplier */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold">Items by Supplier</h3>
-                      <div className="grid gap-2">
-                        {Array.from(summary.supplierGroups.entries()).map(([code, info]) => (
-                          <div key={code} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                            <div>
-                              <span className="font-mono text-primary font-semibold">S-{code}</span>
-                              <span className="ml-2 text-muted-foreground">{info.name}</span>
+            {/* Pre-finalization review form */}
+            {!finalizeResult && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <DollarSign className="h-5 w-5" />
+                    Review & Finalize — Create Accounts Payable
+                  </CardTitle>
+                  <CardDescription>
+                    Match to supplier invoice, add shipping/charges. Finalizing will create AP, PO, and GRN and lock this batch.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {(() => {
+                    const summary = getImportedSummary();
+                    const shipping = parseFloat(shippingCost) || 0;
+                    const other = parseFloat(otherCharges) || 0;
+                    const invoiceTotal = summary.subtotal + summary.estimatedTax + shipping + other;
+
+                    return (
+                      <>
+                        {/* Import summary banner */}
+                        <Alert>
+                          <AlertCircle className="h-4 w-4" />
+                          <AlertTitle>{summary.totalItems} devices imported successfully</AlertTitle>
+                          <AlertDescription>
+                            Complete the fields below to generate the AP entry, Purchase Order, and Goods Received Note.
+                          </AlertDescription>
+                        </Alert>
+
+                        {/* Summary by supplier */}
+                        <div className="space-y-3">
+                          <h3 className="font-semibold">Items by Supplier</h3>
+                          <div className="grid gap-2">
+                            {Array.from(summary.supplierGroups.entries()).map(([code, info]) => (
+                              <div key={code} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                                <div>
+                                  <span className="font-mono text-primary font-semibold">S-{code}</span>
+                                  <span className="ml-2 text-muted-foreground">{info.name}</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="text-sm text-muted-foreground">{info.count} items</span>
+                                  <span className="ml-4 font-semibold">${info.subtotal.toFixed(2)}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Tax breakdown */}
+                        {(summary.taxIncludedCount + summary.zeroRatedCount + summary.gstPaidCount + summary.hstPaidCount) > 0 && (
+                          <div className="space-y-2">
+                            <h3 className="font-semibold">Tax Breakdown</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                              {summary.taxIncludedCount > 0 && (
+                                <div className="p-3 rounded-lg border text-center">
+                                  <p className="text-xs text-muted-foreground">Tax Included</p>
+                                  <p className="font-semibold">{summary.taxIncludedCount} items</p>
+                                </div>
+                              )}
+                              {summary.zeroRatedCount > 0 && (
+                                <div className="p-3 rounded-lg border text-center">
+                                  <p className="text-xs text-muted-foreground">Zero-Rated (GST implied)</p>
+                                  <p className="font-semibold">{summary.zeroRatedCount} items</p>
+                                </div>
+                              )}
+                              {summary.gstPaidCount > 0 && (
+                                <div className="p-3 rounded-lg border text-center">
+                                  <p className="text-xs text-muted-foreground">GST Paid</p>
+                                  <p className="font-semibold">{summary.gstPaidCount} items</p>
+                                </div>
+                              )}
+                              {summary.hstPaidCount > 0 && (
+                                <div className="p-3 rounded-lg border text-center">
+                                  <p className="text-xs text-muted-foreground">HST Paid</p>
+                                  <p className="font-semibold">{summary.hstPaidCount} items</p>
+                                </div>
+                              )}
                             </div>
-                            <div className="text-right">
-                              <span className="text-sm text-muted-foreground">{info.count} items</span>
-                              <span className="ml-4 font-semibold">${info.subtotal.toFixed(2)}</span>
+                          </div>
+                        )}
+
+                        {/* Invoice matching fields */}
+                        <div className="space-y-3">
+                          <h3 className="font-semibold">Invoice Matching</h3>
+                          <div className="grid gap-4 md:grid-cols-3">
+                            <div className="space-y-2">
+                              <Label>Supplier Invoice Number</Label>
+                              <Input
+                                value={reviewInvoiceNumber}
+                                onChange={(e) => setReviewInvoiceNumber(e.target.value)}
+                                placeholder="INV-2026-001"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Shipping Cost ($)</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={shippingCost}
+                                onChange={(e) => setShippingCost(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Other Charges ($)</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={otherCharges}
+                                onChange={(e) => setOtherCharges(e.target.value)}
+                              />
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Tax breakdown */}
-                    <div className="space-y-2">
-                      <h3 className="font-semibold">Tax Breakdown</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {summary.taxIncludedCount > 0 && (
-                          <div className="p-3 rounded-lg border text-center">
-                            <p className="text-xs text-muted-foreground">Tax Included</p>
-                            <p className="font-semibold">{summary.taxIncludedCount} items</p>
-                          </div>
-                        )}
-                        {summary.zeroRatedCount > 0 && (
-                          <div className="p-3 rounded-lg border text-center">
-                            <p className="text-xs text-muted-foreground">Zero-Rated (GST implied)</p>
-                            <p className="font-semibold">{summary.zeroRatedCount} items</p>
-                          </div>
-                        )}
-                        {summary.gstPaidCount > 0 && (
-                          <div className="p-3 rounded-lg border text-center">
-                            <p className="text-xs text-muted-foreground">GST Paid</p>
-                            <p className="font-semibold">{summary.gstPaidCount} items</p>
-                          </div>
-                        )}
-                        {summary.hstPaidCount > 0 && (
-                          <div className="p-3 rounded-lg border text-center">
-                            <p className="text-xs text-muted-foreground">HST Paid</p>
-                            <p className="font-semibold">{summary.hstPaidCount} items</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Additional charges */}
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <div className="space-y-2">
-                        <Label>Supplier Invoice Number</Label>
-                        <Input
-                          value={reviewInvoiceNumber}
-                          onChange={(e) => setReviewInvoiceNumber(e.target.value)}
-                          placeholder="INV-2026-001"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Shipping Cost ($)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={shippingCost}
-                          onChange={(e) => setShippingCost(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Other Charges ($)</Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={otherCharges}
-                          onChange={(e) => setOtherCharges(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Invoice total */}
-                    <div className="p-4 rounded-lg border-2 border-primary/30 bg-primary/5 space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Subtotal ({summary.totalItems} items)</span>
-                        <span>${summary.subtotal.toFixed(2)}</span>
-                      </div>
-                      {estimatedTax > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span>Estimated Tax (GST/HST)</span>
-                          <span>${estimatedTax.toFixed(2)}</span>
                         </div>
-                      )}
-                      {shipping > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span>Shipping</span>
-                          <span>${shipping.toFixed(2)}</span>
-                        </div>
-                      )}
-                      {other > 0 && (
-                        <div className="flex justify-between text-sm">
-                          <span>Other Charges</span>
-                          <span>${other.toFixed(2)}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                        <span>Invoice Total</span>
-                        <span>${invoiceTotal.toFixed(2)}</span>
-                      </div>
-                    </div>
 
-                    <div className="flex gap-4">
-                      <Button variant="outline" onClick={() => setStep('results')}>Back</Button>
-                      <Button onClick={handleFinalizeAP} disabled={isFinalizingAP}>
-                        {isFinalizingAP ? 'Finalizing...' : 'Finalize & Create AP'}
-                      </Button>
-                    </div>
-                  </>
-                );
-              })()}
-            </CardContent>
-          </Card>
+                        {/* Invoice total summary */}
+                        <div className="p-4 rounded-lg border-2 border-primary/30 bg-primary/5 space-y-2">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">AP Entry Preview</p>
+                          <div className="flex justify-between text-sm">
+                            <span>Subtotal ({summary.totalItems} items)</span>
+                            <span>${summary.subtotal.toFixed(2)}</span>
+                          </div>
+                          {summary.estimatedTax > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span>Estimated Tax (GST/HST)</span>
+                              <span>${summary.estimatedTax.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {shipping > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span>Shipping</span>
+                              <span>${shipping.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {other > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span>Other Charges</span>
+                              <span>${other.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                            <span>Invoice Total (AP Amount)</span>
+                            <span>${invoiceTotal.toFixed(2)}</span>
+                          </div>
+                        </div>
+
+                        {/* What will be created */}
+                        <Alert>
+                          <Info className="h-4 w-4" />
+                          <AlertTitle>On finalization, the following will be created:</AlertTitle>
+                          <AlertDescription>
+                            <ul className="list-disc list-inside mt-1 space-y-1 text-sm">
+                              <li><strong>Accounts Payable</strong> — ${invoiceTotal.toFixed(2)} due in 30 days</li>
+                              <li><strong>Purchase Order</strong> — with line items and tax per device</li>
+                              <li><strong>Goods Received Note</strong> — all items marked as received</li>
+                              <li>Batch will be <strong>locked</strong> — no further changes</li>
+                            </ul>
+                          </AlertDescription>
+                        </Alert>
+
+                        <div className="flex gap-4">
+                          <Button variant="outline" onClick={() => setStep('results')}>
+                            Back to Results
+                          </Button>
+                          <Button onClick={handleFinalizeAP} disabled={isFinalizingAP} size="lg">
+                            {isFinalizingAP ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
+                                Finalizing...
+                              </>
+                            ) : (
+                              <>
+                                <DollarSign className="h-4 w-4 mr-2" />
+                                Finalize & Create AP
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            )}
+          </>
         )}
       </div>
     </DashboardLayout>
