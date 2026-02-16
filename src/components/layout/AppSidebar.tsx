@@ -25,6 +25,9 @@ import {
   Building2,
   DollarSign,
   ShoppingCart,
+  ClipboardCheck,
+  PackageCheck,
+  RotateCcw,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth';
@@ -57,6 +60,12 @@ const operationsNav = [
   { title: 'Import', url: '/import', icon: Upload },
   { title: 'Suppliers', url: '/suppliers', icon: Package },
   { title: 'Invoices', url: '/invoices', icon: FileText },
+];
+
+const procurementNav = [
+  { title: 'Purchase Orders', url: '/purchase-orders', icon: ClipboardCheck },
+  { title: 'Goods Received', url: '/goods-received', icon: PackageCheck },
+  { title: 'Returns / RMA', url: '/returns', icon: RotateCcw },
 ];
 
 const expenseNav = [
@@ -153,6 +162,17 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             {renderNavItems(operationsNav)}
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <Separator className="my-1.5 bg-border/50" />
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
+            Procurement
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            {renderNavItems(procurementNav)}
           </SidebarGroupContent>
         </SidebarGroup>
 

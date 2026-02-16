@@ -29,6 +29,9 @@ import AccountsReceivablePage from "./pages/AccountsReceivablePage";
 import NotFound from "./pages/NotFound";
 import AuditLogs from "./pages/AuditLogs";
 import Help from "./pages/Help";
+import PurchaseOrders from "./pages/PurchaseOrders";
+import GoodsReceived from "./pages/GoodsReceived";
+import Returns from "./pages/Returns";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +77,9 @@ const App = () => (
               <Route path="/suppliers" element={<ProtectedRoute><Suppliers /></ProtectedRoute>} />
               <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
               <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+              <Route path="/purchase-orders" element={<ProtectedRoute><PurchaseOrders /></ProtectedRoute>} />
+              <Route path="/goods-received" element={<ProtectedRoute><GoodsReceived /></ProtectedRoute>} />
+              <Route path="/returns" element={<ProtectedRoute><Returns /></ProtectedRoute>} />
               <Route path="/statements/profit-loss" element={<ProtectedRoute><ProfitLoss /></ProtectedRoute>} />
               <Route path="/statements/balance-sheet" element={<ProtectedRoute><BalanceSheet /></ProtectedRoute>} />
               <Route path="/statements/cash-flow" element={<ProtectedRoute><CashFlow /></ProtectedRoute>} />
