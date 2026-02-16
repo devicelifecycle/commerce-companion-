@@ -59,7 +59,7 @@ export default function Dashboard() {
           )
         `)
         .order('sale_date', { ascending: false })
-        .limit(5);
+        .limit(8);
 
       if (selectedCompany) {
         query = query.eq('company_id', selectedCompany.id);
@@ -90,11 +90,11 @@ export default function Dashboard() {
   if (loading || companyLoading) {
     return (
       <DashboardLayout>
-        <div className="animate-pulse space-y-6">
-          <div className="h-10 bg-muted rounded w-64" />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-36 bg-muted rounded-xl" />
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-muted rounded w-48" />
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-20 bg-muted rounded-lg" />
             ))}
           </div>
         </div>
@@ -104,146 +104,96 @@ export default function Dashboard() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-8 animate-fade-in">
-        {/* Header Section */}
+      <div className="space-y-4 animate-fade-in">
+        {/* Header - compact */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-display font-bold gradient-text">Dashboard</h1>
-            <p className="text-muted-foreground mt-1">
-              Welcome back! Here's your business overview.
+            <h1 className="text-2xl font-display font-bold gradient-text">Dashboard</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Business overview — {format(new Date(), 'EEEE, MMM d, yyyy')}
             </p>
           </div>
-          <div className="hidden md:flex items-center gap-3">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-success/10 border border-success/30">
-              <Activity className="h-4 w-4 text-success animate-pulse" />
-              <span className="text-sm font-medium text-success">Live</span>
+          <div className="hidden md:flex items-center gap-2">
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 border border-success/30">
+              <Activity className="h-3 w-3 text-success animate-pulse" />
+              <span className="text-xs font-medium text-success">Live</span>
             </div>
           </div>
         </div>
 
-        {/* Section 1: Alerts & Activity */}
+        {/* Profitability KPIs - Admin only - top of page for visibility */}
+        {isAdmin && <ProfitabilityKPIs />}
+
+        {/* Row: Alerts + Quick Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+          <div className="lg:col-span-4">
+            <AlertsPanel />
+          </div>
+          <div className="lg:col-span-8">
+            <QuickStats />
+          </div>
+        </div>
+
+        {/* Financial Overview - Admin only */}
+        {isAdmin && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <CashPosition />
+            <InventoryValuation />
+            <GoalProgress />
+          </div>
+        )}
+
+        {/* Analytics - Admin only */}
+        {isAdmin && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <RevenueChart />
+            <MarketplaceChart />
+            <TopProductsChart />
+          </div>
+        )}
+
+        {/* Recent Sales - compact table style */}
         <section className="section-container">
           <div className="section-header">
-            <div className="h-10 w-10 rounded-xl bg-destructive/15 flex items-center justify-center">
-              <AlertCircle className="h-5 w-5 text-destructive" />
-            </div>
-            <div>
-              <h2 className="section-title">Alerts & Activity</h2>
-              <p className="text-sm text-muted-foreground">Important notifications and recent actions</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-            <div className="lg:col-span-1">
-              <AlertsPanel />
-            </div>
-            <div className="lg:col-span-2">
-              <QuickStats />
-            </div>
-          </div>
-        </section>
-
-        {/* Section 2: Profitability KPIs (Admin only) */}
-        {isAdmin && (
-          <section className="section-container">
-            <div className="section-header">
-              <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <Percent className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h2 className="section-title">Profitability</h2>
-                <p className="text-sm text-muted-foreground">Key performance indicators for the current month</p>
-              </div>
-            </div>
-            <ProfitabilityKPIs />
-          </section>
-        )}
-
-        {/* Section 3: Financial Overview (Admin only) */}
-        {isAdmin && (
-          <section className="section-container">
-            <div className="section-header">
-              <div className="h-10 w-10 rounded-xl bg-secondary/15 flex items-center justify-center">
-                <Wallet className="h-5 w-5 text-secondary" />
-              </div>
-              <div>
-                <h2 className="section-title">Financial Overview</h2>
-                <p className="text-sm text-muted-foreground">Cash position, inventory value, and goal tracking</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              <CashPosition />
-              <InventoryValuation />
-              <GoalProgress />
-            </div>
-          </section>
-        )}
-
-        {/* Section 3: Analytics & Performance (Admin only) */}
-        {isAdmin && (
-          <section className="section-container">
-            <div className="section-header">
-              <div className="h-10 w-10 rounded-xl bg-secondary/15 flex items-center justify-center">
-                <BarChart3 className="h-5 w-5 text-secondary" />
-              </div>
-              <div>
-                <h2 className="section-title">Analytics & Performance</h2>
-                <p className="text-sm text-muted-foreground">Revenue trends and marketplace insights</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              <RevenueChart />
-              <MarketplaceChart />
-              <TopProductsChart />
-            </div>
-          </section>
-        )}
-
-        {/* Section 4: Recent Sales */}
-        <section className="section-container">
-          <div className="section-header">
-            <div className="h-10 w-10 rounded-xl bg-accent/15 flex items-center justify-center">
-              <ShoppingCart className="h-5 w-5 text-accent" />
-            </div>
-            <div>
-              <h2 className="section-title">Recent Sales</h2>
-              <p className="text-sm text-muted-foreground">Latest transactions and orders</p>
-            </div>
+            <ShoppingCart className="h-4 w-4 text-accent" />
+            <h2 className="section-title">Recent Sales</h2>
           </div>
           
           {recentSales.length === 0 ? (
-            <div className="subsection flex flex-col items-center justify-center py-10 text-center">
-              <div className="h-14 w-14 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
-                <ShoppingCart className="h-7 w-7 text-muted-foreground" />
+            <div className="flex items-center justify-center py-6 text-center">
+              <div className="flex flex-col items-center">
+                <ShoppingCart className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                <p className="text-sm text-muted-foreground">No sales recorded yet</p>
               </div>
-              <p className="font-medium text-foreground">No sales recorded yet</p>
-              <p className="text-sm text-muted-foreground mt-1">Sales will appear here once you start selling</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-              {recentSales.map((sale) => (
-                <div
-                  key={sale.id}
-                  className="interactive-card flex items-center justify-between"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium truncate">
-                      {sale.device ? `${sale.device.brand} ${sale.device.model}` : 'Unknown Device'}
-                    </p>
-                    <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-muted-foreground font-mono">
-                        #{sale.order_number}
-                      </span>
-                      <MarketplaceBadge marketplace={sale.marketplace} />
-                    </div>
-                  </div>
-                  <div className="text-right ml-3">
-                    <p className="font-semibold text-primary">{formatCurrency(Number(sale.sale_price))}</p>
-                    <p className={`text-sm font-medium ${Number(sale.profit) > 0 ? 'text-success' : 'text-destructive'}`}>
-                      {Number(sale.profit) > 0 ? '+' : ''}{formatCurrency(Number(sale.profit))}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            <div className="overflow-x-auto">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Device</th>
+                    <th>Order #</th>
+                    <th>Channel</th>
+                    <th className="text-right">Revenue</th>
+                    <th className="text-right">Profit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentSales.map((sale) => (
+                    <tr key={sale.id}>
+                      <td className="font-medium">
+                        {sale.device ? `${sale.device.brand} ${sale.device.model}` : 'Unknown'}
+                      </td>
+                      <td className="font-mono text-muted-foreground">#{sale.order_number}</td>
+                      <td><MarketplaceBadge marketplace={sale.marketplace} /></td>
+                      <td className="text-right font-medium text-primary">{formatCurrency(Number(sale.sale_price))}</td>
+                      <td className={`text-right font-medium ${Number(sale.profit) > 0 ? 'text-success' : 'text-destructive'}`}>
+                        {Number(sale.profit) > 0 ? '+' : ''}{formatCurrency(Number(sale.profit))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
