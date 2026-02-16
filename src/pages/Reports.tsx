@@ -4,9 +4,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExecutiveDashboard } from '@/components/reports/ExecutiveDashboard';
 import { MarketplaceAccounting } from '@/components/reports/MarketplaceAccounting';
 import { MarketplaceReconciliation } from '@/components/reports/MarketplaceReconciliation';
+import { MarketplaceFeeAnalytics } from '@/components/reports/MarketplaceFeeAnalytics';
 import { useCompany } from '@/contexts/CompanyContext';
 import { 
-  LayoutDashboard, Store, CheckSquare, Building2
+  LayoutDashboard, Store, CheckSquare, Building2, Receipt
 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
@@ -46,7 +47,7 @@ export default function Reports() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Executive</span>
@@ -54,6 +55,10 @@ export default function Reports() {
             <TabsTrigger value="marketplace" className="flex items-center gap-2">
               <Store className="h-4 w-4" />
               <span className="hidden sm:inline">Marketplace</span>
+            </TabsTrigger>
+            <TabsTrigger value="fees" className="flex items-center gap-2">
+              <Receipt className="h-4 w-4" />
+              <span className="hidden sm:inline">Fees & Commissions</span>
             </TabsTrigger>
             <TabsTrigger value="reconciliation" className="flex items-center gap-2">
               <CheckSquare className="h-4 w-4" />
@@ -67,6 +72,10 @@ export default function Reports() {
 
           <TabsContent value="marketplace" className="space-y-6">
             <MarketplaceAccounting companyView={companyView} />
+          </TabsContent>
+
+          <TabsContent value="fees" className="space-y-6">
+            <MarketplaceFeeAnalytics companyView={companyView} />
           </TabsContent>
 
           <TabsContent value="reconciliation" className="space-y-6">
