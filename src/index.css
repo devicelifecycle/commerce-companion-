@@ -192,14 +192,7 @@
   }
 
   .metric-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
-    opacity: 0.7;
+    display: none;
   }
 
   .metric-card:hover::before {

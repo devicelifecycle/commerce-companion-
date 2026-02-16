@@ -144,13 +144,9 @@ export default function Auth() {
             <Warehouse className="w-8 h-8 text-white" />
           </div>
           
-          <h1 className="text-5xl font-display font-bold gradient-text mb-4">
-            Warehouse
+          <h1 className="text-5xl font-display font-bold gradient-text mb-8">
+            Tech Genius Warehouse
           </h1>
-          
-          <p className="text-xl text-muted-foreground mb-8">
-            The complete inventory and accounting solution for your business.
-          </p>
           
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -186,8 +182,7 @@ export default function Auth() {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-primary mb-4">
               <Warehouse className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl font-display font-bold gradient-text">Warehouse</h1>
-            <p className="text-muted-foreground mt-2">Inventory & Accounting</p>
+            <h1 className="text-3xl font-display font-bold gradient-text">Tech Genius Warehouse</h1>
           </div>
 
           <Card className="border-border/50 bg-card/50 backdrop-blur-sm">
