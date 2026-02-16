@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router-dom';
 import {
+  Home,
   LayoutDashboard,
   Warehouse,
   Upload,
@@ -46,6 +47,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
+const mainNav = [
+  { title: 'Home', url: '/home', icon: Home },
+];
+
 const operationsNav = [
   { title: 'Orders', url: '/orders', icon: ShoppingCart },
   { title: 'Inventory', url: '/inventory', icon: Smartphone },
@@ -59,7 +64,7 @@ const expenseNav = [
 ];
 
 const analyticsNav = [
-  { title: 'Dashboard', url: '/', icon: LayoutDashboard },
+  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Profit & Loss', url: '/statements/profit-loss', icon: TrendingUp },
   { title: 'Balance Sheet', url: '/statements/balance-sheet', icon: Building2 },
   { title: 'Cash Flow', url: '/statements/cash-flow', icon: DollarSign },
@@ -134,6 +139,14 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-1.5">
+        <SidebarGroup>
+          <SidebarGroupContent>
+            {renderNavItems(mainNav)}
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <Separator className="my-1.5 bg-border/50" />
+
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
             Operations
