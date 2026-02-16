@@ -88,3 +88,35 @@ export function ConditionBadge({ condition, className }: ConditionBadgeProps) {
     </span>
   );
 }
+
+type FulfillmentStatusType = 'received' | 'pending' | 'shipped' | 'delivered' | 'cancelled';
+
+interface FulfillmentBadgeProps {
+  status: FulfillmentStatusType;
+  className?: string;
+}
+
+const fulfillmentLabels: Record<FulfillmentStatusType, string> = {
+  received: 'Received',
+  pending: 'Pending',
+  shipped: 'Shipped',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+};
+
+const fulfillmentStyles: Record<FulfillmentStatusType, string> = {
+  received: 'bg-info/15 text-info',
+  pending: 'bg-warning/15 text-warning',
+  shipped: 'bg-success/15 text-success',
+  delivered: 'bg-emerald-500/15 text-emerald-600',
+  cancelled: 'bg-destructive/15 text-destructive',
+};
+
+export function FulfillmentBadge({ status, className }: FulfillmentBadgeProps) {
+  const safeStatus = fulfillmentLabels[status] ? status : 'received';
+  return (
+    <span className={cn('status-badge', fulfillmentStyles[safeStatus], className)}>
+      {fulfillmentLabels[safeStatus]}
+    </span>
+  );
+}
