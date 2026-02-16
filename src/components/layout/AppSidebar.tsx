@@ -14,7 +14,7 @@ import {
   BarChart3,
   Wallet,
   Brain,
-  Target,
+  
   UserCircle,
   ClipboardList,
   HelpCircle,
@@ -55,7 +55,7 @@ const financeNavItems = [
   { title: 'Expenses', url: '/expenses', icon: Wallet },
   { title: 'Tax Center', url: '/taxes', icon: Receipt },
   { title: 'Invoices', url: '/invoices', icon: FileText },
-  { title: 'Goals', url: '/goals', icon: Target },
+  
   { title: 'Forecasting', url: '/forecasting', icon: Brain },
   { title: 'Reports', url: '/reports', icon: BarChart3 },
 ];
