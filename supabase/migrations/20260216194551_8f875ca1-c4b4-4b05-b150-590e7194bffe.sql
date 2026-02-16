@@ -1,0 +1,1 @@
+ALTER TABLE public.sales ADD COLUMN fulfillment_status text DEFAULT 'received';
