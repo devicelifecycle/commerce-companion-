@@ -14,15 +14,20 @@ import {
   BarChart3,
   Wallet,
   Brain,
-  
-  UserCircle,
   ClipboardList,
   HelpCircle,
   BookOpen,
   Smartphone,
+  ArrowUpRight,
+  ArrowDownRight,
+  Scale,
+  Building2,
+  DollarSign,
+  ShoppingCart,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth';
+import { useCompany } from '@/contexts/CompanyContext';
 import { CompanySelector } from './CompanySelector';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
 import {
@@ -41,27 +46,35 @@ import {
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 
-const mainNavItems = [
+const operationsNav = [
   { title: 'Dashboard', url: '/', icon: LayoutDashboard },
+  { title: 'Orders', url: '/orders', icon: ShoppingCart },
   { title: 'Inventory', url: '/inventory', icon: Smartphone },
-  { title: 'Sales', url: '/sales', icon: TrendingUp },
-  { title: 'Customers', url: '/customers', icon: UserCircle },
   { title: 'Import', url: '/import', icon: Upload },
-];
-
-const financeNavItems = [
-  { title: 'Accounting', url: '/accounting', icon: Calculator },
-  { title: 'Acct. Guide', url: '/accounting/knowledge', icon: BookOpen },
-  { title: 'Expenses', url: '/expenses', icon: Wallet },
-  { title: 'Tax Center', url: '/taxes', icon: Receipt },
-  { title: 'Invoices', url: '/invoices', icon: FileText },
-  
-  { title: 'Forecasting', url: '/forecasting', icon: Brain },
-  { title: 'Reports', url: '/reports', icon: BarChart3 },
-];
-
-const settingsNavItems = [
   { title: 'Suppliers', url: '/suppliers', icon: Package },
+  { title: 'Invoices', url: '/invoices', icon: FileText },
+];
+
+const expenseNav = [
+  { title: 'Expenses', url: '/expenses', icon: Wallet },
+];
+
+const statementsNav = [
+  { title: 'Profit & Loss', url: '/statements/profit-loss', icon: TrendingUp },
+  { title: 'Balance Sheet', url: '/statements/balance-sheet', icon: Building2 },
+  { title: 'Cash Flow', url: '/statements/cash-flow', icon: DollarSign },
+];
+
+const financeNav = [
+  { title: 'Accounts Payable', url: '/accounting/ap', icon: ArrowDownRight },
+  { title: 'Accounts Receivable', url: '/accounting/ar', icon: ArrowUpRight },
+  { title: 'Tax Center', url: '/taxes', icon: Receipt },
+  { title: 'Acct. Guide', url: '/accounting/knowledge', icon: BookOpen },
+  { title: 'Reports', url: '/reports', icon: BarChart3 },
+  { title: 'Forecasting', url: '/forecasting', icon: Brain },
+];
+
+const adminNav = [
   { title: 'Team', url: '/team', icon: Users },
   { title: 'Audit Logs', url: '/audit-logs', icon: ClipboardList },
   { title: 'Settings', url: '/settings', icon: Settings },
@@ -73,10 +86,15 @@ export function AppSidebar() {
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const { signOut, user } = useAuth();
+  const { isSuperAdmin, assignments } = useCompany();
+
+  const isAdmin = isSuperAdmin || assignments.some(a =>
+    ['super_admin', 'company_admin'].includes(a.role)
+  );
 
   const isActive = (path: string) => location.pathname === path;
 
-  const renderNavItems = (items: typeof mainNavItems) => (
+  const renderNavItems = (items: typeof operationsNav) => (
     <SidebarMenu>
       {items.map((item) => (
         <SidebarMenuItem key={item.title}>
@@ -120,10 +138,10 @@ export function AppSidebar() {
       <SidebarContent className="px-2">
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Overview
+            Operations
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            {renderNavItems(mainNavItems)}
+            {renderNavItems(operationsNav)}
           </SidebarGroupContent>
         </SidebarGroup>
 
@@ -131,23 +149,47 @@ export function AppSidebar() {
 
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Finance
+            Expense Management
           </SidebarGroupLabel>
           <SidebarGroupContent>
-            {renderNavItems(financeNavItems)}
+            {renderNavItems(expenseNav)}
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <Separator className="my-3 bg-border/50" />
+        {isAdmin && (
+          <>
+            <Separator className="my-3 bg-border/50" />
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Settings
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            {renderNavItems(settingsNavItems)}
-          </SidebarGroupContent>
-        </SidebarGroup>
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Finance
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                {!collapsed && (
+                  <p className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider px-3 pt-2 pb-1">
+                    Statements
+                  </p>
+                )}
+                {renderNavItems(statementsNav)}
+                {!collapsed && (
+                  <Separator className="my-2 bg-border/30 mx-3" />
+                )}
+                {renderNavItems(financeNav)}
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <Separator className="my-3 bg-border/50" />
+
+            <SidebarGroup>
+              <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Admin
+              </SidebarGroupLabel>
+              <SidebarGroupContent>
+                {renderNavItems(adminNav)}
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="p-4 border-t border-border/50">

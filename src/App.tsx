@@ -16,12 +16,14 @@ import Settings from "./pages/Settings";
 import Expenses from "./pages/Expenses";
 import Taxes from "./pages/Taxes";
 import Invoices from "./pages/Invoices";
-import Accounting from "./pages/Accounting";
 import AccountingKnowledge from "./pages/AccountingKnowledge";
 import Reports from "./pages/Reports";
 import Forecasting from "./pages/Forecasting";
-import Customers from "./pages/Customers";
-
+import ProfitLoss from "./pages/ProfitLoss";
+import BalanceSheet from "./pages/BalanceSheet";
+import CashFlow from "./pages/CashFlow";
+import AccountsPayablePage from "./pages/AccountsPayablePage";
+import AccountsReceivablePage from "./pages/AccountsReceivablePage";
 import NotFound from "./pages/NotFound";
 import AuditLogs from "./pages/AuditLogs";
 import Help from "./pages/Help";
@@ -61,135 +63,30 @@ const App = () => (
             <Sonner />
             <Routes>
               <Route path="/auth" element={<Auth />} />
-            <Route path="/" element={<Index />} />
-            <Route
-              path="/inventory"
-              element={
-                <ProtectedRoute>
-                  <Inventory />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/import"
-              element={
-                <ProtectedRoute>
-                  <Import />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/sales"
-              element={
-                <ProtectedRoute>
-                  <Sales />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/suppliers"
-              element={
-                <ProtectedRoute>
-                  <Suppliers />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/team"
-              element={
-                <ProtectedRoute>
-                  <Team />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/expenses"
-              element={
-                <ProtectedRoute>
-                  <Expenses />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/taxes"
-              element={
-                <ProtectedRoute>
-                  <Taxes />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/invoices"
-              element={
-                <ProtectedRoute>
-                  <Invoices />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/accounting"
-              element={
-                <ProtectedRoute>
-                  <Accounting />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/accounting/knowledge"
-              element={
-                <ProtectedRoute>
-                  <AccountingKnowledge />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/reports"
-              element={
-                <ProtectedRoute>
-                  <Reports />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/forecasting"
-              element={
-                <ProtectedRoute>
-                  <Forecasting />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/customers"
-              element={
-                <ProtectedRoute>
-                  <Customers />
-                </ProtectedRoute>
-              }
-            />
-              <Route
-                path="/audit-logs"
-                element={
-                  <ProtectedRoute>
-                    <AuditLogs />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/help"
-                element={
-                  <ProtectedRoute>
-                    <Help />
-                  </ProtectedRoute>
-                }
-              />
+              <Route path="/" element={<Index />} />
+              <Route path="/orders" element={<ProtectedRoute><Sales /></ProtectedRoute>} />
+              <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
+              <Route path="/import" element={<ProtectedRoute><Import /></ProtectedRoute>} />
+              <Route path="/suppliers" element={<ProtectedRoute><Suppliers /></ProtectedRoute>} />
+              <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
+              <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
+              <Route path="/statements/profit-loss" element={<ProtectedRoute><ProfitLoss /></ProtectedRoute>} />
+              <Route path="/statements/balance-sheet" element={<ProtectedRoute><BalanceSheet /></ProtectedRoute>} />
+              <Route path="/statements/cash-flow" element={<ProtectedRoute><CashFlow /></ProtectedRoute>} />
+              <Route path="/accounting/ap" element={<ProtectedRoute><AccountsPayablePage /></ProtectedRoute>} />
+              <Route path="/accounting/ar" element={<ProtectedRoute><AccountsReceivablePage /></ProtectedRoute>} />
+              <Route path="/taxes" element={<ProtectedRoute><Taxes /></ProtectedRoute>} />
+              <Route path="/accounting/knowledge" element={<ProtectedRoute><AccountingKnowledge /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+              <Route path="/forecasting" element={<ProtectedRoute><Forecasting /></ProtectedRoute>} />
+              <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
+              <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+              <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
+              {/* Redirects for old routes */}
+              <Route path="/sales" element={<Navigate to="/orders" replace />} />
+              <Route path="/accounting" element={<Navigate to="/statements/profit-loss" replace />} />
+              <Route path="/customers" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </TooltipProvider>

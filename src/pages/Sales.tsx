@@ -210,8 +210,8 @@ export default function Sales() {
       <DashboardLayout>
         <div className="space-y-6 animate-fade-in">
           <div>
-            <h1 className="text-2xl font-bold">Sales</h1>
-            <p className="text-muted-foreground">Track and manage your sales</p>
+            <h1 className="text-2xl font-bold">Orders</h1>
+            <p className="text-muted-foreground">Track and manage your orders</p>
           </div>
           <Card>
             <CardContent className="py-12">
@@ -234,9 +234,9 @@ export default function Sales() {
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Sales</h1>
+            <h1 className="text-2xl font-bold">Orders</h1>
             <p className="text-muted-foreground">
-              {selectedCompany ? `${selectedCompany.code} sales data` : 'Track and manage your sales'}
+              {selectedCompany ? `${selectedCompany.code} order data` : 'Track and manage your orders'}
             </p>
           </div>
 
