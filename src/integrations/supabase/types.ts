@@ -737,6 +737,7 @@ export type Database = {
           created_by: string | null
           id: string
           imei: string | null
+          import_batch_id: string | null
           model: string
           notes: string | null
           purchase_date: string | null
@@ -745,6 +746,8 @@ export type Database = {
           status: Database["public"]["Enums"]["device_status"]
           storage: string | null
           supplier_id: string | null
+          supplier_invoice_number: string | null
+          tax_status: string | null
           updated_at: string
           warehouse_location: string | null
         }
@@ -759,6 +762,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           imei?: string | null
+          import_batch_id?: string | null
           model: string
           notes?: string | null
           purchase_date?: string | null
@@ -767,6 +771,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["device_status"]
           storage?: string | null
           supplier_id?: string | null
+          supplier_invoice_number?: string | null
+          tax_status?: string | null
           updated_at?: string
           warehouse_location?: string | null
         }
@@ -781,6 +787,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           imei?: string | null
+          import_batch_id?: string | null
           model?: string
           notes?: string | null
           purchase_date?: string | null
@@ -789,6 +796,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["device_status"]
           storage?: string | null
           supplier_id?: string | null
+          supplier_invoice_number?: string | null
+          tax_status?: string | null
           updated_at?: string
           warehouse_location?: string | null
         }
@@ -798,6 +807,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devices_import_batch_id_fkey"
+            columns: ["import_batch_id"]
+            isOneToOne: false
+            referencedRelation: "import_batches"
             referencedColumns: ["id"]
           },
           {
@@ -1086,33 +1102,66 @@ export type Database = {
       }
       import_batches: {
         Row: {
+          company_id: string | null
           created_at: string
           failed_rows: number
           file_name: string
           id: string
           imported_by: string | null
+          is_finalized: boolean | null
+          other_charges: number | null
+          shipping_cost: number | null
           successful_rows: number
+          supplier_id: string | null
+          supplier_invoice_number: string | null
           total_rows: number
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           failed_rows?: number
           file_name: string
           id?: string
           imported_by?: string | null
+          is_finalized?: boolean | null
+          other_charges?: number | null
+          shipping_cost?: number | null
           successful_rows?: number
+          supplier_id?: string | null
+          supplier_invoice_number?: string | null
           total_rows?: number
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           failed_rows?: number
           file_name?: string
           id?: string
           imported_by?: string | null
+          is_finalized?: boolean | null
+          other_charges?: number | null
+          shipping_cost?: number | null
           successful_rows?: number
+          supplier_id?: string | null
+          supplier_invoice_number?: string | null
           total_rows?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "import_batches_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "import_batches_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       input_tax_credits: {
         Row: {
@@ -2180,6 +2229,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          supplier_code: string
           updated_at: string
         }
         Insert: {
@@ -2192,6 +2242,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          supplier_code: string
           updated_at?: string
         }
         Update: {
@@ -2204,6 +2255,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          supplier_code?: string
           updated_at?: string
         }
         Relationships: [
