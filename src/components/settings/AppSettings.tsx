@@ -28,7 +28,7 @@ export function AppSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const canEdit = isSuperAdmin || currentRole === 'company_admin';
+  const canEdit = isSuperAdmin || currentRole === 'admin';
 
   const form = useForm<AppSettingsFormData>({
     resolver: zodResolver(appSettingsSchema),

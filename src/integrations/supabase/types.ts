@@ -2622,13 +2622,7 @@ export type Database = {
         | "sales_tax_paid"
         | "income_tax"
         | "other"
-      user_role:
-        | "super_admin"
-        | "company_admin"
-        | "accountant"
-        | "sales_manager"
-        | "operations_staff"
-        | "view_only"
+      user_role: "admin" | "associate"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2779,14 +2773,7 @@ export const Constants = {
         "income_tax",
         "other",
       ],
-      user_role: [
-        "super_admin",
-        "company_admin",
-        "accountant",
-        "sales_manager",
-        "operations_staff",
-        "view_only",
-      ],
+      user_role: ["admin", "associate"],
     },
   },
 } as const

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 
-export type UserRole = 'super_admin' | 'company_admin' | 'accountant' | 'sales_manager' | 'operations_staff' | 'view_only';
+export type UserRole = 'admin' | 'associate';
 
 export interface Company {
   id: string;
@@ -43,7 +43,7 @@ export function usePermissions() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [permissions, setPermissions] = useState<RolePermission[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null); // null = consolidated view
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -56,7 +56,6 @@ export function usePermissions() {
     
     setLoading(true);
     try {
-      // Load companies
       const { data: companiesData } = await supabase
         .from('companies')
         .select('*');
@@ -65,7 +64,6 @@ export function usePermissions() {
         setCompanies(companiesData as Company[]);
       }
 
-      // Load user's company assignments
       const { data: assignmentsData } = await supabase
         .from('user_company_assignments')
         .select('*, company:companies(*)')
@@ -73,11 +71,8 @@ export function usePermissions() {
       
       if (assignmentsData) {
         setAssignments(assignmentsData as unknown as UserCompanyAssignment[]);
-        
-        // Default to consolidated view (null = all companies)
       }
 
-      // Load role permissions for user's roles
       if (assignmentsData && assignmentsData.length > 0) {
         const roles = [...new Set(assignmentsData.map(a => a.role))];
         const { data: rolePermsData } = await supabase
@@ -97,19 +92,23 @@ export function usePermissions() {
   };
 
   const isSuperAdmin = useCallback(() => {
-    return assignments.some(a => a.role === 'super_admin');
+    return assignments.some(a => a.role === 'admin');
+  }, [assignments]);
+
+  const isAdmin = useCallback(() => {
+    return assignments.some(a => a.role === 'admin');
   }, [assignments]);
 
   const hasCompanyAccess = useCallback((companyId: string) => {
-    if (isSuperAdmin()) return true;
+    if (isAdmin()) return true;
     return assignments.some(a => a.company_id === companyId);
-  }, [assignments, isSuperAdmin]);
+  }, [assignments, isAdmin]);
 
   const getUserRole = useCallback((companyId: string): UserRole | null => {
-    if (isSuperAdmin()) return 'super_admin';
+    if (isAdmin()) return 'admin';
     const assignment = assignments.find(a => a.company_id === companyId);
     return assignment?.role || null;
-  }, [assignments, isSuperAdmin]);
+  }, [assignments, isAdmin]);
 
   const hasPermission = useCallback((
     permissionCode: string, 
@@ -117,16 +116,13 @@ export function usePermissions() {
     companyId?: string
   ): boolean => {
     const targetCompanyId = companyId || selectedCompanyId;
-    if (!targetCompanyId && !isSuperAdmin()) return false;
+    if (!targetCompanyId && !isAdmin()) return false;
     
-    // Super admins have all permissions
-    if (isSuperAdmin()) return true;
+    if (isAdmin()) return true;
 
-    // Get user's role for the target company
     const role = getUserRole(targetCompanyId!);
     if (!role) return false;
 
-    // Find the permission
     const perm = permissions.find(p => 
       p.role === role && 
       p.permission?.code === permissionCode
@@ -141,13 +137,13 @@ export function usePermissions() {
       case 'delete': return perm.can_delete;
       default: return false;
     }
-  }, [permissions, selectedCompanyId, getUserRole, isSuperAdmin]);
+  }, [permissions, selectedCompanyId, getUserRole, isAdmin]);
 
   const getAccessibleCompanies = useCallback((): Company[] => {
-    if (isSuperAdmin()) return companies;
+    if (isAdmin()) return companies;
     const accessibleIds = assignments.map(a => a.company_id);
     return companies.filter(c => accessibleIds.includes(c.id));
-  }, [companies, assignments, isSuperAdmin]);
+  }, [companies, assignments, isAdmin]);
 
   return {
     user,
@@ -158,6 +154,7 @@ export function usePermissions() {
     selectedCompanyId,
     setSelectedCompanyId,
     isSuperAdmin,
+    isAdmin,
     hasCompanyAccess,
     getUserRole,
     hasPermission,
@@ -167,19 +164,11 @@ export function usePermissions() {
 }
 
 export const ROLE_LABELS: Record<UserRole, string> = {
-  super_admin: 'Super Admin',
-  company_admin: 'Company Admin',
-  accountant: 'Accountant',
-  sales_manager: 'Sales Manager',
-  operations_staff: 'Operations Staff',
-  view_only: 'View Only',
+  admin: 'Admin',
+  associate: 'Associate',
 };
 
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
-  super_admin: 'Full access to both VES and TGW companies',
-  company_admin: 'Full access to assigned company only',
-  accountant: 'Financial data access, cannot modify inventory',
-  sales_manager: 'Sales and inventory access, limited financial access',
-  operations_staff: 'Inventory management and order fulfillment',
-  view_only: 'Dashboard and reports access only',
+  admin: 'Full access to all features across assigned companies',
+  associate: 'Operational access: orders, inventory, expenses, and invoices',
 };

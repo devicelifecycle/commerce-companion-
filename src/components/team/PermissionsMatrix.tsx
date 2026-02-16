@@ -28,16 +28,9 @@ interface RolePermission {
   can_delete: boolean;
 }
 
-const ROLES: UserRole[] = [
-  'super_admin',
-  'company_admin',
-  'accountant',
-  'sales_manager',
-  'operations_staff',
-  'view_only',
-];
+const ROLES: UserRole[] = ['admin', 'associate'];
 
-const MODULE_ORDER = ['overview', 'inventory', 'sales', 'customers', 'finance', 'accounting', 'reports', 'admin'];
+const MODULE_ORDER = ['overview', 'inventory', 'sales', 'expenses', 'invoices', 'finance', 'accounting', 'reports', 'admin'];
 
 export function PermissionsMatrix() {
   const [permissions, setPermissions] = useState<Permission[]>([]);
@@ -56,7 +49,6 @@ export function PermissionsMatrix() {
       ]);
 
       if (permsResult.data) {
-        // Sort by module order
         const sorted = permsResult.data.sort((a, b) => {
           const aIndex = MODULE_ORDER.indexOf(a.module);
           const bIndex = MODULE_ORDER.indexOf(b.module);
@@ -66,7 +58,7 @@ export function PermissionsMatrix() {
       }
 
       if (rolePermsResult.data) {
-        setRolePermissions(rolePermsResult.data as RolePermission[]);
+        setRolePermissions(rolePermsResult.data as unknown as RolePermission[]);
       }
     } catch (error) {
       console.error('Error loading permissions:', error);
@@ -96,7 +88,6 @@ export function PermissionsMatrix() {
       return <Check className="h-4 w-4 text-green-600" />;
     }
 
-    // Partial permissions
     const labels = [];
     if (rp.can_view) labels.push('V');
     if (rp.can_create) labels.push('C');
@@ -118,7 +109,6 @@ export function PermissionsMatrix() {
     );
   }
 
-  // Group permissions by module
   const groupedPermissions = permissions.reduce((acc, perm) => {
     if (!acc[perm.module]) acc[perm.module] = [];
     acc[perm.module].push(perm);
@@ -156,9 +146,7 @@ export function PermissionsMatrix() {
               <TableHead className="w-[200px]">Permission</TableHead>
               {ROLES.map((role) => (
                 <TableHead key={role} className="text-center text-xs">
-                  {ROLE_LABELS[role].split(' ').map((w, i) => (
-                    <div key={i}>{w}</div>
-                  ))}
+                  {ROLE_LABELS[role]}
                 </TableHead>
               ))}
             </TableRow>
@@ -167,7 +155,7 @@ export function PermissionsMatrix() {
             {Object.entries(groupedPermissions).map(([module, perms]) => (
               <>
                 <TableRow key={module} className="bg-muted/50">
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={3}>
                     <Badge variant="outline" className="capitalize">
                       {module}
                     </Badge>
