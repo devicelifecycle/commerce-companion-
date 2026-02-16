@@ -151,6 +151,7 @@ export interface SaleJournalParams {
   salePrice: number; // Gross sale price before tax
   taxCollected: number; // Tax collected by marketplace
   marketplaceFees: number;
+  shippingCost: number; // Shipping costs paid
   deviceCost: number; // FIFO cost of device
   deviceDescription: string;
   orderNumber: string;
@@ -159,7 +160,7 @@ export interface SaleJournalParams {
 export async function createSaleJournalEntries(params: SaleJournalParams) {
   const {
     companyId, saleId, saleDate, marketplace, settlementAmount,
-    salePrice, taxCollected, marketplaceFees, deviceCost, deviceDescription, orderNumber
+    salePrice, taxCollected, marketplaceFees, shippingCost, deviceCost, deviceDescription, orderNumber
   } = params;
 
   // Determine accounts based on marketplace (VES = Amazon, TGW = BestBuy/Shopify)
@@ -168,15 +169,17 @@ export async function createSaleJournalEntries(params: SaleJournalParams) {
   const revenueAccount = marketplace === 'amazon' ? '4000' : (marketplace === 'bestbuy' ? '4100' : '4101');
   const taxCollectedAccount = isVES ? '4200' : '4201';
   const feesAccount = isVES ? '6000' : '6001';
+  const shippingAccount = isVES ? '6100' : '6101';
   const cogsAccount = isVES ? '5000' : '5001';
   const inventoryAccount = isVES ? '1100' : '1101';
 
   // Get account IDs
-  const [cashId, revenueId, taxId, feesId, cogsId, inventoryId] = await Promise.all([
+  const [cashId, revenueId, taxId, feesId, shippingId, cogsId, inventoryId] = await Promise.all([
     getAccountIdByCode(companyId, cashAccount),
     getAccountIdByCode(companyId, revenueAccount),
     getAccountIdByCode(companyId, taxCollectedAccount),
     getAccountIdByCode(companyId, feesAccount),
+    getAccountIdByCode(companyId, shippingAccount),
     getAccountIdByCode(companyId, cogsAccount),
     getAccountIdByCode(companyId, inventoryAccount),
   ]);
@@ -207,6 +210,16 @@ export async function createSaleJournalEntries(params: SaleJournalParams) {
       accountId: feesId,
       description: `${marketplace} fees - ${orderNumber}`,
       debitAmount: marketplaceFees,
+      creditAmount: 0,
+    });
+  }
+
+  if (shippingCost > 0 && shippingId) {
+    lines.push({
+      accountCode: shippingAccount,
+      accountId: shippingId,
+      description: `Shipping cost - ${orderNumber}`,
+      debitAmount: shippingCost,
       creditAmount: 0,
     });
   }
