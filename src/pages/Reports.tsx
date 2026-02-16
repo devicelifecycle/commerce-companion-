@@ -6,9 +6,11 @@ import { ProfitLossStatement } from '@/components/reports/ProfitLossStatement';
 import { SalesReports } from '@/components/reports/SalesReports';
 import { InventoryReports } from '@/components/reports/InventoryReports';
 import { ExpenseReports } from '@/components/reports/ExpenseReports';
+import { MarketplaceAccounting } from '@/components/reports/MarketplaceAccounting';
+import { MarketplaceReconciliation } from '@/components/reports/MarketplaceReconciliation';
 import { useCompany } from '@/contexts/CompanyContext';
 import { 
-  LayoutDashboard, FileText, ShoppingCart, Package, Wallet, Building2
+  LayoutDashboard, FileText, ShoppingCart, Package, Wallet, Building2, Store, CheckSquare
 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
@@ -48,14 +50,22 @@ export default function Reports() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-grid">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
             </TabsTrigger>
             <TabsTrigger value="pnl" className="flex items-center gap-2">
               <FileText className="h-4 w-4" />
-              <span className="hidden sm:inline">P&L Statement</span>
+              <span className="hidden sm:inline">P&L</span>
+            </TabsTrigger>
+            <TabsTrigger value="marketplace" className="flex items-center gap-2">
+              <Store className="h-4 w-4" />
+              <span className="hidden sm:inline">Marketplace</span>
+            </TabsTrigger>
+            <TabsTrigger value="reconciliation" className="flex items-center gap-2">
+              <CheckSquare className="h-4 w-4" />
+              <span className="hidden sm:inline">Reconcile</span>
             </TabsTrigger>
             <TabsTrigger value="sales" className="flex items-center gap-2">
               <ShoppingCart className="h-4 w-4" />
@@ -77,6 +87,14 @@ export default function Reports() {
 
           <TabsContent value="pnl" className="space-y-6">
             <ProfitLossStatement companyView={companyView} />
+          </TabsContent>
+
+          <TabsContent value="marketplace" className="space-y-6">
+            <MarketplaceAccounting companyView={companyView} />
+          </TabsContent>
+
+          <TabsContent value="reconciliation" className="space-y-6">
+            <MarketplaceReconciliation companyView={companyView} />
           </TabsContent>
 
           <TabsContent value="sales" className="space-y-6">
