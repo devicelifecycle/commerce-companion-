@@ -2083,6 +2083,7 @@ export type Database = {
           id: string
           marketplace: Database["public"]["Enums"]["marketplace"]
           marketplace_fees: number | null
+          marketplace_status: string | null
           notes: string | null
           order_number: string
           profit: number | null
@@ -2105,6 +2106,7 @@ export type Database = {
           id?: string
           marketplace: Database["public"]["Enums"]["marketplace"]
           marketplace_fees?: number | null
+          marketplace_status?: string | null
           notes?: string | null
           order_number: string
           profit?: number | null
@@ -2127,6 +2129,7 @@ export type Database = {
           id?: string
           marketplace?: Database["public"]["Enums"]["marketplace"]
           marketplace_fees?: number | null
+          marketplace_status?: string | null
           notes?: string | null
           order_number?: string
           profit?: number | null

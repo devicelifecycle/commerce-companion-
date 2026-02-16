@@ -155,6 +155,22 @@ async function upsertCustomer(
     return null;
   }
 }
+// Map Best Buy (Mirakl) order_state to internal fulfillment_status
+function mapBestBuyToFulfillment(orderState: string): string {
+  switch (orderState?.toUpperCase()) {
+    case "SHIPPED": return "shipped";
+    case "RECEIVED":
+    case "CLOSED": return "delivered";
+    case "REFUSED":
+    case "CANCELED": return "cancelled";
+    case "SHIPPING": return "shipped";
+    case "WAITING_ACCEPTANCE":
+    case "WAITING_DEBIT":
+    case "WAITING_DEBIT_PAYMENT":
+    case "STAGING": return "pending";
+    default: return "received";
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -268,12 +284,16 @@ serve(async (req) => {
         
 
         if (existingOrder) {
-          // Backfill customer data on existing orders
+          // Backfill customer data and sync marketplace status on existing orders
           if (customerName || customerEmail || shippingAddress) {
-            const updates: any = {};
+            const bbyStatus = order.order_state || "UNKNOWN";
+            const updates: any = { marketplace_status: bbyStatus };
             if (customerEmail) updates.customer_email = customerEmail;
             if (shippingAddress) updates.shipping_address = shippingAddress;
             if (customerName) updates.customer_name = customerName;
+            
+            // Sync fulfillment_status
+            updates.fulfillment_status = mapBestBuyToFulfillment(order.order_state);
 
             await supabase
               .from("sales")
@@ -295,7 +315,7 @@ serve(async (req) => {
               shippingAddress,
               companyId,
               "bestbuy",
-              0 // Don't add to total_spent for existing orders
+              0
             );
           }
           skippedOrders.push(orderNumber);
@@ -363,26 +383,12 @@ serve(async (req) => {
             salePrice
           );
 
-          // Map order state to status
-          let status = "pending";
-          switch (order.order_state?.toUpperCase()) {
-            case "SHIPPED":
-              status = "shipped";
-              break;
-            case "RECEIVED":
-            case "CLOSED":
-              status = "delivered";
-              break;
-            case "REFUSED":
-            case "CANCELED":
-              status = "cancelled";
-              break;
-            case "REFUNDED":
-              status = "refunded";
-              break;
-          }
+          // Store raw Best Buy marketplace status
+          const bbyMarketplaceStatus = order.order_state || "UNKNOWN";
+          const lineItemStatus = lineItem.order_line_state || bbyMarketplaceStatus;
+          const fulfillmentStatus = mapBestBuyToFulfillment(order.order_state);
 
-          const notes = `Best Buy Order #${order.commercial_id} | Status: ${status} | Province: ${province || 'N/A'} | ${lineItem.product_title} (x${lineItem.quantity}) | Commission: ${(lineItem.commission_fee / salePrice * 100).toFixed(1)}%`;
+          const notes = `Best Buy Order #${order.commercial_id} | Status: ${bbyMarketplaceStatus} | Line: ${lineItemStatus} | Province: ${province || 'N/A'} | ${lineItem.product_title} (x${lineItem.quantity}) | Commission: ${(lineItem.commission_fee / salePrice * 100).toFixed(1)}%`;
 
           // Try to match device by SKU/IMEI with multiple fallback strategies
           let deviceId = null;
@@ -435,7 +441,7 @@ serve(async (req) => {
             }
           }
 
-          // Insert the sale with customer_id
+          // Insert the sale with marketplace status
           const { error: insertError } = await supabase.from("sales").insert({
             order_number: lineOrderNumber,
             marketplace: "bestbuy",
@@ -451,6 +457,8 @@ serve(async (req) => {
             device_id: deviceId,
             company_id: companyId,
             customer_id: customerId,
+            marketplace_status: lineItemStatus,
+            fulfillment_status: fulfillmentStatus,
           });
 
           if (insertError) {

@@ -6,7 +6,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ManualSaleDialog } from '@/components/sales/ManualSaleDialog';
 import { IntercompanySaleDialog } from '@/components/sales/IntercompanySaleDialog';
 import { EditSaleDialog } from '@/components/sales/EditSaleDialog';
-import { MarketplaceBadge, FulfillmentBadge } from '@/components/ui/status-badge';
+import { MarketplaceBadge, FulfillmentBadge, MarketplaceStatusBadge } from '@/components/ui/status-badge';
 import { MetricCard } from '@/components/ui/metric-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +53,7 @@ interface Sale {
   notes: string | null;
   company_id: string | null;
   fulfillment_status: string | null;
+  marketplace_status: string | null;
   created_at: string;
   devices?: {
     brand: string;
@@ -279,7 +280,7 @@ export default function Sales() {
       sale.shipping_cost.toFixed(2), sale.tax_amount.toFixed(2),
       (sale.profit || 0).toFixed(2), sale.customer_name || '',
       sale.devices ? `${sale.devices.brand} ${sale.devices.model}` : '',
-      sale.devices?.imei || '', sale.fulfillment_status || 'received',
+      sale.devices?.imei || '', sale.marketplace_status || sale.fulfillment_status || 'received',
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -506,7 +507,7 @@ export default function Sales() {
                       <TableHead>Order</TableHead>
                       <TableHead>Device</TableHead>
                       <TableHead>Marketplace</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>Marketplace Status</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Sale Price</TableHead>
                       {canManageSales && <TableHead className="w-[50px]" />}
@@ -547,7 +548,10 @@ export default function Sales() {
                           <MarketplaceBadge marketplace={sale.marketplace} />
                         </TableCell>
                         <TableCell>
-                          <FulfillmentBadge status={(sale.fulfillment_status || 'received') as any} />
+                          <MarketplaceStatusBadge 
+                            marketplace={sale.marketplace} 
+                            marketplaceStatus={sale.marketplace_status} 
+                          />
                         </TableCell>
                         <TableCell className="text-sm">
                           {formatDate(sale.sale_date)}
