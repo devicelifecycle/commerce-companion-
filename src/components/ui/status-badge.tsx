@@ -120,3 +120,57 @@ export function FulfillmentBadge({ status, className }: FulfillmentBadgeProps) {
     </span>
   );
 }
+
+// Marketplace-specific status badge - shows the raw status from each marketplace
+interface MarketplaceStatusBadgeProps {
+  marketplace: string;
+  marketplaceStatus: string | null;
+  className?: string;
+}
+
+// Color mapping for marketplace-specific statuses
+function getMarketplaceStatusStyle(marketplace: string, status: string): string {
+  const s = status?.toUpperCase() || '';
+  
+  // Common patterns across marketplaces
+  if (s.includes('CANCEL') || s.includes('REFUSED') || s.includes('VOID')) 
+    return 'bg-destructive/15 text-destructive';
+  if (s.includes('REFUND')) 
+    return 'bg-orange-500/15 text-orange-600';
+  if (s.includes('DELIVER') || s === 'CLOSED' || s === 'RECEIVED' || s.includes('FULFILLED'))
+    return 'bg-emerald-500/15 text-emerald-600';
+  if (s.includes('SHIP') || s === 'SHIPPING')
+    return 'bg-success/15 text-success';
+  if (s.includes('PAID') || s.includes('AUTHORIZED'))
+    return 'bg-blue-500/15 text-blue-600';
+  if (s.includes('PENDING') || s.includes('WAITING') || s.includes('STAGING') || s.includes('UNSHIPPED'))
+    return 'bg-warning/15 text-warning';
+  
+  return 'bg-muted text-muted-foreground';
+}
+
+function formatMarketplaceStatus(status: string): string {
+  // Convert UPPER_CASE or camelCase to readable format
+  return status
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
+}
+
+export function MarketplaceStatusBadge({ marketplace, marketplaceStatus, className }: MarketplaceStatusBadgeProps) {
+  if (!marketplaceStatus) {
+    return (
+      <span className={cn('status-badge bg-muted text-muted-foreground', className)}>
+        Unknown
+      </span>
+    );
+  }
+  
+  return (
+    <span className={cn('status-badge', getMarketplaceStatusStyle(marketplace, marketplaceStatus), className)}>
+      {formatMarketplaceStatus(marketplaceStatus)}
+    </span>
+  );
+}

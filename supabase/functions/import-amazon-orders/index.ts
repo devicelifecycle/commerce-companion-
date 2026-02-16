@@ -158,6 +158,19 @@ async function upsertCustomer(
     return null;
   }
 }
+// Map Amazon OrderStatus to internal fulfillment_status
+function mapAmazonToFulfillment(orderStatus: string): string {
+  switch (orderStatus) {
+    case "Shipped": return "shipped";
+    case "Canceled": return "cancelled";
+    case "Unshipped":
+    case "PartiallyShipped":
+    case "PendingAvailability": return "pending";
+    case "Pending":
+    case "InvoiceUnconfirmed": return "received";
+    default: return "received";
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -252,7 +265,7 @@ serve(async (req) => {
           .maybeSingle();
 
         if (existingOrder) {
-          // Backfill customer data on existing orders
+          // Backfill customer data and sync marketplace status on existing orders
           const customerName = order.ShippingAddress?.Name || order.BuyerInfo?.BuyerName || null;
           const customerEmail = order.BuyerInfo?.BuyerEmail || null;
           const customerPhone = order.ShippingAddress?.Phone || null;
@@ -263,14 +276,18 @@ serve(async (req) => {
                addr.CountryCode].filter(Boolean).join("\n")
             : null;
 
-          if (customerName || customerEmail || shippingAddress) {
-            const updates: any = {};
-            if (customerEmail) updates.customer_email = customerEmail;
-            if (shippingAddress) updates.shipping_address = shippingAddress;
-            if (customerName) updates.customer_name = customerName;
-            await supabase.from("sales").update(updates).eq("order_number", orderNumber);
-            await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "amazon", 0);
-          }
+          // Build updates with raw marketplace status
+          const amazonStatus = order.OrderStatus || "Unknown";
+          const updates: any = { marketplace_status: amazonStatus };
+          if (customerEmail) updates.customer_email = customerEmail;
+          if (shippingAddress) updates.shipping_address = shippingAddress;
+          if (customerName) updates.customer_name = customerName;
+          
+          // Also sync fulfillment_status
+          updates.fulfillment_status = mapAmazonToFulfillment(order.OrderStatus);
+
+          await supabase.from("sales").update(updates).eq("order_number", orderNumber);
+          await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "amazon", 0);
           skippedOrders.push(orderNumber);
           continue;
         }
@@ -345,25 +362,11 @@ serve(async (req) => {
           totalSalePrice
         );
 
-        // Map order status
-        let status = "pending";
-        switch (order.OrderStatus) {
-          case "Shipped":
-            status = "shipped";
-            break;
-          case "Canceled":
-            status = "cancelled";
-            break;
-          case "Unshipped":
-          case "PendingAvailability":
-            status = "pending";
-            break;
-          case "Refunded":
-            status = "refunded";
-            break;
-        }
+        // Store raw Amazon status
+        const amazonMarketplaceStatus = order.OrderStatus || "Unknown";
+        const fulfillmentStatus = mapAmazonToFulfillment(order.OrderStatus);
 
-        const notes = `Amazon Order #${order.AmazonOrderId} | Status: ${status} | Province: ${province || 'N/A'} | ${itemDescriptions.join(", ")}`;
+        const notes = `Amazon Order #${order.AmazonOrderId} | Status: ${amazonMarketplaceStatus} | Province: ${province || 'N/A'} | ${itemDescriptions.join(", ")}`;
 
         // Try to match device by SKU/IMEI with multiple fallback strategies
         let deviceId = null;
@@ -419,7 +422,7 @@ serve(async (req) => {
           }
         }
 
-        // Insert the sale with customer_id
+        // Insert the sale with marketplace status
         const { error: insertError } = await supabase.from("sales").insert({
           order_number: orderNumber,
           marketplace: "amazon",
@@ -435,6 +438,8 @@ serve(async (req) => {
           device_id: deviceId,
           company_id: companyId,
           customer_id: customerId,
+          marketplace_status: amazonMarketplaceStatus,
+          fulfillment_status: fulfillmentStatus,
         });
 
         if (insertError) {

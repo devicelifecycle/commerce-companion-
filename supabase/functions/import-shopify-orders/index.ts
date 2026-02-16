@@ -83,6 +83,31 @@ async function upsertCustomer(
     return null;
   }
 }
+// Build a human-readable marketplace status from Shopify order fields
+function buildShopifyStatus(order: any): string {
+  if (order.cancelled_at) return "Cancelled";
+  
+  const financial = order.financial_status || "pending";
+  const fulfillment = order.fulfillment_status || "unfulfilled";
+  
+  // Combine both dimensions into a single readable status
+  const financialLabel = financial.charAt(0).toUpperCase() + financial.slice(1).replace(/_/g, ' ');
+  const fulfillmentLabel = fulfillment === "unfulfilled" ? "Unfulfilled" 
+    : fulfillment.charAt(0).toUpperCase() + fulfillment.slice(1).replace(/_/g, ' ');
+  
+  return `${financialLabel} / ${fulfillmentLabel}`;
+}
+
+// Map Shopify status to internal fulfillment_status
+function mapShopifyToFulfillment(order: any): string {
+  if (order.cancelled_at) return "cancelled";
+  if (order.fulfillment_status === "fulfilled") return "delivered";
+  if (order.fulfillment_status === "partial") return "shipped";
+  if (order.refunds && order.refunds.length > 0) return "cancelled";
+  if (order.financial_status === "voided") return "cancelled";
+  if (order.financial_status === "paid" || order.financial_status === "authorized") return "pending";
+  return "received";
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -172,7 +197,7 @@ serve(async (req) => {
           .maybeSingle();
 
         if (existingOrder) {
-          // Backfill customer data on existing orders
+          // Backfill customer data and sync marketplace status on existing orders
           const customerName = order.customer?.first_name
             ? `${order.customer.first_name} ${order.customer.last_name || ""}`.trim()
             : null;
@@ -184,14 +209,19 @@ serve(async (req) => {
                order.shipping_address.country].filter(Boolean).join("\n")
             : null;
 
-          if (customerName || customerEmail || shippingAddress) {
-            const updates: any = {};
-            if (customerEmail) updates.customer_email = customerEmail;
-            if (shippingAddress) updates.shipping_address = shippingAddress;
-            if (customerName) updates.customer_name = customerName;
-            await supabase.from("sales").update(updates).eq("order_number", `SHOP-${order.order_number}`);
-            await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "shopify", 0);
-          }
+          // Build marketplace status string from Shopify fields
+          const shopifyMarketplaceStatus = buildShopifyStatus(order);
+
+          const updates: any = { marketplace_status: shopifyMarketplaceStatus };
+          if (customerEmail) updates.customer_email = customerEmail;
+          if (shippingAddress) updates.shipping_address = shippingAddress;
+          if (customerName) updates.customer_name = customerName;
+          
+          // Also sync fulfillment_status from marketplace
+          updates.fulfillment_status = mapShopifyToFulfillment(order);
+
+          await supabase.from("sales").update(updates).eq("order_number", `SHOP-${order.order_number}`);
+          await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "shopify", 0);
           skippedOrders.push(`SHOP-${order.order_number}`);
           continue;
         }
@@ -243,22 +273,14 @@ serve(async (req) => {
           ?.map((item: any) => `${item.name} (x${item.quantity})`)
           .join(", ") || "";
 
-        // Determine order status
-        let status = "pending";
-        if (order.cancelled_at) {
-          status = "cancelled";
-        } else if (order.refunds && order.refunds.length > 0) {
-          status = "refunded";
-        } else if (order.fulfillment_status === "fulfilled") {
-          status = "delivered";
-        } else if (order.fulfillment_status === "partial") {
-          status = "shipped";
-        }
+        // Build marketplace-specific status
+        const shopifyMarketplaceStatus = buildShopifyStatus(order);
+        const fulfillmentStatus = mapShopifyToFulfillment(order);
 
         const province = order.shipping_address?.province_code || 
                         order.billing_address?.province_code || null;
 
-        const notes = `Shopify Order #${order.order_number} | Status: ${status} | Province: ${province || 'N/A'} | ${lineItemsStr}`;
+        const notes = `Shopify Order #${order.order_number} | Status: ${shopifyMarketplaceStatus} | Province: ${province || 'N/A'} | ${lineItemsStr}`;
 
         // Try to match device by SKU/IMEI with multiple fallback strategies
         let deviceId = null;
@@ -314,7 +336,7 @@ serve(async (req) => {
           }
         }
 
-        // Insert the sale with customer_id
+        // Insert the sale with customer_id and marketplace status
         const { error: insertError } = await supabase.from("sales").insert({
           order_number: `SHOP-${order.order_number}`,
           marketplace: "shopify",
@@ -330,6 +352,8 @@ serve(async (req) => {
           device_id: deviceId,
           company_id: companyId,
           customer_id: customerId,
+          marketplace_status: shopifyMarketplaceStatus,
+          fulfillment_status: fulfillmentStatus,
         });
 
         if (insertError) {
