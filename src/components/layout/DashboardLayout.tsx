@@ -10,7 +10,9 @@ interface DashboardLayoutProps {
 }
 
 const PAGE_TITLES: Record<string, string> = {
-  '/': 'Dashboard',
+  '/': 'Home',
+  '/home': 'Home',
+  '/dashboard': 'Dashboard',
   '/orders': 'Orders',
   '/inventory': 'Inventory',
   '/import': 'Import Devices',
