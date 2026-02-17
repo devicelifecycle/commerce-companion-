@@ -16,16 +16,10 @@ import Suppliers from "./pages/Suppliers";
 import Team from "./pages/Team";
 import Settings from "./pages/Settings";
 import Expenses from "./pages/Expenses";
-import Taxes from "./pages/Taxes";
 import Invoices from "./pages/Invoices";
-import AccountingKnowledge from "./pages/AccountingKnowledge";
 import Reports from "./pages/Reports";
+import Financials from "./pages/Financials";
 import Forecasting from "./pages/Forecasting";
-import ProfitLoss from "./pages/ProfitLoss";
-import BalanceSheet from "./pages/BalanceSheet";
-import CashFlow from "./pages/CashFlow";
-import AccountsPayablePage from "./pages/AccountsPayablePage";
-import AccountsReceivablePage from "./pages/AccountsReceivablePage";
 import NotFound from "./pages/NotFound";
 import AuditLogs from "./pages/AuditLogs";
 import Help from "./pages/Help";
@@ -80,15 +74,17 @@ const App = () => (
               <Route path="/purchase-orders" element={<ProtectedRoute><PurchaseOrders /></ProtectedRoute>} />
               <Route path="/goods-received" element={<ProtectedRoute><GoodsReceived /></ProtectedRoute>} />
               <Route path="/returns" element={<ProtectedRoute><Returns /></ProtectedRoute>} />
-              <Route path="/statements/profit-loss" element={<ProtectedRoute><ProfitLoss /></ProtectedRoute>} />
-              <Route path="/statements/balance-sheet" element={<ProtectedRoute><BalanceSheet /></ProtectedRoute>} />
-              <Route path="/statements/cash-flow" element={<ProtectedRoute><CashFlow /></ProtectedRoute>} />
-              <Route path="/accounting/ap" element={<ProtectedRoute><AccountsPayablePage /></ProtectedRoute>} />
-              <Route path="/accounting/ar" element={<ProtectedRoute><AccountsReceivablePage /></ProtectedRoute>} />
-              <Route path="/taxes" element={<ProtectedRoute><Taxes /></ProtectedRoute>} />
-              <Route path="/accounting/knowledge" element={<ProtectedRoute><AccountingKnowledge /></ProtectedRoute>} />
+              <Route path="/financials" element={<ProtectedRoute><Financials /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
               <Route path="/forecasting" element={<ProtectedRoute><Forecasting /></ProtectedRoute>} />
+              {/* Redirects for old routes */}
+              <Route path="/statements/profit-loss" element={<Navigate to="/financials" replace />} />
+              <Route path="/statements/balance-sheet" element={<Navigate to="/financials" replace />} />
+              <Route path="/statements/cash-flow" element={<Navigate to="/financials" replace />} />
+              <Route path="/accounting/ap" element={<Navigate to="/financials" replace />} />
+              <Route path="/accounting/ar" element={<Navigate to="/financials" replace />} />
+              <Route path="/taxes" element={<Navigate to="/financials" replace />} />
+              <Route path="/accounting/knowledge" element={<Navigate to="/financials" replace />} />
               <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
               <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />

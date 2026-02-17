@@ -4,26 +4,17 @@ import {
   LayoutDashboard,
   Warehouse,
   Upload,
-  TrendingUp,
   Users,
   Settings,
   LogOut,
   Package,
-  Receipt,
   FileText,
-  Calculator,
   BarChart3,
   Wallet,
   Brain,
   ClipboardList,
   HelpCircle,
-  BookOpen,
   Smartphone,
-  ArrowUpRight,
-  ArrowDownRight,
-  Scale,
-  Building2,
-  DollarSign,
   ShoppingCart,
   ClipboardCheck,
   PackageCheck,
@@ -74,18 +65,8 @@ const expenseNav = [
 
 const analyticsNav = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'Profit & Loss', url: '/statements/profit-loss', icon: TrendingUp },
-  { title: 'Balance Sheet', url: '/statements/balance-sheet', icon: Building2 },
-  { title: 'Cash Flow', url: '/statements/cash-flow', icon: DollarSign },
-  { title: 'Reports', url: '/reports', icon: BarChart3 },
+  { title: 'Financials', url: '/financials', icon: BarChart3 },
   { title: 'Forecasting', url: '/forecasting', icon: Brain },
-];
-
-const financeNav = [
-  { title: 'Accounts Payable', url: '/accounting/ap', icon: ArrowDownRight },
-  { title: 'Accounts Receivable', url: '/accounting/ar', icon: ArrowUpRight },
-  { title: 'Tax Center', url: '/taxes', icon: Receipt },
-  { title: 'Acct. Guide', url: '/accounting/knowledge', icon: BookOpen },
 ];
 
 const adminNav = [
@@ -197,17 +178,6 @@ export function AppSidebar() {
               </SidebarGroupLabel>
               <SidebarGroupContent>
                 {renderNavItems(analyticsNav)}
-              </SidebarGroupContent>
-            </SidebarGroup>
-
-            <Separator className="my-1.5 bg-border/50" />
-
-            <SidebarGroup>
-              <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
-                Finance
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                {renderNavItems(financeNav)}
               </SidebarGroupContent>
             </SidebarGroup>
 

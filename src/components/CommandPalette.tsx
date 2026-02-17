@@ -11,13 +11,14 @@ import {
 } from '@/components/ui/command';
 import {
   LayoutDashboard, ShoppingCart, Smartphone, Upload, Package, FileText,
-  Wallet, TrendingUp, Building2, DollarSign, BarChart3, Brain,
-  ArrowDownRight, ArrowUpRight, Receipt, BookOpen, Users, ClipboardList,
+  Wallet, BarChart3, Brain, Users, ClipboardList,
   Settings, HelpCircle, Search, ClipboardCheck, PackageCheck, RotateCcw,
 } from 'lucide-react';
 
 const routes = [
-  { title: 'Dashboard', url: '/', icon: LayoutDashboard, group: 'Analytics' },
+  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, group: 'Analytics' },
+  { title: 'Financials', url: '/financials', icon: BarChart3, group: 'Analytics' },
+  { title: 'Forecasting', url: '/forecasting', icon: Brain, group: 'Analytics' },
   { title: 'Orders', url: '/orders', icon: ShoppingCart, group: 'Operations' },
   { title: 'Inventory', url: '/inventory', icon: Smartphone, group: 'Operations' },
   { title: 'Import Devices', url: '/import', icon: Upload, group: 'Operations' },
@@ -27,15 +28,6 @@ const routes = [
   { title: 'Purchase Orders', url: '/purchase-orders', icon: ClipboardCheck, group: 'Procurement' },
   { title: 'Goods Received', url: '/goods-received', icon: PackageCheck, group: 'Procurement' },
   { title: 'Returns / RMA', url: '/returns', icon: RotateCcw, group: 'Procurement' },
-  { title: 'Profit & Loss', url: '/statements/profit-loss', icon: TrendingUp, group: 'Analytics' },
-  { title: 'Balance Sheet', url: '/statements/balance-sheet', icon: Building2, group: 'Analytics' },
-  { title: 'Cash Flow', url: '/statements/cash-flow', icon: DollarSign, group: 'Analytics' },
-  { title: 'Reports', url: '/reports', icon: BarChart3, group: 'Analytics' },
-  { title: 'Forecasting', url: '/forecasting', icon: Brain, group: 'Analytics' },
-  { title: 'Accounts Payable', url: '/accounting/ap', icon: ArrowDownRight, group: 'Finance' },
-  { title: 'Accounts Receivable', url: '/accounting/ar', icon: ArrowUpRight, group: 'Finance' },
-  { title: 'Tax Center', url: '/taxes', icon: Receipt, group: 'Finance' },
-  { title: 'Accounting Guide', url: '/accounting/knowledge', icon: BookOpen, group: 'Finance' },
   { title: 'Team', url: '/team', icon: Users, group: 'Admin' },
   { title: 'Audit Logs', url: '/audit-logs', icon: ClipboardList, group: 'Admin' },
   { title: 'Settings', url: '/settings', icon: Settings, group: 'Admin' },
@@ -62,7 +54,7 @@ export function CommandPalette() {
     navigate(url);
   };
 
-  const groups = ['Operations', 'Procurement', 'Expenses', 'Analytics', 'Finance', 'Admin'];
+  const groups = ['Analytics', 'Operations', 'Procurement', 'Expenses', 'Admin'];
 
   return (
     <>
