@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Plus, FileText, Clock, CheckCircle, AlertCircle, Send } from 'lucide-react';
+import { InvoicesGuide } from '@/components/guides/InvoicesGuide';
 import { format } from 'date-fns';
 
 interface Invoice {
@@ -265,6 +266,8 @@ export default function Invoices() {
             </DialogContent>
           </Dialog>
         </div>
+
+        <InvoicesGuide />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card className="metric-card">

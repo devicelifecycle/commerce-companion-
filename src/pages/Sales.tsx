@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { OrdersGuide } from '@/components/guides/OrdersGuide';
 import { useAuth } from '@/lib/auth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { ActivityLog } from '@/components/audit/ActivityLog';
@@ -436,7 +437,7 @@ export default function Sales() {
           </div>
         </div>
 
-        {/* Company Selector */}
+        <OrdersGuide />
         <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
           {isSuperAdmin && (
             <Button

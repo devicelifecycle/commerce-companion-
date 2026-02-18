@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { ImportGuide } from '@/components/guides/ImportGuide';
 import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
@@ -783,6 +784,8 @@ export default function Import() {
           <h1 className="text-2xl font-bold">Import Devices</h1>
           <p className="text-muted-foreground">Upload an Excel file to bulk import devices</p>
         </div>
+
+        <ImportGuide />
 
         {/* Step indicator */}
         <div className="flex items-center gap-2 text-sm">
