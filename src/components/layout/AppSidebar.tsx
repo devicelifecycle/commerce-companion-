@@ -49,7 +49,6 @@ const mainNav = [
 const operationsNav = [
   { title: 'Orders', url: '/orders', icon: ShoppingCart },
   { title: 'Inventory', url: '/inventory', icon: Smartphone },
-  { title: 'Cost Ledger', url: '/cost-ledger', icon: Warehouse },
   { title: 'Import', url: '/import', icon: Upload },
   { title: 'Suppliers', url: '/suppliers', icon: Package },
   { title: 'Invoices', url: '/invoices', icon: FileText },
@@ -68,6 +67,7 @@ const expenseNav = [
 const analyticsNav = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Financials', url: '/financials', icon: BarChart3 },
+  { title: 'Cost Ledger', url: '/cost-ledger', icon: Warehouse },
   { title: 'Reports', url: '/reports', icon: BarChart3 },
   { title: 'Forecasting', url: '/forecasting', icon: Brain },
 ];
