@@ -466,7 +466,7 @@ serve(async (req) => {
             customer_id: customerId,
             marketplace_status: lineItemStatus,
             fulfillment_status: fulfillmentStatus,
-            is_marketplace_remitted: true, // Best Buy withholds and remits tax to CRA
+            is_marketplace_remitted: false, // Best Buy pays us the tax — we remit to CRA ourselves
             accounting_status: "unprocessed",
           });
 

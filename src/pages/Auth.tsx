@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Lock, Mail, ArrowRight, Package, BarChart3, Globe, Zap } from 'lucide-react';
+import { Lock, Mail, ArrowRight, Package, BarChart3, Globe, Shield, Zap, TrendingUp } from 'lucide-react';
 import { z } from 'zod';
 import warehouseLogo from '@/assets/warehouse-logo.png';
 
@@ -55,130 +55,173 @@ export default function Auth() {
     }
   };
 
+  const features = [
+    { icon: Package, label: 'Inventory Tracking', desc: 'Real-time stock across warehouses & FBA' },
+    { icon: BarChart3, label: 'Financial Reports', desc: 'P&L, balance sheets, and tax filing' },
+    { icon: Globe, label: 'Marketplace Sync', desc: 'Shopify, Amazon & Best Buy integration' },
+    { icon: TrendingUp, label: 'Profit Analytics', desc: 'Per-unit COGS, margins & fee analysis' },
+    { icon: Shield, label: 'Tax Compliance', desc: 'GST/HST/PST tracking & CRA reporting' },
+    { icon: Zap, label: 'Automation', desc: 'Auto journal entries & order imports' },
+  ];
+
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-background">
-      {/* Full-screen ambient glow */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[700px] h-[700px] rounded-full bg-primary/12 blur-[150px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[600px] h-[600px] rounded-full bg-secondary/12 blur-[150px]" />
-        <div className="absolute top-[30%] right-[20%] w-[500px] h-[500px] rounded-full bg-accent/10 blur-[150px]" />
-        <div className="absolute bottom-[20%] left-[30%] w-[300px] h-[300px] rounded-full bg-primary/6 blur-[100px]" />
+    <div className="min-h-screen flex bg-background">
+      {/* Left Panel — Branding */}
+      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden">
+        {/* Background gradient layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-card via-background to-card" />
+        <div className="absolute top-[-15%] left-[-10%] w-[600px] h-[600px] rounded-full bg-primary/8 blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-secondary/8 blur-[120px]" />
+        <div className="absolute top-[40%] left-[50%] w-[400px] h-[400px] rounded-full bg-accent/6 blur-[100px]" />
+
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{
+          backgroundImage: 'linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)',
+          backgroundSize: '60px 60px',
+        }} />
+
+        <div className="relative z-10 flex flex-col justify-between p-12 w-full">
+          {/* Top — Logo & title */}
+          <div>
+            <div className="flex items-center gap-4 mb-16">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-xl bg-primary/25 blur-xl scale-[1.8]" />
+                <img
+                  src={warehouseLogo}
+                  alt="Tech Genius Warehouse"
+                  className="relative w-14 h-14 rounded-xl ring-1 ring-primary/30"
+                />
+              </div>
+              <div>
+                <h1 className="text-2xl font-display font-bold text-foreground">Tech Genius</h1>
+                <p className="text-sm font-medium text-primary">Warehouse Management</p>
+              </div>
+            </div>
+
+            {/* Headline */}
+            <div className="max-w-lg mb-12">
+              <h2 className="text-4xl font-display font-bold text-foreground leading-tight mb-4">
+                Your complete
+                <span className="gradient-text block">operations hub</span>
+              </h2>
+              <p className="text-muted-foreground text-lg leading-relaxed">
+                Inventory, accounting, and marketplace management — unified in one platform built for resellers.
+              </p>
+            </div>
+          </div>
+
+          {/* Feature grid */}
+          <div className="grid grid-cols-2 gap-3 max-w-lg">
+            {features.map(({ icon: Icon, label, desc }) => (
+              <div key={label} className="flex items-start gap-3 p-3 rounded-lg bg-card/40 border border-border/30 backdrop-blur-sm">
+                <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                  <Icon className="w-4 h-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{label}</p>
+                  <p className="text-xs text-muted-foreground leading-snug">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom tagline */}
+          <div className="mt-8">
+            <div className="w-12 h-[2px] gradient-vibrant rounded-full mb-3" />
+            <p className="text-xs text-muted-foreground">
+              Multi-entity • Canadian tax compliant • Real-time sync
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Centered card */}
-      <div className="relative z-10 w-full max-w-[480px] mx-4 animate-fade-in">
-        {/* Logo & branding */}
-        <div className="text-center mb-8">
-          <div className="inline-block relative mb-5">
-            <div className="absolute inset-0 rounded-2xl bg-primary/30 blur-2xl scale-[2.5]" />
-            <div className="absolute inset-0 rounded-2xl bg-accent/15 blur-3xl scale-[3] -translate-y-2" />
-            <img
-              src={warehouseLogo}
-              alt="Tech Genius Warehouse"
-              className="relative w-20 h-20 rounded-2xl shadow-2xl ring-2 ring-primary/30"
-            />
-          </div>
-          <h1 className="text-3xl font-display font-bold text-foreground">
-            Tech Genius
-          </h1>
-          <h1 className="text-3xl font-display font-bold gradient-text mb-3">
-            Warehouse
-          </h1>
-          <div className="w-16 h-1 rounded-full gradient-vibrant mx-auto" />
+      {/* Right Panel — Login Form */}
+      <div className="flex-1 flex items-center justify-center relative">
+        {/* Ambient glow on login side */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          <div className="absolute top-[20%] right-[-20%] w-[500px] h-[500px] rounded-full bg-primary/6 blur-[120px]" />
+          <div className="absolute bottom-[10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-accent/5 blur-[100px]" />
         </div>
 
-        {/* Login card */}
-        <div className="rounded-2xl border border-border/40 bg-card/60 backdrop-blur-2xl shadow-2xl relative overflow-hidden">
-          {/* Top gradient accent */}
-          <div className="absolute top-0 left-0 right-0 h-[3px] gradient-vibrant" />
-
-          {/* Subtle inner glow */}
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[100px] bg-primary/8 blur-[60px] pointer-events-none" />
-
-          <div className="relative p-8 pt-10">
-            <div className="text-center mb-6">
-              <h2 className="font-display text-xl font-semibold text-foreground">Welcome back</h2>
-              <p className="text-muted-foreground text-sm mt-1">Sign in to continue</p>
+        <div className="relative z-10 w-full max-w-[400px] mx-6 animate-fade-in">
+          {/* Mobile logo (hidden on desktop) */}
+          <div className="lg:hidden text-center mb-8">
+            <div className="inline-block relative mb-4">
+              <div className="absolute inset-0 rounded-xl bg-primary/25 blur-xl scale-[2]" />
+              <img
+                src={warehouseLogo}
+                alt="Tech Genius Warehouse"
+                className="relative w-16 h-16 rounded-xl ring-1 ring-primary/30"
+              />
             </div>
-
-            <form onSubmit={handleLogin} className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="login-email" className="text-foreground/80 text-sm">Email</Label>
-                <div className="relative group">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="you@company.com"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    className="pl-11 h-12 bg-muted/20 border-border/50 focus:border-primary/70 focus:bg-muted/30 transition-all rounded-xl"
-                  />
-                </div>
-                {errors.loginEmail && <p className="text-sm text-destructive">{errors.loginEmail}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="login-password" className="text-foreground/80 text-sm">Password</Label>
-                <div className="relative group">
-                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    className="pl-11 h-12 bg-muted/20 border-border/50 focus:border-primary/70 focus:bg-muted/30 transition-all rounded-xl"
-                  />
-                </div>
-                {errors.loginPassword && <p className="text-sm text-destructive">{errors.loginPassword}</p>}
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full gradient-primary group text-primary-foreground font-semibold h-12 text-base rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.01]"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Signing in...' : (
-                  <>
-                    Sign In
-                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
-              </Button>
-            </form>
+            <h1 className="text-2xl font-display font-bold text-foreground">Tech Genius</h1>
+            <p className="text-sm text-primary font-medium">Warehouse</p>
           </div>
 
-          {/* Feature strip */}
-          <div className="border-t border-border/30 bg-muted/10 px-8 py-5">
-            <div className="flex items-center justify-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-primary/15 flex items-center justify-center">
-                  <Package className="w-3.5 h-3.5 text-primary" />
-                </div>
-                <span className="text-xs text-muted-foreground font-medium">Inventory</span>
+          {/* Login form card */}
+          <div className="rounded-2xl border border-border/40 bg-card/50 backdrop-blur-xl shadow-2xl overflow-hidden">
+            {/* Top accent line */}
+            <div className="h-[2px] gradient-vibrant" />
+
+            <div className="p-8">
+              <div className="mb-8">
+                <h2 className="font-display text-2xl font-bold text-foreground">Welcome back</h2>
+                <p className="text-muted-foreground text-sm mt-1">Sign in to your account</p>
               </div>
-              <div className="w-px h-4 bg-border/50" />
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-secondary/15 flex items-center justify-center">
-                  <BarChart3 className="w-3.5 h-3.5 text-secondary" />
+
+              <form onSubmit={handleLogin} className="space-y-5">
+                <div className="space-y-2">
+                  <Label htmlFor="login-email" className="text-foreground/80 text-sm">Email</Label>
+                  <div className="relative group">
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <Input
+                      id="login-email"
+                      type="email"
+                      placeholder="you@company.com"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                      className="pl-11 h-12 bg-muted/20 border-border/50 focus:border-primary/70 focus:bg-muted/30 transition-all rounded-xl"
+                    />
+                  </div>
+                  {errors.loginEmail && <p className="text-sm text-destructive">{errors.loginEmail}</p>}
                 </div>
-                <span className="text-xs text-muted-foreground font-medium">Accounting</span>
-              </div>
-              <div className="w-px h-4 bg-border/50" />
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-accent/15 flex items-center justify-center">
-                  <Globe className="w-3.5 h-3.5 text-accent" />
+
+                <div className="space-y-2">
+                  <Label htmlFor="login-password" className="text-foreground/80 text-sm">Password</Label>
+                  <div className="relative group">
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <Input
+                      id="login-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      className="pl-11 h-12 bg-muted/20 border-border/50 focus:border-primary/70 focus:bg-muted/30 transition-all rounded-xl"
+                    />
+                  </div>
+                  {errors.loginPassword && <p className="text-sm text-destructive">{errors.loginPassword}</p>}
                 </div>
-                <span className="text-xs text-muted-foreground font-medium">Marketplace</span>
-              </div>
+
+                <Button
+                  type="submit"
+                  className="w-full gradient-primary group text-primary-foreground font-semibold h-12 text-base rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.01]"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Signing in...' : (
+                    <>
+                      Sign In
+                      <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+                </Button>
+              </form>
             </div>
           </div>
+
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            Contact your administrator to request an account
+          </p>
         </div>
-
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          Contact your administrator to request an account
-        </p>
       </div>
     </div>
   );
