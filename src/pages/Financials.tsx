@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { FinancialsGuide } from '@/components/guides/FinancialsGuide';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -123,6 +124,8 @@ export default function Financials() {
             </ToggleGroup>
           </div>
         </div>
+
+        <FinancialsGuide />
 
         {/* Primary Tabs */}
         <Tabs value={activeTab} onValueChange={handleTabChange}>

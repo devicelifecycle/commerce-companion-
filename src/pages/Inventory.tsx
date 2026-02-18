@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { InventoryGuide } from '@/components/guides/InventoryGuide';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { ActivityLog } from '@/components/audit/ActivityLog';
@@ -672,6 +673,8 @@ export default function Inventory() {
             )}
           </div>
         </div>
+
+        <InventoryGuide />
 
         <Tabs defaultValue="list" className="space-y-4">
           <TabsList>

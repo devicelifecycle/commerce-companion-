@@ -10,6 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Search, Download, ChevronDown, ChevronRight } from 'lucide-react';
+import { GoodsReceivedGuide } from '@/components/guides/GoodsReceivedGuide';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -96,6 +97,8 @@ export default function GoodsReceived() {
           <h1 className="text-2xl font-bold text-foreground">Goods Received Notes</h1>
           <p className="text-sm text-muted-foreground">Track received shipments and inspect items</p>
         </div>
+
+        <GoodsReceivedGuide />
 
         <Card>
           <CardHeader className="pb-3">

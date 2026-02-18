@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ReportsGuide } from '@/components/guides/ReportsGuide';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExecutiveDashboard } from '@/components/reports/ExecutiveDashboard';
@@ -46,6 +47,8 @@ export default function Reports() {
             </ToggleGroup>
           </div>
         </div>
+
+        <ReportsGuide />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">

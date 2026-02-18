@@ -26,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Plus, Package, Trash2, Edit2, Info } from 'lucide-react';
+import { SuppliersGuide } from '@/components/guides/SuppliersGuide';
 
 interface Supplier {
   id: string;
@@ -301,6 +302,7 @@ export default function Suppliers() {
             <h1 className="text-2xl font-bold">Suppliers</h1>
             <p className="text-muted-foreground">Manage your suppliers and their unique Supplier IDs</p>
           </div>
+          {/* ... keep existing code */}
 
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
@@ -320,6 +322,8 @@ export default function Suppliers() {
             </DialogContent>
           </Dialog>
         </div>
+
+        <SuppliersGuide />
 
         <Alert className="border-primary/30 bg-primary/5">
           <Info className="h-4 w-4" />

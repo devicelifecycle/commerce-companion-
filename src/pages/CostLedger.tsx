@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { CostLedgerGuide } from '@/components/guides/CostLedgerGuide';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useCompany } from '@/contexts/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -180,6 +181,8 @@ export default function CostLedger() {
             Track device costs, supplier history, and import batches for audit compliance
           </p>
         </div>
+
+        <CostLedgerGuide />
 
         {/* KPI row */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">

@@ -10,6 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Search, Download, ClipboardList } from 'lucide-react';
+import { PurchaseOrdersGuide } from '@/components/guides/PurchaseOrdersGuide';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
 import { format } from 'date-fns';
@@ -86,6 +87,8 @@ export default function PurchaseOrders() {
             <p className="text-sm text-muted-foreground">Track and manage supplier purchase orders</p>
           </div>
         </div>
+
+        <PurchaseOrdersGuide />
 
         <Card>
           <CardHeader className="pb-3">
