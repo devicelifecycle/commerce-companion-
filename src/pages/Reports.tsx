@@ -5,9 +5,10 @@ import { ExecutiveDashboard } from '@/components/reports/ExecutiveDashboard';
 import { MarketplaceAccounting } from '@/components/reports/MarketplaceAccounting';
 import { MarketplaceReconciliation } from '@/components/reports/MarketplaceReconciliation';
 import { MarketplaceFeeAnalytics } from '@/components/reports/MarketplaceFeeAnalytics';
+import { PayoutReconciliation } from '@/components/reports/PayoutReconciliation';
 import { useCompany } from '@/contexts/CompanyContext';
 import { 
-  LayoutDashboard, Store, CheckSquare, Building2, Receipt
+  LayoutDashboard, Store, CheckSquare, Building2, Receipt, Banknote
 } from 'lucide-react';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
@@ -47,7 +48,7 @@ export default function Reports() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-grid">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">Executive</span>
@@ -58,11 +59,15 @@ export default function Reports() {
             </TabsTrigger>
             <TabsTrigger value="fees" className="flex items-center gap-2">
               <Receipt className="h-4 w-4" />
-              <span className="hidden sm:inline">Fees & Commissions</span>
+              <span className="hidden sm:inline">Fees</span>
             </TabsTrigger>
             <TabsTrigger value="reconciliation" className="flex items-center gap-2">
               <CheckSquare className="h-4 w-4" />
               <span className="hidden sm:inline">Reconciliation</span>
+            </TabsTrigger>
+            <TabsTrigger value="payouts" className="flex items-center gap-2">
+              <Banknote className="h-4 w-4" />
+              <span className="hidden sm:inline">Payouts</span>
             </TabsTrigger>
           </TabsList>
 
@@ -80,6 +85,10 @@ export default function Reports() {
 
           <TabsContent value="reconciliation" className="space-y-6">
             <MarketplaceReconciliation companyView={companyView} />
+          </TabsContent>
+
+          <TabsContent value="payouts" className="space-y-6">
+            <PayoutReconciliation companyView={companyView} />
           </TabsContent>
         </Tabs>
       </div>
