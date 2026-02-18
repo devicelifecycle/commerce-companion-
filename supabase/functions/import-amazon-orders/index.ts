@@ -462,6 +462,22 @@ serve(async (req) => {
 
     console.log(`Import complete: ${importedOrders.length} imported, ${skippedOrders.length} skipped, ${errors.length} errors`);
 
+    // Log sync result
+    const syncStatus = errors.length > 0 ? (importedOrders.length > 0 ? 'partial' : 'failure') : 'success';
+    await supabase.from("sync_logs").insert({
+      marketplace: "amazon",
+      company_id: companyId,
+      status: syncStatus,
+      started_at: new Date(Date.now() - 30000).toISOString(),
+      completed_at: new Date().toISOString(),
+      records_imported: importedOrders.length,
+      records_skipped: skippedOrders.length,
+      records_errored: errors.length,
+      error_message: errors.length > 0 ? errors.join("; ") : null,
+      sync_type: "scheduled",
+      metadata: { total_from_api: orders.length },
+    });
+
     // Trigger accounting processor for newly imported sales
     let accountingResult = null;
     if (importedOrders.length > 0) {
@@ -473,7 +489,7 @@ serve(async (req) => {
             "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({}), // Process all unaccounted sales
+          body: JSON.stringify({}),
         });
         accountingResult = await accountingResponse.json();
         console.log("Accounting processor result:", accountingResult);
@@ -503,6 +519,21 @@ serve(async (req) => {
     );
   } catch (error: any) {
     console.error("Import error:", error);
+
+    // Log failure
+    try {
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      await sb.from("sync_logs").insert({
+        marketplace: "amazon",
+        status: "failure",
+        completed_at: new Date().toISOString(),
+        error_message: error.message,
+        sync_type: "scheduled",
+      });
+    } catch (_) { /* best effort */ }
+
     return new Response(
       JSON.stringify({ success: false, error: error.message }),
       {

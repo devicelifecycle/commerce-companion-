@@ -19,6 +19,7 @@ import {
   ClipboardCheck,
   PackageCheck,
   RotateCcw,
+  Activity,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth';
@@ -70,6 +71,7 @@ const analyticsNav = [
 ];
 
 const adminNav = [
+  { title: 'Integration Health', url: '/integration-health', icon: Activity },
   { title: 'Team', url: '/team', icon: Users },
   { title: 'Audit Logs', url: '/audit-logs', icon: ClipboardList },
   { title: 'Settings', url: '/settings', icon: Settings },

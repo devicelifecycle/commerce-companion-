@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.process-intercompany-accounting]
 verify_jwt = false
+
+[functions.run-data-validation]
+verify_jwt = false

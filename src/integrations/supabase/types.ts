@@ -734,6 +734,65 @@ export type Database = {
           },
         ]
       }
+      data_validation_issues: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          description: string
+          details: Json | null
+          id: string
+          issue_type: string
+          marketplace: string | null
+          record_id: string | null
+          record_type: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          description: string
+          details?: Json | null
+          id?: string
+          issue_type: string
+          marketplace?: string | null
+          record_id?: string | null
+          record_type?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          description?: string
+          details?: Json | null
+          id?: string
+          issue_type?: string
+          marketplace?: string | null
+          record_id?: string | null
+          record_type?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_validation_issues_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       devices: {
         Row: {
           brand: string
@@ -2288,6 +2347,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "suppliers_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_logs: {
+        Row: {
+          company_id: string | null
+          completed_at: string | null
+          created_at: string
+          error_details: Json | null
+          error_message: string | null
+          id: string
+          marketplace: string
+          metadata: Json | null
+          records_errored: number
+          records_imported: number
+          records_skipped: number
+          started_at: string
+          status: string
+          sync_type: string
+        }
+        Insert: {
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_details?: Json | null
+          error_message?: string | null
+          id?: string
+          marketplace: string
+          metadata?: Json | null
+          records_errored?: number
+          records_imported?: number
+          records_skipped?: number
+          started_at?: string
+          status?: string
+          sync_type?: string
+        }
+        Update: {
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          error_details?: Json | null
+          error_message?: string | null
+          id?: string
+          marketplace?: string
+          metadata?: Json | null
+          records_errored?: number
+          records_imported?: number
+          records_skipped?: number
+          started_at?: string
+          status?: string
+          sync_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_logs_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
