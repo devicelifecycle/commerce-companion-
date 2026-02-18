@@ -63,6 +63,7 @@ const EXPENSE_CATEGORIES = [
   { value: 'payroll', label: 'Payroll & Benefits', group: 'Operating' },
   { value: 'bank_fees', label: 'Bank Fees & Charges', group: 'Financial' },
   { value: 'marketplace_fees', label: 'Marketplace Fees', group: 'Financial' },
+  { value: 'genovation_ai', label: 'GenovationAI', group: 'Operating' },
   { value: 'other', label: 'Other', group: 'Other' },
 ];
 
@@ -83,6 +84,7 @@ const CATEGORY_ACCOUNT_MAP: Record<string, string> = {
   payroll: '6000',
   bank_fees: '7100',
   marketplace_fees: '6100',
+  genovation_ai: '6900',
   other: '7100',
 };
 

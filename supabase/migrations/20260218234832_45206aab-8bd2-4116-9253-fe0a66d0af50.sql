@@ -1,0 +1,1 @@
+ALTER TYPE public.expense_category ADD VALUE 'genovation_ai';
