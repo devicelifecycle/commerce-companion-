@@ -206,6 +206,35 @@ serve(async (req) => {
     const companyId = tgwCompany.id;
     console.log(`Using TGW company ID: ${companyId}`);
 
+    // Fetch provincial tax rates for tax calculation
+    const { data: taxRates, error: taxRatesError } = await supabase
+      .from("provincial_tax_rates")
+      .select("province_code, province_name, gst_rate, hst_rate, pst_rate, qst_rate, total_rate, is_hst_province");
+
+    if (taxRatesError) {
+      console.error("Error fetching tax rates:", taxRatesError);
+    }
+
+    // Build lookup maps: province code -> rates, and province name -> code
+    const taxRateMap: Record<string, any> = {};
+    const provinceNameToCode: Record<string, string> = {};
+    for (const rate of (taxRates || [])) {
+      taxRateMap[rate.province_code] = rate;
+      provinceNameToCode[rate.province_name.toLowerCase()] = rate.province_code;
+    }
+
+    // Resolve province code from state field (could be code or full name)
+    function resolveProvinceCode(state: string | null | undefined): string | null {
+      if (!state) return null;
+      const trimmed = state.trim();
+      if (trimmed.length === 2 && taxRateMap[trimmed.toUpperCase()]) {
+        return trimmed.toUpperCase();
+      }
+      const byName = provinceNameToCode[trimmed.toLowerCase()];
+      if (byName) return byName;
+      return null;
+    }
+
     // Calculate date 7 days ago for filtering recent orders
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -363,19 +392,43 @@ serve(async (req) => {
           const marketplaceFees = lineItem.commission_fee || 0;
           
           // Best Buy commission taxes are taxes ON the commission, not product tax
-          // Product tax is collected and remitted by Best Buy (marketplace-facilitated)
           const commissionTaxAmount = lineItem.commission_taxes?.reduce(
             (sum: number, tax: { amount: number; code: string }) => sum + (tax.amount || 0),
             0
           ) || 0;
-          // Total tax to customer is separate — Best Buy withholds it
-          // We store 0 as tax_amount since marketplace remits; the commission tax is part of our fee cost
-          const taxAmount = 0; // Marketplace-remitted — not our liability
           // Add commission tax to fees since it's our cost
           const totalFees = marketplaceFees + commissionTaxAmount;
 
-          // Extract province for tax purposes
+          // Calculate tax from shipping province using provincial_tax_rates
           const province = shippingAddr?.state || null;
+          const provinceCode = resolveProvinceCode(province);
+          const taxRate = provinceCode ? taxRateMap[provinceCode] : null;
+
+          let calculatedGst = 0;
+          let calculatedHst = 0;
+          let calculatedPst = 0;
+          let calculatedQst = 0;
+          let taxAmount = 0;
+
+          if (taxRate) {
+            // Tax is calculated on the sale price (pre-tax amount the customer pays)
+            if (taxRate.is_hst_province && taxRate.hst_rate) {
+              calculatedHst = parseFloat((salePrice * taxRate.hst_rate / 100).toFixed(2));
+              taxAmount = calculatedHst;
+            } else {
+              calculatedGst = parseFloat((salePrice * taxRate.gst_rate / 100).toFixed(2));
+              if (taxRate.pst_rate) {
+                calculatedPst = parseFloat((salePrice * taxRate.pst_rate / 100).toFixed(2));
+              }
+              if (taxRate.qst_rate) {
+                calculatedQst = parseFloat((salePrice * taxRate.qst_rate / 100).toFixed(2));
+              }
+              taxAmount = calculatedGst + calculatedPst + calculatedQst;
+            }
+            console.log(`Tax for ${provinceCode}: GST=${calculatedGst} HST=${calculatedHst} PST=${calculatedPst} QST=${calculatedQst} Total=${taxAmount}`);
+          } else {
+            console.warn(`No tax rate found for province: ${province} (resolved: ${provinceCode})`);
+          }
 
           // Upsert customer
           const customerId = await upsertCustomer(
@@ -394,7 +447,7 @@ serve(async (req) => {
           const lineItemStatus = lineItem.order_line_state || bbyMarketplaceStatus;
           const fulfillmentStatus = mapBestBuyToFulfillment(order.order_state);
 
-          const notes = `Best Buy Order #${order.commercial_id} | Status: ${bbyMarketplaceStatus} | Line: ${lineItemStatus} | Province: ${province || 'N/A'} | ${lineItem.product_title} (x${lineItem.quantity}) | Commission: ${(lineItem.commission_fee / salePrice * 100).toFixed(1)}%`;
+          const notes = `Best Buy Order #${order.commercial_id} | Status: ${bbyMarketplaceStatus} | Line: ${lineItemStatus} | Province: ${provinceCode || province || 'N/A'} | Tax: $${taxAmount.toFixed(2)} | ${lineItem.product_title} (x${lineItem.quantity}) | Commission: ${(lineItem.commission_fee / salePrice * 100).toFixed(1)}%`;
 
           // Try to match device by SKU/IMEI with multiple fallback strategies
           let deviceId = null;
@@ -447,15 +500,14 @@ serve(async (req) => {
             }
           }
 
-          // Insert the sale with marketplace status
-          // Best Buy generally withholds and remits tax on marketplace-facilitated orders
-          const { error: insertError } = await supabase.from("sales").insert({
+          // Insert the sale with calculated tax from province
+          const { data: insertedSale, error: insertError } = await supabase.from("sales").insert({
             order_number: lineOrderNumber,
             marketplace: "bestbuy",
             sale_price: salePrice,
             shipping_cost: shippingCost,
             marketplace_fees: parseFloat(totalFees.toFixed(2)),
-            tax_amount: taxAmount,
+            tax_amount: parseFloat(taxAmount.toFixed(2)),
             sale_date: order.created_date,
             customer_name: customerName,
             customer_email: customerEmail,
@@ -468,13 +520,32 @@ serve(async (req) => {
             fulfillment_status: fulfillmentStatus,
             is_marketplace_remitted: false, // Best Buy pays us the tax — we remit to CRA ourselves
             accounting_status: "unprocessed",
-          });
+          }).select("id").single();
 
           if (insertError) {
             console.error(`Error inserting order line ${lineOrderNumber}:`, insertError);
             errors.push(`${lineOrderNumber}: ${insertError.message}`);
           } else {
             importedOrders.push(lineOrderNumber);
+
+            // Insert tax breakdown into sales_tax_details
+            if (taxAmount > 0 && insertedSale?.id) {
+              const { error: taxError } = await supabase.from("sales_tax_details").insert({
+                sale_id: insertedSale.id,
+                company_id: companyId,
+                customer_province: provinceCode,
+                marketplace: "bestbuy",
+                gst_amount: calculatedGst,
+                hst_amount: calculatedHst,
+                pst_amount: calculatedPst,
+                qst_amount: calculatedQst,
+                total_tax: parseFloat(taxAmount.toFixed(2)),
+                is_marketplace_collected: false, // We collect and remit
+              });
+              if (taxError) {
+                console.error(`Error inserting tax details for ${lineOrderNumber}:`, taxError);
+              }
+            }
           }
         }
       } catch (orderError: any) {
