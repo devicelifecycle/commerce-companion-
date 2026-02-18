@@ -1616,6 +1616,92 @@ export type Database = {
           },
         ]
       }
+      marketplace_payouts: {
+        Row: {
+          adjustments_amount: number
+          company_id: string | null
+          created_at: string
+          currency: string
+          discrepancy_amount: number | null
+          fees_amount: number
+          gross_amount: number
+          id: string
+          marketplace: string
+          net_payout: number
+          payout_date: string
+          payout_id: string
+          period_end: string | null
+          period_start: string | null
+          raw_data: Json | null
+          reconciliation_status: string
+          review_notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          synced_at: string
+          system_fees_total: number | null
+          system_order_total: number | null
+          updated_at: string
+        }
+        Insert: {
+          adjustments_amount?: number
+          company_id?: string | null
+          created_at?: string
+          currency?: string
+          discrepancy_amount?: number | null
+          fees_amount?: number
+          gross_amount?: number
+          id?: string
+          marketplace: string
+          net_payout?: number
+          payout_date: string
+          payout_id: string
+          period_end?: string | null
+          period_start?: string | null
+          raw_data?: Json | null
+          reconciliation_status?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          synced_at?: string
+          system_fees_total?: number | null
+          system_order_total?: number | null
+          updated_at?: string
+        }
+        Update: {
+          adjustments_amount?: number
+          company_id?: string | null
+          created_at?: string
+          currency?: string
+          discrepancy_amount?: number | null
+          fees_amount?: number
+          gross_amount?: number
+          id?: string
+          marketplace?: string
+          net_payout?: number
+          payout_date?: string
+          payout_id?: string
+          period_end?: string | null
+          period_start?: string | null
+          raw_data?: Json | null
+          reconciliation_status?: string
+          review_notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          synced_at?: string
+          system_fees_total?: number | null
+          system_order_total?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_payouts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_preferences: {
         Row: {
           created_at: string | null

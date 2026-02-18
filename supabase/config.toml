@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.run-data-validation]
 verify_jwt = false
+
+[functions.sync-marketplace-payouts]
+verify_jwt = false
