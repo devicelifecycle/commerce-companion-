@@ -41,6 +41,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   rent: 'Rent',
   bank_fees: 'Bank Fees',
   marketplace_fees: 'Marketplace Fees',
+  genovation_ai: 'GenovationAI',
   other: 'Other',
 };
 

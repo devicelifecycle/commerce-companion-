@@ -2852,6 +2852,7 @@ export type Database = {
         | "bank_fees"
         | "marketplace_fees"
         | "telecommunications"
+        | "genovation_ai"
       invoice_status: "draft" | "sent" | "paid" | "overdue" | "cancelled"
       marketplace: "shopify" | "amazon" | "bestbuy" | "other"
       tax_type:
@@ -3007,6 +3008,7 @@ export const Constants = {
         "bank_fees",
         "marketplace_fees",
         "telecommunications",
+        "genovation_ai",
       ],
       invoice_status: ["draft", "sent", "paid", "overdue", "cancelled"],
       marketplace: ["shopify", "amazon", "bestbuy", "other"],
