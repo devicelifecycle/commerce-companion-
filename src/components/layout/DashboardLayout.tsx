@@ -16,6 +16,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/orders': 'Orders',
   '/inventory': 'Inventory',
   '/import': 'Import Devices',
+  '/cost-ledger': 'Cost & Supplier Ledger',
   '/suppliers': 'Suppliers',
   '/invoices': 'Invoices',
   '/expenses': 'Expenses',
