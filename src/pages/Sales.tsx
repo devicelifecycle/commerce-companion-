@@ -8,6 +8,8 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ManualSaleDialog } from '@/components/sales/ManualSaleDialog';
 import { IntercompanySaleDialog } from '@/components/sales/IntercompanySaleDialog';
 import { EditSaleDialog } from '@/components/sales/EditSaleDialog';
+import { OrderDetailDialog } from '@/components/sales/OrderDetailDialog';
+import { ReturnFromOrderDialog } from '@/components/sales/ReturnFromOrderDialog';
 import { MarketplaceBadge, FulfillmentBadge, MarketplaceStatusBadge } from '@/components/ui/status-badge';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
 import { MetricCard } from '@/components/ui/metric-card';
@@ -30,7 +32,7 @@ import { toast } from 'sonner';
 import {
   Search, Plus, Trash2, Link, Unlink, MoreHorizontal,
   Download, ArrowRightLeft, RefreshCw, AlertCircle, CheckSquare,
-  Package, Clock, Truck, PackageCheck, ShoppingCart,
+  Package, Clock, Truck, PackageCheck, ShoppingCart, RotateCcw, Eye,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getCompanyDisplayName } from '@/lib/companyNames';
@@ -57,12 +59,17 @@ interface Sale {
   company_id: string | null;
   fulfillment_status: string | null;
   marketplace_status: string | null;
+  is_marketplace_remitted?: boolean;
+  accounting_status?: string | null;
   created_at: string;
   devices?: {
     brand: string;
     model: string;
     cost_price: number;
     imei: string | null;
+    storage?: string | null;
+    color?: string | null;
+    condition?: string | null;
   } | null;
 }
 
@@ -81,6 +88,9 @@ export default function Sales() {
   const [editingSale, setEditingSale] = useState<{ id: string; deviceId: string | null; orderNumber: string } | null>(null);
   const [importingFrom, setImportingFrom] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [viewingSale, setViewingSale] = useState<Sale | null>(null);
+  const [returningSale, setReturningSale] = useState<Sale | null>(null);
+  const [returnSaleIds, setReturnSaleIds] = useState<Set<string>>(new Set());
 
   const canManageSales = hasPermission('sales_manage', 'edit');
   const canViewSales = hasPermission('sales_view', 'view');
@@ -109,7 +119,7 @@ export default function Sales() {
     try {
       let query = supabase
         .from('sales')
-        .select(`*, devices (brand, model, cost_price, imei)`)
+        .select(`*, devices (brand, model, cost_price, imei, storage, color, condition)`)
         .order('sale_date', { ascending: false })
         .limit(500);
 
@@ -130,6 +140,19 @@ export default function Sales() {
       const { data, error } = await query;
       if (error) throw error;
       setSales((data || []) as Sale[]);
+
+      // Fetch sale IDs that have returns
+      const saleIds = (data || []).map((s: any) => s.id);
+      if (saleIds.length > 0) {
+        const { data: returnData } = await supabase
+          .from('return_authorizations')
+          .select('sale_id')
+          .in('sale_id', saleIds)
+          .not('sale_id', 'is', null);
+        setReturnSaleIds(new Set((returnData || []).map((r: any) => r.sale_id)));
+      } else {
+        setReturnSaleIds(new Set());
+      }
     } catch (error) {
       console.error('Error fetching sales:', error);
       toast.error('Failed to fetch sales');
@@ -521,17 +544,23 @@ export default function Sales() {
                       <TableHead>Order</TableHead>
                       <TableHead>Device</TableHead>
                       <TableHead>Marketplace</TableHead>
-                      <TableHead>Marketplace Status</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Sale Price</TableHead>
-                      {canManageSales && <TableHead className="w-[50px]" />}
+                      <TableHead className="text-right">Profit</TableHead>
+                      <TableHead className="w-[50px]" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredSales.map((sale) => (
-                      <TableRow key={sale.id} data-state={selectedIds.has(sale.id) ? 'selected' : undefined}>
+                      <TableRow 
+                        key={sale.id} 
+                        data-state={selectedIds.has(sale.id) ? 'selected' : undefined}
+                        className="cursor-pointer"
+                        onClick={() => setViewingSale(sale)}
+                      >
                         {canManageSales && (
-                          <TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             <Checkbox
                               checked={selectedIds.has(sale.id)}
                               onCheckedChange={() => toggleSelect(sale.id)}
@@ -539,10 +568,18 @@ export default function Sales() {
                           </TableCell>
                         )}
                         <TableCell>
-                          <div>
-                            <p className="font-medium">{sale.order_number}</p>
-                            {sale.customer_name && (
-                              <p className="text-xs text-muted-foreground">{sale.customer_name}</p>
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <p className="font-medium">{sale.order_number}</p>
+                              {sale.customer_name && (
+                                <p className="text-xs text-muted-foreground">{sale.customer_name}</p>
+                              )}
+                            </div>
+                            {returnSaleIds.has(sale.id) && (
+                              <Badge variant="outline" className="text-destructive border-destructive/40 text-[10px] px-1.5 py-0">
+                                <RotateCcw className="h-2.5 w-2.5 mr-0.5" />
+                                Return
+                              </Badge>
                             )}
                           </div>
                         </TableCell>
@@ -573,60 +610,81 @@ export default function Sales() {
                         <TableCell className="text-right font-medium">
                           {formatCurrency(sale.sale_price)}
                         </TableCell>
-                        {canManageSales && (
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {!sale.device_id && (
+                        <TableCell className="text-right font-medium">
+                          {sale.profit != null ? (
+                            <span className={sale.profit >= 0 ? 'text-[hsl(var(--success))]' : 'text-destructive'}>
+                              {formatCurrency(sale.profit)}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setViewingSale(sale)}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              {canManageSales && (
+                                <>
+                                  {!sale.device_id && (
+                                    <DropdownMenuItem
+                                      onClick={() => setEditingSale({
+                                        id: sale.id,
+                                        deviceId: sale.device_id,
+                                        orderNumber: sale.order_number
+                                      })}
+                                    >
+                                      <Link className="h-4 w-4 mr-2" />
+                                      Link Device
+                                    </DropdownMenuItem>
+                                  )}
+                                  {sale.device_id && (
+                                    <DropdownMenuItem
+                                      onClick={() => handleUnlinkDevice(sale.id, sale.device_id!)}
+                                    >
+                                      <Unlink className="h-4 w-4 mr-2" />
+                                      Unlink Device
+                                    </DropdownMenuItem>
+                                  )}
+                                  {!returnSaleIds.has(sale.id) && (
+                                    <DropdownMenuItem onClick={() => setReturningSale(sale)}>
+                                      <RotateCcw className="h-4 w-4 mr-2" />
+                                      Initiate Return
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger>
+                                      <Truck className="h-4 w-4 mr-2" />
+                                      Update Status
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent>
+                                      {(['received', 'pending', 'shipped', 'delivered', 'cancelled'] as FulfillmentStatus[]).map(s => (
+                                        <DropdownMenuItem key={s} onClick={() => handleUpdateStatus(sale.id, s)}>
+                                          <FulfillmentBadge status={s} />
+                                        </DropdownMenuItem>
+                                      ))}
+                                    </DropdownMenuSubContent>
+                                  </DropdownMenuSub>
+                                  <DropdownMenuSeparator />
                                   <DropdownMenuItem
-                                    onClick={() => setEditingSale({
-                                      id: sale.id,
-                                      deviceId: sale.device_id,
-                                      orderNumber: sale.order_number
-                                    })}
+                                    className="text-destructive"
+                                    onClick={() => handleDeleteSale(sale.id)}
                                   >
-                                    <Link className="h-4 w-4 mr-2" />
-                                    Link Device
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Delete
                                   </DropdownMenuItem>
-                                )}
-                                {sale.device_id && (
-                                  <DropdownMenuItem
-                                    onClick={() => handleUnlinkDevice(sale.id, sale.device_id!)}
-                                  >
-                                    <Unlink className="h-4 w-4 mr-2" />
-                                    Unlink Device
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuSub>
-                                  <DropdownMenuSubTrigger>
-                                    <Truck className="h-4 w-4 mr-2" />
-                                    Update Status
-                                  </DropdownMenuSubTrigger>
-                                  <DropdownMenuSubContent>
-                                    {(['received', 'pending', 'shipped', 'delivered', 'cancelled'] as FulfillmentStatus[]).map(s => (
-                                      <DropdownMenuItem key={s} onClick={() => handleUpdateStatus(sale.id, s)}>
-                                        <FulfillmentBadge status={s} />
-                                      </DropdownMenuItem>
-                                    ))}
-                                  </DropdownMenuSubContent>
-                                </DropdownMenuSub>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => handleDeleteSale(sale.id)}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        )}
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -651,6 +709,25 @@ export default function Sales() {
           currentDeviceId={editingSale.deviceId}
           orderNumber={editingSale.orderNumber}
           onSaved={fetchSales}
+        />
+      )}
+
+      {viewingSale && (
+        <OrderDetailDialog
+          open={!!viewingSale}
+          onOpenChange={() => setViewingSale(null)}
+          sale={viewingSale}
+          hasReturn={returnSaleIds.has(viewingSale.id)}
+          onInitiateReturn={() => setReturningSale(viewingSale)}
+        />
+      )}
+
+      {returningSale && (
+        <ReturnFromOrderDialog
+          open={!!returningSale}
+          onOpenChange={() => setReturningSale(null)}
+          sale={returningSale}
+          onSuccess={fetchSales}
         />
       )}
 
