@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Wallet, TrendingDown, Receipt, Building2, PieChart } from 'lucide-react';
+import { Wallet, TrendingDown, Receipt, Building2, PieChart, CreditCard } from 'lucide-react';
 import { PieChart as RePieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
@@ -20,6 +20,7 @@ interface Expense {
   allocation_ves: number;
   allocation_tgw: number;
   is_tax_deductible: boolean;
+  payment_method: string | null;
 }
 
 const COLORS = ['hsl(var(--primary))', 'hsl(221, 83%, 53%)', 'hsl(142, 71%, 45%)', 'hsl(280, 65%, 60%)', 'hsl(25, 95%, 53%)', 'hsl(340, 82%, 52%)'];
@@ -32,8 +33,25 @@ const CATEGORY_LABELS: Record<string, string> = {
   equipment: 'Equipment',
   office: 'Office',
   utilities: 'Utilities',
+  telecommunications: 'Telecom',
   travel: 'Travel',
   professional_services: 'Professional Services',
+  insurance: 'Insurance',
+  payroll: 'Payroll',
+  rent: 'Rent',
+  bank_fees: 'Bank Fees',
+  marketplace_fees: 'Marketplace Fees',
+  other: 'Other',
+};
+
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  credit_card: 'Credit Card',
+  debit_card: 'Debit Card',
+  bank_transfer: 'Bank Transfer',
+  interac_etransfer: 'Interac E-Transfer',
+  cash: 'Cash',
+  cheque: 'Cheque',
+  paypal: 'PayPal',
   other: 'Other',
 };
 
@@ -51,7 +69,7 @@ export function ExpenseDashboard() {
     try {
       let query = supabase
         .from('expenses')
-        .select('id, amount, gst_hst_amount, pst_amount, category, subcategory, expense_date, company_id, is_shared, allocation_ves, allocation_tgw, is_tax_deductible');
+        .select('id, amount, gst_hst_amount, pst_amount, category, subcategory, expense_date, company_id, is_shared, allocation_ves, allocation_tgw, is_tax_deductible, payment_method');
 
       if (selectedCompany && !isSuperAdmin) {
         query = query.or(`company_id.eq.${selectedCompany.id},is_shared.eq.true`);
@@ -134,6 +152,13 @@ export function ExpenseDashboard() {
       byCategory[cat] = (byCategory[cat] || 0) + getEffectiveAmount(e);
     });
 
+    // By payment method
+    const byPaymentMethod: Record<string, number> = {};
+    expenses.forEach(e => {
+      const pm = e.payment_method || 'other';
+      byPaymentMethod[pm] = (byPaymentMethod[pm] || 0) + getEffectiveAmount(e);
+    });
+
     // Monthly trend (last 6 months)
     const monthlyTrend: { month: string; amount: number }[] = [];
     for (let i = 5; i >= 0; i--) {
@@ -177,6 +202,9 @@ export function ExpenseDashboard() {
         .map(([name, value]) => ({ name: CATEGORY_LABELS[name] || name, value }))
         .sort((a, b) => b.value - a.value),
       monthlyTrend,
+      byPaymentMethod: Object.entries(byPaymentMethod)
+        .map(([name, value]) => ({ name: PAYMENT_METHOD_LABELS[name] || name, value }))
+        .sort((a, b) => b.value - a.value),
       sharedTotal: vesAllocation + tgwAllocation,
       vesAllocation,
       tgwAllocation,
@@ -265,7 +293,7 @@ export function ExpenseDashboard() {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Monthly Trend */}
         <Card>
           <CardHeader>
@@ -292,7 +320,7 @@ export function ExpenseDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <PieChart className="h-5 w-5" />
-              Expenses by Category
+              By Category
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -310,6 +338,40 @@ export function ExpenseDashboard() {
                     nameKey="name"
                   >
                     {metrics.byCategory.slice(0, 6).map((entry, index) => (
+                      <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Legend />
+                </RePieChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* By Payment Method */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              By Payment Method
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <RePieChart>
+                  <Pie
+                    data={metrics.byPaymentMethod.slice(0, 6)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={90}
+                    paddingAngle={5}
+                    dataKey="value"
+                    nameKey="name"
+                  >
+                    {metrics.byPaymentMethod.slice(0, 6).map((entry, index) => (
                       <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>

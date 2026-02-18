@@ -50,27 +50,39 @@ interface AddExpenseDialogProps {
 const EXPENSE_CATEGORIES = [
   { value: 'inventory', label: 'Inventory Purchase', group: 'COGS' },
   { value: 'shipping', label: 'Shipping & Logistics', group: 'COGS' },
+  { value: 'rent', label: 'Rent & Lease', group: 'Operating' },
   { value: 'utilities', label: 'Utilities', group: 'Operating' },
+  { value: 'telecommunications', label: 'Telecommunications', group: 'Operating' },
   { value: 'office', label: 'Office Supplies', group: 'Operating' },
   { value: 'software', label: 'Software & Subscriptions', group: 'Operating' },
   { value: 'equipment', label: 'Equipment & Tools', group: 'Operating' },
   { value: 'professional_services', label: 'Professional Services', group: 'Operating' },
   { value: 'marketing', label: 'Marketing & Advertising', group: 'Operating' },
   { value: 'travel', label: 'Travel & Transportation', group: 'Operating' },
-  { value: 'other', label: 'Other / Marketplace Fees', group: 'Other' },
+  { value: 'insurance', label: 'Insurance', group: 'Operating' },
+  { value: 'payroll', label: 'Payroll & Benefits', group: 'Operating' },
+  { value: 'bank_fees', label: 'Bank Fees & Charges', group: 'Financial' },
+  { value: 'marketplace_fees', label: 'Marketplace Fees', group: 'Financial' },
+  { value: 'other', label: 'Other', group: 'Other' },
 ];
 
 // Map expense categories to chart of accounts codes
 const CATEGORY_ACCOUNT_MAP: Record<string, string> = {
-  inventory: '5000', // COGS (will be company-specific at runtime)
+  inventory: '5000',
   shipping: '6100',
+  rent: '6200',
   utilities: '6200',
+  telecommunications: '6200',
   office: '6500',
   software: '6900',
   equipment: '7100',
   professional_services: '6600',
   marketing: '6400',
   travel: '7100',
+  insurance: '6300',
+  payroll: '6000',
+  bank_fees: '7100',
+  marketplace_fees: '6100',
   other: '7100',
 };
 
@@ -78,6 +90,7 @@ const PAYMENT_METHODS = [
   { value: 'credit_card', label: 'Credit Card' },
   { value: 'debit_card', label: 'Debit Card' },
   { value: 'bank_transfer', label: 'Bank Transfer' },
+  { value: 'interac_etransfer', label: 'Interac E-Transfer' },
   { value: 'cash', label: 'Cash' },
   { value: 'cheque', label: 'Cheque' },
   { value: 'paypal', label: 'PayPal' },
@@ -455,7 +468,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
                   <SelectItem value="none">None</SelectItem>
                   {filteredSubcategories.map(sub => (
                     <SelectItem key={sub.subcategory} value={sub.subcategory}>
-                      {sub.subcategory.replace(/_/g, ' ')}
+                      {sub.subcategory.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
                     </SelectItem>
                   ))}
                 </SelectContent>

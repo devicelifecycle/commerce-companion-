@@ -2846,6 +2846,12 @@ export type Database = {
         | "travel"
         | "professional_services"
         | "other"
+        | "payroll"
+        | "insurance"
+        | "rent"
+        | "bank_fees"
+        | "marketplace_fees"
+        | "telecommunications"
       invoice_status: "draft" | "sent" | "paid" | "overdue" | "cancelled"
       marketplace: "shopify" | "amazon" | "bestbuy" | "other"
       tax_type:
@@ -2995,6 +3001,12 @@ export const Constants = {
         "travel",
         "professional_services",
         "other",
+        "payroll",
+        "insurance",
+        "rent",
+        "bank_fees",
+        "marketplace_fees",
+        "telecommunications",
       ],
       invoice_status: ["draft", "sent", "paid", "overdue", "cancelled"],
       marketplace: ["shopify", "amazon", "bestbuy", "other"],

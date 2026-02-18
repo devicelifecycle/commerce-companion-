@@ -36,7 +36,7 @@ import {
 import { toast } from 'sonner';
 import { 
   Plus, Search, Filter, Download, LayoutDashboard, List, 
-  Building, MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink
+  Building, MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink, Info
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
@@ -70,13 +70,19 @@ interface Expense {
 const EXPENSE_CATEGORIES = [
   { value: 'inventory', label: 'Inventory Purchase' },
   { value: 'shipping', label: 'Shipping & Logistics' },
+  { value: 'rent', label: 'Rent & Lease' },
   { value: 'utilities', label: 'Utilities' },
+  { value: 'telecommunications', label: 'Telecommunications' },
   { value: 'office', label: 'Office Supplies' },
   { value: 'software', label: 'Software & Subscriptions' },
   { value: 'equipment', label: 'Equipment & Tools' },
   { value: 'professional_services', label: 'Professional Services' },
   { value: 'marketing', label: 'Marketing & Advertising' },
   { value: 'travel', label: 'Travel & Transportation' },
+  { value: 'insurance', label: 'Insurance' },
+  { value: 'payroll', label: 'Payroll & Benefits' },
+  { value: 'bank_fees', label: 'Bank Fees & Charges' },
+  { value: 'marketplace_fees', label: 'Marketplace Fees' },
   { value: 'other', label: 'Other' },
 ];
 
@@ -254,6 +260,10 @@ export default function Expenses() {
               <Building className="h-4 w-4" />
               Vendors
             </TabsTrigger>
+            <TabsTrigger value="guide" className="flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              Guide
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
@@ -414,6 +424,121 @@ export default function Expenses() {
 
           <TabsContent value="vendors">
             <VendorManagement />
+          </TabsContent>
+
+          <TabsContent value="guide">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Tax Deductible Expenses */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Receipt className="h-4 w-4 text-[hsl(var(--success))]" />
+                    Tax-Deductible Business Expenses
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <p className="text-muted-foreground">
+                    As a business in <strong>Burlington, Ontario</strong>, you can deduct reasonable expenses incurred to earn business income. Ontario businesses pay <strong>13% HST</strong> (combined GST + PST) and can claim Input Tax Credits (ITCs) on eligible purchases.
+                  </p>
+                  <div className="space-y-2">
+                    <p className="font-medium text-[hsl(var(--success))]">✓ Deductible Expenses</p>
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                      <li><strong>Inventory & COGS</strong> — Device purchases, shipping to warehouse</li>
+                      <li><strong>Rent & Lease</strong> — Office/warehouse space</li>
+                      <li><strong>Utilities</strong> — Electricity, heating, water for business premises</li>
+                      <li><strong>Telecommunications</strong> — Business internet, phone plans</li>
+                      <li><strong>Software</strong> — Shopify, accounting tools, ERP subscriptions</li>
+                      <li><strong>Professional Services</strong> — Accounting, legal, bookkeeping, tax prep</li>
+                      <li><strong>Marketing</strong> — Online ads, promotional materials</li>
+                      <li><strong>Office Supplies</strong> — Printing, postage, stationery</li>
+                      <li><strong>Equipment</strong> — Computers, shelving, warehouse tools (may need to be capitalized if &gt;$500)</li>
+                      <li><strong>Insurance</strong> — Business liability, property, vehicle</li>
+                      <li><strong>Payroll</strong> — Salaries, CPP, EI, benefits, WSIB</li>
+                      <li><strong>Bank Fees</strong> — Service charges, wire fees, credit card annual fees</li>
+                      <li><strong>Marketplace Fees</strong> — Amazon FBA, Shopify transaction fees, Best Buy commission</li>
+                      <li><strong>Travel</strong> — Business travel, mileage (CRA rate: $0.70/km first 5,000 km in ON), meals (50% deductible)</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Non-Deductible & Special Rules */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Info className="h-4 w-4 text-destructive" />
+                    Non-Deductible & Special Rules
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  <div className="space-y-2">
+                    <p className="font-medium text-destructive">✗ Not Deductible</p>
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                      <li>Personal expenses (groceries, personal clothing, home mortgage)</li>
+                      <li>Income tax payments (federal/provincial)</li>
+                      <li>Owner draws / personal withdrawals</li>
+                      <li>Capital repayments on loans (interest is deductible)</li>
+                      <li>Fines and penalties</li>
+                      <li>Political contributions</li>
+                      <li>Club membership dues (golf, social clubs)</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-2 pt-2 border-t">
+                    <p className="font-medium text-[hsl(var(--warning))]">⚠ Special Rules</p>
+                    <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                      <li><strong>Meals & entertainment</strong> — Only 50% deductible</li>
+                      <li><strong>Home office</strong> — Deductible based on % of home used for business</li>
+                      <li><strong>Vehicle</strong> — Business-use % only; keep a mileage log</li>
+                      <li><strong>Capital assets &gt;$500</strong> — Must be depreciated (CCA) not fully expensed</li>
+                      <li><strong>HST on exempt goods</strong> — No ITC on items exempt from HST</li>
+                      <li><strong>Prepaid expenses</strong> — Deduct in the period they relate to, not when paid</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Automation Notes */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Receipt className="h-4 w-4 text-[hsl(var(--info))]" />
+                    How Expenses Flow in the System
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                  <div className="space-y-2">
+                    <p><strong>📒 Journal Entries:</strong> Every expense automatically creates a double-entry journal entry — debiting the appropriate expense account and crediting Cash/AP. These flow directly to the P&L statement.</p>
+                    <p><strong>💰 HST/ITCs:</strong> GST/HST amounts are tracked separately for Input Tax Credit claims on your next filing.</p>
+                    <p><strong>🔄 Shared Expenses:</strong> Expenses marked as "shared" are automatically allocated between VES and TGW based on the configured split percentage, creating journal entries for both entities.</p>
+                    <p><strong>🏪 Marketplace Fees:</strong> Marketplace fees (Amazon FBA, Shopify transaction fees, Best Buy commission) are captured at the order level during import and reflected in per-sale profitability. They are <strong>not</strong> auto-created as standalone expenses — they are embedded in each sale's financials and flow through COGS/fee accounts in journal entries.</p>
+                    <p><strong>📊 Payroll:</strong> Use the "Payroll & Benefits" category to record gross wages, employer CPP/EI contributions, WSIB, and benefits. Each component can be tracked with subcategories for accurate reporting.</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Category Management */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Filter className="h-4 w-4 text-[hsl(var(--accent))]" />
+                    Managing Categories
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-muted-foreground">
+                  <p>Categories are pre-configured to match CRA expense classifications for Canadian businesses. Subcategories can be added to provide more granular tracking.</p>
+                  <p>If you need a category not listed, use <strong>"Other"</strong> and describe the expense clearly in the description and notes fields. Contact your admin to request a new category be added to the system.</p>
+                  <div className="p-3 rounded-lg bg-muted/50 mt-2">
+                    <p className="font-medium text-foreground mb-1">💡 Tips</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Always attach receipts for expenses over $50</li>
+                      <li>Use subcategories for better reporting granularity</li>
+                      <li>Mark shared expenses correctly — wrong splits affect both companies' P&L</li>
+                      <li>The HST rate in Burlington, ON is 13% — enter the tax portion separately for accurate ITC claims</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         </Tabs>
 
