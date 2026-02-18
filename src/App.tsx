@@ -27,6 +27,7 @@ import PurchaseOrders from "./pages/PurchaseOrders";
 import GoodsReceived from "./pages/GoodsReceived";
 import Returns from "./pages/Returns";
 import IntegrationHealth from "./pages/IntegrationHealth";
+import CostLedger from "./pages/CostLedger";
 
 const queryClient = new QueryClient();
 
@@ -77,6 +78,7 @@ const App = () => (
               <Route path="/returns" element={<ProtectedRoute><Returns /></ProtectedRoute>} />
               <Route path="/financials" element={<ProtectedRoute><Financials /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+              <Route path="/cost-ledger" element={<ProtectedRoute><CostLedger /></ProtectedRoute>} />
               <Route path="/forecasting" element={<ProtectedRoute><Forecasting /></ProtectedRoute>} />
               {/* Redirects for old routes */}
               <Route path="/statements/profit-loss" element={<Navigate to="/financials" replace />} />

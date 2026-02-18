@@ -21,6 +21,7 @@ const routes = [
   { title: 'Forecasting', url: '/forecasting', icon: Brain, group: 'Analytics' },
   { title: 'Orders', url: '/orders', icon: ShoppingCart, group: 'Operations' },
   { title: 'Inventory', url: '/inventory', icon: Smartphone, group: 'Operations' },
+  { title: 'Cost Ledger', url: '/cost-ledger', icon: Smartphone, group: 'Operations' },
   { title: 'Import Devices', url: '/import', icon: Upload, group: 'Operations' },
   { title: 'Suppliers', url: '/suppliers', icon: Package, group: 'Operations' },
   { title: 'Invoices', url: '/invoices', icon: FileText, group: 'Operations' },
