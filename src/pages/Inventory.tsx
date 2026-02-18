@@ -401,6 +401,7 @@ export default function Inventory() {
     }
   };
 
+  const handleExportDevices = () => {
     const items = selection.count > 0 ? selection.selectedItems : filteredDevices;
     const headers = ['Brand', 'Model', 'IMEI', 'SKU', 'Category', 'Condition', 'Status', 'Cost', 'Sale Price', 'Storage', 'Color', 'Supplier'];
     const rows = items.map(d => [
@@ -916,10 +917,6 @@ export default function Inventory() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
-
-          <TabsContent value="returns">
-            <ReturnsManagement />
           </TabsContent>
 
           <TabsContent value="returns">
