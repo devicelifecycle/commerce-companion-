@@ -12,14 +12,17 @@ import { ProfitabilityKPIs } from '@/components/dashboard/ProfitabilityKPIs';
 import { RevenueChart } from '@/components/dashboard/RevenueChart';
 import { MarketplaceChart } from '@/components/dashboard/MarketplaceChart';
 import { TopProductsChart } from '@/components/dashboard/TopProductsChart';
+import { InventoryDashboard } from '@/components/inventory/InventoryDashboard';
+import { AgingInventoryReport } from '@/components/inventory/AgingInventoryReport';
 import { MarketplaceBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { 
-  Activity, ShoppingCart, Download, CalendarIcon
+  Activity, ShoppingCart, Download, CalendarIcon, LayoutDashboard, Clock, Package
 } from 'lucide-react';
 import { format, subDays, subMonths, startOfMonth, startOfYear } from 'date-fns';
 import { DateRange } from 'react-day-picker';
@@ -203,82 +206,117 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Profitability KPIs - Admin only - top of page for visibility */}
-        {isAdmin && <ProfitabilityKPIs />}
+        <Tabs defaultValue="overview" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="overview" className="flex items-center gap-2">
+              <LayoutDashboard className="h-4 w-4" />
+              Overview
+            </TabsTrigger>
+            {isAdmin && (
+              <>
+                <TabsTrigger value="inventory" className="flex items-center gap-2">
+                  <Package className="h-4 w-4" />
+                  Inventory Summary
+                </TabsTrigger>
+                <TabsTrigger value="aging" className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Aging Report
+                </TabsTrigger>
+              </>
+            )}
+          </TabsList>
 
-        {/* Row: Alerts + Quick Stats */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-          <div className="lg:col-span-4">
-            <AlertsPanel />
-          </div>
-          <div className="lg:col-span-8">
-            <QuickStats />
-          </div>
-        </div>
+          <TabsContent value="overview" className="space-y-4">
+            {/* Profitability KPIs - Admin only */}
+            {isAdmin && <ProfitabilityKPIs />}
 
-        {/* Financial Overview - Admin only */}
-        {isAdmin && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <CashPosition />
-            <InventoryValuation />
-            <GoalProgress />
-          </div>
-        )}
-
-        {/* Analytics - Admin only */}
-        {isAdmin && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <RevenueChart />
-            <MarketplaceChart />
-            <TopProductsChart />
-          </div>
-        )}
-
-        {/* Recent Sales - compact table style */}
-        <section className="section-container">
-          <div className="section-header">
-            <ShoppingCart className="h-4 w-4 text-accent" />
-            <h2 className="section-title">Recent Sales</h2>
-          </div>
-          
-          {recentSales.length === 0 ? (
-            <div className="flex items-center justify-center py-6 text-center">
-              <div className="flex flex-col items-center">
-                <ShoppingCart className="h-8 w-8 text-muted-foreground/50 mb-2" />
-                <p className="text-sm text-muted-foreground">No sales recorded yet</p>
+            {/* Row: Alerts + Quick Stats */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+              <div className="lg:col-span-4">
+                <AlertsPanel />
+              </div>
+              <div className="lg:col-span-8">
+                <QuickStats />
               </div>
             </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Device</th>
-                    <th>Order #</th>
-                    <th>Channel</th>
-                    <th className="text-right">Revenue</th>
-                    <th className="text-right">Profit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentSales.map((sale) => (
-                    <tr key={sale.id}>
-                      <td className="font-medium">
-                        {sale.device ? `${sale.device.brand} ${sale.device.model}` : 'Unknown'}
-                      </td>
-                      <td className="font-mono text-muted-foreground">#{sale.order_number}</td>
-                      <td><MarketplaceBadge marketplace={sale.marketplace} /></td>
-                      <td className="text-right font-medium text-primary">{formatCurrency(Number(sale.sale_price))}</td>
-                      <td className={`text-right font-medium ${Number(sale.profit) > 0 ? 'text-success' : 'text-destructive'}`}>
-                        {Number(sale.profit) > 0 ? '+' : ''}{formatCurrency(Number(sale.profit))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+
+            {/* Financial Overview - Admin only */}
+            {isAdmin && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <CashPosition />
+                <InventoryValuation />
+                <GoalProgress />
+              </div>
+            )}
+
+            {/* Analytics - Admin only */}
+            {isAdmin && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <RevenueChart />
+                <MarketplaceChart />
+                <TopProductsChart />
+              </div>
+            )}
+
+            {/* Recent Sales */}
+            <section className="section-container">
+              <div className="section-header">
+                <ShoppingCart className="h-4 w-4 text-accent" />
+                <h2 className="section-title">Recent Sales</h2>
+              </div>
+              
+              {recentSales.length === 0 ? (
+                <div className="flex items-center justify-center py-6 text-center">
+                  <div className="flex flex-col items-center">
+                    <ShoppingCart className="h-8 w-8 text-muted-foreground/50 mb-2" />
+                    <p className="text-sm text-muted-foreground">No sales recorded yet</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Device</th>
+                        <th>Order #</th>
+                        <th>Channel</th>
+                        <th className="text-right">Revenue</th>
+                        <th className="text-right">Profit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentSales.map((sale) => (
+                        <tr key={sale.id}>
+                          <td className="font-medium">
+                            {sale.device ? `${sale.device.brand} ${sale.device.model}` : 'Unknown'}
+                          </td>
+                          <td className="font-mono text-muted-foreground">#{sale.order_number}</td>
+                          <td><MarketplaceBadge marketplace={sale.marketplace} /></td>
+                          <td className="text-right font-medium text-primary">{formatCurrency(Number(sale.sale_price))}</td>
+                          <td className={`text-right font-medium ${Number(sale.profit) > 0 ? 'text-success' : 'text-destructive'}`}>
+                            {Number(sale.profit) > 0 ? '+' : ''}{formatCurrency(Number(sale.profit))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </TabsContent>
+
+          {isAdmin && (
+            <TabsContent value="inventory">
+              <InventoryDashboard />
+            </TabsContent>
           )}
-        </section>
+
+          {isAdmin && (
+            <TabsContent value="aging">
+              <AgingInventoryReport />
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
     </DashboardLayout>
   );

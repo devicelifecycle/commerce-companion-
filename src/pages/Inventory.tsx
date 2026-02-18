@@ -6,10 +6,8 @@ import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
 import { CompanySelector } from '@/components/layout/CompanySelector';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { InventoryDashboard } from '@/components/inventory/InventoryDashboard';
 import { InventoryTransferDialog } from '@/components/inventory/InventoryTransferDialog';
 import { InventoryLabelDialog } from '@/components/inventory/InventoryLabelDialog';
-import { AgingInventoryReport } from '@/components/inventory/AgingInventoryReport';
 import { ReturnsManagement } from '@/components/inventory/ReturnsManagement';
 import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker';
 import { FBAFeeAnalytics } from '@/components/inventory/FBAFeeAnalytics';
@@ -59,7 +57,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
   Search, Plus, Filter, Smartphone, Trash2, Edit2, MoreHorizontal,
-  LayoutDashboard, List, Clock, ArrowRightLeft, QrCode, Link, Upload, RotateCcw, Boxes,
+  List, ArrowRightLeft, QrCode, Link, Upload, RotateCcw, Boxes,
   FileText, Download, Send,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -380,7 +378,29 @@ export default function Inventory() {
     }
   };
 
-  const handleExportDevices = () => {
+  const handleBulkSendToFBA = async () => {
+    const inStockIds = selection.selectedItems
+      .filter(d => d.status === 'in_stock' && d.fulfillment_channel !== 'fba' && d.fulfillment_channel !== 'in_transit_fba')
+      .map(d => d.id);
+    if (inStockIds.length === 0) {
+      toast.error('No eligible in-stock devices selected');
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('devices')
+        .update({ fulfillment_channel: 'in_transit_fba' })
+        .in('id', inStockIds);
+      if (error) throw error;
+      logEvent({ action: 'UPDATE' as any, tableName: 'devices', module: 'Inventory', notes: `Bulk sent ${inStockIds.length} device(s) to FBA` });
+      toast.success(`${inStockIds.length} device(s) marked as in transit to FBA`);
+      selection.clear();
+      fetchDevices();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send to FBA');
+    }
+  };
+
     const items = selection.count > 0 ? selection.selectedItems : filteredDevices;
     const headers = ['Brand', 'Model', 'IMEI', 'SKU', 'Category', 'Condition', 'Status', 'Cost', 'Sale Price', 'Storage', 'Color', 'Supplier'];
     const rows = items.map(d => [
@@ -652,24 +672,12 @@ export default function Inventory() {
           </div>
         </div>
 
-        <Tabs defaultValue={isSuperAdmin ? "dashboard" : "list"} className="space-y-4">
+        <Tabs defaultValue="list" className="space-y-4">
           <TabsList>
-            {isSuperAdmin && (
-              <TabsTrigger value="dashboard" className="flex items-center gap-2">
-                <LayoutDashboard className="h-4 w-4" />
-                Dashboard
-              </TabsTrigger>
-            )}
             <TabsTrigger value="list" className="flex items-center gap-2">
               <List className="h-4 w-4" />
               All Devices
             </TabsTrigger>
-            {isSuperAdmin && (
-              <TabsTrigger value="aging" className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Aging Report
-              </TabsTrigger>
-            )}
             <TabsTrigger value="returns" className="flex items-center gap-2">
               <RotateCcw className="h-4 w-4" />
               Returns
@@ -681,12 +689,6 @@ export default function Inventory() {
               </TabsTrigger>
             )}
           </TabsList>
-
-          {isSuperAdmin && (
-            <TabsContent value="dashboard">
-              <InventoryDashboard />
-            </TabsContent>
-          )}
 
           <TabsContent value="list">
             <Card>
@@ -916,11 +918,9 @@ export default function Inventory() {
             </Card>
           </TabsContent>
 
-          {isSuperAdmin && (
-            <TabsContent value="aging">
-              <AgingInventoryReport />
-            </TabsContent>
-          )}
+          <TabsContent value="returns">
+            <ReturnsManagement />
+          </TabsContent>
 
           <TabsContent value="returns">
             <ReturnsManagement />
@@ -990,6 +990,7 @@ export default function Inventory() {
             ...(canManage ? [
               { label: 'Mark In Stock', onClick: () => handleBulkStatusChange('in_stock') },
               { label: 'Mark Sold', onClick: () => handleBulkStatusChange('sold') },
+              { label: 'Send to FBA', icon: <Send className="h-4 w-4 mr-1" />, onClick: handleBulkSendToFBA },
               { label: 'Delete', icon: <Trash2 className="h-4 w-4 mr-1" />, onClick: handleBulkDelete, variant: 'destructive' as const },
             ] : []),
           ]}
