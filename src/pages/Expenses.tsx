@@ -393,15 +393,16 @@ export default function Expenses() {
                                     Edit
                                   </DropdownMenuItem>
                                   {expense.receipt_url && (
-                                    <DropdownMenuItem asChild>
-                                      <a 
-                                        href={`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/receipts/${expense.receipt_url}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                      >
+                                     <DropdownMenuItem onClick={async () => {
+                                        const { data } = await supabase.storage
+                                          .from('receipts')
+                                          .createSignedUrl(expense.receipt_url, 3600);
+                                        if (data?.signedUrl) {
+                                          window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+                                        }
+                                      }}>
                                         <ExternalLink className="h-4 w-4 mr-2" />
                                         View Receipt
-                                      </a>
                                     </DropdownMenuItem>
                                   )}
                                   <DropdownMenuItem

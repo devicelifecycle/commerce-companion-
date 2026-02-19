@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -33,6 +34,7 @@ interface Vendor {
 }
 
 export function VendorManagement() {
+  const { selectedCompany } = useCompany();
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,16 +50,21 @@ export function VendorManagement() {
 
   useEffect(() => {
     fetchVendors();
-  }, []);
+  }, [selectedCompany]);
 
   const fetchVendors = async () => {
     setLoading(true);
     try {
-      // Get vendors with expense totals
-      const { data: vendorsData, error } = await supabase
+      let query = supabase
         .from('vendors')
         .select('*')
         .order('name');
+      
+      if (selectedCompany) {
+        query = query.eq('company_id', selectedCompany.id);
+      }
+
+      const { data: vendorsData, error } = await query;
 
       if (error) throw error;
 
@@ -116,6 +123,7 @@ export function VendorManagement() {
           email: formData.email || null,
           phone: formData.phone || null,
           category: formData.category || null,
+          company_id: selectedCompany?.id || null,
         });
 
         if (error) throw error;
