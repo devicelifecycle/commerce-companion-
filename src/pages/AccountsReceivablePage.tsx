@@ -1,8 +1,10 @@
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { AccountsReceivable } from '@/components/accounting/AccountsReceivable';
 
 export default function AccountsReceivablePage() {
   return (
+    <PermissionGuard permission="accounting_view" title="Accounts Receivable">
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div>
@@ -12,5 +14,6 @@ export default function AccountsReceivablePage() {
         <AccountsReceivable />
       </div>
     </DashboardLayout>
+    </PermissionGuard>
   );
 }

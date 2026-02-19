@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -91,6 +92,7 @@ export default function GoodsReceived() {
   };
 
   return (
+    <PermissionGuard permission="inventory_view" title="Goods Received Notes">
     <DashboardLayout>
       <div className="space-y-4">
         <div>
@@ -196,5 +198,6 @@ export default function GoodsReceived() {
         />
       </div>
     </DashboardLayout>
+    </PermissionGuard>
   );
 }

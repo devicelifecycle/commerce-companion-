@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FinancialsGuide } from '@/components/guides/FinancialsGuide';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -93,6 +94,7 @@ export default function Financials() {
   const currentGroup = SUB_VIEWS[activeTab];
 
   return (
+    <PermissionGuard permission="accounting_view" title="Financial Hub">
     <DashboardLayout>
       <div className="space-y-4 animate-fade-in">
         {/* Header */}
@@ -182,5 +184,6 @@ export default function Financials() {
         </div>
       </div>
     </DashboardLayout>
+    </PermissionGuard>
   );
 }

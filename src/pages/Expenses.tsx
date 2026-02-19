@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { ActivityLog } from '@/components/audit/ActivityLog';
 import { ExpenseDashboard } from '@/components/expenses/ExpenseDashboard';
@@ -227,6 +228,7 @@ export default function Expenses() {
   };
 
   return (
+    <PermissionGuard permission="expenses_view" title="Expense Management">
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
@@ -561,5 +563,6 @@ export default function Expenses() {
         />
       </div>
     </DashboardLayout>
+    </PermissionGuard>
   );
 }

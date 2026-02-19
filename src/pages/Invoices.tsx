@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -203,6 +204,7 @@ export default function Invoices() {
   }
 
   return (
+    <PermissionGuard permission="invoices_view" title="Invoices">
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
@@ -403,5 +405,6 @@ export default function Invoices() {
         </DialogContent>
       </Dialog>
     </DashboardLayout>
+    </PermissionGuard>
   );
 }
