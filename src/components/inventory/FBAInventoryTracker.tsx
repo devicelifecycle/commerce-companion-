@@ -12,8 +12,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { MetricCard } from '@/components/ui/metric-card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Package, Search, AlertTriangle, TrendingDown, Boxes, BarChart3, Send,
+  Package, Search, AlertTriangle, TrendingDown, Boxes, BarChart3, Send, CheckCircle2, Truck, ArrowRight,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
@@ -40,7 +41,9 @@ export function FBAInventoryTracker() {
   const [devices, setDevices] = useState<FBADevice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [channelFilter, setChannelFilter] = useState<string>('fba');
+  const [channelFilter, setChannelFilter] = useState<string>('all');
+  const [selectedTransitIds, setSelectedTransitIds] = useState<Set<string>>(new Set());
+  const [confirmingArrival, setConfirmingArrival] = useState(false);
 
   // VES company = Amazon FBA
   const vesCompany = companies.find(c => c.code === 'VES');
@@ -92,6 +95,8 @@ export function FBAInventoryTracker() {
   };
 
   const handleConfirmAtFBA = async (deviceIds: string[]) => {
+    if (deviceIds.length === 0) return;
+    setConfirmingArrival(true);
     try {
       const { error } = await supabase
         .from('devices')
@@ -99,16 +104,18 @@ export function FBAInventoryTracker() {
         .in('id', deviceIds);
       if (error) throw error;
       toast.success(`${deviceIds.length} device(s) confirmed at FBA warehouse`);
+      setSelectedTransitIds(new Set());
       fetchFBAInventory();
     } catch (err: any) {
       toast.error(err.message || 'Failed to update');
+    } finally {
+      setConfirmingArrival(false);
     }
   };
 
   const metrics = useMemo(() => {
     const totalUnits = devices.length;
     const totalValue = devices.reduce((sum, d) => sum + d.cost_price, 0);
-    const avgCost = totalUnits > 0 ? totalValue / totalUnits : 0;
 
     // Group by brand+model for aggregated view
     const grouped: Record<string, { brand: string; model: string; storage: string | null; units: number; value: number }> = {};
@@ -122,8 +129,6 @@ export function FBAInventoryTracker() {
     });
 
     const productGroups = Object.values(grouped).sort((a, b) => b.units - a.units);
-
-    // Low stock products (1-2 units)
     const lowStockProducts = productGroups.filter(p => p.units <= 2);
 
     // By brand chart data
@@ -143,7 +148,11 @@ export function FBAInventoryTracker() {
       return (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24) > 90;
     }).length;
 
-    return { totalUnits, totalValue, avgCost, productGroups, lowStockProducts, brandChartData, agingUnits };
+    // In-transit devices
+    const inTransitDevices = devices.filter(d => d.fulfillment_channel === 'in_transit_fba');
+    const atFbaDevices = devices.filter(d => d.fulfillment_channel === 'fba');
+
+    return { totalUnits, totalValue, productGroups, lowStockProducts, brandChartData, agingUnits, inTransitDevices, atFbaDevices };
   }, [devices]);
 
   const filteredProducts = useMemo(() => {
@@ -165,7 +174,30 @@ export function FBAInventoryTracker() {
     );
   }
 
-  const inTransitCount = devices.filter(d => d.fulfillment_channel === 'in_transit_fba').length;
+  const inTransitCount = metrics.inTransitDevices.length;
+  const atFbaCount = metrics.atFbaDevices.length;
+
+  const toggleTransitSelection = (id: string) => {
+    setSelectedTransitIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAllTransit = () => {
+    if (selectedTransitIds.size === inTransitCount) {
+      setSelectedTransitIds(new Set());
+    } else {
+      setSelectedTransitIds(new Set(metrics.inTransitDevices.map(d => d.id)));
+    }
+  };
+
+  const daysSince = (dateStr: string) => {
+    const d = new Date(dateStr);
+    return Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24));
+  };
 
   return (
     <div className="space-y-6">
@@ -184,11 +216,18 @@ export function FBAInventoryTracker() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard
-          title="FBA Units in Stock"
-          value={metrics.totalUnits}
+          title="At FBA Warehouse"
+          value={atFbaCount}
           icon={Boxes}
+        />
+        <MetricCard
+          title="In Transit to FBA"
+          value={inTransitCount}
+          icon={Truck}
+          change={inTransitCount > 0 ? 'Awaiting confirmation' : 'None pending'}
+          changeType={inTransitCount > 0 ? 'neutral' : 'positive'}
         />
         <MetricCard
           title="FBA Inventory Value"
@@ -304,6 +343,97 @@ export function FBAInventoryTracker() {
           </CardContent>
         </Card>
       </div>
+
+      {/* In-Transit Shipments Panel */}
+      {inTransitCount > 0 && (
+        <Card className="border-blue-500/30">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Truck className="h-4 w-4 text-blue-600" />
+                  In Transit to FBA
+                  <Badge variant="secondary" className="text-[10px]">{inTransitCount} devices</Badge>
+                </CardTitle>
+                <CardDescription>
+                  Devices shipped to Amazon — confirm when received at FBA warehouse
+                </CardDescription>
+              </div>
+              <Button
+                size="sm"
+                disabled={selectedTransitIds.size === 0 || confirmingArrival}
+                onClick={() => handleConfirmAtFBA(Array.from(selectedTransitIds))}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                {confirmingArrival ? 'Confirming...' : `Confirm Arrived (${selectedTransitIds.size})`}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-[320px] overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={selectedTransitIds.size === inTransitCount && inTransitCount > 0}
+                        onCheckedChange={toggleAllTransit}
+                      />
+                    </TableHead>
+                    <TableHead>Device</TableHead>
+                    <TableHead>SKU</TableHead>
+                    <TableHead>Condition</TableHead>
+                    <TableHead className="text-right">Cost</TableHead>
+                    <TableHead className="text-center">Days in Transit</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {metrics.inTransitDevices.map(d => (
+                    <TableRow key={d.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedTransitIds.has(d.id)}
+                          onCheckedChange={() => toggleTransitSelection(d.id)}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">{d.brand} {d.model}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {[d.storage, d.color].filter(Boolean).join(' · ')}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">{d.sku || '—'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px] capitalize">{d.condition}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right text-sm">{formatCurrency(d.cost_price)}</TableCell>
+                      <TableCell className="text-center">
+                        <span className={`text-sm font-medium ${daysSince(d.created_at) > 14 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                          {daysSince(d.created_at)}d
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs"
+                          onClick={() => handleConfirmAtFBA([d.id])}
+                        >
+                          <ArrowRight className="h-3 w-3 mr-1" />
+                          Arrived
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Low stock alert list */}
       {metrics.lowStockProducts.length > 0 && (
