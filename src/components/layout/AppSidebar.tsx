@@ -51,6 +51,7 @@ const operationsNav = [
   { title: 'Inventory', url: '/inventory', icon: Smartphone },
   { title: 'Import', url: '/import', icon: Upload },
   { title: 'Suppliers', url: '/suppliers', icon: Package },
+  { title: 'Customers', url: '/customers', icon: Users },
   { title: 'Invoices', url: '/invoices', icon: FileText },
 ];
 
