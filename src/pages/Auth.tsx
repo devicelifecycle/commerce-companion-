@@ -93,8 +93,7 @@ export default function Auth() {
 
               </div>
               <div>
-                <h1 className="text-2xl font-display font-bold text-foreground">Tech Genius</h1>
-                <p className="text-sm font-medium text-primary">Warehouse Management</p>
+                <h1 className="text-2xl font-display font-bold text-foreground">Warehouse Management</h1>
               </div>
             </div>
 
