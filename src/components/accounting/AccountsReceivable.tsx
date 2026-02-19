@@ -65,8 +65,18 @@ const STATUS_COLORS: Record<string, string> = {
   written_off: 'bg-muted',
 };
 
-export function AccountsReceivable() {
-  const { selectedCompany } = useCompany();
+interface AccountsReceivableProps {
+  companyFilter?: 'consolidated' | string;
+}
+
+export function AccountsReceivable({ companyFilter }: AccountsReceivableProps = {}) {
+  const { selectedCompany, companies } = useCompany();
+
+  const effectiveCompanyId = companyFilter && companyFilter !== 'consolidated'
+    ? companyFilter
+    : companyFilter === 'consolidated'
+      ? null
+      : selectedCompany?.id || null;
   const [records, setRecords] = useState<ARRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
@@ -92,7 +102,7 @@ export function AccountsReceivable() {
 
   useEffect(() => {
     fetchRecords();
-  }, [selectedCompany]);
+  }, [effectiveCompanyId]);
 
   const fetchRecords = async () => {
     setLoading(true);
@@ -102,8 +112,8 @@ export function AccountsReceivable() {
         .select('*')
         .order('due_date', { ascending: true });
 
-      if (selectedCompany) {
-        query = query.eq('company_id', selectedCompany.id);
+      if (effectiveCompanyId) {
+        query = query.eq('company_id', effectiveCompanyId);
       }
 
       const { data, error } = await query;
@@ -127,7 +137,7 @@ export function AccountsReceivable() {
       const { error } = await supabase
         .from('accounts_receivable')
         .insert({
-          company_id: selectedCompany?.id,
+          company_id: effectiveCompanyId || selectedCompany?.id,
           source_type: formData.source_type,
           source_reference: formData.source_reference || null,
           marketplace: formData.marketplace || null,
@@ -172,12 +182,14 @@ export function AccountsReceivable() {
 
       // Update AR record
       const newPaidAmount = selectedRecord.paid_amount + amount;
-      const newStatus = newPaidAmount >= selectedRecord.original_amount ? 'paid' : 'partial';
+      const newBalanceDue = selectedRecord.original_amount - newPaidAmount;
+      const newStatus = newBalanceDue <= 0 ? 'paid' : 'partial';
 
       const { error: updateError } = await supabase
         .from('accounts_receivable')
         .update({
           paid_amount: newPaidAmount,
+          balance_due: Math.max(0, newBalanceDue),
           status: newStatus,
         })
         .eq('id', selectedRecord.id);
