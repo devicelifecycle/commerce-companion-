@@ -2758,6 +2758,7 @@ export type Database = {
         Row: {
           address: string | null
           category: string | null
+          company_id: string | null
           contact_name: string | null
           created_at: string
           email: string | null
@@ -2771,6 +2772,7 @@ export type Database = {
         Insert: {
           address?: string | null
           category?: string | null
+          company_id?: string | null
           contact_name?: string | null
           created_at?: string
           email?: string | null
@@ -2784,6 +2786,7 @@ export type Database = {
         Update: {
           address?: string | null
           category?: string | null
+          company_id?: string | null
           contact_name?: string | null
           created_at?: string
           email?: string | null
@@ -2794,7 +2797,15 @@ export type Database = {
           total_spent?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vendors_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
