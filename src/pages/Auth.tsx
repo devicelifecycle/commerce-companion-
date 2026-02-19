@@ -28,10 +28,10 @@ export default function Auth() {
 
   const validateLogin = () => {
     const newErrors: Record<string, string> = {};
-    try { emailSchema.parse(loginEmail); } catch (e) {
+    try {emailSchema.parse(loginEmail);} catch (e) {
       if (e instanceof z.ZodError) newErrors.loginEmail = e.errors[0].message;
     }
-    try { passwordSchema.parse(loginPassword); } catch (e) {
+    try {passwordSchema.parse(loginPassword);} catch (e) {
       if (e instanceof z.ZodError) newErrors.loginPassword = e.errors[0].message;
     }
     setErrors(newErrors);
@@ -47,22 +47,22 @@ export default function Auth() {
     if (error) {
       toast({
         title: 'Login failed',
-        description: error.message === 'Invalid login credentials'
-          ? 'Invalid email or password. Please try again.'
-          : error.message,
-        variant: 'destructive',
+        description: error.message === 'Invalid login credentials' ?
+        'Invalid email or password. Please try again.' :
+        error.message,
+        variant: 'destructive'
       });
     }
   };
 
   const features = [
-    { icon: Package, label: 'Inventory Tracking', desc: 'Real-time stock across warehouses & FBA' },
-    { icon: BarChart3, label: 'Financial Reports', desc: 'P&L, balance sheets, and tax filing' },
-    { icon: Globe, label: 'Marketplace Sync', desc: 'Shopify, Amazon & Best Buy integration' },
-    { icon: TrendingUp, label: 'Profit Analytics', desc: 'Per-unit COGS, margins & fee analysis' },
-    { icon: Shield, label: 'Tax Compliance', desc: 'GST/HST/PST tracking & CRA reporting' },
-    { icon: Zap, label: 'Automation', desc: 'Auto journal entries & order imports' },
-  ];
+  { icon: Package, label: 'Inventory Tracking', desc: 'Real-time stock across warehouses & FBA' },
+  { icon: BarChart3, label: 'Financial Reports', desc: 'P&L, balance sheets, and tax filing' },
+  { icon: Globe, label: 'Marketplace Sync', desc: 'Shopify, Amazon & Best Buy integration' },
+  { icon: TrendingUp, label: 'Profit Analytics', desc: 'Per-unit COGS, margins & fee analysis' },
+  { icon: Shield, label: 'Tax Compliance', desc: 'GST/HST/PST tracking & CRA reporting' },
+  { icon: Zap, label: 'Automation', desc: 'Auto journal entries & order imports' }];
+
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -77,7 +77,7 @@ export default function Auth() {
         {/* Subtle grid pattern */}
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: 'linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
+          backgroundSize: '60px 60px'
         }} />
 
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
@@ -89,8 +89,8 @@ export default function Auth() {
                 <img
                   src={warehouseLogo}
                   alt="Tech Genius Warehouse"
-                  className="relative w-14 h-14 rounded-xl ring-1 ring-primary/30"
-                />
+                  className="relative w-14 h-14 rounded-xl ring-1 ring-primary/30" />
+
               </div>
               <div>
                 <h1 className="text-2xl font-display font-bold text-foreground">Tech Genius</h1>
@@ -101,8 +101,8 @@ export default function Auth() {
             {/* Headline */}
             <div className="max-w-lg mb-12">
               <h2 className="text-4xl font-display font-bold text-foreground leading-tight mb-4">
-                Your complete
-                <span className="gradient-text block">operations hub</span>
+
+operations hub
               </h2>
               <p className="text-muted-foreground text-lg leading-relaxed">
                 Inventory, accounting, and marketplace management — unified in one platform built for resellers.
@@ -112,8 +112,8 @@ export default function Auth() {
 
           {/* Feature grid */}
           <div className="grid grid-cols-2 gap-3 max-w-lg">
-            {features.map(({ icon: Icon, label, desc }) => (
-              <div key={label} className="flex items-start gap-3 p-3 rounded-lg bg-card/40 border border-border/30 backdrop-blur-sm">
+            {features.map(({ icon: Icon, label, desc }) =>
+            <div key={label} className="flex items-start gap-3 p-3 rounded-lg bg-card/40 border border-border/30 backdrop-blur-sm">
                 <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
                   <Icon className="w-4 h-4 text-primary" />
                 </div>
@@ -122,7 +122,7 @@ export default function Auth() {
                   <p className="text-xs text-muted-foreground leading-snug">{desc}</p>
                 </div>
               </div>
-            ))}
+            )}
           </div>
 
           {/* Bottom tagline */}
@@ -151,8 +151,8 @@ export default function Auth() {
               <img
                 src={warehouseLogo}
                 alt="Tech Genius Warehouse"
-                className="relative w-16 h-16 rounded-xl ring-1 ring-primary/30"
-              />
+                className="relative w-16 h-16 rounded-xl ring-1 ring-primary/30" />
+
             </div>
             <h1 className="text-2xl font-display font-bold text-foreground">Tech Genius</h1>
             <p className="text-sm text-primary font-medium">Warehouse</p>
@@ -180,8 +180,8 @@ export default function Auth() {
                       placeholder="you@company.com"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
-                      className="pl-11 h-12 bg-muted/20 border-border/50 focus:border-primary/70 focus:bg-muted/30 transition-all rounded-xl"
-                    />
+                      className="pl-11 h-12 bg-muted/20 border-border/50 focus:border-primary/70 focus:bg-muted/30 transition-all rounded-xl" />
+
                   </div>
                   {errors.loginEmail && <p className="text-sm text-destructive">{errors.loginEmail}</p>}
                 </div>
@@ -196,8 +196,8 @@ export default function Auth() {
                       placeholder="••••••••"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
-                      className="pl-11 h-12 bg-muted/20 border-border/50 focus:border-primary/70 focus:bg-muted/30 transition-all rounded-xl"
-                    />
+                      className="pl-11 h-12 bg-muted/20 border-border/50 focus:border-primary/70 focus:bg-muted/30 transition-all rounded-xl" />
+
                   </div>
                   {errors.loginPassword && <p className="text-sm text-destructive">{errors.loginPassword}</p>}
                 </div>
@@ -205,14 +205,14 @@ export default function Auth() {
                 <Button
                   type="submit"
                   className="w-full gradient-primary group text-primary-foreground font-semibold h-12 text-base rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 hover:scale-[1.01]"
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Signing in...' : (
-                    <>
+                  disabled={isLoading}>
+
+                  {isLoading ? 'Signing in...' :
+                  <>
                       Sign In
                       <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                     </>
-                  )}
+                  }
                 </Button>
               </form>
             </div>
@@ -223,6 +223,6 @@ export default function Auth() {
           </p>
         </div>
       </div>
-    </div>
-  );
+    </div>);
+
 }
