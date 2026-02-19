@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, Trash2, Search, Package, PenLine } from 'lucide-react';
+import { Plus, Trash2, Search, Package, PenLine, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 type TaxTreatment = 'hst' | 'gst' | 'zero_rated' | 'tax_inclusive';
@@ -57,7 +57,10 @@ interface Props {
 
 export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
   const { user } = useAuth();
-  const { selectedCompany } = useCompany();
+  const { selectedCompany, accessibleCompanies } = useCompany();
+
+  // Company selection for invoice
+  const [invoiceCompanyId, setInvoiceCompanyId] = useState<string>('');
 
   // Customer
   const [customerName, setCustomerName] = useState('');
@@ -67,6 +70,13 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
   const [customerGstHst, setCustomerGstHst] = useState('');
   const [dueDays, setDueDays] = useState('30');
   const [notes, setNotes] = useState('');
+
+  // Pre-select company when dialog opens or selectedCompany changes
+  useEffect(() => {
+    if (open && selectedCompany && !invoiceCompanyId) {
+      setInvoiceCompanyId(selectedCompany.id);
+    }
+  }, [open, selectedCompany]);
 
   // Line items
   const [lineItems, setLineItems] = useState<LineItem[]>([
@@ -81,14 +91,16 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
 
   useEffect(() => {
     if (open) fetchDevices();
-  }, [open]);
+  }, [open, invoiceCompanyId]);
 
   const fetchDevices = async () => {
-    const { data } = await supabase
+    let query = supabase
       .from('devices')
       .select('id, brand, model, storage, color, sku, cost_price, sale_price, status, condition')
       .eq('status', 'in_stock')
       .order('brand');
+    if (invoiceCompanyId) query = query.eq('company_id', invoiceCompanyId);
+    const { data } = await query;
     if (data) setDevices(data as InventoryDevice[]);
   };
 
@@ -160,12 +172,17 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
     setCustomerGstHst('');
     setDueDays('30');
     setNotes('');
+    setInvoiceCompanyId(selectedCompany?.id || '');
     setLineItems([{ id: generateId(), type: 'manual', device_id: null, description: '', quantity: 1, unit_price: 0, tax_treatment: 'hst' }]);
     setSearchingLineId(null);
     setSearchQuery('');
   };
 
   const handleSubmit = async () => {
+    if (!invoiceCompanyId) {
+      toast.error('Please select a company (VES or TGW)');
+      return;
+    }
     if (!customerName.trim()) {
       toast.error('Customer name is required');
       return;
@@ -176,10 +193,12 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
       return;
     }
 
+    const invoiceCompany = accessibleCompanies.find(c => c.id === invoiceCompanyId);
+
     setSubmitting(true);
     try {
       // Generate invoice number
-      const prefix = selectedCompany?.code || 'INV';
+      const prefix = invoiceCompany?.code || 'INV';
       const date = format(new Date(), 'yyyyMM');
       const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
       const invoiceNumber = `${prefix}-${date}-${random}`;
@@ -203,7 +222,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
         due_date: dueDate.toISOString().split('T')[0],
         notes: notes.trim() || null,
         created_by: user?.id,
-        company_id: selectedCompany?.id || null,
+        company_id: invoiceCompanyId,
       }).select('id').single();
 
       if (invError) throw invError;
@@ -229,8 +248,8 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
       }
 
       // Create AR entry
-      await supabase.from('accounts_receivable').insert({
-        company_id: selectedCompany?.id || null,
+      const { error: arError } = await supabase.from('accounts_receivable').insert({
+        company_id: invoiceCompanyId,
         invoice_id: invoice.id,
         source_type: 'invoice',
         source_reference: invoiceNumber,
@@ -240,6 +259,10 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
         due_date: dueDate.toISOString().split('T')[0],
         status: 'outstanding',
       });
+      if (arError) {
+        console.error('AR entry failed:', arError);
+        toast.warning('Invoice created but AR entry failed — check permissions');
+      }
 
       toast.success(`Invoice ${invoiceNumber} created`);
       resetForm();
@@ -264,6 +287,25 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
         </DialogHeader>
 
         <div className="space-y-5">
+          {/* Company Selection */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Building2 className="h-3.5 w-3.5" /> Invoicing Company *
+            </h3>
+            <Select value={invoiceCompanyId} onValueChange={(v) => { setInvoiceCompanyId(v); setDevices([]); }}>
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="Select company (VES or TGW)" />
+              </SelectTrigger>
+              <SelectContent>
+                {accessibleCompanies.map(c => (
+                  <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Separator />
+
           {/* Customer Details */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Customer Details</h3>
