@@ -99,10 +99,6 @@ export default function Auth() {
 
             {/* Headline */}
             <div className="max-w-lg mb-12">
-              <h2 className="text-4xl font-display font-bold text-foreground leading-tight mb-4">
-
-operations hub
-              </h2>
               <p className="text-muted-foreground text-lg leading-relaxed">
                 Inventory, accounting, and marketplace management — unified in one platform built for resellers.
               </p>
