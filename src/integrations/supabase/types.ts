@@ -1392,6 +1392,7 @@ export type Database = {
           id: string
           invoice_id: string
           quantity: number
+          tax_treatment: string
           total: number
           unit_price: number
         }
@@ -1402,6 +1403,7 @@ export type Database = {
           id?: string
           invoice_id: string
           quantity?: number
+          tax_treatment?: string
           total: number
           unit_price: number
         }
@@ -1412,6 +1414,7 @@ export type Database = {
           id?: string
           invoice_id?: string
           quantity?: number
+          tax_treatment?: string
           total?: number
           unit_price?: number
         }
@@ -1439,7 +1442,9 @@ export type Database = {
           created_by: string | null
           customer_address: string | null
           customer_email: string | null
+          customer_gst_hst_number: string | null
           customer_name: string
+          customer_phone: string | null
           due_date: string
           id: string
           invoice_number: string
@@ -1458,7 +1463,9 @@ export type Database = {
           created_by?: string | null
           customer_address?: string | null
           customer_email?: string | null
+          customer_gst_hst_number?: string | null
           customer_name: string
+          customer_phone?: string | null
           due_date?: string
           id?: string
           invoice_number: string
@@ -1477,7 +1484,9 @@ export type Database = {
           created_by?: string | null
           customer_address?: string | null
           customer_email?: string | null
+          customer_gst_hst_number?: string | null
           customer_name?: string
+          customer_phone?: string | null
           due_date?: string
           id?: string
           invoice_number?: string
