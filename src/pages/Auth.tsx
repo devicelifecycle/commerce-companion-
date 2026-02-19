@@ -97,12 +97,6 @@ export default function Auth() {
               </div>
             </div>
 
-            {/* Headline */}
-            <div className="max-w-lg mb-12">
-              <p className="text-muted-foreground text-lg leading-relaxed">
-                Inventory, accounting, and marketplace management — unified in one platform built for resellers.
-              </p>
-            </div>
           </div>
 
           {/* Feature grid */}
