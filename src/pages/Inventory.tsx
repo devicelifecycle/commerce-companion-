@@ -9,7 +9,7 @@ import { CompanySelector } from '@/components/layout/CompanySelector';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { InventoryTransferDialog } from '@/components/inventory/InventoryTransferDialog';
 import { InventoryLabelDialog } from '@/components/inventory/InventoryLabelDialog';
-import { ReturnsManagement } from '@/components/inventory/ReturnsManagement';
+
 import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker';
 import { FBAFeeAnalytics } from '@/components/inventory/FBAFeeAnalytics';
 import { DeviceProcurementDialog } from '@/components/inventory/DeviceProcurementDialog';
@@ -58,7 +58,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { 
   Search, Plus, Filter, Smartphone, Trash2, Edit2, MoreHorizontal,
-  List, ArrowRightLeft, QrCode, Link, Upload, RotateCcw, Boxes,
+  List, ArrowRightLeft, QrCode, Link, Upload, Boxes,
   FileText, Download, Send,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -682,10 +682,6 @@ export default function Inventory() {
               <List className="h-4 w-4" />
               All Devices
             </TabsTrigger>
-            <TabsTrigger value="returns" className="flex items-center gap-2">
-              <RotateCcw className="h-4 w-4" />
-              Returns
-            </TabsTrigger>
             {isSuperAdmin && (
               <TabsTrigger value="fba" className="flex items-center gap-2">
                 <Boxes className="h-4 w-4" />
@@ -922,9 +918,6 @@ export default function Inventory() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="returns">
-            <ReturnsManagement />
-          </TabsContent>
 
           {isSuperAdmin && (
             <TabsContent value="fba" className="space-y-6">
