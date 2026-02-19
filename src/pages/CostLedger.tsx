@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { CostLedgerGuide } from '@/components/guides/CostLedgerGuide';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { useCompany } from '@/contexts/CompanyContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -173,6 +174,7 @@ export default function CostLedger() {
   const isLoading = devicesLoading || batchesLoading;
 
   return (
+    <PermissionGuard permission="inventory_view" title="Cost & Supplier Ledger">
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div>
@@ -481,5 +483,6 @@ export default function CostLedger() {
         </Tabs>
       </div>
     </DashboardLayout>
+    </PermissionGuard>
   );
 }

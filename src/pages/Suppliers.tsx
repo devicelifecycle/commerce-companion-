@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -295,6 +296,7 @@ export default function Suppliers() {
   }
 
   return (
+    <PermissionGuard permission="suppliers_view" title="Suppliers">
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
@@ -421,5 +423,6 @@ export default function Suppliers() {
         </Dialog>
       </div>
     </DashboardLayout>
+    </PermissionGuard>
   );
 }

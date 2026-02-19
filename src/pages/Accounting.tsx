@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartOfAccounts } from '@/components/accounting/ChartOfAccounts';
 import { AccountsReceivable } from '@/components/accounting/AccountsReceivable';
@@ -16,6 +17,7 @@ export default function Accounting() {
   const [activeTab, setActiveTab] = useState('chart');
 
   return (
+    <PermissionGuard permission="accounting_view" title="Accounting">
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div>
@@ -85,5 +87,6 @@ export default function Accounting() {
         </Tabs>
       </div>
     </DashboardLayout>
+    </PermissionGuard>
   );
 }

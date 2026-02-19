@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TaxDashboard } from '@/components/taxes/TaxDashboard';
 import { TaxCollectedReport } from '@/components/taxes/TaxCollectedReport';
@@ -13,6 +14,7 @@ export default function Taxes() {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   return (
+    <PermissionGuard permission="taxes_view" title="Tax Center">
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div>
@@ -58,5 +60,6 @@ export default function Taxes() {
         </Tabs>
       </div>
     </DashboardLayout>
+    </PermissionGuard>
   );
 }

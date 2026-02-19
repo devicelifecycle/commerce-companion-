@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ReportsGuide } from '@/components/guides/ReportsGuide';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExecutiveDashboard } from '@/components/reports/ExecutiveDashboard';
 import { MarketplaceAccounting } from '@/components/reports/MarketplaceAccounting';
@@ -19,6 +20,7 @@ export default function Reports() {
   const [companyView, setCompanyView] = useState<'consolidated' | string>('consolidated');
 
   return (
+    <PermissionGuard permission="reports_view" title="Reports & Analytics">
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -96,5 +98,6 @@ export default function Reports() {
         </Tabs>
       </div>
     </DashboardLayout>
+    </PermissionGuard>
   );
 }

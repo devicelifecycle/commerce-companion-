@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -79,6 +80,7 @@ export default function PurchaseOrders() {
   };
 
   return (
+    <PermissionGuard permission="inventory_view" title="Purchase Orders">
     <DashboardLayout>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -147,5 +149,6 @@ export default function PurchaseOrders() {
         />
       </div>
     </DashboardLayout>
+    </PermissionGuard>
   );
 }
