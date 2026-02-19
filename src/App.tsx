@@ -28,6 +28,7 @@ import GoodsReceived from "./pages/GoodsReceived";
 import Returns from "./pages/Returns";
 import IntegrationHealth from "./pages/IntegrationHealth";
 import CostLedger from "./pages/CostLedger";
+import Customers from "./pages/Customers";
 
 const queryClient = new QueryClient();
 
@@ -95,6 +96,7 @@ const App = () => (
               <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
               {/* Redirects for old routes */}
               <Route path="/sales" element={<Navigate to="/orders" replace />} />
+              <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
               <Route path="/accounting" element={<Navigate to="/statements/profit-loss" replace />} />
               <Route path="/customers" element={<Navigate to="/" replace />} />
               <Route path="*" element={<NotFound />} />
