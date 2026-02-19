@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, FileText, Clock, CheckCircle, AlertCircle, Send, Eye } from 'lucide-react';
+import { Plus, FileText, Clock, CheckCircle, AlertCircle, Send, Eye, Download } from 'lucide-react';
 import { InvoicesGuide } from '@/components/guides/InvoicesGuide';
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { format } from 'date-fns';
@@ -96,6 +96,57 @@ export default function Invoices() {
       .eq('invoice_id', invoice.id)
       .order('created_at');
     setViewItems((data || []) as InvoiceItem[]);
+  };
+
+  const downloadInvoicePdf = async (invoiceId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
+        body: { invoiceId },
+      });
+      if (error) throw error;
+
+      const html = data.html;
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 500);
+      }
+    } catch (err) {
+      console.error('PDF error:', err);
+      toast.error('Failed to generate invoice PDF');
+    }
+  };
+
+  // Save customer to CRM if new
+  const saveCustomerFromInvoice = async (invoice: Invoice) => {
+    if (!invoice.customer_name) return;
+    try {
+      // Check if customer already exists
+      const { data: existing } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('name', invoice.customer_name)
+        .maybeSingle();
+      
+      if (existing) {
+        toast.info('Customer already saved');
+        return;
+      }
+
+      await supabase.from('customers').insert({
+        name: invoice.customer_name,
+        email: invoice.customer_email,
+        phone: invoice.customer_phone,
+        address: invoice.customer_address,
+        company_id: invoice.company_id,
+        marketplace_source: 'invoice',
+      });
+      toast.success(`Saved ${invoice.customer_name} to customer directory`);
+    } catch (err) {
+      toast.error('Failed to save customer');
+    }
   };
 
   const updateStatus = async (id: string, status: Invoice['status']) => {
@@ -253,8 +304,11 @@ export default function Invoices() {
                         <TableCell className="text-right font-semibold">{formatCurrency(Number(invoice.total))}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => viewInvoiceDetails(invoice)}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => viewInvoiceDetails(invoice)} title="View">
                               <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadInvoicePdf(invoice.id)} title="Print/PDF">
+                              <Download className="h-3.5 w-3.5" />
                             </Button>
                             <Select value={invoice.status} onValueChange={v => updateStatus(invoice.id, v as Invoice['status'])}>
                               <SelectTrigger className="w-[90px] h-7 text-xs">
@@ -335,6 +389,15 @@ export default function Invoices() {
               {viewInvoice.notes && (
                 <div className="text-xs text-muted-foreground bg-muted/20 p-2 rounded"><strong>Notes:</strong> {viewInvoice.notes}</div>
               )}
+
+              <div className="flex gap-2 pt-2">
+                <Button size="sm" variant="outline" onClick={() => downloadInvoicePdf(viewInvoice.id)}>
+                  <Download className="h-3.5 w-3.5 mr-1.5" /> Print / PDF
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => saveCustomerFromInvoice(viewInvoice)}>
+                  <Plus className="h-3.5 w-3.5 mr-1.5" /> Save Customer
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

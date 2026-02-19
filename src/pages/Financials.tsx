@@ -171,8 +171,8 @@ export default function Financials() {
           {subView === 'reconciliation' && <MarketplaceReconciliation companyView={companyView} />}
 
           {/* AP & AR */}
-          {subView === 'ap' && <AccountsPayable />}
-          {subView === 'ar' && <AccountsReceivable />}
+          {subView === 'ap' && <AccountsPayable companyFilter={companyView} />}
+          {subView === 'ar' && <AccountsReceivable companyFilter={companyView} />}
 
           {/* Taxes */}
           {subView === 'tax-dashboard' && <TaxDashboard />}

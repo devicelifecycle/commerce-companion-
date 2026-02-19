@@ -74,8 +74,19 @@ const PAYMENT_TERMS = [
   { value: 'net_60', label: 'Net 60' },
 ];
 
-export function AccountsPayable() {
-  const { selectedCompany } = useCompany();
+interface AccountsPayableProps {
+  companyFilter?: 'consolidated' | string;
+}
+
+export function AccountsPayable({ companyFilter }: AccountsPayableProps = {}) {
+  const { selectedCompany, companies } = useCompany();
+
+  // Determine effective company ID based on companyFilter prop or selectedCompany
+  const effectiveCompanyId = companyFilter && companyFilter !== 'consolidated'
+    ? companyFilter
+    : companyFilter === 'consolidated'
+      ? null
+      : selectedCompany?.id || null;
   const [records, setRecords] = useState<APRecord[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -107,7 +118,7 @@ export function AccountsPayable() {
 
   useEffect(() => {
     fetchData();
-  }, [selectedCompany]);
+  }, [effectiveCompanyId]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -118,8 +129,8 @@ export function AccountsPayable() {
         .select('*')
         .order('due_date', { ascending: true });
 
-      if (selectedCompany) {
-        query = query.eq('company_id', selectedCompany.id);
+      if (effectiveCompanyId) {
+        query = query.eq('company_id', effectiveCompanyId);
       }
 
       const { data: apData, error: apError } = await query;
@@ -151,7 +162,7 @@ export function AccountsPayable() {
       const { error } = await supabase
         .from('accounts_payable')
         .insert({
-          company_id: selectedCompany?.id,
+          company_id: effectiveCompanyId || selectedCompany?.id,
           vendor_id: formData.vendor_id || null,
           vendor_name: formData.vendor_name,
           bill_number: formData.bill_number || null,
@@ -200,12 +211,14 @@ export function AccountsPayable() {
 
       // Update AP record
       const newPaidAmount = selectedRecord.paid_amount + amount;
-      const newStatus = newPaidAmount >= selectedRecord.original_amount ? 'paid' : 'partial';
+      const newBalanceDue = selectedRecord.original_amount - newPaidAmount;
+      const newStatus = newBalanceDue <= 0 ? 'paid' : 'partial';
 
       const { error: updateError } = await supabase
         .from('accounts_payable')
         .update({
           paid_amount: newPaidAmount,
+          balance_due: Math.max(0, newBalanceDue),
           status: newStatus,
         })
         .eq('id', selectedRecord.id);

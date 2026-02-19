@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Plus, Trash2, Search, Package, PenLine, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { CustomerAutoComplete } from './CustomerAutoComplete';
 
 type TaxTreatment = 'hst' | 'gst' | 'zero_rated' | 'tax_inclusive';
 
@@ -312,7 +313,17 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs">Customer Name *</Label>
-                <Input value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder="Company or individual" />
+                <CustomerAutoComplete
+                  companyId={invoiceCompanyId || null}
+                  value={customerName}
+                  onChange={setCustomerName}
+                  onSelect={(c) => {
+                    setCustomerName(c.name);
+                    if (c.email) setCustomerEmail(c.email);
+                    if (c.phone) setCustomerPhone(c.phone);
+                    if (c.address) setCustomerAddress(c.address);
+                  }}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Email</Label>
