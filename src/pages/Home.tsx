@@ -1,3 +1,4 @@
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -351,14 +352,15 @@ function AutomationCard({ icon, title, triggers, color }: { icon: React.ReactNod
   );
 }
 
-function ReportLink({ icon, title, desc, href }: { icon: React.ReactNode; title: string; desc: string; href: string }) {
-  return (
-    <Link to={href} className="p-3 rounded-lg border border-border/40 bg-muted/20 flex items-start gap-2 hover:bg-muted/40 hover:border-primary/30 transition-colors group">
+const ReportLink = React.forwardRef<HTMLAnchorElement, { icon: React.ReactNode; title: string; desc: string; href: string }>(
+  ({ icon, title, desc, href }, ref) => (
+    <Link ref={ref} to={href} className="p-3 rounded-lg border border-border/40 bg-muted/20 flex items-start gap-2 hover:bg-muted/40 hover:border-primary/30 transition-colors group">
       <div className="mt-0.5">{icon}</div>
       <div>
         <p className="font-semibold text-sm group-hover:text-primary transition-colors">{title}</p>
         <p className="text-xs text-muted-foreground">{desc}</p>
       </div>
     </Link>
-  );
-}
+  )
+);
+ReportLink.displayName = 'ReportLink';
