@@ -3,6 +3,8 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { CommandPalette } from '@/components/CommandPalette';
+import { ShortcutOverlay } from '@/components/ShortcutOverlay';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import { useLocation } from 'react-router-dom';
 import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts';
 
