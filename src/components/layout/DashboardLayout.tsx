@@ -59,9 +59,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <CommandPalette />
           </header>
           <div className="p-4 lg:p-5">
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </div>
         </main>
+        <ShortcutOverlay />
       </div>
     </SidebarProvider>
   );
