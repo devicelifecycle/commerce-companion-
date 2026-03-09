@@ -444,10 +444,7 @@ export default function Sales() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-              </div>
-            ) : filteredSales.length === 0 ? (
+              <TableSkeleton columns={8} rows={10} />
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <ShoppingCart className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-semibold">No orders found</h3>
