@@ -4,6 +4,7 @@ import { AppSidebar } from './AppSidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { CommandPalette } from '@/components/CommandPalette';
 import { useLocation } from 'react-router-dom';
+import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -18,17 +19,16 @@ const PAGE_TITLES: Record<string, string> = {
   '/import': 'Import Devices',
   '/cost-ledger': 'Cost & Supplier Ledger',
   '/suppliers': 'Suppliers',
+  '/customers': 'Customers',
   '/invoices': 'Invoices',
   '/expenses': 'Expenses',
-  '/statements/profit-loss': 'Profit & Loss',
-  '/statements/balance-sheet': 'Balance Sheet',
-  '/statements/cash-flow': 'Cash Flow',
-  '/accounting/ap': 'Accounts Payable',
-  '/accounting/ar': 'Accounts Receivable',
-  '/taxes': 'Tax Center',
-  '/accounting/knowledge': 'Accounting Guide',
+  '/purchase-orders': 'Purchase Orders',
+  '/goods-received': 'Goods Received',
+  '/returns': 'Returns / RMA',
+  '/financials': 'Financials',
   '/reports': 'Reports & Analytics',
   '/forecasting': 'AI Forecasting',
+  '/integration-health': 'Integration Health',
   '/team': 'Team',
   '/audit-logs': 'Audit Logs',
   '/settings': 'Settings',
@@ -37,6 +37,7 @@ const PAGE_TITLES: Record<string, string> = {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
+  useGlobalShortcuts();
   const pageTitle = PAGE_TITLES[location.pathname] || 'Warehouse';
 
   return (

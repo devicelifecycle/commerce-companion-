@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -286,12 +287,12 @@ export default function Home() {
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-3 gap-3">
-                <ReportLink icon={<TrendingUp className="h-4 w-4 text-[hsl(var(--success))]" />} title="Profit & Loss" desc="Accrual-basis income statement" />
-                <ReportLink icon={<Building2 className="h-4 w-4 text-[hsl(var(--info))]" />} title="Balance Sheet" desc="Assets, liabilities & equity" />
-                <ReportLink icon={<Coins className="h-4 w-4 text-[hsl(var(--warning))]" />} title="Cash Flow" desc="Cash movements by activity" />
-                <ReportLink icon={<Calculator className="h-4 w-4 text-[hsl(var(--accent))]" />} title="Tax Reconciliation" desc="CRA-formatted filing reports" />
-                <ReportLink icon={<Package className="h-4 w-4 text-[hsl(var(--secondary))]" />} title="Inventory Valuation" desc="FIFO cost, aging & turnover" />
-                <ReportLink icon={<Receipt className="h-4 w-4 text-destructive" />} title="AR/AP Aging" desc="Outstanding by age bucket" />
+                <ReportLink icon={<TrendingUp className="h-4 w-4 text-[hsl(var(--success))]" />} title="Profit & Loss" desc="Accrual-basis income statement" href="/financials" />
+                <ReportLink icon={<Building2 className="h-4 w-4 text-[hsl(var(--info))]" />} title="Balance Sheet" desc="Assets, liabilities & equity" href="/financials" />
+                <ReportLink icon={<Coins className="h-4 w-4 text-[hsl(var(--warning))]" />} title="Cash Flow" desc="Cash movements by activity" href="/financials" />
+                <ReportLink icon={<Calculator className="h-4 w-4 text-[hsl(var(--accent))]" />} title="Tax Reconciliation" desc="CRA-formatted filing reports" href="/financials" />
+                <ReportLink icon={<Package className="h-4 w-4 text-[hsl(var(--secondary))]" />} title="Inventory Valuation" desc="FIFO cost, aging & turnover" href="/reports" />
+                <ReportLink icon={<Receipt className="h-4 w-4 text-destructive" />} title="AR/AP Aging" desc="Outstanding by age bucket" href="/financials" />
               </div>
             </CardContent>
           </Card>
@@ -310,7 +311,7 @@ export default function Home() {
 
 function QuickNav({ icon: Icon, label, desc, href }: { icon: any; label: string; desc: string; href: string }) {
   return (
-    <a href={href} className="interactive-card flex items-center gap-3 p-3">
+    <Link to={href} className="interactive-card flex items-center gap-3 p-3">
       <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
         <Icon className="h-4 w-4 text-primary" />
       </div>
@@ -318,7 +319,7 @@ function QuickNav({ icon: Icon, label, desc, href }: { icon: any; label: string;
         <p className="font-semibold text-sm">{label}</p>
         <p className="text-xs text-muted-foreground">{desc}</p>
       </div>
-    </a>
+    </Link>
   );
 }
 
@@ -350,14 +351,14 @@ function AutomationCard({ icon, title, triggers, color }: { icon: React.ReactNod
   );
 }
 
-function ReportLink({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
+function ReportLink({ icon, title, desc, href }: { icon: React.ReactNode; title: string; desc: string; href: string }) {
   return (
-    <div className="p-3 rounded-lg border border-border/40 bg-muted/20 flex items-start gap-2">
+    <Link to={href} className="p-3 rounded-lg border border-border/40 bg-muted/20 flex items-start gap-2 hover:bg-muted/40 hover:border-primary/30 transition-colors group">
       <div className="mt-0.5">{icon}</div>
       <div>
-        <p className="font-semibold text-sm">{title}</p>
+        <p className="font-semibold text-sm group-hover:text-primary transition-colors">{title}</p>
         <p className="text-xs text-muted-foreground">{desc}</p>
       </div>
-    </div>
+    </Link>
   );
 }
