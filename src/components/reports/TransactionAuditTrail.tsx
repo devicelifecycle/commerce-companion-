@@ -299,7 +299,7 @@ export function TransactionAuditTrail({ saleId, open, onOpenChange }: Transactio
                     <div><span className="text-muted-foreground">Device</span><p className="font-medium">{device.brand} {device.model}</p></div>
                     <div><span className="text-muted-foreground">IMEI/SKU</span><p className="font-mono text-xs">{device.imei || device.sku || '—'}</p></div>
                     <div><span className="text-muted-foreground">Cost Price</span><p className="font-medium">{formatCurrency(device.cost_price)}</p></div>
-                    <div><span className="text-muted-foreground">Status</span><Badge variant="outline">{device.status}</Badge></div>
+                    <div><span className="text-muted-foreground">Status</span><Badge variant="outline" className="capitalize">{String(device.status).replace(/_/g, ' ')}</Badge></div>
                   </CardContent>
                 </Card>
               ) : (
