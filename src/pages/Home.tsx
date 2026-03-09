@@ -311,7 +311,7 @@ export default function Home() {
 
 function QuickNav({ icon: Icon, label, desc, href }: { icon: any; label: string; desc: string; href: string }) {
   return (
-    <a href={href} className="interactive-card flex items-center gap-3 p-3">
+    <Link to={href} className="interactive-card flex items-center gap-3 p-3">
       <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
         <Icon className="h-4 w-4 text-primary" />
       </div>
@@ -319,7 +319,7 @@ function QuickNav({ icon: Icon, label, desc, href }: { icon: any; label: string;
         <p className="font-semibold text-sm">{label}</p>
         <p className="text-xs text-muted-foreground">{desc}</p>
       </div>
-    </a>
+    </Link>
   );
 }
 
