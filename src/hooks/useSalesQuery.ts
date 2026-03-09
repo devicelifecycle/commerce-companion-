@@ -70,7 +70,7 @@ export function useSalesQuery({ companyFilter, marketplaceFilter, statusFilter, 
       }
 
       if (marketplaceFilter !== 'all') {
-        query = query.eq('marketplace', marketplaceFilter);
+        query = query.eq('marketplace', marketplaceFilter as any);
       }
 
       if (statusFilter !== 'all') {
