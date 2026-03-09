@@ -238,14 +238,43 @@ serve(async (req) => {
     }
 
     // Resolve province code from state field (could be code or full name)
+    // Hardcoded fallback map for Canadian provinces
+    const provinceAbbrevMap: Record<string, string> = {
+      "ONTARIO": "ON", "ON": "ON",
+      "QUEBEC": "QC", "QUÉBEC": "QC", "QC": "QC", "PQ": "QC",
+      "BRITISH COLUMBIA": "BC", "BC": "BC",
+      "ALBERTA": "AB", "AB": "AB",
+      "MANITOBA": "MB", "MB": "MB",
+      "SASKATCHEWAN": "SK", "SK": "SK",
+      "NOVA SCOTIA": "NS", "NS": "NS",
+      "NEW BRUNSWICK": "NB", "NB": "NB",
+      "NEWFOUNDLAND AND LABRADOR": "NL", "NEWFOUNDLAND": "NL", "NL": "NL",
+      "PRINCE EDWARD ISLAND": "PE", "PEI": "PE", "PE": "PE",
+      "NORTHWEST TERRITORIES": "NT", "NT": "NT",
+      "YUKON": "YT", "YT": "YT",
+      "NUNAVUT": "NU", "NU": "NU",
+    };
+
     function resolveProvinceCode(state: string | null | undefined): string | null {
       if (!state) return null;
       const trimmed = state.trim();
-      if (trimmed.length === 2 && taxRateMap[trimmed.toUpperCase()]) {
-        return trimmed.toUpperCase();
-      }
+      const upper = trimmed.toUpperCase();
+      
+      // Direct match in tax rate table
+      if (taxRateMap[upper]) return upper;
+      
+      // Lookup via DB province names
       const byName = provinceNameToCode[trimmed.toLowerCase()];
       if (byName) return byName;
+      
+      // Hardcoded fallback
+      const fallback = provinceAbbrevMap[upper];
+      if (fallback) return fallback;
+      
+      // Try extracting 2-letter code if state has extra content (e.g. "ON ")
+      const twoChar = upper.replace(/[^A-Z]/g, '').slice(0, 2);
+      if (twoChar.length === 2 && provinceAbbrevMap[twoChar]) return provinceAbbrevMap[twoChar];
+      
       return null;
     }
 
