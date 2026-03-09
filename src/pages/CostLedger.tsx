@@ -66,7 +66,7 @@ export default function CostLedger() {
     queryFn: async () => {
       let q = supabase
         .from('import_batches')
-        .select('id, file_name, total_rows, successful_rows, failed_rows, shipping_cost, other_charges, supplier_invoice_number, is_finalized, supplier_id, company_id, created_at')
+        .select('id, file_name, total_rows, successful_rows, failed_rows, shipping_cost, other_charges, supplier_invoice_number, is_finalized, supplier_id, company_id, created_at, lot_number')
         .order('created_at', { ascending: false });
 
       if (selectedCompanyId !== 'all') {
