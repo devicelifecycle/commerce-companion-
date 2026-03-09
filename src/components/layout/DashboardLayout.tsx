@@ -4,6 +4,7 @@ import { AppSidebar } from './AppSidebar';
 import { Breadcrumbs } from './Breadcrumbs';
 import { CommandPalette } from '@/components/CommandPalette';
 import { useLocation } from 'react-router-dom';
+import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts';
 
 interface DashboardLayoutProps {
   children: ReactNode;
