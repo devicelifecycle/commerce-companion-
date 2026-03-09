@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { OrdersGuide } from '@/components/guides/OrdersGuide';
 import { useAuth } from '@/lib/auth';
@@ -11,6 +11,10 @@ import { IntercompanySaleDialog } from '@/components/sales/IntercompanySaleDialo
 import { EditSaleDialog } from '@/components/sales/EditSaleDialog';
 import { OrderDetailDialog } from '@/components/sales/OrderDetailDialog';
 import { ReturnFromOrderDialog } from '@/components/sales/ReturnFromOrderDialog';
+import { useSalesQuery, SaleRecord } from '@/hooks/useSalesQuery';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { useQuickActionListener } from '@/hooks/useGlobalShortcuts';
 import { MarketplaceBadge, FulfillmentBadge, MarketplaceStatusBadge } from '@/components/ui/status-badge';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
 import { MetricCard } from '@/components/ui/metric-card';
