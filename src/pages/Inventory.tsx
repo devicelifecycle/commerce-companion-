@@ -106,7 +106,6 @@ export default function Inventory() {
   const { logEvent } = useAuditLog();
   const [devices, setDevices] = useState<Device[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
