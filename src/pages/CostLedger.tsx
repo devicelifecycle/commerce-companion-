@@ -374,6 +374,7 @@ export default function CostLedger() {
                                     <TableCell>
                                       {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                     </TableCell>
+                                    <TableCell className="font-mono text-xs font-semibold text-primary">{(b as any).lot_number || '—'}</TableCell>
                                     <TableCell className="font-medium text-sm">{b.file_name}</TableCell>
                                     <TableCell>{supplier ? `${supplier.code} — ${supplier.name}` : '—'}</TableCell>
                                     <TableCell className="font-mono text-xs">{b.supplier_invoice_number || '—'}</TableCell>
