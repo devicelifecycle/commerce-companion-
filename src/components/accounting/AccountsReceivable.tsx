@@ -197,7 +197,26 @@ export function AccountsReceivable({ companyFilter }: AccountsReceivableProps = 
 
       if (updateError) throw updateError;
 
-      toast.success('Payment recorded');
+      // Create journal entry: Dr. Cash, Cr. Accounts Receivable
+      const companyId = effectiveCompanyId || selectedCompany?.id;
+      if (companyId) {
+        const companyCode = companies.find(c => c.id === companyId)?.code;
+        try {
+          await createPaymentReceivedJournalEntry({
+            companyId,
+            paymentDate: paymentData.payment_date,
+            amount,
+            referenceId: selectedRecord.id,
+            description: `Payment from ${selectedRecord.customer_name || 'Customer'} - ${selectedRecord.source_reference || ''}`,
+            isVES: companyCode === 'VES',
+          });
+        } catch (jeError) {
+          console.error('AR payment journal entry failed:', jeError);
+          toast.warning('Payment recorded but journal entry could not be created');
+        }
+      }
+
+      toast.success('Payment recorded with journal entry');
       setPaymentDialogOpen(false);
       setPaymentData({
         amount: '',
