@@ -81,6 +81,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Log logout before signing out (while we still have the session)
+    if (user) {
+      await supabase.from('audit_logs').insert({
+        action: 'LOGOUT',
+        table_name: 'auth.users',
+        module: 'System',
+        notes: `User signed out: ${user.email}`,
+        user_id: user.id,
+        status: 'success',
+      });
+    }
     await supabase.auth.signOut();
   };
 
