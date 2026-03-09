@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { createPurchaseJournalEntry } from '@/lib/accounting/journalAutomation';
 
 interface CreatePOData {
   companyId: string;
