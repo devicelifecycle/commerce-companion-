@@ -320,14 +320,52 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
         // Create journal entry for new expenses
         if (insertedExpense) {
           const targetCompanyId = formData.is_shared ? null : formData.company_id;
-          const isVES = companies.find(c => c.id === targetCompanyId)?.code === 'VES';
-          const baseAccountCode = CATEGORY_ACCOUNT_MAP[formData.category] || '7100';
-          // Adjust account code for TGW company
-          const accountCode = !isVES && ['6200','6300','6400','6500','6600','6700','6800','6900','7000','7100'].includes(baseAccountCode)
-            ? (parseInt(baseAccountCode) + 2).toString()
-            : isVES ? baseAccountCode : baseAccountCode.replace(/0$/, '1');
+          
+          if (formData.is_shared) {
+            // Shared expense: create split journal entries for both companies
+            for (const company of companies) {
+              const isVES = company.code === 'VES';
+              const allocationPct = isVES ? formData.allocation_ves : formData.allocation_tgw;
+              if (allocationPct <= 0) continue;
 
-          if (targetCompanyId) {
+              const allocatedAmount = (parseFloat(formData.amount) || 0) * (allocationPct / 100);
+              const allocatedGst = (parseFloat(formData.gst_hst_amount) || 0) * (allocationPct / 100);
+              const allocatedPst = (parseFloat(formData.pst_amount) || 0) * (allocationPct / 100);
+              const allocatedTotal = allocatedAmount + allocatedGst + allocatedPst;
+
+              const baseAccountCode = CATEGORY_ACCOUNT_MAP[formData.category] || '7100';
+              const accountCode = !isVES && ['6200','6300','6400','6500','6600','6700','6800','6900','7000','7100'].includes(baseAccountCode)
+                ? (parseInt(baseAccountCode) + 2).toString()
+                : isVES ? baseAccountCode : baseAccountCode.replace(/0$/, '1');
+
+              try {
+                await createExpenseJournalEntry({
+                  companyId: company.id,
+                  expenseId: insertedExpense.id,
+                  expenseDate: formData.expense_date,
+                  vendor: formData.vendor || 'Unknown',
+                  description: `${formData.description} (${allocationPct}% allocation)`,
+                  expenseAccountCode: accountCode,
+                  amount: allocatedAmount,
+                  gstHstAmount: allocatedGst,
+                  qstAmount: allocatedPst,
+                  totalAmount: allocatedTotal,
+                  isVES,
+                  isPaidImmediately: ['credit_card', 'debit_card', 'cash'].includes(formData.payment_method),
+                  allocationVES: formData.allocation_ves,
+                  allocationTGW: formData.allocation_tgw,
+                });
+              } catch (jeError) {
+                console.error(`Journal entry for ${company.code} failed:`, jeError);
+              }
+            }
+          } else if (targetCompanyId) {
+            const isVES = companies.find(c => c.id === targetCompanyId)?.code === 'VES';
+            const baseAccountCode = CATEGORY_ACCOUNT_MAP[formData.category] || '7100';
+            const accountCode = !isVES && ['6200','6300','6400','6500','6600','6700','6800','6900','7000','7100'].includes(baseAccountCode)
+              ? (parseInt(baseAccountCode) + 2).toString()
+              : isVES ? baseAccountCode : baseAccountCode.replace(/0$/, '1');
+
             try {
               await createExpenseJournalEntry({
                 companyId: targetCompanyId,

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createPaymentMadeJournalEntry } from '@/lib/accounting/journalAutomation';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -225,7 +226,26 @@ export function AccountsPayable({ companyFilter }: AccountsPayableProps = {}) {
 
       if (updateError) throw updateError;
 
-      toast.success('Payment recorded');
+      // Create journal entry: Dr. Accounts Payable, Cr. Cash
+      const companyId = effectiveCompanyId || selectedCompany?.id;
+      if (companyId) {
+        const companyCode = companies.find(c => c.id === companyId)?.code;
+        try {
+          await createPaymentMadeJournalEntry({
+            companyId,
+            paymentDate: paymentData.payment_date,
+            amount,
+            referenceId: selectedRecord.id,
+            supplierName: selectedRecord.vendor_name,
+            isVES: companyCode === 'VES',
+          });
+        } catch (jeError) {
+          console.error('AP payment journal entry failed:', jeError);
+          toast.warning('Payment recorded but journal entry could not be created');
+        }
+      }
+
+      toast.success('Payment recorded with journal entry');
       setPaymentDialogOpen(false);
       setPaymentData({
         amount: '',
