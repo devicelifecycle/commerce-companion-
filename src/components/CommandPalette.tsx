@@ -30,6 +30,7 @@ const routes = [
   { title: 'Purchase Orders', url: '/purchase-orders', icon: ClipboardCheck, group: 'Procurement' },
   { title: 'Goods Received', url: '/goods-received', icon: PackageCheck, group: 'Procurement' },
   { title: 'Returns / RMA', url: '/returns', icon: RotateCcw, group: 'Procurement' },
+  { title: 'Integration Health', url: '/integration-health', icon: Activity, group: 'Admin' },
   { title: 'Team', url: '/team', icon: Users, group: 'Admin' },
   { title: 'Audit Logs', url: '/audit-logs', icon: ClipboardList, group: 'Admin' },
   { title: 'Settings', url: '/settings', icon: Settings, group: 'Admin' },
