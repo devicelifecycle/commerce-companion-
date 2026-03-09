@@ -147,7 +147,7 @@ export default function GoodsReceived() {
                         </TableCell>
                         <TableCell className="font-medium">{g.grn_number}</TableCell>
                         <TableCell>{format(new Date(g.received_date), 'MMM d, yyyy')}</TableCell>
-                        <TableCell><Badge variant={g.status === 'completed' ? 'default' : 'secondary'}>{g.status}</Badge></TableCell>
+                        <TableCell><Badge variant={g.status === 'completed' ? 'default' : 'secondary'} className="capitalize">{g.status}</Badge></TableCell>
                         <TableCell className="text-muted-foreground text-sm truncate max-w-[200px]">{g.notes || '—'}</TableCell>
                       </TableRow>
                       <CollapsibleContent asChild>

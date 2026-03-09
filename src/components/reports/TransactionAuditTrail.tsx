@@ -362,7 +362,7 @@ export function TransactionAuditTrail({ saleId, open, onOpenChange }: Transactio
                           </div>
                           <div className="flex items-center gap-2">
                             {je.is_auto_generated && <Badge variant="secondary" className="text-xs">Auto</Badge>}
-                            <Badge variant="outline" className="text-xs">{je.status}</Badge>
+                            <Badge variant="outline" className="text-xs capitalize">{je.status}</Badge>
                           </div>
                         </div>
                         <Table>
