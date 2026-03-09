@@ -351,14 +351,14 @@ function AutomationCard({ icon, title, triggers, color }: { icon: React.ReactNod
   );
 }
 
-function ReportLink({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
+function ReportLink({ icon, title, desc, href }: { icon: React.ReactNode; title: string; desc: string; href: string }) {
   return (
-    <div className="p-3 rounded-lg border border-border/40 bg-muted/20 flex items-start gap-2">
+    <Link to={href} className="p-3 rounded-lg border border-border/40 bg-muted/20 flex items-start gap-2 hover:bg-muted/40 hover:border-primary/30 transition-colors group">
       <div className="mt-0.5">{icon}</div>
       <div>
-        <p className="font-semibold text-sm">{title}</p>
+        <p className="font-semibold text-sm group-hover:text-primary transition-colors">{title}</p>
         <p className="text-xs text-muted-foreground">{desc}</p>
       </div>
-    </div>
+    </Link>
   );
 }
