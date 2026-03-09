@@ -53,8 +53,6 @@ export default function Sales() {
   const { user } = useAuth();
   const { selectedCompany, companies, isSuperAdmin, hasPermission, loading: permLoading } = useCompany();
   const { logEvent, logExport } = useAuditLog();
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [companyFilter, setCompanyFilter] = useState<CompanyFilter>('all');
   const [marketplaceFilter, setMarketplaceFilter] = useState<string>('all');
@@ -66,10 +64,14 @@ export default function Sales() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [returningSale, setReturningSale] = useState<Sale | null>(null);
-  const [returnSaleIds, setReturnSaleIds] = useState<Set<string>>(new Set());
 
   const canManageSales = hasPermission('sales_manage', 'edit');
   const canViewSales = hasPermission('sales_view', 'view');
+
+  // Quick action: open "Record Sale" dialog via Alt+S
+  useQuickActionListener('add-sale', useCallback(() => {
+    if (canManageSales) setShowManualSale(true);
+  }, [canManageSales]));
 
   // Resolve company IDs by code
   const vesCompany = companies.find(c => c.code === 'VES');
@@ -84,58 +86,19 @@ export default function Sales() {
     }
   }, [selectedCompany, isSuperAdmin]);
 
-  useEffect(() => {
-    if (canViewSales || isSuperAdmin) {
-      fetchSales();
-    }
-  }, [companyFilter, marketplaceFilter, statusFilter, canViewSales, isSuperAdmin]);
-
-  const fetchSales = async () => {
-    setLoading(true);
-    try {
-      let query = supabase
-        .from('sales')
-        .select(`*, devices (brand, model, cost_price, imei, storage, color, condition)`)
-        .order('sale_date', { ascending: false })
-        .limit(500);
-
-      if (companyFilter !== 'all') {
-        query = query.eq('company_id', companyFilter);
-      } else if (selectedCompany && !isSuperAdmin) {
-        query = query.eq('company_id', selectedCompany.id);
-      }
-
-      if (marketplaceFilter !== 'all') {
-        query = query.eq('marketplace', marketplaceFilter as Marketplace);
-      }
-
-      if (statusFilter !== 'all') {
-        query = query.eq('fulfillment_status', statusFilter);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      setSales((data || []) as Sale[]);
-
-      // Fetch sale IDs that have returns
-      const saleIds = (data || []).map((s: any) => s.id);
-      if (saleIds.length > 0) {
-        const { data: returnData } = await supabase
-          .from('return_authorizations')
-          .select('sale_id')
-          .in('sale_id', saleIds)
-          .not('sale_id', 'is', null);
-        setReturnSaleIds(new Set((returnData || []).map((r: any) => r.sale_id)));
-      } else {
-        setReturnSaleIds(new Set());
-      }
-    } catch (error) {
-      console.error('Error fetching sales:', error);
-      toast.error('Failed to fetch sales');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // React Query powered data fetching with pagination & realtime
+  const {
+    sales: filteredSales,
+    allSales: sales,
+    returnSaleIds,
+    isLoading: loading,
+    refetch: fetchSales,
+    pagination,
+    sort,
+    setPage,
+    setPageSize,
+    toggleSort,
+  } = useSalesQuery({ companyFilter, marketplaceFilter, statusFilter, searchTerm });
 
   // Determine which company code is selected
   const selectedCompanyCode = useMemo(() => {
@@ -167,15 +130,15 @@ export default function Sales() {
     }
   }, [marketplaceOptions, marketplaceFilter]);
 
-  // Metrics
+  // Metrics from current page data
   const metrics = useMemo(() => {
-    const total = sales.length;
+    const total = pagination.totalCount;
     const received = sales.filter(s => (s.fulfillment_status || 'received') === 'received').length;
     const pending = sales.filter(s => s.fulfillment_status === 'pending').length;
     const shipped = sales.filter(s => s.fulfillment_status === 'shipped').length;
     const delivered = sales.filter(s => s.fulfillment_status === 'delivered').length;
     return { total, received, pending, shipped, delivered };
-  }, [sales]);
+  }, [sales, pagination.totalCount]);
 
   const handleDeleteSale = async (id: string) => {
     if (!confirm('Are you sure you want to delete this sale record?')) return;
