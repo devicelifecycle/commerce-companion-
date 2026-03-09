@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/command';
 import {
   LayoutDashboard, ShoppingCart, Smartphone, Upload, Package, FileText,
-  Wallet, BarChart3, Brain, Users, ClipboardList,
+  Wallet, BarChart3, Brain, Users, ClipboardList, Activity,
   Settings, HelpCircle, Search, ClipboardCheck, PackageCheck, RotateCcw,
 } from 'lucide-react';
 
@@ -24,11 +24,13 @@ const routes = [
   { title: 'Cost Ledger', url: '/cost-ledger', icon: Smartphone, group: 'Operations' },
   { title: 'Import Devices', url: '/import', icon: Upload, group: 'Operations' },
   { title: 'Suppliers', url: '/suppliers', icon: Package, group: 'Operations' },
+  { title: 'Customers', url: '/customers', icon: Users, group: 'Operations' },
   { title: 'Invoices', url: '/invoices', icon: FileText, group: 'Operations' },
   { title: 'Expenses', url: '/expenses', icon: Wallet, group: 'Expenses' },
   { title: 'Purchase Orders', url: '/purchase-orders', icon: ClipboardCheck, group: 'Procurement' },
   { title: 'Goods Received', url: '/goods-received', icon: PackageCheck, group: 'Procurement' },
   { title: 'Returns / RMA', url: '/returns', icon: RotateCcw, group: 'Procurement' },
+  { title: 'Integration Health', url: '/integration-health', icon: Activity, group: 'Admin' },
   { title: 'Team', url: '/team', icon: Users, group: 'Admin' },
   { title: 'Audit Logs', url: '/audit-logs', icon: ClipboardList, group: 'Admin' },
   { title: 'Settings', url: '/settings', icon: Settings, group: 'Admin' },

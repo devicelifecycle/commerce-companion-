@@ -97,8 +97,7 @@ const App = () => (
               {/* Redirects for old routes */}
               <Route path="/sales" element={<Navigate to="/orders" replace />} />
               <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
-              <Route path="/accounting" element={<Navigate to="/statements/profit-loss" replace />} />
-              <Route path="/customers" element={<Navigate to="/" replace />} />
+              <Route path="/accounting" element={<Navigate to="/financials" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </TooltipProvider>
