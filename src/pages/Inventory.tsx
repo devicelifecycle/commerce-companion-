@@ -9,6 +9,9 @@ import { CompanySelector } from '@/components/layout/CompanySelector';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { InventoryTransferDialog } from '@/components/inventory/InventoryTransferDialog';
 import { InventoryLabelDialog } from '@/components/inventory/InventoryLabelDialog';
+import { useInventoryQuery } from '@/hooks/useInventoryQuery';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
 
 import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker';
 import { FBAFeeAnalytics } from '@/components/inventory/FBAFeeAnalytics';
