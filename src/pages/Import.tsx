@@ -230,7 +230,7 @@ export default function Import() {
       }
     };
 
-    reader.readAsBinaryString(uploadedFile);
+    reader.readAsArrayBuffer(uploadedFile);
   }, [mapping]);
 
   const validateData = async () => {
