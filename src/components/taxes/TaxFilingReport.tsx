@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createTaxPaymentJournalEntry } from '@/lib/accounting/journalAutomation';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -211,6 +212,8 @@ export function TaxFilingReport() {
 
   const handleRecordPayment = async (periodId: string) => {
     try {
+      const period = filingPeriods.find(p => p.id === periodId);
+      
       const { error } = await supabase
         .from('tax_filing_periods')
         .update({
@@ -235,7 +238,24 @@ export function TaxFilingReport() {
           confirmation_number: paymentData.confirmation_number,
         });
 
-      toast.success('Payment recorded');
+      // Create journal entry: Dr. GST/HST Payable / Cr. Cash
+      if (selectedCompany?.id) {
+        try {
+          const isVES = selectedCompany.code === 'VES';
+          await createTaxPaymentJournalEntry({
+            companyId: selectedCompany.id,
+            paymentDate: paymentData.payment_date,
+            amount: parseFloat(paymentData.amount),
+            referenceNumber: paymentData.confirmation_number || `TAX-${periodId.slice(0, 8)}`,
+            isVES,
+          });
+        } catch (jeError) {
+          console.error('Tax payment journal entry failed:', jeError);
+          toast.error('Payment recorded but journal entry failed — check Chart of Accounts.');
+        }
+      }
+
+      toast.success('Payment recorded with journal entry');
       setPaymentDialogOpen(false);
       fetchFilingPeriods();
     } catch (error: any) {

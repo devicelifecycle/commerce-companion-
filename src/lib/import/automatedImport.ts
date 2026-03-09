@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { createPurchaseJournalEntry } from '@/lib/accounting/journalAutomation';
 
 interface CreatePOData {
   companyId: string;
@@ -299,6 +300,50 @@ export async function processAutomatedInventoryImport(
         })),
         receivedBy: userId,
       });
+
+      // Calculate totals for AP and journal entry
+      const subtotal = supplierDevices.reduce((s, d) => s + d.costPrice, 0);
+      const gstHstTotal = supplierDevices.reduce((s, d) => s + d.gstHstAmount, 0);
+      const pstQstTotal = supplierDevices.reduce((s, d) => s + d.pstQstAmount, 0);
+      const totalAmount = subtotal + gstHstTotal + pstQstTotal;
+
+      // Create AP record
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+
+      await supabase.from('accounts_payable').insert({
+        company_id: companyId,
+        vendor_name: supplierName,
+        vendor_id: supplierId,
+        bill_date: new Date().toISOString().split('T')[0],
+        due_date: dueDate.toISOString().split('T')[0],
+        original_amount: totalAmount,
+        gst_hst_amount: gstHstTotal,
+        category: 'inventory_purchase',
+        description: `Inventory purchase — ${supplierDevices.length} devices`,
+        status: 'outstanding',
+        created_by: userId,
+      });
+
+      // Create journal entry: Dr. Inventory + Dr. GST/HST → Cr. AP
+      const isVES = companyCode === 'VES';
+      try {
+        await createPurchaseJournalEntry({
+          companyId,
+          purchaseId: purchaseOrder.id,
+          receiveDate: new Date().toISOString().split('T')[0],
+          supplierName,
+          poNumber,
+          unitCost: subtotal,
+          gstHstAmount: gstHstTotal,
+          qstAmount: pstQstTotal,
+          totalAmount,
+          deviceDescription: `${supplierDevices.length} devices (auto-import)`,
+          isVES,
+        });
+      } catch (jeError) {
+        console.error('Journal entry creation failed during auto-import:', jeError);
+      }
 
       // If payment date is provided, mark PO as paid
       if (supplierDevices[0].paymentDate) {
