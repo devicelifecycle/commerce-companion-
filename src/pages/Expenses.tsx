@@ -1,8 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
+import { useQuickActionListener } from '@/hooks/useGlobalShortcuts';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { ActivityLog } from '@/components/audit/ActivityLog';
 import { ExpenseDashboard } from '@/components/expenses/ExpenseDashboard';
@@ -96,6 +97,9 @@ export default function Expenses() {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+
+  // Quick action: open "Add Expense" dialog via Alt+E
+  useQuickActionListener('add-expense', useCallback(() => setDialogOpen(true), []));
 
   useEffect(() => {
     fetchExpenses();

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { OrdersGuide } from '@/components/guides/OrdersGuide';
 import { useAuth } from '@/lib/auth';
@@ -11,6 +11,10 @@ import { IntercompanySaleDialog } from '@/components/sales/IntercompanySaleDialo
 import { EditSaleDialog } from '@/components/sales/EditSaleDialog';
 import { OrderDetailDialog } from '@/components/sales/OrderDetailDialog';
 import { ReturnFromOrderDialog } from '@/components/sales/ReturnFromOrderDialog';
+import { useSalesQuery, SaleRecord } from '@/hooks/useSalesQuery';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
+import { TableSkeleton } from '@/components/ui/table-skeleton';
+import { useQuickActionListener } from '@/hooks/useGlobalShortcuts';
 import { MarketplaceBadge, FulfillmentBadge, MarketplaceStatusBadge } from '@/components/ui/status-badge';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
 import { MetricCard } from '@/components/ui/metric-card';
@@ -42,44 +46,13 @@ type Marketplace = 'shopify' | 'amazon' | 'bestbuy' | 'other';
 type FulfillmentStatus = 'received' | 'pending' | 'shipped' | 'delivered' | 'cancelled';
 type CompanyFilter = 'all' | string;
 
-interface Sale {
-  id: string;
-  device_id: string | null;
-  order_number: string;
-  marketplace: Marketplace;
-  sale_price: number;
-  shipping_cost: number;
-  marketplace_fees: number;
-  tax_amount: number;
-  profit: number | null;
-  sale_date: string;
-  customer_name: string | null;
-  customer_email: string | null;
-  shipping_address: string | null;
-  notes: string | null;
-  company_id: string | null;
-  fulfillment_status: string | null;
-  marketplace_status: string | null;
-  is_marketplace_remitted?: boolean;
-  accounting_status?: string | null;
-  created_at: string;
-  devices?: {
-    brand: string;
-    model: string;
-    cost_price: number;
-    imei: string | null;
-    storage?: string | null;
-    color?: string | null;
-    condition?: string | null;
-  } | null;
-}
+// Use SaleRecord from the hook instead of a local interface
+type Sale = SaleRecord;
 
 export default function Sales() {
   const { user } = useAuth();
   const { selectedCompany, companies, isSuperAdmin, hasPermission, loading: permLoading } = useCompany();
   const { logEvent, logExport } = useAuditLog();
-  const [sales, setSales] = useState<Sale[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [companyFilter, setCompanyFilter] = useState<CompanyFilter>('all');
   const [marketplaceFilter, setMarketplaceFilter] = useState<string>('all');
@@ -91,10 +64,14 @@ export default function Sales() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [returningSale, setReturningSale] = useState<Sale | null>(null);
-  const [returnSaleIds, setReturnSaleIds] = useState<Set<string>>(new Set());
 
   const canManageSales = hasPermission('sales_manage', 'edit');
   const canViewSales = hasPermission('sales_view', 'view');
+
+  // Quick action: open "Record Sale" dialog via Alt+S
+  useQuickActionListener('add-sale', useCallback(() => {
+    if (canManageSales) setShowManualSale(true);
+  }, [canManageSales]));
 
   // Resolve company IDs by code
   const vesCompany = companies.find(c => c.code === 'VES');
@@ -109,58 +86,19 @@ export default function Sales() {
     }
   }, [selectedCompany, isSuperAdmin]);
 
-  useEffect(() => {
-    if (canViewSales || isSuperAdmin) {
-      fetchSales();
-    }
-  }, [companyFilter, marketplaceFilter, statusFilter, canViewSales, isSuperAdmin]);
-
-  const fetchSales = async () => {
-    setLoading(true);
-    try {
-      let query = supabase
-        .from('sales')
-        .select(`*, devices (brand, model, cost_price, imei, storage, color, condition)`)
-        .order('sale_date', { ascending: false })
-        .limit(500);
-
-      if (companyFilter !== 'all') {
-        query = query.eq('company_id', companyFilter);
-      } else if (selectedCompany && !isSuperAdmin) {
-        query = query.eq('company_id', selectedCompany.id);
-      }
-
-      if (marketplaceFilter !== 'all') {
-        query = query.eq('marketplace', marketplaceFilter as Marketplace);
-      }
-
-      if (statusFilter !== 'all') {
-        query = query.eq('fulfillment_status', statusFilter);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      setSales((data || []) as Sale[]);
-
-      // Fetch sale IDs that have returns
-      const saleIds = (data || []).map((s: any) => s.id);
-      if (saleIds.length > 0) {
-        const { data: returnData } = await supabase
-          .from('return_authorizations')
-          .select('sale_id')
-          .in('sale_id', saleIds)
-          .not('sale_id', 'is', null);
-        setReturnSaleIds(new Set((returnData || []).map((r: any) => r.sale_id)));
-      } else {
-        setReturnSaleIds(new Set());
-      }
-    } catch (error) {
-      console.error('Error fetching sales:', error);
-      toast.error('Failed to fetch sales');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // React Query powered data fetching with pagination & realtime
+  const {
+    sales: filteredSales,
+    allSales: sales,
+    returnSaleIds,
+    isLoading: loading,
+    refetch: fetchSales,
+    pagination,
+    sort,
+    setPage,
+    setPageSize,
+    toggleSort,
+  } = useSalesQuery({ companyFilter, marketplaceFilter, statusFilter, searchTerm });
 
   // Determine which company code is selected
   const selectedCompanyCode = useMemo(() => {
@@ -192,15 +130,15 @@ export default function Sales() {
     }
   }, [marketplaceOptions, marketplaceFilter]);
 
-  // Metrics
+  // Metrics from current page data
   const metrics = useMemo(() => {
-    const total = sales.length;
+    const total = pagination.totalCount;
     const received = sales.filter(s => (s.fulfillment_status || 'received') === 'received').length;
     const pending = sales.filter(s => s.fulfillment_status === 'pending').length;
     const shipped = sales.filter(s => s.fulfillment_status === 'shipped').length;
     const delivered = sales.filter(s => s.fulfillment_status === 'delivered').length;
     return { total, received, pending, shipped, delivered };
-  }, [sales]);
+  }, [sales, pagination.totalCount]);
 
   const handleDeleteSale = async (id: string) => {
     if (!confirm('Are you sure you want to delete this sale record?')) return;
@@ -282,18 +220,6 @@ export default function Sales() {
       return n;
     });
   };
-
-  const filteredSales = useMemo(() => {
-    if (!searchTerm) return sales;
-    const term = searchTerm.toLowerCase();
-    return sales.filter(s =>
-      s.order_number.toLowerCase().includes(term) ||
-      s.customer_name?.toLowerCase().includes(term) ||
-      s.devices?.brand.toLowerCase().includes(term) ||
-      s.devices?.model.toLowerCase().includes(term) ||
-      s.devices?.imei?.toLowerCase().includes(term)
-    );
-  }, [sales, searchTerm]);
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredSales.length) {
@@ -518,9 +444,7 @@ export default function Sales() {
           </CardHeader>
           <CardContent>
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-              </div>
+              <TableSkeleton columns={8} rows={10} />
             ) : filteredSales.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <ShoppingCart className="h-12 w-12 text-muted-foreground mb-4" />
@@ -691,6 +615,13 @@ export default function Sales() {
                   </TableBody>
                 </Table>
               </div>
+            )}
+            {!loading && pagination.totalCount > 0 && (
+              <DataTablePagination
+                pagination={pagination}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
             )}
           </CardContent>
         </Card>
