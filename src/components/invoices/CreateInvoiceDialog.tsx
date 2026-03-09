@@ -266,6 +266,61 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
         toast.warning('Invoice created but AR entry failed — check permissions');
       }
 
+      // Create journal entry: Dr. AR, Cr. Revenue, Cr. Tax Collected
+      try {
+        const isVES = invoiceCompany?.code === 'VES';
+        const arAccount = isVES ? '1050' : '1051';
+        const revenueAccount = isVES ? '4000' : '4100';
+        const taxCollectedAccount = isVES ? '4200' : '4201';
+
+        const [arAccId, revenueAccId, taxAccId] = await Promise.all([
+          getAccountIdByCode(invoiceCompanyId, arAccount),
+          getAccountIdByCode(invoiceCompanyId, revenueAccount),
+          getAccountIdByCode(invoiceCompanyId, taxCollectedAccount),
+        ]);
+
+        if (arAccId && revenueAccId) {
+          const journalLines = [
+            {
+              accountCode: arAccount,
+              accountId: arAccId,
+              description: `AR - Invoice ${invoiceNumber} - ${customerName.trim()}`,
+              debitAmount: Math.round(calculations.grandTotal * 100) / 100,
+              creditAmount: 0,
+            },
+            {
+              accountCode: revenueAccount,
+              accountId: revenueAccId,
+              description: `Revenue - Invoice ${invoiceNumber}`,
+              debitAmount: 0,
+              creditAmount: Math.round(calculations.subtotal * 100) / 100,
+            },
+          ];
+
+          if (calculations.totalTax > 0 && taxAccId) {
+            journalLines.push({
+              accountCode: taxCollectedAccount,
+              accountId: taxAccId,
+              description: `Tax collected - Invoice ${invoiceNumber}`,
+              debitAmount: 0,
+              creditAmount: Math.round(calculations.totalTax * 100) / 100,
+            });
+          }
+
+          await createAutoJournalEntry({
+            companyId: invoiceCompanyId,
+            entryDate: new Date().toISOString().split('T')[0],
+            description: `Invoice ${invoiceNumber} - ${customerName.trim()}`,
+            referenceType: 'sale',
+            referenceId: invoice.id,
+            lines: journalLines,
+          });
+        }
+      } catch (jeError) {
+        console.error('Invoice journal entry failed:', jeError);
+        toast.warning('Invoice created but journal entry could not be created');
+      }
+
       toast.success(`Invoice ${invoiceNumber} created`);
       resetForm();
       onOpenChange(false);
