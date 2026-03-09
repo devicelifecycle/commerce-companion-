@@ -140,7 +140,9 @@ export default function Inventory() {
     purchase_date: new Date().toISOString().split('T')[0],
     warehouse_location: '',
     notes: '',
+    payment_method: '' as string,
   });
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   useEffect(() => {
     if (canView) {
