@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/command';
 import {
   LayoutDashboard, ShoppingCart, Smartphone, Upload, Package, FileText,
-  Wallet, BarChart3, Brain, Users, ClipboardList,
+  Wallet, BarChart3, Brain, Users, ClipboardList, Activity,
   Settings, HelpCircle, Search, ClipboardCheck, PackageCheck, RotateCcw,
 } from 'lucide-react';
 
