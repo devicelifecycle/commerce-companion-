@@ -24,6 +24,7 @@ const routes = [
   { title: 'Cost Ledger', url: '/cost-ledger', icon: Smartphone, group: 'Operations' },
   { title: 'Import Devices', url: '/import', icon: Upload, group: 'Operations' },
   { title: 'Suppliers', url: '/suppliers', icon: Package, group: 'Operations' },
+  { title: 'Customers', url: '/customers', icon: Users, group: 'Operations' },
   { title: 'Invoices', url: '/invoices', icon: FileText, group: 'Operations' },
   { title: 'Expenses', url: '/expenses', icon: Wallet, group: 'Expenses' },
   { title: 'Purchase Orders', url: '/purchase-orders', icon: ClipboardCheck, group: 'Procurement' },
