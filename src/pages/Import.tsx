@@ -170,7 +170,7 @@ export default function Import() {
     setFile(uploadedFile);
     const reader = new FileReader();
 
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const arrayBuffer = event.target?.result as ArrayBuffer;
         const workbook = new ExcelJS.Workbook();
