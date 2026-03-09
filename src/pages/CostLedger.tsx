@@ -419,7 +419,7 @@ export default function CostLedger() {
                                       </TableRow>
                                     )) : (
                                       <TableRow className="bg-muted/20">
-                                        <TableCell colSpan={11} className="text-center text-xs text-muted-foreground py-3">
+                                        <TableCell colSpan={12} className="text-center text-xs text-muted-foreground py-3">
                                           No devices linked to this batch
                                         </TableCell>
                                       </TableRow>
