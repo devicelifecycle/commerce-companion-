@@ -63,7 +63,7 @@ import { toast } from 'sonner';
 import { 
   Search, Plus, Filter, Smartphone, Trash2, Edit2, MoreHorizontal,
   List, ArrowRightLeft, QrCode, Link, Upload, Boxes,
-  FileText, Download, Send,
+  FileText, Download, Send, AlertTriangle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
