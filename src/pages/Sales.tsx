@@ -46,37 +46,8 @@ type Marketplace = 'shopify' | 'amazon' | 'bestbuy' | 'other';
 type FulfillmentStatus = 'received' | 'pending' | 'shipped' | 'delivered' | 'cancelled';
 type CompanyFilter = 'all' | string;
 
-interface Sale {
-  id: string;
-  device_id: string | null;
-  order_number: string;
-  marketplace: Marketplace;
-  sale_price: number;
-  shipping_cost: number;
-  marketplace_fees: number;
-  tax_amount: number;
-  profit: number | null;
-  sale_date: string;
-  customer_name: string | null;
-  customer_email: string | null;
-  shipping_address: string | null;
-  notes: string | null;
-  company_id: string | null;
-  fulfillment_status: string | null;
-  marketplace_status: string | null;
-  is_marketplace_remitted?: boolean;
-  accounting_status?: string | null;
-  created_at: string;
-  devices?: {
-    brand: string;
-    model: string;
-    cost_price: number;
-    imei: string | null;
-    storage?: string | null;
-    color?: string | null;
-    condition?: string | null;
-  } | null;
-}
+// Use SaleRecord from the hook instead of a local interface
+type Sale = SaleRecord;
 
 export default function Sales() {
   const { user } = useAuth();
