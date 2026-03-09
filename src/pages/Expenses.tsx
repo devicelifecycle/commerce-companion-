@@ -98,6 +98,9 @@ export default function Expenses() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
+  // Quick action: open "Add Expense" dialog via Alt+E
+  useQuickActionListener('add-expense', useCallback(() => setDialogOpen(true), []));
+
   useEffect(() => {
     fetchExpenses();
   }, [filterCategory, selectedCompany]);

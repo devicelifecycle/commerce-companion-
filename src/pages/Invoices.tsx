@@ -70,6 +70,9 @@ export default function Invoices() {
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [viewItems, setViewItems] = useState<InvoiceItem[]>([]);
 
+  // Quick action: open "Create Invoice" dialog via Alt+N
+  useQuickActionListener('create-invoice', useCallback(() => setCreateOpen(true), []));
+
   useEffect(() => {
     fetchInvoices();
   }, [selectedCompany]);
