@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { normalizeBrand, normalizeModel, modelFuzzyKey } from '@/lib/modelNormalization';
 import { InventoryGuide } from '@/components/guides/InventoryGuide';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
