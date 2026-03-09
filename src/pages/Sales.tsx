@@ -221,18 +221,6 @@ export default function Sales() {
     });
   };
 
-  const filteredSales = useMemo(() => {
-    if (!searchTerm) return sales;
-    const term = searchTerm.toLowerCase();
-    return sales.filter(s =>
-      s.order_number.toLowerCase().includes(term) ||
-      s.customer_name?.toLowerCase().includes(term) ||
-      s.devices?.brand.toLowerCase().includes(term) ||
-      s.devices?.model.toLowerCase().includes(term) ||
-      s.devices?.imei?.toLowerCase().includes(term)
-    );
-  }, [sales, searchTerm]);
-
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredSales.length) {
       setSelectedIds(new Set());
