@@ -616,6 +616,13 @@ export default function Sales() {
                 </Table>
               </div>
             )}
+            {!loading && pagination.totalCount > 0 && (
+              <DataTablePagination
+                pagination={pagination}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+              />
+            )}
           </CardContent>
         </Card>
 
