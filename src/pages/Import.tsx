@@ -763,10 +763,19 @@ export default function Import() {
       },
     ];
 
-    const ws = XLSX.utils.json_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Template');
-    XLSX.writeFile(wb, 'inventory_import_template.xlsx');
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet('Template');
+    const headers = Object.keys(template[0]);
+    ws.addRow(headers);
+    template.forEach(row => ws.addRow(headers.map(h => row[h as keyof typeof row])));
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inventory_import_template.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const resetImport = () => {
