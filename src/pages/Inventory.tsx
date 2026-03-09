@@ -398,6 +398,7 @@ export default function Inventory() {
       purchase_date: device.purchase_date || new Date().toISOString().split('T')[0],
       warehouse_location: device.warehouse_location || '',
       notes: device.notes || '',
+      payment_method: '',
     });
     setIsEditDialogOpen(true);
   };
