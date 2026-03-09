@@ -199,19 +199,59 @@ export default function Inventory() {
     setSuppliers(data || []);
   };
 
+  // Check for duplicate models when brand/model changes
+  useEffect(() => {
+    if (!formData.brand || !formData.model) {
+      setDuplicateWarning(null);
+      return;
+    }
+    const normalizedBrand = normalizeBrand(formData.brand);
+    const normalizedModel = normalizeModel(formData.model);
+    const newKey = modelFuzzyKey(normalizedBrand, normalizedModel);
+    
+    const match = devices.find(d => {
+      const existingKey = modelFuzzyKey(d.brand, d.model);
+      return existingKey === newKey;
+    });
+    
+    if (match && (!selectedDevice || match.id !== selectedDevice.id)) {
+      setDuplicateWarning(`Similar device exists: "${match.brand} ${match.model}". Did you mean that?`);
+    } else {
+      setDuplicateWarning(null);
+    }
+  }, [formData.brand, formData.model, devices, selectedDevice]);
+
   const handleAddDevice = async () => {
     if (!selectedCompany && !isSuperAdmin) {
       toast.error('Please select a company');
       return;
     }
+    
+    // Anti-laziness validations
+    if (!formData.supplier_id) {
+      toast.error('Supplier is required — every device must be linked to a supplier');
+      return;
+    }
+    if (!formData.purchase_date) {
+      toast.error('Purchase date is required');
+      return;
+    }
+    if (!formData.payment_method) {
+      toast.error('Payment method is required — specify how this device was acquired');
+      return;
+    }
+
+    // Normalize brand and model before saving
+    const normalizedBrand = normalizeBrand(formData.brand);
+    const normalizedModel = normalizeModel(formData.model);
 
     try {
-      const { error } = await supabase.from('devices').insert({
+      const { data: insertedDevice, error } = await supabase.from('devices').insert({
         imei: formData.imei || null,
         sku: formData.sku || null,
         category: formData.category,
-        model: formData.model,
-        brand: formData.brand,
+        model: normalizedModel,
+        brand: normalizedBrand,
         storage: formData.storage || null,
         color: formData.color || null,
         condition: formData.condition,
@@ -224,11 +264,45 @@ export default function Inventory() {
         notes: formData.notes || null,
         company_id: selectedCompany?.id,
         created_by: user?.id,
-      });
+      }).select('id').single();
 
       if (error) throw error;
 
-      logEvent({ action: 'INSERT' as any, tableName: 'devices', module: 'Inventory', notes: `Added ${formData.brand} ${formData.model}` });
+      // Auto-post accounting based on payment method
+      const costPrice = parseFloat(formData.cost_price);
+      const paymentMethod = formData.payment_method;
+      
+      if (paymentMethod === 'cash' || paymentMethod === 'credit_card' || paymentMethod === 'debit_card') {
+        // Immediate payment — no AP needed, just log
+        logEvent({ 
+          action: 'INSERT' as any, tableName: 'devices', module: 'Inventory', 
+          notes: `Added ${normalizedBrand} ${normalizedModel} — paid via ${paymentMethod} ($${costPrice})` 
+        });
+      } else {
+        // Credit/other — create AP record
+        const supplier = suppliers.find(s => s.id === formData.supplier_id);
+        if (selectedCompany) {
+          await supabase.from('accounts_payable').insert({
+            vendor_name: supplier?.name || 'Unknown Supplier',
+            vendor_id: formData.supplier_id ? undefined : undefined,
+            original_amount: costPrice,
+            balance_due: costPrice,
+            bill_date: formData.purchase_date,
+            due_date: new Date(new Date(formData.purchase_date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            description: `Manual device: ${normalizedBrand} ${normalizedModel}`,
+            category: 'inventory_purchase',
+            company_id: selectedCompany.id,
+            status: 'outstanding',
+            created_by: user?.id,
+          });
+        }
+        logEvent({ 
+          action: 'INSERT' as any, tableName: 'devices', module: 'Inventory', 
+          notes: `Added ${normalizedBrand} ${normalizedModel} — on credit, AP created ($${costPrice})` 
+        });
+        toast.info('Accounts Payable record created for this purchase');
+      }
+
       toast.success('Device added to inventory');
       setIsAddDialogOpen(false);
       resetForm();
