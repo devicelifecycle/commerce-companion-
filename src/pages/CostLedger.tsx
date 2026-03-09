@@ -337,6 +337,7 @@ export default function CostLedger() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-8" />
+                        <TableHead>LOT #</TableHead>
                         <TableHead>File</TableHead>
                         <TableHead>Supplier</TableHead>
                         <TableHead>Invoice #</TableHead>
