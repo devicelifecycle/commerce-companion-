@@ -172,11 +172,28 @@ export default function Import() {
 
     reader.onload = (event) => {
       try {
-        const binaryStr = event.target?.result;
-        const workbook = XLSX.read(binaryStr, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json<ExcelRow>(worksheet);
+        const arrayBuffer = event.target?.result as ArrayBuffer;
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
+          toast.error('The uploaded file contains no worksheets');
+          return;
+        }
+        const headers: string[] = [];
+        worksheet.getRow(1).eachCell((cell, colNumber) => {
+          headers[colNumber - 1] = String(cell.value ?? '');
+        });
+        const data: ExcelRow[] = [];
+        worksheet.eachRow((row, rowNumber) => {
+          if (rowNumber === 1) return;
+          const rowObj: ExcelRow = {};
+          row.eachCell((cell, colNumber) => {
+            const header = headers[colNumber - 1];
+            if (header) rowObj[header] = cell.value as string | number;
+          });
+          data.push(rowObj);
+        });
 
         if (data.length === 0) {
           toast.error('The uploaded file contains no data');
