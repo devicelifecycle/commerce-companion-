@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { ImportGuide } from '@/components/guides/ImportGuide';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -170,13 +170,30 @@ export default function Import() {
     setFile(uploadedFile);
     const reader = new FileReader();
 
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
-        const binaryStr = event.target?.result;
-        const workbook = XLSX.read(binaryStr, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json<ExcelRow>(worksheet);
+        const arrayBuffer = event.target?.result as ArrayBuffer;
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
+          toast.error('The uploaded file contains no worksheets');
+          return;
+        }
+        const headers: string[] = [];
+        worksheet.getRow(1).eachCell((cell, colNumber) => {
+          headers[colNumber - 1] = String(cell.value ?? '');
+        });
+        const data: ExcelRow[] = [];
+        worksheet.eachRow((row, rowNumber) => {
+          if (rowNumber === 1) return;
+          const rowObj: ExcelRow = {};
+          row.eachCell((cell, colNumber) => {
+            const header = headers[colNumber - 1];
+            if (header) rowObj[header] = cell.value as string | number;
+          });
+          data.push(rowObj);
+        });
 
         if (data.length === 0) {
           toast.error('The uploaded file contains no data');
@@ -213,7 +230,7 @@ export default function Import() {
       }
     };
 
-    reader.readAsBinaryString(uploadedFile);
+    reader.readAsArrayBuffer(uploadedFile);
   }, [mapping]);
 
   const validateData = async () => {
@@ -727,7 +744,7 @@ export default function Import() {
     }
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     const template = [
       {
         Company: 'VES',
@@ -746,10 +763,19 @@ export default function Import() {
       },
     ];
 
-    const ws = XLSX.utils.json_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Template');
-    XLSX.writeFile(wb, 'inventory_import_template.xlsx');
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet('Template');
+    const headers = Object.keys(template[0]);
+    ws.addRow(headers);
+    template.forEach(row => ws.addRow(headers.map(h => row[h as keyof typeof row])));
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'inventory_import_template.xlsx';
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const resetImport = () => {
