@@ -481,7 +481,7 @@ export function TaxFilingReport() {
                           period.status === 'filed' ? 'bg-blue-500' : 'bg-amber-500'
                         }
                       >
-                        {period.status}
+                        <span className="capitalize">{period.status}</span>
                       </Badge>
                     </TableCell>
                     <TableCell>
