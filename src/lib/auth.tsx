@@ -25,6 +25,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Track login/logout events in audit_logs
+        if (event === 'SIGNED_IN' && session?.user) {
+          // Use setTimeout to avoid Supabase deadlock on auth state change
+          setTimeout(() => {
+            supabase.from('audit_logs').insert({
+              action: 'LOGIN',
+              table_name: 'auth.users',
+              module: 'System',
+              notes: `User signed in: ${session.user.email}`,
+              user_id: session.user.id,
+              status: 'success',
+            }).then(() => {});
+          }, 0);
+        }
+        if (event === 'SIGNED_OUT') {
+          // Can't log after sign out since user is gone, handled in signOut below
+        }
       }
     );
 
@@ -63,6 +81,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
+    // Log logout before signing out (while we still have the session)
+    if (user) {
+      await supabase.from('audit_logs').insert({
+        action: 'LOGOUT',
+        table_name: 'auth.users',
+        module: 'System',
+        notes: `User signed out: ${user.email}`,
+        user_id: user.id,
+        status: 'success',
+      });
+    }
     await supabase.auth.signOut();
   };
 
