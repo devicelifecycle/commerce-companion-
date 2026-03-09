@@ -744,7 +744,7 @@ export default function Import() {
     }
   };
 
-  const downloadTemplate = () => {
+  const downloadTemplate = async () => {
     const template = [
       {
         Company: 'VES',
