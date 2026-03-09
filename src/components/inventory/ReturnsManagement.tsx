@@ -281,7 +281,7 @@ export function ReturnsManagement() {
       refunded: 'bg-emerald-500/10 text-emerald-500',
       cancelled: 'bg-red-500/10 text-red-500',
     };
-    return <Badge className={styles[status] || 'bg-muted'}>{status}</Badge>;
+    return <Badge className={styles[status] || 'bg-muted'}>{status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</Badge>;
   };
 
   const filteredReturns = returns.filter(r => {

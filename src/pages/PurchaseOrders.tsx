@@ -132,8 +132,8 @@ export default function PurchaseOrders() {
                     <TableCell>{o.supplier_name}</TableCell>
                     <TableCell>{format(new Date(o.po_date), 'MMM d, yyyy')}</TableCell>
                     <TableCell>{o.expected_delivery_date ? format(new Date(o.expected_delivery_date), 'MMM d, yyyy') : '—'}</TableCell>
-                    <TableCell><Badge variant={statusColor(o.status)}>{o.status}</Badge></TableCell>
-                    <TableCell><Badge variant={o.payment_status === 'paid' ? 'default' : 'secondary'}>{o.payment_status}</Badge></TableCell>
+                    <TableCell><Badge variant={statusColor(o.status)} className="capitalize">{o.status}</Badge></TableCell>
+                    <TableCell><Badge variant={o.payment_status === 'paid' ? 'default' : 'secondary'} className="capitalize">{o.payment_status}</Badge></TableCell>
                     <TableCell className="text-right font-mono">${o.total_amount.toFixed(2)}</TableCell>
                   </TableRow>
                 ))}
