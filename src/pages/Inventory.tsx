@@ -501,6 +501,21 @@ export default function Inventory() {
 
   const DeviceForm = ({ onSubmit, submitLabel }: { onSubmit: () => void; submitLabel: string }) => (
     <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Duplicate warning */}
+      {duplicateWarning && (
+        <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>{duplicateWarning}</span>
+        </div>
+      )}
+
+      {/* Normalized preview */}
+      {formData.brand && formData.model && (
+        <div className="rounded-md border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
+          Will be saved as: <span className="font-medium text-foreground">{normalizeBrand(formData.brand)} {normalizeModel(formData.model)}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="brand">Brand *</Label>
@@ -625,12 +640,12 @@ export default function Inventory() {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="supplier">Supplier</Label>
+          <Label htmlFor="supplier" className="text-amber-600 dark:text-amber-400">Supplier * (required)</Label>
           <Select
             value={formData.supplier_id}
             onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
           >
-            <SelectTrigger>
+            <SelectTrigger className={!formData.supplier_id ? 'border-amber-500' : ''}>
               <SelectValue placeholder="Select supplier" />
             </SelectTrigger>
             <SelectContent>
@@ -642,6 +657,31 @@ export default function Inventory() {
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="payment_method" className="text-amber-600 dark:text-amber-400">Payment Method * (required)</Label>
+          <Select
+            value={formData.payment_method}
+            onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
+          >
+            <SelectTrigger className={!formData.payment_method ? 'border-amber-500' : ''}>
+              <SelectValue placeholder="How was this acquired?" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cash">Cash (paid immediately)</SelectItem>
+              <SelectItem value="credit_card">Credit Card (paid immediately)</SelectItem>
+              <SelectItem value="debit_card">Debit Card (paid immediately)</SelectItem>
+              <SelectItem value="credit">On Credit (creates AP)</SelectItem>
+              <SelectItem value="wire_transfer">Wire Transfer (creates AP)</SelectItem>
+              <SelectItem value="e_transfer">E-Transfer (creates AP)</SelectItem>
+            </SelectContent>
+          </Select>
+          {formData.payment_method && !['cash', 'credit_card', 'debit_card'].includes(formData.payment_method) && (
+            <p className="text-xs text-muted-foreground">An Accounts Payable record will be auto-created</p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="status">Status</Label>
           <Select
@@ -659,18 +699,19 @@ export default function Inventory() {
             </SelectContent>
           </Select>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="purchase_date">Purchase Date</Label>
+          <Label htmlFor="purchase_date" className="text-amber-600 dark:text-amber-400">Purchase Date * (required)</Label>
           <Input
             id="purchase_date"
             type="date"
             value={formData.purchase_date}
             onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+            className={!formData.purchase_date ? 'border-amber-500' : ''}
           />
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="warehouse_location">Location</Label>
           <Input
@@ -693,7 +734,10 @@ export default function Inventory() {
       </div>
 
       <DialogFooter>
-        <Button onClick={onSubmit} disabled={!formData.brand || !formData.model || !formData.cost_price}>
+        <Button 
+          onClick={onSubmit} 
+          disabled={!formData.brand || !formData.model || !formData.cost_price || !formData.supplier_id || !formData.purchase_date || !formData.payment_method}
+        >
           {submitLabel}
         </Button>
       </DialogFooter>
