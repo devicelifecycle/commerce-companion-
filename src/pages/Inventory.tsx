@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { normalizeBrand, normalizeModel, modelFuzzyKey } from '@/lib/modelNormalization';
 import { InventoryGuide } from '@/components/guides/InventoryGuide';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
@@ -62,7 +63,7 @@ import { toast } from 'sonner';
 import { 
   Search, Plus, Filter, Smartphone, Trash2, Edit2, MoreHorizontal,
   List, ArrowRightLeft, QrCode, Link, Upload, Boxes,
-  FileText, Download, Send,
+  FileText, Download, Send, AlertTriangle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -139,7 +140,9 @@ export default function Inventory() {
     purchase_date: new Date().toISOString().split('T')[0],
     warehouse_location: '',
     notes: '',
+    payment_method: '' as string,
   });
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null);
 
   useEffect(() => {
     if (canView) {
@@ -196,19 +199,59 @@ export default function Inventory() {
     setSuppliers(data || []);
   };
 
+  // Check for duplicate models when brand/model changes
+  useEffect(() => {
+    if (!formData.brand || !formData.model) {
+      setDuplicateWarning(null);
+      return;
+    }
+    const normalizedBrand = normalizeBrand(formData.brand);
+    const normalizedModel = normalizeModel(formData.model);
+    const newKey = modelFuzzyKey(normalizedBrand, normalizedModel);
+    
+    const match = devices.find(d => {
+      const existingKey = modelFuzzyKey(d.brand, d.model);
+      return existingKey === newKey;
+    });
+    
+    if (match && (!selectedDevice || match.id !== selectedDevice.id)) {
+      setDuplicateWarning(`Similar device exists: "${match.brand} ${match.model}". Did you mean that?`);
+    } else {
+      setDuplicateWarning(null);
+    }
+  }, [formData.brand, formData.model, devices, selectedDevice]);
+
   const handleAddDevice = async () => {
     if (!selectedCompany && !isSuperAdmin) {
       toast.error('Please select a company');
       return;
     }
+    
+    // Anti-laziness validations
+    if (!formData.supplier_id) {
+      toast.error('Supplier is required — every device must be linked to a supplier');
+      return;
+    }
+    if (!formData.purchase_date) {
+      toast.error('Purchase date is required');
+      return;
+    }
+    if (!formData.payment_method) {
+      toast.error('Payment method is required — specify how this device was acquired');
+      return;
+    }
+
+    // Normalize brand and model before saving
+    const normalizedBrand = normalizeBrand(formData.brand);
+    const normalizedModel = normalizeModel(formData.model);
 
     try {
-      const { error } = await supabase.from('devices').insert({
+      const { data: insertedDevice, error } = await supabase.from('devices').insert({
         imei: formData.imei || null,
         sku: formData.sku || null,
         category: formData.category,
-        model: formData.model,
-        brand: formData.brand,
+        model: normalizedModel,
+        brand: normalizedBrand,
         storage: formData.storage || null,
         color: formData.color || null,
         condition: formData.condition,
@@ -221,11 +264,45 @@ export default function Inventory() {
         notes: formData.notes || null,
         company_id: selectedCompany?.id,
         created_by: user?.id,
-      });
+      }).select('id').single();
 
       if (error) throw error;
 
-      logEvent({ action: 'INSERT' as any, tableName: 'devices', module: 'Inventory', notes: `Added ${formData.brand} ${formData.model}` });
+      // Auto-post accounting based on payment method
+      const costPrice = parseFloat(formData.cost_price);
+      const paymentMethod = formData.payment_method;
+      
+      if (paymentMethod === 'cash' || paymentMethod === 'credit_card' || paymentMethod === 'debit_card') {
+        // Immediate payment — no AP needed, just log
+        logEvent({ 
+          action: 'INSERT' as any, tableName: 'devices', module: 'Inventory', 
+          notes: `Added ${normalizedBrand} ${normalizedModel} — paid via ${paymentMethod} ($${costPrice})` 
+        });
+      } else {
+        // Credit/other — create AP record
+        const supplier = suppliers.find(s => s.id === formData.supplier_id);
+        if (selectedCompany) {
+          await supabase.from('accounts_payable').insert({
+            vendor_name: supplier?.name || 'Unknown Supplier',
+            vendor_id: formData.supplier_id ? undefined : undefined,
+            original_amount: costPrice,
+            balance_due: costPrice,
+            bill_date: formData.purchase_date,
+            due_date: new Date(new Date(formData.purchase_date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            description: `Manual device: ${normalizedBrand} ${normalizedModel}`,
+            category: 'inventory_purchase',
+            company_id: selectedCompany.id,
+            status: 'outstanding',
+            created_by: user?.id,
+          });
+        }
+        logEvent({ 
+          action: 'INSERT' as any, tableName: 'devices', module: 'Inventory', 
+          notes: `Added ${normalizedBrand} ${normalizedModel} — on credit, AP created ($${costPrice})` 
+        });
+        toast.info('Accounts Payable record created for this purchase');
+      }
+
       toast.success('Device added to inventory');
       setIsAddDialogOpen(false);
       resetForm();
@@ -321,6 +398,7 @@ export default function Inventory() {
       purchase_date: device.purchase_date || new Date().toISOString().split('T')[0],
       warehouse_location: device.warehouse_location || '',
       notes: device.notes || '',
+      payment_method: '',
     });
     setIsEditDialogOpen(true);
   };
@@ -342,7 +420,9 @@ export default function Inventory() {
       purchase_date: new Date().toISOString().split('T')[0],
       warehouse_location: '',
       notes: '',
+      payment_method: '',
     });
+    setDuplicateWarning(null);
   };
 
   const filteredDevices = devices.filter((device) => {
@@ -421,6 +501,21 @@ export default function Inventory() {
 
   const DeviceForm = ({ onSubmit, submitLabel }: { onSubmit: () => void; submitLabel: string }) => (
     <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-2">
+      {/* Duplicate warning */}
+      {duplicateWarning && (
+        <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>{duplicateWarning}</span>
+        </div>
+      )}
+
+      {/* Normalized preview */}
+      {formData.brand && formData.model && (
+        <div className="rounded-md border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
+          Will be saved as: <span className="font-medium text-foreground">{normalizeBrand(formData.brand)} {normalizeModel(formData.model)}</span>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="brand">Brand *</Label>
@@ -545,12 +640,12 @@ export default function Inventory() {
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="supplier">Supplier</Label>
+          <Label htmlFor="supplier" className="text-amber-600 dark:text-amber-400">Supplier * (required)</Label>
           <Select
             value={formData.supplier_id}
             onValueChange={(value) => setFormData({ ...formData, supplier_id: value })}
           >
-            <SelectTrigger>
+            <SelectTrigger className={!formData.supplier_id ? 'border-amber-500' : ''}>
               <SelectValue placeholder="Select supplier" />
             </SelectTrigger>
             <SelectContent>
@@ -562,6 +657,31 @@ export default function Inventory() {
             </SelectContent>
           </Select>
         </div>
+        <div className="space-y-2">
+          <Label htmlFor="payment_method" className="text-amber-600 dark:text-amber-400">Payment Method * (required)</Label>
+          <Select
+            value={formData.payment_method}
+            onValueChange={(value) => setFormData({ ...formData, payment_method: value })}
+          >
+            <SelectTrigger className={!formData.payment_method ? 'border-amber-500' : ''}>
+              <SelectValue placeholder="How was this acquired?" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cash">Cash (paid immediately)</SelectItem>
+              <SelectItem value="credit_card">Credit Card (paid immediately)</SelectItem>
+              <SelectItem value="debit_card">Debit Card (paid immediately)</SelectItem>
+              <SelectItem value="credit">On Credit (creates AP)</SelectItem>
+              <SelectItem value="wire_transfer">Wire Transfer (creates AP)</SelectItem>
+              <SelectItem value="e_transfer">E-Transfer (creates AP)</SelectItem>
+            </SelectContent>
+          </Select>
+          {formData.payment_method && !['cash', 'credit_card', 'debit_card'].includes(formData.payment_method) && (
+            <p className="text-xs text-muted-foreground">An Accounts Payable record will be auto-created</p>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="status">Status</Label>
           <Select
@@ -579,18 +699,19 @@ export default function Inventory() {
             </SelectContent>
           </Select>
         </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="purchase_date">Purchase Date</Label>
+          <Label htmlFor="purchase_date" className="text-amber-600 dark:text-amber-400">Purchase Date * (required)</Label>
           <Input
             id="purchase_date"
             type="date"
             value={formData.purchase_date}
             onChange={(e) => setFormData({ ...formData, purchase_date: e.target.value })}
+            className={!formData.purchase_date ? 'border-amber-500' : ''}
           />
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="warehouse_location">Location</Label>
           <Input
@@ -613,7 +734,10 @@ export default function Inventory() {
       </div>
 
       <DialogFooter>
-        <Button onClick={onSubmit} disabled={!formData.brand || !formData.model || !formData.cost_price}>
+        <Button 
+          onClick={onSubmit} 
+          disabled={!formData.brand || !formData.model || !formData.cost_price || !formData.supplier_id || !formData.purchase_date || !formData.payment_method}
+        >
           {submitLabel}
         </Button>
       </DialogFooter>

@@ -370,6 +370,22 @@ export default function Import() {
       batchInvoiceNumber = String(validRows[0].data[mapping.supplier_invoice_number] || '').trim();
     }
 
+    // Generate next LOT number
+    const { data: lastBatch } = await supabase
+      .from('import_batches')
+      .select('lot_number')
+      .not('lot_number', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    let nextLotNum = 1;
+    if (lastBatch?.lot_number) {
+      const match = lastBatch.lot_number.match(/LOT-?(\d+)/i);
+      if (match) nextLotNum = parseInt(match[1]) + 1;
+    }
+    const lotNumber = `LOT${String(nextLotNum).padStart(3, '0')}`;
+
     // Create import batch
     const { data: batchData } = await supabase
       .from('import_batches')
@@ -380,6 +396,7 @@ export default function Import() {
         company_id: targetCompanyId,
         supplier_id: batchSupplierId,
         supplier_invoice_number: batchInvoiceNumber || null,
+        lot_number: lotNumber,
       })
       .select()
       .single();

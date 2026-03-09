@@ -66,7 +66,7 @@ export default function CostLedger() {
     queryFn: async () => {
       let q = supabase
         .from('import_batches')
-        .select('id, file_name, total_rows, successful_rows, failed_rows, shipping_cost, other_charges, supplier_invoice_number, is_finalized, supplier_id, company_id, created_at')
+        .select('id, file_name, total_rows, successful_rows, failed_rows, shipping_cost, other_charges, supplier_invoice_number, is_finalized, supplier_id, company_id, created_at, lot_number')
         .order('created_at', { ascending: false });
 
       if (selectedCompanyId !== 'all') {
@@ -337,6 +337,7 @@ export default function CostLedger() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-8" />
+                        <TableHead>LOT #</TableHead>
                         <TableHead>File</TableHead>
                         <TableHead>Supplier</TableHead>
                         <TableHead>Invoice #</TableHead>
@@ -352,11 +353,11 @@ export default function CostLedger() {
                     <TableBody>
                       {batchesLoading ? (
                         <TableRow>
-                          <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                           <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
                         </TableRow>
                       ) : filteredBatches.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">No batches found</TableCell>
+                           <TableCell colSpan={12} className="text-center py-8 text-muted-foreground">No batches found</TableCell>
                         </TableRow>
                       ) : (
                         filteredBatches.map((b) => {
@@ -373,6 +374,7 @@ export default function CostLedger() {
                                     <TableCell>
                                       {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                                     </TableCell>
+                                    <TableCell className="font-mono text-xs font-semibold text-primary">{(b as any).lot_number || '—'}</TableCell>
                                     <TableCell className="font-medium text-sm">{b.file_name}</TableCell>
                                     <TableCell>{supplier ? `${supplier.code} — ${supplier.name}` : '—'}</TableCell>
                                     <TableCell className="font-mono text-xs">{b.supplier_invoice_number || '—'}</TableCell>
@@ -417,7 +419,7 @@ export default function CostLedger() {
                                       </TableRow>
                                     )) : (
                                       <TableRow className="bg-muted/20">
-                                        <TableCell colSpan={11} className="text-center text-xs text-muted-foreground py-3">
+                                        <TableCell colSpan={12} className="text-center text-xs text-muted-foreground py-3">
                                           No devices linked to this batch
                                         </TableCell>
                                       </TableRow>

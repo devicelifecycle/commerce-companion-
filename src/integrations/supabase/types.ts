@@ -1180,6 +1180,7 @@ export type Database = {
           id: string
           imported_by: string | null
           is_finalized: boolean | null
+          lot_number: string | null
           other_charges: number | null
           shipping_cost: number | null
           successful_rows: number
@@ -1195,6 +1196,7 @@ export type Database = {
           id?: string
           imported_by?: string | null
           is_finalized?: boolean | null
+          lot_number?: string | null
           other_charges?: number | null
           shipping_cost?: number | null
           successful_rows?: number
@@ -1210,6 +1212,7 @@ export type Database = {
           id?: string
           imported_by?: string | null
           is_finalized?: boolean | null
+          lot_number?: string | null
           other_charges?: number | null
           shipping_cost?: number | null
           successful_rows?: number
