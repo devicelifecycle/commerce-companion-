@@ -29,6 +29,7 @@ import Returns from "./pages/Returns";
 import IntegrationHealth from "./pages/IntegrationHealth";
 import CostLedger from "./pages/CostLedger";
 import Customers from "./pages/Customers";
+import Guides from "./pages/Guides";
 
 const queryClient = new QueryClient();
 
