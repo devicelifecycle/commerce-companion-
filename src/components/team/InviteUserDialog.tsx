@@ -70,13 +70,15 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
   const handleSubmit = async (data: InviteFormData) => {
     setLoading(true);
     try {
+      // Auto-assign all companies
+      const allCompanyIds = companies.map(c => c.id);
       const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
         body: {
           email: data.email,
           password: data.password,
           full_name: data.full_name,
           role: data.role,
-          company_ids: data.companies,
+          company_ids: allCompanyIds,
         },
       });
 
