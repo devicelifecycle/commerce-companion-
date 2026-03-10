@@ -8,6 +8,7 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { CompanyProfile } from '@/components/settings/CompanyProfile';
 import { NotificationPreferences } from '@/components/settings/NotificationPreferences';
 import { AppSettings } from '@/components/settings/AppSettings';
+import { SecuritySettings } from '@/components/settings/SecuritySettings';
 import { UserManagementTable } from '@/components/team/UserManagementTable';
 import { Settings as SettingsIcon, User, Bell, Shield, Building2, Sliders, Plug, Users } from 'lucide-react';
 import { ShopifyIntegration } from '@/components/settings/ShopifyIntegration';
