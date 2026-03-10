@@ -96,6 +96,7 @@ const App = () => (
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
               <Route path="/guides" element={<ProtectedRoute><Guides /></ProtectedRoute>} />
+              <Route path="/accounting-guides" element={<ProtectedRoute><AccountingKnowledge /></ProtectedRoute>} />
               {/* Redirects for old routes */}
               <Route path="/sales" element={<Navigate to="/orders" replace />} />
               <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
