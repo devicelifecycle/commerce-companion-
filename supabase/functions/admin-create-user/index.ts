@@ -45,7 +45,8 @@ serve(async (req) => {
       .select("role")
       .eq("user_id", caller.id)
       .eq("role", "admin")
-      .maybeSingle();
+      .limit(1)
+      .single();
 
     if (!callerAssignment) {
       return new Response(
