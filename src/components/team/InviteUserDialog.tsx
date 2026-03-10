@@ -62,7 +62,6 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       full_name: '',
       password: '',
       role: 'associate',
-      companies: [],
     },
   });
 
