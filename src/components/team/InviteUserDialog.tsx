@@ -66,7 +66,6 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
   });
 
   const selectedRole = form.watch('role');
-  const selectedCompanies = form.watch('companies');
 
   const handleSubmit = async (data: InviteFormData) => {
     setLoading(true);
