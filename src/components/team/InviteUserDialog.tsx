@@ -106,15 +106,6 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
     }
   };
 
-  const handleCompanyToggle = (companyId: string) => {
-    const current = form.getValues('companies');
-    if (current.includes(companyId)) {
-      form.setValue('companies', current.filter(id => id !== companyId));
-    } else {
-      form.setValue('companies', [...current, companyId]);
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
