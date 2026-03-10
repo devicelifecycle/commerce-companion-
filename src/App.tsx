@@ -105,7 +105,7 @@ const App = () => (
               <Route path="/accounting/ar" element={<Navigate to="/financials" replace />} />
               <Route path="/taxes" element={<Navigate to="/financials" replace />} />
               <Route path="/accounting/knowledge" element={<Navigate to="/financials" replace />} />
-              <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
+              <Route path="/team" element={<Navigate to="/settings" replace />} />
               <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
               <Route path="/integration-health" element={<ProtectedRoute><IntegrationHealth /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
