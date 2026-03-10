@@ -20,6 +20,7 @@ import {
   PackageCheck,
   RotateCcw,
   Activity,
+  BookOpen,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth';
@@ -78,7 +79,11 @@ const adminNav = [
   { title: 'Team', url: '/team', icon: Users },
   { title: 'Audit Logs', url: '/audit-logs', icon: ClipboardList },
   { title: 'Settings', url: '/settings', icon: Settings },
-  { title: 'Help', url: '/help', icon: HelpCircle },
+];
+
+const helpNav = [
+  { title: 'Help & Guides', url: '/help', icon: HelpCircle },
+  { title: 'Module Guides', url: '/guides', icon: BookOpen },
 ];
 
 export function AppSidebar() {
@@ -198,6 +203,17 @@ export function AppSidebar() {
             </SidebarGroup>
           </>
         )}
+
+        <Separator className="my-1.5 bg-border/50" />
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
+            Help & Support
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            {renderNavItems(helpNav)}
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter className="p-3 border-t border-border/50">
