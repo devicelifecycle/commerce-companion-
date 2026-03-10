@@ -129,7 +129,7 @@ export default function Settings() {
 
           {/* Users Tab (Super Admin only) */}
           {isSuperAdmin && (
-            <TabsContent value="users">
+            <TabsContent value="users" className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -142,6 +142,21 @@ export default function Settings() {
                 </CardHeader>
                 <CardContent>
                   <UserManagementTable />
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Role Permissions
+                  </CardTitle>
+                  <CardDescription>
+                    Overview of permissions granted to each role
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <PermissionsMatrix />
                 </CardContent>
               </Card>
             </TabsContent>

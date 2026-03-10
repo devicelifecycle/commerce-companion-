@@ -57,11 +57,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
-    return { error: error as Error | null };
+    
+    if (error) return { error: error as Error | null };
+
+    // Login guard: check if user account is active and has company assignments
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_active')
+        .eq('user_id', data.user.id)
+        .single();
+
+      if (profile && !profile.is_active) {
+        await supabase.auth.signOut();
+        return { error: new Error('Your account has been deactivated. Contact your administrator.') };
+      }
+
+      const { data: assignments } = await supabase
+        .from('user_company_assignments')
+        .select('id')
+        .eq('user_id', data.user.id)
+        .limit(1);
+
+      if (!assignments || assignments.length === 0) {
+        await supabase.auth.signOut();
+        return { error: new Error('Your account has no company access. Contact your administrator.') };
+      }
+    }
+
+    return { error: null };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
