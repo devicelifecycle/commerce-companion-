@@ -129,7 +129,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
         customer_email: data.customer_email || null,
         shipping_address: data.shipping_address || null,
         notes: data.notes || null,
-        device_id: data.device_id || null,
+        device_id: data.device_id && data.device_id !== 'none' ? data.device_id : null,
         company_id: selectedCompany.id,
         created_by: user?.id,
       });
