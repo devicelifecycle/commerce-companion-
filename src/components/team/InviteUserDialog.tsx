@@ -30,9 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { UserPlus, Building2 } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 
 interface InviteUserDialogProps {
   open: boolean;
