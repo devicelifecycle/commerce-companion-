@@ -37,7 +37,7 @@ export default function MfaEnroll() {
       const { data: factors } = await supabase.auth.mfa.listFactors();
       if (factors?.totp) {
         for (const factor of factors.totp) {
-          if (factor.status === 'unverified') {
+          if (factor.factor_type === 'totp' && factor.status !== 'verified') {
             await supabase.auth.mfa.unenroll({ factorId: factor.id });
           }
         }
