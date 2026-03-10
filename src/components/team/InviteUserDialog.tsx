@@ -193,36 +193,6 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="companies"
-              render={() => (
-                <FormItem>
-                  <FormLabel>Company Access</FormLabel>
-                  <div className="space-y-2">
-                    {companies.map((company) => (
-                      <div
-                        key={company.id}
-                        className="flex items-center space-x-3 rounded-lg border p-3 hover:bg-muted/50 cursor-pointer"
-                        onClick={() => handleCompanyToggle(company.id)}
-                      >
-                        <Checkbox
-                          checked={selectedCompanies.includes(company.id)}
-                          onCheckedChange={() => handleCompanyToggle(company.id)}
-                        />
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex-1">
-                          <p className="font-medium">{company.code}</p>
-                          <p className="text-sm text-muted-foreground">{company.name}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                 Cancel
