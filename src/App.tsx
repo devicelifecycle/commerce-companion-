@@ -30,6 +30,7 @@ import IntegrationHealth from "./pages/IntegrationHealth";
 import CostLedger from "./pages/CostLedger";
 import Customers from "./pages/Customers";
 import Guides from "./pages/Guides";
+import AccountingKnowledge from "./pages/AccountingKnowledge";
 
 const queryClient = new QueryClient();
 
