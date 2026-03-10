@@ -45,7 +45,6 @@ const inviteSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   role: z.enum(['admin', 'associate']),
-  companies: z.array(z.string()).min(1, 'Select at least one company'),
 });
 
 type InviteFormData = z.infer<typeof inviteSchema>;
