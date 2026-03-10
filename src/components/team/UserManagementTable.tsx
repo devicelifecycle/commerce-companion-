@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useAuth } from '@/lib/auth';
 import { ROLE_LABELS, UserRole } from '@/hooks/usePermissions';
 import {
   Table,
@@ -19,7 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, UserPlus, Shield, Building2, Trash2 } from 'lucide-react';
+import { MoreHorizontal, UserPlus, Shield, Building2, Trash2, UserX, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { AssignRoleDialog } from './AssignRoleDialog';
 import { InviteUserDialog } from './InviteUserDialog';
@@ -40,6 +41,7 @@ interface UserWithAssignments {
 
 export function UserManagementTable() {
   const { isSuperAdmin, selectedCompany, hasPermission } = useCompany();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserWithAssignments[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUser, setSelectedUser] = useState<UserWithAssignments | null>(null);
@@ -55,10 +57,10 @@ export function UserManagementTable() {
   const loadUsers = async () => {
     setLoading(true);
     try {
+      // Fetch ALL profiles (including inactive) so admins can see deactivated users
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('*')
-        .eq('is_active', true);
+        .select('*');
 
       if (profilesError) throw profilesError;
 
@@ -103,6 +105,32 @@ export function UserManagementTable() {
     }
   };
 
+  const handleToggleActive = async (user: UserWithAssignments) => {
+    const newStatus = !user.is_active;
+    const action = newStatus ? 'reactivate' : 'deactivate';
+    
+    if (!newStatus) {
+      const confirmed = window.confirm(
+        `Are you sure you want to deactivate ${user.full_name || user.email}? They will be unable to log in until reactivated. Their historical data will be preserved.`
+      );
+      if (!confirmed) return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_active: newStatus })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast.success(`User ${action}d successfully`);
+      loadUsers();
+    } catch (error) {
+      console.error(`Error ${action}ing user:`, error);
+      toast.error(`Failed to ${action} user`);
+    }
+  };
+
   const handleRemoveAssignment = async (assignmentId: string) => {
     try {
       const { error } = await supabase
@@ -133,7 +161,7 @@ export function UserManagementTable() {
         <div>
           <h3 className="text-lg font-semibold">Team Members</h3>
           <p className="text-sm text-muted-foreground">
-            {users.length} user{users.length !== 1 ? 's' : ''} with access
+            {users.filter(u => u.is_active).length} active, {users.filter(u => !u.is_active).length} deactivated
           </p>
         </div>
         {canManageUsers && (
@@ -164,7 +192,7 @@ export function UserManagementTable() {
               </TableRow>
             ) : (
               users.map((user) => (
-                <TableRow key={user.id}>
+                <TableRow key={user.id} className={!user.is_active ? 'opacity-60' : ''}>
                   <TableCell>
                     <div>
                       <p className="font-medium">{user.full_name || 'No name'}</p>
@@ -195,8 +223,8 @@ export function UserManagementTable() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.is_active ? 'default' : 'secondary'}>
-                      {user.is_active ? 'Active' : 'Inactive'}
+                    <Badge variant={user.is_active ? 'default' : 'destructive'}>
+                      {user.is_active ? 'Active' : 'Deactivated'}
                     </Badge>
                   </TableCell>
                   {canManageUsers && (
@@ -217,6 +245,27 @@ export function UserManagementTable() {
                             <Shield className="h-4 w-4 mr-2" />
                             Manage Role
                           </DropdownMenuItem>
+                          
+                          {/* Don't allow deactivating yourself */}
+                          {user.id !== currentUser?.id && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleToggleActive(user)}>
+                                {user.is_active ? (
+                                  <>
+                                    <UserX className="h-4 w-4 mr-2" />
+                                    Deactivate User
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserCheck className="h-4 w-4 mr-2" />
+                                    Reactivate User
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          
                           <DropdownMenuSeparator />
                           {user.assignments.map((a) => (
                             <DropdownMenuItem

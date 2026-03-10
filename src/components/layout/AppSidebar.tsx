@@ -76,7 +76,6 @@ const analyticsNav = [
 
 const adminNav = [
   { title: 'Integration Health', url: '/integration-health', icon: Activity },
-  { title: 'Team', url: '/team', icon: Users },
   { title: 'Audit Logs', url: '/audit-logs', icon: ClipboardList },
   { title: 'Settings', url: '/settings', icon: Settings },
 ];
