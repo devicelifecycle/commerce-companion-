@@ -222,7 +222,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="">No device</SelectItem>
+                      <SelectItem value="none">No device</SelectItem>
                       {devices.map((device) => (
                         <SelectItem key={device.id} value={device.id}>
                           {device.brand} {device.model} 
