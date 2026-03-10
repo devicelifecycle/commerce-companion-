@@ -30,9 +30,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { UserPlus, Building2 } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 
 interface InviteUserDialogProps {
   open: boolean;
@@ -45,7 +44,6 @@ const inviteSchema = z.object({
   full_name: z.string().min(2, 'Name must be at least 2 characters'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   role: z.enum(['admin', 'associate']),
-  companies: z.array(z.string()).min(1, 'Select at least one company'),
 });
 
 type InviteFormData = z.infer<typeof inviteSchema>;
@@ -63,23 +61,23 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       full_name: '',
       password: '',
       role: 'associate',
-      companies: [],
     },
   });
 
   const selectedRole = form.watch('role');
-  const selectedCompanies = form.watch('companies');
 
   const handleSubmit = async (data: InviteFormData) => {
     setLoading(true);
     try {
+      // Auto-assign all companies
+      const allCompanyIds = companies.map(c => c.id);
       const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
         body: {
           email: data.email,
           password: data.password,
           full_name: data.full_name,
           role: data.role,
-          company_ids: data.companies,
+          company_ids: allCompanyIds,
         },
       });
 
@@ -104,15 +102,6 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCompanyToggle = (companyId: string) => {
-    const current = form.getValues('companies');
-    if (current.includes(companyId)) {
-      form.setValue('companies', current.filter(id => id !== companyId));
-    } else {
-      form.setValue('companies', [...current, companyId]);
     }
   };
 
@@ -198,36 +187,6 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
                   <p className="text-xs text-muted-foreground">
                     {ROLE_DESCRIPTIONS[selectedRole]}
                   </p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="companies"
-              render={() => (
-                <FormItem>
-                  <FormLabel>Company Access</FormLabel>
-                  <div className="space-y-2">
-                    {companies.map((company) => (
-                      <div
-                        key={company.id}
-                        className="flex items-center space-x-3 rounded-lg border p-3 hover:bg-muted/50 cursor-pointer"
-                        onClick={() => handleCompanyToggle(company.id)}
-                      >
-                        <Checkbox
-                          checked={selectedCompanies.includes(company.id)}
-                          onCheckedChange={() => handleCompanyToggle(company.id)}
-                        />
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex-1">
-                          <p className="font-medium">{company.code}</p>
-                          <p className="text-sm text-muted-foreground">{company.name}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
                   <FormMessage />
                 </FormItem>
               )}
