@@ -185,46 +185,7 @@ export default function Settings() {
 
           {/* Security Tab */}
           <TabsContent value="security">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Security
-                </CardTitle>
-                <CardDescription>
-                  Manage your security settings
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between p-4 rounded-lg border">
-                    <div>
-                      <p className="font-medium">Password</p>
-                      <p className="text-sm text-muted-foreground">Last changed: Never</p>
-                    </div>
-                    <Button variant="outline">Change Password</Button>
-                  </div>
-                  <div className="flex items-center justify-between p-4 rounded-lg border">
-                    <div>
-                      <p className="font-medium">Two-Factor Authentication</p>
-                      <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
-                    </div>
-                    <Button variant="outline" disabled>
-                      Coming Soon
-                    </Button>
-                  </div>
-                  <div className="flex items-center justify-between p-4 rounded-lg border">
-                    <div>
-                      <p className="font-medium">Active Sessions</p>
-                      <p className="text-sm text-muted-foreground">Manage your logged-in devices</p>
-                    </div>
-                    <Button variant="outline" disabled>
-                      View Sessions
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <SecuritySettings />
           </TabsContent>
         </Tabs>
       </div>
