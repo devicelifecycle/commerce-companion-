@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Users, Plus, Search, Edit2, Trash2, Mail, Phone, MapPin, ShoppingCart, DollarSign } from 'lucide-react';
+import { Users, Plus, Search, Edit2, Trash2, Mail, Phone, MapPin, ShoppingCart, DollarSign, X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 
 interface Customer {
