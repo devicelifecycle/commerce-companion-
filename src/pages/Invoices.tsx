@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -6,13 +6,14 @@ import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { useQuickActionListener } from '@/hooks/useGlobalShortcuts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, FileText, Clock, CheckCircle, AlertCircle, Send, Eye, Download } from 'lucide-react';
+import { Plus, FileText, Clock, CheckCircle, AlertCircle, Send, Eye, Download, Search, X } from 'lucide-react';
 import { InvoicesGuide } from '@/components/guides/InvoicesGuide';
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { format } from 'date-fns';
@@ -69,6 +70,8 @@ export default function Invoices() {
   const [createOpen, setCreateOpen] = useState(false);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [viewItems, setViewItems] = useState<InvoiceItem[]>([]);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Quick action: open "Create Invoice" dialog via Alt+N
   useQuickActionListener('create-invoice', useCallback(() => setCreateOpen(true), []));
@@ -181,6 +184,17 @@ export default function Invoices() {
     }
   };
 
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(inv => {
+      const matchSearch = !search.trim() ||
+        inv.invoice_number.toLowerCase().includes(search.toLowerCase()) ||
+        inv.customer_name.toLowerCase().includes(search.toLowerCase()) ||
+        inv.customer_email?.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === 'all' || inv.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [invoices, search, statusFilter]);
+
   const totalOutstanding = invoices
     .filter(i => i.status === 'sent' || i.status === 'overdue')
     .reduce((sum, i) => sum + Number(i.total), 0);
@@ -263,10 +277,40 @@ export default function Invoices() {
 
         {/* Invoices Table */}
         <Card className="border-border/50">
-          <CardHeader>
-            <CardTitle className="font-display flex items-center gap-2">
-              <FileText className="h-5 w-5" /> All Invoices
-            </CardTitle>
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <CardTitle className="font-display flex items-center gap-2">
+                <FileText className="h-5 w-5" /> All Invoices
+              </CardTitle>
+              <div className="flex-1" />
+              <div className="relative min-w-[200px] max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search invoice #, customer..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  className="pl-9 h-9"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[130px] h-9">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="sent">Sent</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              {(statusFilter !== 'all' || search) && (
+                <Button variant="ghost" size="sm" onClick={() => { setStatusFilter('all'); setSearch(''); }}>
+                  <X className="h-3.5 w-3.5 mr-1" /> Clear
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -284,14 +328,14 @@ export default function Invoices() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invoices.length === 0 ? (
+                {filteredInvoices.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                      No invoices yet — click "New Invoice" to create one
+                      {search || statusFilter !== 'all' ? 'No invoices match your filters' : 'No invoices yet — click "New Invoice" to create one'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  invoices.map((invoice) => {
+                  filteredInvoices.map((invoice) => {
                     const config = STATUS_CONFIG[invoice.status];
                     return (
                       <TableRow key={invoice.id}>

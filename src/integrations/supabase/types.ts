@@ -2242,6 +2242,69 @@ export type Database = {
           },
         ]
       }
+      sale_items: {
+        Row: {
+          cost_price: number | null
+          created_at: string
+          description: string
+          device_id: string | null
+          discount: number | null
+          id: string
+          imei: string | null
+          quantity: number
+          sale_id: string
+          sku: string | null
+          tax_amount: number | null
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          cost_price?: number | null
+          created_at?: string
+          description: string
+          device_id?: string | null
+          discount?: number | null
+          id?: string
+          imei?: string | null
+          quantity?: number
+          sale_id: string
+          sku?: string | null
+          tax_amount?: number | null
+          total: number
+          unit_price: number
+        }
+        Update: {
+          cost_price?: number | null
+          created_at?: string
+          description?: string
+          device_id?: string | null
+          discount?: number | null
+          id?: string
+          imei?: string | null
+          quantity?: number
+          sale_id?: string
+          sku?: string | null
+          tax_amount?: number | null
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sale_items_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sale_items_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales: {
         Row: {
           accounting_status: string | null
@@ -2255,6 +2318,8 @@ export type Database = {
           fulfillment_status: string | null
           id: string
           is_marketplace_remitted: boolean | null
+          is_multi_item: boolean | null
+          item_count: number | null
           marketplace: Database["public"]["Enums"]["marketplace"]
           marketplace_fees: number | null
           marketplace_status: string | null
@@ -2265,6 +2330,7 @@ export type Database = {
           sale_price: number
           shipping_address: string | null
           shipping_cost: number | null
+          subtotal: number | null
           tax_amount: number | null
           updated_at: string
         }
@@ -2280,6 +2346,8 @@ export type Database = {
           fulfillment_status?: string | null
           id?: string
           is_marketplace_remitted?: boolean | null
+          is_multi_item?: boolean | null
+          item_count?: number | null
           marketplace: Database["public"]["Enums"]["marketplace"]
           marketplace_fees?: number | null
           marketplace_status?: string | null
@@ -2290,6 +2358,7 @@ export type Database = {
           sale_price: number
           shipping_address?: string | null
           shipping_cost?: number | null
+          subtotal?: number | null
           tax_amount?: number | null
           updated_at?: string
         }
@@ -2305,6 +2374,8 @@ export type Database = {
           fulfillment_status?: string | null
           id?: string
           is_marketplace_remitted?: boolean | null
+          is_multi_item?: boolean | null
+          item_count?: number | null
           marketplace?: Database["public"]["Enums"]["marketplace"]
           marketplace_fees?: number | null
           marketplace_status?: string | null
@@ -2315,6 +2386,7 @@ export type Database = {
           sale_price?: number
           shipping_address?: string | null
           shipping_cost?: number | null
+          subtotal?: number | null
           tax_amount?: number | null
           updated_at?: string
         }

@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Users, Plus, Search, Edit2, Trash2, Mail, Phone, MapPin, ShoppingCart, DollarSign } from 'lucide-react';
+import { Users, Plus, Search, Edit2, Trash2, Mail, Phone, MapPin, ShoppingCart, DollarSign, X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 
 interface Customer {
@@ -35,6 +36,7 @@ export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [deleting, setDeleting] = useState<Customer | null>(null);
@@ -68,16 +70,17 @@ export default function Customers() {
   };
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return customers;
-    const s = search.toLowerCase();
-    return customers.filter(
-      c =>
-        c.name.toLowerCase().includes(s) ||
-        c.email?.toLowerCase().includes(s) ||
-        c.phone?.toLowerCase().includes(s) ||
-        c.address?.toLowerCase().includes(s)
-    );
-  }, [customers, search]);
+    return customers.filter(c => {
+      const matchSearch = !search.trim() || 
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.email?.toLowerCase().includes(search.toLowerCase()) ||
+        c.phone?.toLowerCase().includes(search.toLowerCase()) ||
+        c.address?.toLowerCase().includes(search.toLowerCase());
+      const matchSource = sourceFilter === 'all' || 
+        (sourceFilter === 'manual' ? !c.marketplace_source : c.marketplace_source === sourceFilter);
+      return matchSearch && matchSource;
+    });
+  }, [customers, search, sourceFilter]);
 
   const stats = useMemo(() => ({
     total: customers.length,
@@ -213,8 +216,21 @@ export default function Customers() {
           {/* Search & Table */}
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 flex-1">
                 <CardTitle className="text-base">All Customers</CardTitle>
+                <div className="flex-1" />
+                <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                  <SelectTrigger className="w-[130px] h-9">
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sources</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
+                    <SelectItem value="shopify">Shopify</SelectItem>
+                    <SelectItem value="amazon">Amazon</SelectItem>
+                    <SelectItem value="invoice">Invoice</SelectItem>
+                  </SelectContent>
+                </Select>
                 <div className="relative w-64">
                   <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
@@ -224,6 +240,11 @@ export default function Customers() {
                     onChange={e => setSearch(e.target.value)}
                   />
                 </div>
+                {(sourceFilter !== 'all' || search) && (
+                  <Button variant="ghost" size="sm" onClick={() => { setSourceFilter('all'); setSearch(''); }}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-0">
