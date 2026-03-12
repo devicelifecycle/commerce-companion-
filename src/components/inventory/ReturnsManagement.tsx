@@ -36,7 +36,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { 
   RotateCcw, Plus, Package, ShoppingCart, DollarSign, 
-  Clock, CheckCircle, XCircle, Truck 
+  Clock, CheckCircle, XCircle, Truck, Search 
 } from 'lucide-react';
 import { format } from 'date-fns';
 
