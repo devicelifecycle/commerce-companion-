@@ -45,9 +45,14 @@ export default function GoodsReceived() {
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const filtered = grns.filter(g =>
-    g.grn_number.toLowerCase().includes(search.toLowerCase())
-  );
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  const filtered = grns.filter(g => {
+    const matchSearch = g.grn_number.toLowerCase().includes(search.toLowerCase()) ||
+      g.notes?.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === 'all' || g.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
 
   const { selectedIds, toggle, toggleAll, isAllSelected, clear, selectedItems } = useTableSelection(filtered);
 
