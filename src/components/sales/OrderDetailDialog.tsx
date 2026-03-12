@@ -77,6 +77,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
               )}
             </div>
           </DialogTitle>
+          <DialogDescription className="sr-only">Details for order {sale.order_number}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
