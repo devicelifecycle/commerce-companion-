@@ -69,16 +69,17 @@ export default function Customers() {
   };
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return customers;
-    const s = search.toLowerCase();
-    return customers.filter(
-      c =>
-        c.name.toLowerCase().includes(s) ||
-        c.email?.toLowerCase().includes(s) ||
-        c.phone?.toLowerCase().includes(s) ||
-        c.address?.toLowerCase().includes(s)
-    );
-  }, [customers, search]);
+    return customers.filter(c => {
+      const matchSearch = !search.trim() || 
+        c.name.toLowerCase().includes(search.toLowerCase()) ||
+        c.email?.toLowerCase().includes(search.toLowerCase()) ||
+        c.phone?.toLowerCase().includes(search.toLowerCase()) ||
+        c.address?.toLowerCase().includes(search.toLowerCase());
+      const matchSource = sourceFilter === 'all' || 
+        (sourceFilter === 'manual' ? !c.marketplace_source : c.marketplace_source === sourceFilter);
+      return matchSearch && matchSource;
+    });
+  }, [customers, search, sourceFilter]);
 
   const stats = useMemo(() => ({
     total: customers.length,
