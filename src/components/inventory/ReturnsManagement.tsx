@@ -71,6 +71,7 @@ export function ReturnsManagement() {
   const [sales, setSales] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   
   const [formData, setFormData] = useState({
     return_type: 'purchase_return' as 'purchase_return' | 'sales_return',
