@@ -328,14 +328,14 @@ export default function Invoices() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invoices.length === 0 ? (
+                {filteredInvoices.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                      No invoices yet — click "New Invoice" to create one
+                      {search || statusFilter !== 'all' ? 'No invoices match your filters' : 'No invoices yet — click "New Invoice" to create one'}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  invoices.map((invoice) => {
+                  filteredInvoices.map((invoice) => {
                     const config = STATUS_CONFIG[invoice.status];
                     return (
                       <TableRow key={invoice.id}>
