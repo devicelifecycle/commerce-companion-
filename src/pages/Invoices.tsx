@@ -69,6 +69,8 @@ export default function Invoices() {
   const [createOpen, setCreateOpen] = useState(false);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [viewItems, setViewItems] = useState<InvoiceItem[]>([]);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   // Quick action: open "Create Invoice" dialog via Alt+N
   useQuickActionListener('create-invoice', useCallback(() => setCreateOpen(true), []));
