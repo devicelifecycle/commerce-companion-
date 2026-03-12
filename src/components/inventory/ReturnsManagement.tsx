@@ -36,7 +36,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { 
   RotateCcw, Plus, Package, ShoppingCart, DollarSign, 
-  Clock, CheckCircle, XCircle, Truck 
+  Clock, CheckCircle, XCircle, Truck, Search 
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -71,6 +71,7 @@ export function ReturnsManagement() {
   const [sales, setSales] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
   
   const [formData, setFormData] = useState({
     return_type: 'purchase_return' as 'purchase_return' | 'sales_return',
@@ -285,11 +286,23 @@ export function ReturnsManagement() {
   };
 
   const filteredReturns = returns.filter(r => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'purchase') return r.return_type === 'purchase_return';
-    if (activeTab === 'sales') return r.return_type === 'sales_return';
-    if (activeTab === 'pending') return ['pending', 'approved'].includes(r.status);
-    return true;
+    const matchTab = activeTab === 'all' ? true
+      : activeTab === 'purchase' ? r.return_type === 'purchase_return'
+      : activeTab === 'sales' ? r.return_type === 'sales_return'
+      : activeTab === 'pending' ? ['pending', 'approved'].includes(r.status)
+      : true;
+    if (!matchTab) return false;
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      r.rma_number.toLowerCase().includes(term) ||
+      r.customer_name?.toLowerCase().includes(term) ||
+      r.reason?.toLowerCase().includes(term) ||
+      r.device?.brand?.toLowerCase().includes(term) ||
+      r.device?.model?.toLowerCase().includes(term) ||
+      r.device?.imei?.toLowerCase().includes(term) ||
+      r.supplier?.name?.toLowerCase().includes(term)
+    );
   });
 
   const formatCurrency = (value: number | null) =>
@@ -501,6 +514,17 @@ export function ReturnsManagement() {
       </CardHeader>
 
       <CardContent>
+        <div className="mb-4">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search RMA, customer, device, IMEI..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="all">All ({returns.length})</TabsTrigger>

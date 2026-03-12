@@ -11,6 +11,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Search, Download, ChevronDown, ChevronRight } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GoodsReceivedGuide } from '@/components/guides/GoodsReceivedGuide';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
@@ -45,9 +46,14 @@ export default function GoodsReceived() {
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const filtered = grns.filter(g =>
-    g.grn_number.toLowerCase().includes(search.toLowerCase())
-  );
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  const filtered = grns.filter(g => {
+    const matchSearch = g.grn_number.toLowerCase().includes(search.toLowerCase()) ||
+      g.notes?.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === 'all' || g.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
 
   const { selectedIds, toggle, toggleAll, isAllSelected, clear, selectedItems } = useTableSelection(filtered);
 
@@ -107,8 +113,19 @@ export default function GoodsReceived() {
             <div className="flex items-center gap-3">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search GRN #..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+                <Input placeholder="Search GRN #, notes..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
               </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="partial">Partial</SelectItem>
+                </SelectContent>
+              </Select>
               <Button variant="outline" size="sm" onClick={exportCsv}>
                 <Download className="h-4 w-4 mr-1" /> Export
               </Button>
