@@ -286,11 +286,23 @@ export function ReturnsManagement() {
   };
 
   const filteredReturns = returns.filter(r => {
-    if (activeTab === 'all') return true;
-    if (activeTab === 'purchase') return r.return_type === 'purchase_return';
-    if (activeTab === 'sales') return r.return_type === 'sales_return';
-    if (activeTab === 'pending') return ['pending', 'approved'].includes(r.status);
-    return true;
+    const matchTab = activeTab === 'all' ? true
+      : activeTab === 'purchase' ? r.return_type === 'purchase_return'
+      : activeTab === 'sales' ? r.return_type === 'sales_return'
+      : activeTab === 'pending' ? ['pending', 'approved'].includes(r.status)
+      : true;
+    if (!matchTab) return false;
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      r.rma_number.toLowerCase().includes(term) ||
+      r.customer_name?.toLowerCase().includes(term) ||
+      r.reason?.toLowerCase().includes(term) ||
+      r.device?.brand?.toLowerCase().includes(term) ||
+      r.device?.model?.toLowerCase().includes(term) ||
+      r.device?.imei?.toLowerCase().includes(term) ||
+      r.supplier?.name?.toLowerCase().includes(term)
+    );
   });
 
   const formatCurrency = (value: number | null) =>
