@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -77,6 +77,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
               )}
             </div>
           </DialogTitle>
+          <DialogDescription className="sr-only">Details for order {sale.order_number}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5">
