@@ -216,8 +216,21 @@ export default function Customers() {
           {/* Search & Table */}
           <Card>
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 flex-1">
                 <CardTitle className="text-base">All Customers</CardTitle>
+                <div className="flex-1" />
+                <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                  <SelectTrigger className="w-[130px] h-9">
+                    <SelectValue placeholder="Source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Sources</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
+                    <SelectItem value="shopify">Shopify</SelectItem>
+                    <SelectItem value="amazon">Amazon</SelectItem>
+                    <SelectItem value="invoice">Invoice</SelectItem>
+                  </SelectContent>
+                </Select>
                 <div className="relative w-64">
                   <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
@@ -227,6 +240,11 @@ export default function Customers() {
                     onChange={e => setSearch(e.target.value)}
                   />
                 </div>
+                {(sourceFilter !== 'all' || search) && (
+                  <Button variant="ghost" size="sm" onClick={() => { setSourceFilter('all'); setSearch(''); }}>
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-0">
