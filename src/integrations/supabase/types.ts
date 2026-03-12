@@ -220,38 +220,62 @@ export type Database = {
       app_settings: {
         Row: {
           auto_approve_expenses_under: number | null
+          auto_generate_sku: boolean | null
           company_id: string
           created_at: string | null
+          currency_format: string | null
+          default_fulfillment_channel: string | null
+          default_invoice_notes: string | null
           default_payment_terms: number | null
+          default_tax_province: string | null
           default_tgw_allocation: number | null
           default_ves_allocation: number | null
+          fiscal_year_start_month: number | null
           id: string
           large_expense_threshold: number | null
           low_inventory_threshold: number | null
+          reorder_point_threshold: number | null
+          session_timeout_minutes: number | null
           updated_at: string | null
         }
         Insert: {
           auto_approve_expenses_under?: number | null
+          auto_generate_sku?: boolean | null
           company_id: string
           created_at?: string | null
+          currency_format?: string | null
+          default_fulfillment_channel?: string | null
+          default_invoice_notes?: string | null
           default_payment_terms?: number | null
+          default_tax_province?: string | null
           default_tgw_allocation?: number | null
           default_ves_allocation?: number | null
+          fiscal_year_start_month?: number | null
           id?: string
           large_expense_threshold?: number | null
           low_inventory_threshold?: number | null
+          reorder_point_threshold?: number | null
+          session_timeout_minutes?: number | null
           updated_at?: string | null
         }
         Update: {
           auto_approve_expenses_under?: number | null
+          auto_generate_sku?: boolean | null
           company_id?: string
           created_at?: string | null
+          currency_format?: string | null
+          default_fulfillment_channel?: string | null
+          default_invoice_notes?: string | null
           default_payment_terms?: number | null
+          default_tax_province?: string | null
           default_tgw_allocation?: number | null
           default_ves_allocation?: number | null
+          fiscal_year_start_month?: number | null
           id?: string
           large_expense_threshold?: number | null
           low_inventory_threshold?: number | null
+          reorder_point_threshold?: number | null
+          session_timeout_minutes?: number | null
           updated_at?: string | null
         }
         Relationships: [
