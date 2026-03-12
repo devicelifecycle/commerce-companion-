@@ -184,6 +184,17 @@ export default function Invoices() {
     }
   };
 
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(inv => {
+      const matchSearch = !search.trim() ||
+        inv.invoice_number.toLowerCase().includes(search.toLowerCase()) ||
+        inv.customer_name.toLowerCase().includes(search.toLowerCase()) ||
+        inv.customer_email?.toLowerCase().includes(search.toLowerCase());
+      const matchStatus = statusFilter === 'all' || inv.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [invoices, search, statusFilter]);
+
   const totalOutstanding = invoices
     .filter(i => i.status === 'sent' || i.status === 'overdue')
     .reduce((sum, i) => sum + Number(i.total), 0);
