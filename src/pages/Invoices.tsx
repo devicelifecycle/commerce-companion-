@@ -259,6 +259,120 @@ export default function Invoices() {
     }
   };
 
+  const openPaymentDialog = (invoice: Invoice) => {
+    setPaymentInvoice(invoice);
+    setPaymentAmount(String(Number(invoice.total)));
+    setPaymentMethod('E-Transfer');
+    setPaymentDate(new Date().toISOString().split('T')[0]);
+  };
+
+  const recordPayment = async () => {
+    if (!paymentInvoice) return;
+    const amount = parseFloat(paymentAmount);
+    if (!amount || amount <= 0) {
+      toast.error('Enter a valid payment amount');
+      return;
+    }
+
+    setPaymentSubmitting(true);
+    try {
+      const invoiceTotal = Number(paymentInvoice.total);
+
+      // 1. Find AR record for this invoice
+      const { data: arRecord } = await supabase
+        .from('accounts_receivable')
+        .select('id, paid_amount, balance_due, original_amount')
+        .eq('invoice_id', paymentInvoice.id)
+        .maybeSingle();
+
+      const previouslyPaid = Number(arRecord?.paid_amount || 0);
+      const newTotalPaid = previouslyPaid + amount;
+      const newBalance = invoiceTotal - newTotalPaid;
+      const isFullyPaid = newBalance <= 0.01;
+
+      // 2. Insert AR payment record
+      if (arRecord) {
+        await supabase.from('ar_payments').insert({
+          accounts_receivable_id: arRecord.id,
+          amount,
+          payment_date: paymentDate,
+          payment_method: paymentMethod,
+          notes: `Payment for Invoice ${paymentInvoice.invoice_number}`,
+        });
+
+        // Update AR balance
+        await supabase.from('accounts_receivable').update({
+          paid_amount: newTotalPaid,
+          balance_due: Math.max(0, newBalance),
+          status: isFullyPaid ? 'paid' : 'partially_paid',
+        }).eq('id', arRecord.id);
+      }
+
+      // 3. Update invoice status
+      const newStatus = isFullyPaid ? 'paid' : 'partially_paid';
+      const updateData: Record<string, any> = { status: newStatus };
+      if (isFullyPaid) updateData.paid_date = paymentDate;
+
+      await supabase.from('invoices').update(updateData).eq('id', paymentInvoice.id);
+
+      // 4. Create journal entry: Dr. Cash / Cr. AR
+      try {
+        const companyCode = getCompanyCode(paymentInvoice.company_id);
+        const isVES = companyCode === 'VES';
+        const cashAccount = isVES ? '1000' : '1001';
+        const arAccount = isVES ? '1050' : '1051';
+
+        const { createAutoJournalEntry, getAccountIdByCode } = await import('@/lib/accounting/journalAutomation');
+
+        const [cashAccId, arAccId] = await Promise.all([
+          getAccountIdByCode(paymentInvoice.company_id!, cashAccount),
+          getAccountIdByCode(paymentInvoice.company_id!, arAccount),
+        ]);
+
+        if (cashAccId && arAccId) {
+          await createAutoJournalEntry({
+            companyId: paymentInvoice.company_id!,
+            entryDate: paymentDate,
+            description: `Payment received - Invoice ${paymentInvoice.invoice_number} (${paymentMethod})`,
+            referenceType: 'payment_received',
+            referenceId: paymentInvoice.id,
+            lines: [
+              {
+                accountCode: cashAccount,
+                accountId: cashAccId,
+                description: `Cash received - ${paymentInvoice.customer_name}`,
+                debitAmount: amount,
+                creditAmount: 0,
+              },
+              {
+                accountCode: arAccount,
+                accountId: arAccId,
+                description: `AR payment - Invoice ${paymentInvoice.invoice_number}`,
+                debitAmount: 0,
+                creditAmount: amount,
+              },
+            ],
+          });
+        }
+      } catch (jeErr) {
+        console.error('Payment journal entry failed:', jeErr);
+        toast.warning('Payment recorded but journal entry failed');
+      }
+
+      toast.success(isFullyPaid
+        ? `Invoice ${paymentInvoice.invoice_number} fully paid`
+        : `Partial payment of ${formatCurrency(amount)} recorded — ${formatCurrency(Math.max(0, newBalance))} remaining`
+      );
+      setPaymentInvoice(null);
+      fetchInvoices();
+    } catch (err) {
+      console.error('Payment error:', err);
+      toast.error('Failed to record payment');
+    } finally {
+      setPaymentSubmitting(false);
+    }
+  };
+
   const updateStatus = async (id: string, status: Invoice['status']) => {
     try {
       const updateData: Record<string, any> = { status };
