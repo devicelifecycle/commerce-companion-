@@ -339,9 +339,14 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
               <Download className="h-4 w-4 mr-1" /> Export
             </Button>
             {canManage && (
-              <Button size="sm" onClick={() => { resetForm(); setIsDialogOpen(true); }}>
-                <Plus className="h-4 w-4 mr-1" /> Add Product
-              </Button>
+              <>
+                <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)}>
+                  <Upload className="h-4 w-4 mr-1" /> Import
+                </Button>
+                <Button size="sm" onClick={() => { resetForm(); setIsDialogOpen(true); }}>
+                  <Plus className="h-4 w-4 mr-1" /> Add Product
+                </Button>
+              </>
             )}
           </div>
         </CardHeader>
