@@ -101,7 +101,11 @@ export default function Suppliers() {
         contact_name: formData.contact_name || null,
         email: formData.email || null,
         phone: formData.phone || null,
-        address: formData.address || null,
+        street_address: formData.street_address || null,
+        city: formData.city || null,
+        province: formData.province || null,
+        postal_code: formData.postal_code || null,
+        gst_hst_number: formData.gst_hst_number || null,
         notes: formData.notes || null,
         supplier_code: '000', // Will be overridden by DB trigger
       });
