@@ -120,14 +120,40 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
       updateLineItem(lineId, {
         device_id: device.id,
         device,
+        product_id: null,
+        product: null,
+        item_type: 'device',
         description: `${device.brand} ${device.model}${device.storage ? ` ${device.storage}` : ''}${device.color ? ` (${device.color})` : ''}`,
         cost_price: device.cost_price,
-        unit_price: device.cost_price, // Pre-fill, user can change
+        unit_price: device.cost_price,
       });
     } else {
       updateLineItem(lineId, {
         device_id: null,
         device: null,
+        item_type: 'custom',
+        cost_price: 0,
+      });
+    }
+  };
+
+  const handleProductSelect = (lineId: string, product: ProductOption | null) => {
+    if (product) {
+      updateLineItem(lineId, {
+        product_id: product.id,
+        product,
+        device_id: null,
+        device: null,
+        item_type: 'product',
+        description: product.name,
+        cost_price: product.cost_price,
+        unit_price: product.sale_price || product.cost_price,
+      });
+    } else {
+      updateLineItem(lineId, {
+        product_id: null,
+        product: null,
+        item_type: 'custom',
         cost_price: 0,
       });
     }
