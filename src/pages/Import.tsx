@@ -741,7 +741,7 @@ export default function Import() {
           original_amount: invoiceTotal,
           paid_amount: isPaid ? invoiceTotal : 0,
           balance_due: isPaid ? 0 : invoiceTotal,
-          gst_hst_amount: gstTotal,
+          gst_hst_amount: totalTax,
           pst_amount: 0,
           category: 'inventory_purchase',
           description: `Inventory purchase — ${draft.items.length} devices`,
