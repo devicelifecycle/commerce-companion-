@@ -2361,9 +2361,11 @@ export type Database = {
           item_count: number | null
           marketplace: Database["public"]["Enums"]["marketplace"]
           marketplace_fees: number | null
+          marketplace_sku: string | null
           marketplace_status: string | null
           notes: string | null
           order_number: string
+          product_title: string | null
           profit: number | null
           sale_date: string
           sale_price: number
@@ -2389,9 +2391,11 @@ export type Database = {
           item_count?: number | null
           marketplace: Database["public"]["Enums"]["marketplace"]
           marketplace_fees?: number | null
+          marketplace_sku?: string | null
           marketplace_status?: string | null
           notes?: string | null
           order_number: string
+          product_title?: string | null
           profit?: number | null
           sale_date?: string
           sale_price: number
@@ -2417,9 +2421,11 @@ export type Database = {
           item_count?: number | null
           marketplace?: Database["public"]["Enums"]["marketplace"]
           marketplace_fees?: number | null
+          marketplace_sku?: string | null
           marketplace_status?: string | null
           notes?: string | null
           order_number?: string
+          product_title?: string | null
           profit?: number | null
           sale_date?: string
           sale_price?: number
