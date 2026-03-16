@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, FileText, Clock, CheckCircle, AlertCircle, Send, Eye, Download, Search, X, Trash2 } from 'lucide-react';
+import { Plus, FileText, Clock, CheckCircle, AlertCircle, Send, Eye, Download, Search, X, Trash2, Copy } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -21,6 +21,7 @@ import {
 import { InvoicesGuide } from '@/components/guides/InvoicesGuide';
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { format } from 'date-fns';
+import { toTitleCase } from '@/lib/utils';
 
 interface Invoice {
   id: string;
@@ -68,7 +69,7 @@ const TAX_LABELS: Record<string, string> = {
 };
 
 export default function Invoices() {
-  const { selectedCompany } = useCompany();
+  const { selectedCompany, accessibleCompanies } = useCompany();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -76,6 +77,7 @@ export default function Invoices() {
   const [viewItems, setViewItems] = useState<InvoiceItem[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [duplicateInvoice, setDuplicateInvoice] = useState<Invoice | null>(null);
 
   // Quick action: open "Create Invoice" dialog via Alt+N
   useQuickActionListener('create-invoice', useCallback(() => setCreateOpen(true), []));
@@ -91,13 +93,39 @@ export default function Invoices() {
 
       const { data, error } = await query;
       if (error) throw error;
-      setInvoices((data || []) as Invoice[]);
+      const fetched = (data || []) as Invoice[];
+
+      // Auto-detect overdue: sent invoices past due date
+      const today = new Date().toISOString().split('T')[0];
+      const overdueIds: string[] = [];
+      fetched.forEach(inv => {
+        if (inv.status === 'sent' && inv.due_date < today) {
+          inv.status = 'overdue';
+          overdueIds.push(inv.id);
+        }
+      });
+      // Batch update overdue in DB
+      if (overdueIds.length > 0) {
+        supabase.from('invoices').update({ status: 'overdue' as any }).in('id', overdueIds).then();
+      }
+
+      setInvoices(fetched);
     } catch (error) {
       console.error('Error fetching invoices:', error);
       toast.error('Failed to load invoices');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCompanyCode = (companyId: string | null) => {
+    if (!companyId) return null;
+    return accessibleCompanies.find(c => c.id === companyId)?.code || null;
+  };
+
+  const COMPANY_BADGE: Record<string, string> = {
+    VES: 'bg-violet-500/15 text-violet-700 border-violet-500/30',
+    TGW: 'bg-sky-500/15 text-sky-700 border-sky-500/30',
   };
 
   const viewInvoiceDetails = async (invoice: Invoice) => {
@@ -134,12 +162,12 @@ export default function Invoices() {
   // Save customer to CRM if new
   const saveCustomerFromInvoice = async (invoice: Invoice) => {
     if (!invoice.customer_name) return;
+    const normalizedName = toTitleCase(invoice.customer_name);
     try {
-      // Check if customer already exists
       const { data: existing } = await supabase
         .from('customers')
         .select('id')
-        .eq('name', invoice.customer_name)
+        .eq('name', normalizedName)
         .maybeSingle();
       
       if (existing) {
@@ -148,16 +176,76 @@ export default function Invoices() {
       }
 
       await supabase.from('customers').insert({
-        name: invoice.customer_name,
+        name: normalizedName,
         email: invoice.customer_email,
         phone: invoice.customer_phone,
         address: invoice.customer_address,
         company_id: invoice.company_id,
         marketplace_source: 'invoice',
+        channel: 'In-Store',
       });
-      toast.success(`Saved ${invoice.customer_name} to customer directory`);
+      toast.success(`Saved ${normalizedName} to customer directory`);
     } catch (err) {
       toast.error('Failed to save customer');
+    }
+  };
+
+  // Duplicate an invoice (clone with new dates)
+  const handleDuplicate = async (source: Invoice) => {
+    try {
+      // Fetch line items from original
+      const { data: items } = await supabase
+        .from('invoice_items')
+        .select('description, quantity, unit_price, total, tax_treatment, device_id')
+        .eq('invoice_id', source.id);
+
+      const companyCode = getCompanyCode(source.company_id);
+      const prefix = companyCode || 'INV';
+      const date = format(new Date(), 'yyyyMM');
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      const invoiceNumber = `${prefix}-${date}-${random}`;
+
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+
+      const { data: newInv, error } = await supabase.from('invoices').insert({
+        invoice_number: invoiceNumber,
+        customer_name: source.customer_name,
+        customer_email: source.customer_email,
+        customer_address: source.customer_address,
+        customer_phone: source.customer_phone,
+        customer_gst_hst_number: source.customer_gst_hst_number,
+        subtotal: source.subtotal,
+        tax_amount: source.tax_amount,
+        total: source.total,
+        status: 'draft' as any,
+        issue_date: new Date().toISOString().split('T')[0],
+        due_date: dueDate.toISOString().split('T')[0],
+        notes: source.notes,
+        company_id: source.company_id,
+      }).select('id').single();
+
+      if (error) throw error;
+
+      // Clone line items (without device_id to avoid marking devices as sold again)
+      if (items && items.length > 0 && newInv) {
+        const clonedItems = items.map(i => ({
+          invoice_id: newInv.id,
+          description: i.description,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+          total: i.total,
+          tax_treatment: i.tax_treatment,
+          device_id: null, // Don't link to same device
+        }));
+        await supabase.from('invoice_items').insert(clonedItems);
+      }
+
+      toast.success(`Duplicated as ${invoiceNumber} (Draft)`);
+      fetchInvoices();
+    } catch (err) {
+      console.error('Duplicate error:', err);
+      toast.error('Failed to duplicate invoice');
     }
   };
 
@@ -415,8 +503,9 @@ export default function Invoices() {
           <CardContent>
             <Table>
               <TableHeader>
-                <TableRow>
+               <TableRow>
                   <TableHead>Invoice #</TableHead>
+                  <TableHead>Company</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Issue Date</TableHead>
                   <TableHead>Due Date</TableHead>
@@ -430,16 +519,24 @@ export default function Invoices() {
               <TableBody>
                 {filteredInvoices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       {search || statusFilter !== 'all' ? 'No invoices match your filters' : 'No invoices yet — click "New Invoice" to create one'}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredInvoices.map((invoice) => {
                     const config = STATUS_CONFIG[invoice.status];
+                    const code = getCompanyCode(invoice.company_id);
                     return (
                       <TableRow key={invoice.id}>
                         <TableCell className="font-mono font-medium">{invoice.invoice_number}</TableCell>
+                        <TableCell>
+                          {code && (
+                            <Badge variant="outline" className={`text-[10px] font-medium ${COMPANY_BADGE[code] || ''}`}>
+                              {code}
+                            </Badge>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium">{invoice.customer_name}</p>
@@ -459,6 +556,9 @@ export default function Invoices() {
                             </Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadInvoicePdf(invoice.id)} title="Print/PDF">
                               <Download className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDuplicate(invoice)} title="Duplicate">
+                              <Copy className="h-3.5 w-3.5" />
                             </Button>
                             <Select value={invoice.status} onValueChange={v => updateStatus(invoice.id, v as Invoice['status'])}>
                               <SelectTrigger className="w-[90px] h-7 text-xs">
@@ -511,7 +611,15 @@ export default function Invoices() {
       <Dialog open={!!viewInvoice} onOpenChange={() => setViewInvoice(null)}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle className="font-display">Invoice {viewInvoice?.invoice_number}</DialogTitle>
+            <DialogTitle className="font-display flex items-center gap-2">
+              Invoice {viewInvoice?.invoice_number}
+              {viewInvoice && (() => {
+                const code = getCompanyCode(viewInvoice.company_id);
+                return code ? (
+                  <Badge variant="outline" className={`text-[10px] font-medium ${COMPANY_BADGE[code] || ''}`}>{code}</Badge>
+                ) : null;
+              })()}
+            </DialogTitle>
           </DialogHeader>
           {viewInvoice && (
             <div className="space-y-4 text-sm">

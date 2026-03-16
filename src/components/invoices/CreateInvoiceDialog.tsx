@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Plus, Trash2, Search, Package, PenLine, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { toTitleCase } from '@/lib/utils';
 import { CustomerAutoComplete } from './CustomerAutoComplete';
 import { createAutoJournalEntry, getAccountIdByCode } from '@/lib/accounting/journalAutomation';
 
@@ -211,7 +212,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
       // Insert invoice
       const { data: invoice, error: invError } = await supabase.from('invoices').insert({
         invoice_number: invoiceNumber,
-        customer_name: customerName.trim(),
+        customer_name: toTitleCase(customerName),
         customer_email: customerEmail.trim() || null,
         customer_address: customerAddress.trim() || null,
         customer_phone: customerPhone.trim() || null,
