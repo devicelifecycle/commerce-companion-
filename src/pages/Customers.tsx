@@ -249,7 +249,7 @@ export default function Customers() {
     setOrdersLoading(true);
     const { data } = await supabase
       .from('sales')
-      .select('id, order_number, sale_date, marketplace, product_title, sale_price, status')
+      .select('id, order_number, sale_date, marketplace, product_title, sale_price')
       .eq('customer_id', c.id)
       .order('sale_date', { ascending: false })
       .limit(50);
