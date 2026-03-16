@@ -1,19 +1,22 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useAuth } from '@/lib/auth';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { useQuickActionListener } from '@/hooks/useGlobalShortcuts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, FileText, Clock, CheckCircle, AlertCircle, Download, Search, X, Trash2, Copy, CreditCard, DollarSign } from 'lucide-react';
+import { Plus, FileText, Clock, CheckCircle, AlertCircle, Download, Search, X, Trash2, Copy, CreditCard, DollarSign, Pencil, Save } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -71,7 +74,6 @@ interface ARPayment {
   created_at: string | null;
 }
 
-// Display status derived from AR data
 type DisplayStatus = 'outstanding' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled';
 
 const STATUS_CONFIG: Record<DisplayStatus, { label: string; icon: any; className: string }> = {
@@ -91,18 +93,40 @@ const TAX_LABELS: Record<string, string> = {
   tax_inclusive: 'Tax Incl.',
 };
 
+const TAX_RATES: Record<string, number> = {
+  hst: 0.13,
+  gst: 0.05,
+  zero_rated: 0,
+  tax_inclusive: 0.13,
+};
+
 export default function Invoices() {
+  const { user } = useAuth();
   const { selectedCompany, accessibleCompanies } = useCompany();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [arRecords, setArRecords] = useState<ARRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  // Detail view state
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [viewItems, setViewItems] = useState<InvoiceItem[]>([]);
   const [viewPayments, setViewPayments] = useState<ARPayment[]>([]);
   const [viewAR, setViewAR] = useState<ARRecord | null>(null);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+
+  // Edit mode state
+  const [editMode, setEditMode] = useState(false);
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [editCustomerName, setEditCustomerName] = useState('');
+  const [editCustomerEmail, setEditCustomerEmail] = useState('');
+  const [editCustomerPhone, setEditCustomerPhone] = useState('');
+  const [editCustomerAddress, setEditCustomerAddress] = useState('');
+  const [editCustomerGstHst, setEditCustomerGstHst] = useState('');
+  const [editItems, setEditItems] = useState<InvoiceItem[]>([]);
+  const [editSaving, setEditSaving] = useState(false);
 
   // Payment dialog state
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
@@ -113,29 +137,24 @@ export default function Invoices() {
 
   useQuickActionListener('create-invoice', useCallback(() => setCreateOpen(true), []));
 
-  useEffect(() => {
-    fetchInvoices();
-  }, [selectedCompany]);
+  useEffect(() => { fetchInvoices(); }, [selectedCompany]);
 
   const fetchInvoices = async () => {
     try {
       let invoiceQuery = supabase.from('invoices').select('*').order('created_at', { ascending: false });
       let arQuery = supabase.from('accounts_receivable').select('id, invoice_id, original_amount, paid_amount, balance_due, status');
-      
       if (selectedCompany) {
         invoiceQuery = invoiceQuery.eq('company_id', selectedCompany.id);
         arQuery = arQuery.eq('company_id', selectedCompany.id);
       }
-
       const [invoiceRes, arRes] = await Promise.all([invoiceQuery, arQuery]);
       if (invoiceRes.error) throw invoiceRes.error;
 
       const fetched = (invoiceRes.data || []) as Invoice[];
       const arData = (arRes.data || []) as ARRecord[];
-      
       setArRecords(arData);
 
-      // Auto-detect overdue and update DB
+      // Auto-detect overdue
       const today = new Date().toISOString().split('T')[0];
       const overdueIds: string[] = [];
       fetched.forEach(inv => {
@@ -147,7 +166,6 @@ export default function Invoices() {
       if (overdueIds.length > 0) {
         supabase.from('invoices').update({ status: 'overdue' as any }).in('id', overdueIds).then();
       }
-
       setInvoices(fetched);
     } catch (error) {
       console.error('Error fetching invoices:', error);
@@ -157,28 +175,25 @@ export default function Invoices() {
     }
   };
 
-  // Derive display status from AR data
   const getDisplayStatus = useCallback((invoice: Invoice): DisplayStatus => {
     if (invoice.status === 'cancelled') return 'cancelled';
     if (invoice.status === 'paid') return 'paid';
-    
     const ar = arRecords.find(a => a.invoice_id === invoice.id);
     const paidAmount = Number(ar?.paid_amount || 0);
     const invoiceTotal = Number(invoice.total);
-    
     if (paidAmount >= invoiceTotal - 0.01) return 'paid';
-    
     const today = new Date().toISOString().split('T')[0];
-    const isOverdue = invoice.due_date < today;
-    
-    if (paidAmount > 0) return 'partially_paid';
-    if (isOverdue || invoice.status === 'overdue') return 'overdue';
+    if (paidAmount > 0) {
+      if (invoice.due_date < today) return 'overdue';
+      return 'partially_paid';
+    }
+    if (invoice.due_date < today || invoice.status === 'overdue') return 'overdue';
     return 'outstanding';
   }, [arRecords]);
 
   const getBalanceRemaining = useCallback((invoice: Invoice): number => {
     const ar = arRecords.find(a => a.invoice_id === invoice.id);
-    if (ar) return Math.max(0, Number(ar.balance_due || 0));
+    if (ar) return Math.max(0, Number(ar.balance_due ?? ar.original_amount));
     return Number(invoice.total);
   }, [arRecords]);
 
@@ -192,20 +207,24 @@ export default function Invoices() {
     TGW: 'bg-sky-500/15 text-sky-700 border-sky-500/30',
   };
 
+  const formatCurrency = (v: number) =>
+    new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(v);
+
+  // ─── Detail View ───────────────────────────────────────────────
   const viewInvoiceDetails = async (invoice: Invoice) => {
     setViewInvoice(invoice);
-    
-    // Fetch items, AR record, and payments in parallel
+    setEditMode(false);
+
     const [itemsRes, arRes] = await Promise.all([
       supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id).order('created_at'),
       supabase.from('accounts_receivable').select('id, invoice_id, original_amount, paid_amount, balance_due, status').eq('invoice_id', invoice.id).maybeSingle(),
     ]);
-    
-    setViewItems((itemsRes.data || []) as InvoiceItem[]);
+
+    const items = (itemsRes.data || []) as InvoiceItem[];
+    setViewItems(items);
     const ar = arRes.data as ARRecord | null;
     setViewAR(ar);
-    
-    // Fetch payment history if AR exists
+
     if (ar) {
       const { data: payments } = await supabase
         .from('ar_payments')
@@ -218,16 +237,226 @@ export default function Invoices() {
     }
   };
 
+  // Refresh detail view data (called after payment)
+  const refreshDetailView = async (invoiceId: string) => {
+    // Refresh main list
+    await fetchInvoices();
+    // Re-fetch the invoice for detail view
+    const { data: inv } = await supabase.from('invoices').select('*').eq('id', invoiceId).single();
+    if (inv) {
+      setViewInvoice(inv as Invoice);
+      // Re-fetch AR and payments
+      const { data: ar } = await supabase
+        .from('accounts_receivable')
+        .select('id, invoice_id, original_amount, paid_amount, balance_due, status')
+        .eq('invoice_id', invoiceId).maybeSingle();
+      setViewAR(ar as ARRecord | null);
+      if (ar) {
+        const { data: payments } = await supabase
+          .from('ar_payments')
+          .select('id, amount, payment_date, payment_method, notes, created_at')
+          .eq('accounts_receivable_id', ar.id)
+          .order('payment_date', { ascending: false });
+        setViewPayments((payments || []) as ARPayment[]);
+      }
+    }
+  };
+
+  // ─── Edit Mode ─────────────────────────────────────────────────
+  const enterEditMode = () => {
+    if (!viewInvoice) return;
+    setEditMode(true);
+    setEditDueDate(viewInvoice.due_date);
+    setEditNotes(viewInvoice.notes || '');
+    setEditCustomerName(viewInvoice.customer_name);
+    setEditCustomerEmail(viewInvoice.customer_email || '');
+    setEditCustomerPhone(viewInvoice.customer_phone || '');
+    setEditCustomerAddress(viewInvoice.customer_address || '');
+    setEditCustomerGstHst(viewInvoice.customer_gst_hst_number || '');
+    setEditItems(viewItems.map(i => ({ ...i })));
+  };
+
+  const addEditLineItem = () => {
+    setEditItems(prev => [...prev, {
+      id: `new-${Date.now()}`,
+      description: '',
+      quantity: 1,
+      unit_price: 0,
+      total: 0,
+      tax_treatment: 'hst',
+      device_id: null,
+    }]);
+  };
+
+  const updateEditItem = (id: string, updates: Partial<InvoiceItem>) => {
+    setEditItems(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      const updated = { ...item, ...updates };
+      updated.total = updated.quantity * updated.unit_price;
+      return updated;
+    }));
+  };
+
+  const removeEditItem = (id: string) => {
+    if (editItems.length <= 1) return;
+    setEditItems(prev => prev.filter(i => i.id !== id));
+  };
+
+  const editCalculations = useMemo(() => {
+    let subtotal = 0;
+    let totalTax = 0;
+    editItems.forEach(li => {
+      const lineTotal = li.quantity * li.unit_price;
+      const rate = TAX_RATES[li.tax_treatment] || 0;
+      if (li.tax_treatment === 'tax_inclusive') {
+        const preTax = lineTotal / (1 + rate);
+        subtotal += preTax;
+        totalTax += lineTotal - preTax;
+      } else {
+        subtotal += lineTotal;
+        totalTax += lineTotal * rate;
+      }
+    });
+    return { subtotal, totalTax, grandTotal: subtotal + totalTax };
+  }, [editItems]);
+
+  const saveEdits = async () => {
+    if (!viewInvoice) return;
+    const validItems = editItems.filter(i => i.description.trim() && i.unit_price > 0);
+    if (validItems.length === 0) { toast.error('At least one valid line item required'); return; }
+
+    setEditSaving(true);
+    try {
+      const newSubtotal = Math.round(editCalculations.subtotal * 100) / 100;
+      const newTax = Math.round(editCalculations.totalTax * 100) / 100;
+      const newTotal = Math.round(editCalculations.grandTotal * 100) / 100;
+      const oldTotal = Number(viewInvoice.total);
+
+      // Update invoice
+      await supabase.from('invoices').update({
+        due_date: editDueDate,
+        notes: editNotes.trim() || null,
+        customer_name: toTitleCase(editCustomerName),
+        customer_email: editCustomerEmail.trim() || null,
+        customer_phone: editCustomerPhone.trim() || null,
+        customer_address: editCustomerAddress.trim() || null,
+        customer_gst_hst_number: editCustomerGstHst.trim() || null,
+        subtotal: newSubtotal,
+        tax_amount: newTax,
+        total: newTotal,
+      }).eq('id', viewInvoice.id);
+
+      // Delete old items and insert new ones
+      await supabase.from('invoice_items').delete().eq('invoice_id', viewInvoice.id);
+      const itemsToInsert = validItems.map(li => ({
+        invoice_id: viewInvoice.id,
+        description: li.description,
+        quantity: li.quantity,
+        unit_price: li.unit_price,
+        total: li.quantity * li.unit_price,
+        tax_treatment: li.tax_treatment,
+        device_id: li.device_id,
+      }));
+      await supabase.from('invoice_items').insert(itemsToInsert);
+
+      // Update AR if total changed
+      if (Math.abs(newTotal - oldTotal) > 0.01) {
+        const { data: ar } = await supabase
+          .from('accounts_receivable')
+          .select('id, paid_amount')
+          .eq('invoice_id', viewInvoice.id)
+          .maybeSingle();
+
+        if (ar) {
+          const paidAmount = Number(ar.paid_amount || 0);
+          const newBalance = Math.max(0, newTotal - paidAmount);
+          const isFullyPaid = newBalance <= 0.01;
+          await supabase.from('accounts_receivable').update({
+            original_amount: newTotal,
+            balance_due: newBalance,
+            status: isFullyPaid ? 'paid' : paidAmount > 0 ? 'partially_paid' : 'outstanding',
+          }).eq('id', ar.id);
+
+          // Update invoice status to match
+          if (isFullyPaid) {
+            await supabase.from('invoices').update({ status: 'paid' as any }).eq('id', viewInvoice.id);
+          } else if (paidAmount > 0) {
+            await supabase.from('invoices').update({ status: 'partially_paid' as any }).eq('id', viewInvoice.id);
+          } else {
+            await supabase.from('invoices').update({ status: 'sent' as any }).eq('id', viewInvoice.id);
+          }
+        }
+
+        // Create adjustment journal entry if total changed
+        try {
+          const diff = newTotal - oldTotal;
+          const companyCode = getCompanyCode(viewInvoice.company_id);
+          const isVES = companyCode === 'VES';
+          const arAccount = isVES ? '1050' : '1051';
+          const revenueAccount = isVES ? '4000' : '4100';
+          const { createAutoJournalEntry, getAccountIdByCode } = await import('@/lib/accounting/journalAutomation');
+          const [arAccId, revAccId] = await Promise.all([
+            getAccountIdByCode(viewInvoice.company_id!, arAccount),
+            getAccountIdByCode(viewInvoice.company_id!, revenueAccount),
+          ]);
+          if (arAccId && revAccId && Math.abs(diff) > 0.01) {
+            // Calculate how much is subtotal vs tax change
+            const oldSubtotal = Number(viewInvoice.subtotal);
+            const subtotalDiff = newSubtotal - oldSubtotal;
+
+            await createAutoJournalEntry({
+              companyId: viewInvoice.company_id!,
+              entryDate: new Date().toISOString().split('T')[0],
+              description: `Invoice ${viewInvoice.invoice_number} adjustment`,
+              referenceType: 'invoice_adjustment',
+              referenceId: viewInvoice.id,
+              lines: diff > 0 ? [
+                { accountCode: arAccount, accountId: arAccId, description: `AR adjustment - Invoice ${viewInvoice.invoice_number}`, debitAmount: Math.abs(diff), creditAmount: 0 },
+                { accountCode: revenueAccount, accountId: revAccId, description: `Revenue adjustment - Invoice ${viewInvoice.invoice_number}`, debitAmount: 0, creditAmount: Math.abs(subtotalDiff) },
+                ...(Math.abs(diff - subtotalDiff) > 0.01 ? [{
+                  accountCode: isVES ? '4200' : '4201',
+                  accountId: await getAccountIdByCode(viewInvoice.company_id!, isVES ? '4200' : '4201') || revAccId,
+                  description: `Tax adjustment - Invoice ${viewInvoice.invoice_number}`,
+                  debitAmount: 0,
+                  creditAmount: Math.abs(diff - subtotalDiff),
+                }] : []),
+              ] : [
+                { accountCode: revenueAccount, accountId: revAccId, description: `Revenue reversal - Invoice ${viewInvoice.invoice_number}`, debitAmount: Math.abs(subtotalDiff), creditAmount: 0 },
+                ...(Math.abs(diff - subtotalDiff) > 0.01 ? [{
+                  accountCode: isVES ? '4200' : '4201',
+                  accountId: await getAccountIdByCode(viewInvoice.company_id!, isVES ? '4200' : '4201') || revAccId,
+                  description: `Tax reversal - Invoice ${viewInvoice.invoice_number}`,
+                  debitAmount: Math.abs(diff - subtotalDiff),
+                  creditAmount: 0,
+                }] : []),
+                { accountCode: arAccount, accountId: arAccId, description: `AR adjustment - Invoice ${viewInvoice.invoice_number}`, debitAmount: 0, creditAmount: Math.abs(diff) },
+              ],
+            });
+          }
+        } catch (jeErr) {
+          console.error('Adjustment journal entry failed:', jeErr);
+        }
+      }
+
+      toast.success('Invoice updated');
+      setEditMode(false);
+      await refreshDetailView(viewInvoice.id);
+    } catch (err) {
+      console.error('Save error:', err);
+      toast.error('Failed to save changes');
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  // ─── Actions ───────────────────────────────────────────────────
   const downloadInvoicePdf = async (invoiceId: string) => {
     try {
-      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', {
-        body: { invoiceId },
-      });
+      const { data, error } = await supabase.functions.invoke('generate-invoice-pdf', { body: { invoiceId } });
       if (error) throw error;
-      const html = data.html;
       const printWindow = window.open('', '_blank');
       if (printWindow) {
-        printWindow.document.write(html);
+        printWindow.document.write(data.html);
         printWindow.document.close();
         printWindow.focus();
         setTimeout(() => printWindow.print(), 500);
@@ -273,11 +502,10 @@ export default function Invoices() {
       if (error) throw error;
 
       if (items && items.length > 0 && newInv) {
-        const clonedItems = items.map(i => ({
+        await supabase.from('invoice_items').insert(items.map(i => ({
           invoice_id: newInv.id, description: i.description, quantity: i.quantity,
           unit_price: i.unit_price, total: i.total, tax_treatment: i.tax_treatment, device_id: null,
-        }));
-        await supabase.from('invoice_items').insert(clonedItems);
+        })));
       }
       toast.success(`Duplicated as ${invoiceNumber}`);
       fetchInvoices();
@@ -287,6 +515,7 @@ export default function Invoices() {
     }
   };
 
+  // ─── Payment ───────────────────────────────────────────────────
   const openPaymentDialog = (invoice: Invoice) => {
     const balance = getBalanceRemaining(invoice);
     setPaymentInvoice(invoice);
@@ -304,11 +533,32 @@ export default function Invoices() {
     try {
       const invoiceTotal = Number(paymentInvoice.total);
 
-      const { data: arRecord } = await supabase
+      // Find or create AR record
+      let arRecord: { id: string; paid_amount: number | null } | null = null;
+      const { data: existingAR } = await supabase
         .from('accounts_receivable')
         .select('id, paid_amount, balance_due, original_amount')
         .eq('invoice_id', paymentInvoice.id)
         .maybeSingle();
+
+      if (existingAR) {
+        arRecord = existingAR;
+      } else {
+        // Create AR record if missing
+        const { data: newAR, error: arErr } = await supabase.from('accounts_receivable').insert({
+          company_id: paymentInvoice.company_id,
+          invoice_id: paymentInvoice.id,
+          source_type: 'invoice',
+          source_reference: paymentInvoice.invoice_number,
+          customer_name: paymentInvoice.customer_name,
+          original_amount: invoiceTotal,
+          balance_due: invoiceTotal,
+          due_date: paymentInvoice.due_date,
+          status: 'outstanding',
+        }).select('id, paid_amount').single();
+        if (arErr) { console.error('Failed to create AR:', arErr); }
+        else { arRecord = newAR; }
+      }
 
       const previouslyPaid = Number(arRecord?.paid_amount || 0);
       const newTotalPaid = previouslyPaid + amount;
@@ -316,21 +566,35 @@ export default function Invoices() {
       const isFullyPaid = newBalance <= 0.01;
 
       if (arRecord) {
-        await supabase.from('ar_payments').insert({
-          accounts_receivable_id: arRecord.id, amount, payment_date: paymentDate,
-          payment_method: paymentMethod, notes: `Payment for Invoice ${paymentInvoice.invoice_number}`,
+        // Insert payment record
+        const { error: payErr } = await supabase.from('ar_payments').insert({
+          accounts_receivable_id: arRecord.id,
+          amount,
+          payment_date: paymentDate,
+          payment_method: paymentMethod,
+          notes: `Payment for Invoice ${paymentInvoice.invoice_number}`,
+          created_by: user?.id,
         });
-        await supabase.from('accounts_receivable').update({
-          paid_amount: newTotalPaid, balance_due: Math.max(0, newBalance),
+        if (payErr) {
+          console.error('AR payment insert error:', payErr);
+          throw payErr;
+        }
+
+        // Update AR balance
+        const { error: arUpdateErr } = await supabase.from('accounts_receivable').update({
+          paid_amount: newTotalPaid,
+          balance_due: Math.max(0, newBalance),
           status: isFullyPaid ? 'paid' : 'partially_paid',
         }).eq('id', arRecord.id);
+        if (arUpdateErr) console.error('AR update error:', arUpdateErr);
       }
 
-      // Auto-assign invoice status based on payment
+      // Update invoice status
       const newStatus = isFullyPaid ? 'paid' : 'partially_paid';
       const updateData: Record<string, any> = { status: newStatus };
       if (isFullyPaid) updateData.paid_date = paymentDate;
-      await supabase.from('invoices').update(updateData).eq('id', paymentInvoice.id);
+      const { error: invUpdateErr } = await supabase.from('invoices').update(updateData).eq('id', paymentInvoice.id);
+      if (invUpdateErr) console.error('Invoice update error:', invUpdateErr);
 
       // Journal entry: Dr. Cash / Cr. AR
       try {
@@ -345,9 +609,11 @@ export default function Invoices() {
         ]);
         if (cashAccId && arAccId) {
           await createAutoJournalEntry({
-            companyId: paymentInvoice.company_id!, entryDate: paymentDate,
+            companyId: paymentInvoice.company_id!,
+            entryDate: paymentDate,
             description: `Payment received - Invoice ${paymentInvoice.invoice_number} (${paymentMethod})`,
-            referenceType: 'payment_received', referenceId: paymentInvoice.id,
+            referenceType: 'payment_received',
+            referenceId: paymentInvoice.id,
             lines: [
               { accountCode: cashAccount, accountId: cashAccId, description: `Cash received - ${paymentInvoice.customer_name}`, debitAmount: amount, creditAmount: 0 },
               { accountCode: arAccount, accountId: arAccId, description: `AR payment - Invoice ${paymentInvoice.invoice_number}`, debitAmount: 0, creditAmount: amount },
@@ -363,8 +629,15 @@ export default function Invoices() {
         ? `Invoice ${paymentInvoice.invoice_number} fully paid`
         : `Partial payment of ${formatCurrency(amount)} recorded — ${formatCurrency(Math.max(0, newBalance))} remaining`
       );
+
+      const invoiceId = paymentInvoice.id;
       setPaymentInvoice(null);
-      fetchInvoices();
+      // Refresh detail view if it was open
+      if (viewInvoice?.id === invoiceId) {
+        await refreshDetailView(invoiceId);
+      } else {
+        await fetchInvoices();
+      }
     } catch (err) {
       console.error('Payment error:', err);
       toast.error('Failed to record payment');
@@ -379,38 +652,27 @@ export default function Invoices() {
       if (!invoice) return;
 
       await supabase.from('invoices').update({ status: 'cancelled' as any }).eq('id', id);
-
-      // Cancel AR record
-      await supabase
-        .from('accounts_receivable')
+      await supabase.from('accounts_receivable')
         .update({ status: 'cancelled', balance_due: 0, notes: `Cancelled - Invoice ${invoice.invoice_number}` })
         .eq('invoice_id', id);
 
-      // Void related journal entries
-      const { data: journalEntries } = await supabase
-        .from('journal_entries').select('id').eq('reference_id', id).eq('reference_type', 'sale');
-
+      const { data: journalEntries } = await supabase.from('journal_entries').select('id').eq('reference_id', id).eq('reference_type', 'sale');
       if (journalEntries && journalEntries.length > 0) {
         for (const je of journalEntries) {
-          const { data: lines } = await supabase
-            .from('journal_entry_lines').select('account_id, debit_amount, credit_amount').eq('journal_entry_id', je.id);
+          const { data: lines } = await supabase.from('journal_entry_lines').select('account_id, debit_amount, credit_amount').eq('journal_entry_id', je.id);
           if (lines) {
             for (const line of lines) {
-              const { data: account } = await supabase
-                .from('chart_of_accounts').select('current_balance, normal_balance').eq('id', line.account_id).single();
+              const { data: account } = await supabase.from('chart_of_accounts').select('current_balance, normal_balance').eq('id', line.account_id).single();
               if (account) {
-                const debit = Number(line.debit_amount || 0);
-                const credit = Number(line.credit_amount || 0);
-                const current = Number(account.current_balance || 0);
-                const newBalance = account.normal_balance === 'debit' ? current - debit + credit : current - credit + debit;
-                await supabase.from('chart_of_accounts').update({ current_balance: newBalance }).eq('id', line.account_id);
+                const debit = Number(line.debit_amount || 0), credit = Number(line.credit_amount || 0), current = Number(account.current_balance || 0);
+                const newBal = account.normal_balance === 'debit' ? current - debit + credit : current - credit + debit;
+                await supabase.from('chart_of_accounts').update({ current_balance: newBal }).eq('id', line.account_id);
               }
             }
           }
           await supabase.from('journal_entries').update({ status: 'voided', description: `[VOIDED] ` }).eq('id', je.id);
         }
       }
-
       toast.success('Invoice cancelled — AR reversed and journal entries voided');
       fetchInvoices();
     } catch (error) {
@@ -422,28 +684,17 @@ export default function Invoices() {
   const deleteInvoice = async (id: string) => {
     try {
       const invoice = invoices.find(i => i.id === id);
-      if (invoice && invoice.status !== 'cancelled') {
-        await cancelInvoice(id);
-      }
+      if (invoice && invoice.status !== 'cancelled') await cancelInvoice(id);
       await supabase.from('invoice_items').delete().eq('invoice_id', id);
-      
-      // Delete AR payments first
       const { data: arRecord } = await supabase.from('accounts_receivable').select('id').eq('invoice_id', id).maybeSingle();
-      if (arRecord) {
-        await supabase.from('ar_payments').delete().eq('accounts_receivable_id', arRecord.id);
-      }
+      if (arRecord) await supabase.from('ar_payments').delete().eq('accounts_receivable_id', arRecord.id);
       await supabase.from('accounts_receivable').delete().eq('invoice_id', id);
-
-      const { data: journalEntries } = await supabase.from('journal_entries').select('id').eq('reference_id', id);
-      if (journalEntries) {
-        for (const je of journalEntries) {
-          await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', je.id);
-          await supabase.from('journal_entries').delete().eq('id', je.id);
-        }
+      const { data: jes } = await supabase.from('journal_entries').select('id').eq('reference_id', id);
+      if (jes) for (const je of jes) {
+        await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', je.id);
+        await supabase.from('journal_entries').delete().eq('id', je.id);
       }
-
-      const { error } = await supabase.from('invoices').delete().eq('id', id);
-      if (error) throw error;
+      await supabase.from('invoices').delete().eq('id', id);
       toast.success(`Invoice ${invoice?.invoice_number} deleted`);
       fetchInvoices();
     } catch (error: any) {
@@ -452,6 +703,7 @@ export default function Invoices() {
     }
   };
 
+  // ─── Computed ──────────────────────────────────────────────────
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
       const matchSearch = !search.trim() ||
@@ -459,26 +711,20 @@ export default function Invoices() {
         inv.customer_name.toLowerCase().includes(search.toLowerCase()) ||
         inv.customer_email?.toLowerCase().includes(search.toLowerCase());
       if (statusFilter === 'all') return matchSearch;
-      const displayStatus = getDisplayStatus(inv);
-      return matchSearch && displayStatus === statusFilter;
+      return matchSearch && getDisplayStatus(inv) === statusFilter;
     });
   }, [invoices, search, statusFilter, getDisplayStatus]);
 
   const totalOutstanding = useMemo(() => {
     return invoices
-      .filter(i => {
-        const ds = getDisplayStatus(i);
-        return ds === 'outstanding' || ds === 'overdue' || ds === 'partially_paid';
-      })
+      .filter(i => { const ds = getDisplayStatus(i); return ds === 'outstanding' || ds === 'overdue' || ds === 'partially_paid'; })
       .reduce((sum, i) => sum + getBalanceRemaining(i), 0);
   }, [invoices, getDisplayStatus, getBalanceRemaining]);
 
   const totalPaid = invoices.filter(i => getDisplayStatus(i) === 'paid').reduce((sum, i) => sum + Number(i.total), 0);
   const overdueCount = invoices.filter(i => getDisplayStatus(i) === 'overdue').length;
 
-  const formatCurrency = (v: number) =>
-    new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(v);
-
+  // ─── Render ────────────────────────────────────────────────────
   if (loading) {
     return (
       <DashboardLayout>
@@ -556,17 +802,10 @@ export default function Invoices() {
               <div className="flex-1" />
               <div className="relative min-w-[200px] max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search invoice #, customer..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  className="pl-9 h-9"
-                />
+                <Input placeholder="Search invoice #, customer..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-9" />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[150px] h-9">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
+                <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Status" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="outstanding">Outstanding</SelectItem>
@@ -586,7 +825,7 @@ export default function Invoices() {
           <CardContent>
             <Table>
               <TableHeader>
-               <TableRow>
+                <TableRow>
                   <TableHead>Invoice #</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>Customer</TableHead>
@@ -611,18 +850,10 @@ export default function Invoices() {
                     const code = getCompanyCode(invoice.company_id);
                     const balance = getBalanceRemaining(invoice);
                     return (
-                      <TableRow
-                        key={invoice.id}
-                        className="cursor-pointer hover:bg-muted/50 transition-colors"
-                        onClick={() => viewInvoiceDetails(invoice)}
-                      >
+                      <TableRow key={invoice.id} className="cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => viewInvoiceDetails(invoice)}>
                         <TableCell className="font-mono font-medium">{invoice.invoice_number}</TableCell>
                         <TableCell>
-                          {code && (
-                            <Badge variant="outline" className={`text-[10px] font-medium ${COMPANY_BADGE[code] || ''}`}>
-                              {code}
-                            </Badge>
-                          )}
+                          {code && <Badge variant="outline" className={`text-[10px] font-medium ${COMPANY_BADGE[code] || ''}`}>{code}</Badge>}
                         </TableCell>
                         <TableCell>
                           <div>
@@ -637,9 +868,7 @@ export default function Invoices() {
                           {displayStatus === 'paid' || displayStatus === 'cancelled' ? (
                             <span className="text-muted-foreground">—</span>
                           ) : (
-                            <span className={balance > 0 ? 'font-semibold text-warning' : 'text-muted-foreground'}>
-                              {formatCurrency(balance)}
-                            </span>
+                            <span className={balance > 0 ? 'font-semibold text-warning' : 'text-muted-foreground'}>{formatCurrency(balance)}</span>
                           )}
                         </TableCell>
                         <TableCell>
@@ -659,15 +888,11 @@ export default function Invoices() {
                               <AlertDialogContent>
                                 <AlertDialogHeader>
                                   <AlertDialogTitle>Delete Invoice {invoice.invoice_number}?</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    This will permanently delete this invoice, reverse all accounting entries (AR, journal entries), and cannot be undone.
-                                  </AlertDialogDescription>
+                                  <AlertDialogDescription>This will permanently delete this invoice, reverse all accounting entries (AR, journal entries), and cannot be undone.</AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => deleteInvoice(invoice.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                                    Delete
-                                  </AlertDialogAction>
+                                  <AlertDialogAction onClick={() => deleteInvoice(invoice.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
@@ -685,11 +910,11 @@ export default function Invoices() {
 
       <CreateInvoiceDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={fetchInvoices} />
 
-      {/* View Invoice Detail Dialog */}
-      <Dialog open={!!viewInvoice} onOpenChange={() => { setViewInvoice(null); setViewPayments([]); setViewAR(null); }}>
+      {/* ─── Invoice Detail / Edit Dialog ─────────────────────────── */}
+      <Dialog open={!!viewInvoice} onOpenChange={() => { setViewInvoice(null); setViewPayments([]); setViewAR(null); setEditMode(false); }}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="font-display flex items-center gap-2">
+            <DialogTitle className="font-display flex items-center gap-2 flex-wrap">
               Invoice {viewInvoice?.invoice_number}
               {viewInvoice && (() => {
                 const code = getCompanyCode(viewInvoice.company_id);
@@ -702,9 +927,15 @@ export default function Invoices() {
                   </>
                 );
               })()}
+              {viewInvoice && !editMode && getDisplayStatus(viewInvoice) !== 'cancelled' && (
+                <Button variant="ghost" size="sm" className="ml-auto" onClick={enterEditMode}>
+                  <Pencil className="h-3.5 w-3.5 mr-1" /> Edit
+                </Button>
+              )}
             </DialogTitle>
           </DialogHeader>
-          {viewInvoice && (
+
+          {viewInvoice && !editMode && (
             <div className="space-y-4 text-sm">
               {/* Customer info */}
               <div className="grid grid-cols-2 gap-x-6 gap-y-2">
@@ -736,9 +967,7 @@ export default function Invoices() {
                       <TableCell className="font-medium">{item.description}</TableCell>
                       <TableCell className="text-center">{item.quantity}</TableCell>
                       <TableCell className="text-right">{formatCurrency(Number(item.unit_price))}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-[10px]">{TAX_LABELS[item.tax_treatment] || item.tax_treatment}</Badge>
-                      </TableCell>
+                      <TableCell><Badge variant="outline" className="text-[10px]">{TAX_LABELS[item.tax_treatment] || item.tax_treatment}</Badge></TableCell>
                       <TableCell className="text-right">{formatCurrency(Number(item.total))}</TableCell>
                     </TableRow>
                   ))}
@@ -810,7 +1039,7 @@ export default function Invoices() {
                 </Button>
                 {getDisplayStatus(viewInvoice) !== 'paid' && getDisplayStatus(viewInvoice) !== 'cancelled' && (
                   <>
-                    <Button size="sm" onClick={() => { setViewInvoice(null); openPaymentDialog(viewInvoice); }}>
+                    <Button size="sm" onClick={() => openPaymentDialog(viewInvoice)}>
                       <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Record Payment
                     </Button>
                     <Button size="sm" variant="destructive" onClick={() => { cancelInvoice(viewInvoice.id); setViewInvoice(null); }}>
@@ -821,10 +1050,133 @@ export default function Invoices() {
               </div>
             </div>
           )}
+
+          {/* ─── Edit Mode ─────────────────────────────────────────── */}
+          {viewInvoice && editMode && (
+            <div className="space-y-4 text-sm">
+              {/* Customer fields */}
+              <div className="space-y-3">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Customer Details</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Customer Name *</Label>
+                    <Input value={editCustomerName} onChange={e => setEditCustomerName(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Email</Label>
+                    <Input value={editCustomerEmail} onChange={e => setEditCustomerEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Phone</Label>
+                    <Input value={editCustomerPhone} onChange={e => setEditCustomerPhone(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">GST/HST #</Label>
+                    <Input value={editCustomerGstHst} onChange={e => setEditCustomerGstHst(e.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Address</Label>
+                  <Input value={editCustomerAddress} onChange={e => setEditCustomerAddress(e.target.value)} />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Dates & Notes */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs">Due Date</Label>
+                  <Input type="date" value={editDueDate} onChange={e => setEditDueDate(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Notes</Label>
+                  <Textarea value={editNotes} onChange={e => setEditNotes(e.target.value)} rows={2} className="text-xs" />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Line Items */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Line Items</h3>
+                  <Button type="button" variant="outline" size="sm" onClick={addEditLineItem}>
+                    <Plus className="h-3 w-3 mr-1" /> Add Item
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-[1fr_60px_90px_110px_32px] gap-2 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-1">
+                  <span>Description</span><span>Qty</span><span>Price</span><span>Tax</span><span />
+                </div>
+
+                {editItems.map((item) => (
+                  <div key={item.id} className="grid grid-cols-[1fr_60px_90px_110px_32px] gap-2 items-center">
+                    <Input
+                      className="text-xs h-8"
+                      value={item.description}
+                      onChange={e => updateEditItem(item.id, { description: e.target.value })}
+                      placeholder="Description"
+                    />
+                    <Input
+                      type="number"
+                      className="text-xs h-8"
+                      value={item.quantity}
+                      min={1}
+                      onChange={e => updateEditItem(item.id, { quantity: parseInt(e.target.value) || 1 })}
+                    />
+                    <Input
+                      type="number"
+                      className="text-xs h-8"
+                      value={item.unit_price}
+                      step="0.01"
+                      min={0}
+                      onChange={e => updateEditItem(item.id, { unit_price: parseFloat(e.target.value) || 0 })}
+                    />
+                    <Select value={item.tax_treatment} onValueChange={v => updateEditItem(item.id, { tax_treatment: v })}>
+                      <SelectTrigger className="h-8 text-[10px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hst" className="text-xs">HST 13%</SelectItem>
+                        <SelectItem value="gst" className="text-xs">GST 5%</SelectItem>
+                        <SelectItem value="zero_rated" className="text-xs">Zero-Rated</SelectItem>
+                        <SelectItem value="tax_inclusive" className="text-xs">Tax Incl.</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeEditItem(item.id)} disabled={editItems.length <= 1}>
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Edit totals preview */}
+              <div className="space-y-1 bg-muted/30 rounded-lg p-3">
+                <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatCurrency(editCalculations.subtotal)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span>{formatCurrency(editCalculations.totalTax)}</span></div>
+                <Separator />
+                <div className="flex justify-between font-bold text-base"><span>New Total</span><span className="text-primary">{formatCurrency(editCalculations.grandTotal)}</span></div>
+                {Math.abs(editCalculations.grandTotal - Number(viewInvoice.total)) > 0.01 && (
+                  <p className="text-[10px] text-info mt-1">
+                    Total changed by {formatCurrency(editCalculations.grandTotal - Number(viewInvoice.total))} — AR and journal entries will be adjusted automatically.
+                  </p>
+                )}
+              </div>
+
+              {/* Save / Cancel */}
+              <div className="flex gap-2 pt-2">
+                <Button size="sm" onClick={saveEdits} disabled={editSaving}>
+                  <Save className="h-3.5 w-3.5 mr-1.5" /> {editSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setEditMode(false)} disabled={editSaving}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
-      {/* Record Payment Dialog */}
+      {/* ─── Record Payment Dialog ────────────────────────────────── */}
       <Dialog open={!!paymentInvoice} onOpenChange={() => setPaymentInvoice(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -845,15 +1197,7 @@ export default function Invoices() {
                 <div className="space-y-3">
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium">Payment Amount *</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      max={balance}
-                      value={paymentAmount}
-                      onChange={e => setPaymentAmount(e.target.value)}
-                      placeholder="0.00"
-                    />
+                    <Input type="number" step="0.01" min="0.01" max={balance} value={paymentAmount} onChange={e => setPaymentAmount(e.target.value)} placeholder="0.00" />
                     {parseFloat(paymentAmount) > 0 && parseFloat(paymentAmount) < balance && (
                       <p className="text-[10px] text-info">Partial payment — {formatCurrency(balance - parseFloat(paymentAmount))} will remain outstanding</p>
                     )}
@@ -861,13 +1205,9 @@ export default function Invoices() {
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium">Payment Method *</label>
                     <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                      <SelectTrigger className="h-9 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
+                      <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {PAYMENT_METHODS.map(m => (
-                          <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>
-                        ))}
+                        {PAYMENT_METHODS.map(m => <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
