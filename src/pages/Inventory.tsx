@@ -807,12 +807,16 @@ export default function Inventory() {
         <Tabs defaultValue="list" className="space-y-4">
           <TabsList>
             <TabsTrigger value="list" className="flex items-center gap-2">
-              <List className="h-4 w-4" />
-              All Devices
+              <Smartphone className="h-4 w-4" />
+              Devices
+            </TabsTrigger>
+            <TabsTrigger value="products" className="flex items-center gap-2">
+              <Boxes className="h-4 w-4" />
+              Products
             </TabsTrigger>
             {isSuperAdmin && (
               <TabsTrigger value="fba" className="flex items-center gap-2">
-                <Boxes className="h-4 w-4" />
+                <List className="h-4 w-4" />
                 FBA Management
               </TabsTrigger>
             )}
