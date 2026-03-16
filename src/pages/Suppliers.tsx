@@ -37,6 +37,11 @@ interface Supplier {
   email: string | null;
   phone: string | null;
   address: string | null;
+  street_address: string | null;
+  city: string | null;
+  province: string | null;
+  postal_code: string | null;
+  gst_hst_number: string | null;
   notes: string | null;
   created_at: string;
 }
