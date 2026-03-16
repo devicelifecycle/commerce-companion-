@@ -249,7 +249,7 @@ export default function Invoices() {
         await supabase.from('invoice_items').insert(clonedItems);
       }
 
-      toast.success(`Duplicated as ${invoiceNumber} (Draft)`);
+      toast.success(`Duplicated as ${invoiceNumber}`);
       fetchInvoices();
     } catch (err) {
       console.error('Duplicate error:', err);
