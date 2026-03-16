@@ -313,7 +313,9 @@ export default function Invoices() {
         updateData.paid_date = paymentDate;
       }
 
-      await supabase.from('invoices').update(updateData).eq('id', paymentInvoice.id);
+      if (Object.keys(updateData).length > 0) {
+        await supabase.from('invoices').update(updateData).eq('id', paymentInvoice.id);
+      }
 
       // 4. Create journal entry: Dr. Cash / Cr. AR
       try {
