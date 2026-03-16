@@ -1397,6 +1397,47 @@ export default function Import() {
                           </div>
                         </div>
 
+                        {/* Payment fields */}
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label>Payment Method <span className="text-xs text-muted-foreground">(leave empty if unpaid)</span></Label>
+                            <Select
+                              value={draft.paymentMethod || 'none'}
+                              onValueChange={(val) => updateDraft(draft.supplierCode, { paymentMethod: val === 'none' ? '' : val })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Unpaid — will create AP" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Unpaid — will create AP</SelectItem>
+                                <SelectItem value="Cash">Cash</SelectItem>
+                                <SelectItem value="E-Transfer">E-Transfer</SelectItem>
+                                <SelectItem value="Wire Transfer">Wire Transfer</SelectItem>
+                                <SelectItem value="Credit Card">Credit Card</SelectItem>
+                                <SelectItem value="Debit Card">Debit Card</SelectItem>
+                                <SelectItem value="Cheque">Cheque</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Payment Date</Label>
+                            <Input
+                              type="date"
+                              value={draft.paymentDate}
+                              onChange={(e) => updateDraft(draft.supplierCode, { paymentDate: e.target.value })}
+                              disabled={!draft.paymentMethod}
+                            />
+                          </div>
+                        </div>
+                        {draft.paymentMethod && (
+                          <Alert>
+                            <CheckCircle className="h-4 w-4" />
+                            <AlertDescription className="text-sm">
+                              This PO will be marked as <strong>Paid</strong> via {draft.paymentMethod}. The AP entry will be created and immediately closed.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+
                         {/* Editable line items */}
                         <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
                           <Table>
