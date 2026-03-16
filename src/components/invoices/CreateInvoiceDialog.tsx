@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Plus, Trash2, Search, Package, PenLine, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { toTitleCase } from '@/lib/utils';
 import { CustomerAutoComplete } from './CustomerAutoComplete';
 import { createAutoJournalEntry, getAccountIdByCode } from '@/lib/accounting/journalAutomation';
 
