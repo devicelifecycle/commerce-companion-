@@ -217,7 +217,11 @@ export default function Suppliers() {
       contact_name: '',
       email: '',
       phone: '',
-      address: '',
+      street_address: '',
+      city: '',
+      province: '',
+      postal_code: '',
+      gst_hst_number: '',
       notes: '',
     });
   };
