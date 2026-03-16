@@ -632,11 +632,8 @@ export default function Invoices() {
                   <TableHead>Invoice #</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Issue Date</TableHead>
-                  <TableHead>Due Date</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Subtotal</TableHead>
-                  <TableHead className="text-right">Tax</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -644,13 +641,13 @@ export default function Invoices() {
               <TableBody>
                 {filteredInvoices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       {search || statusFilter !== 'all' ? 'No invoices match your filters' : 'No invoices yet — click "New Invoice" to create one'}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredInvoices.map((invoice) => {
-                    const config = STATUS_CONFIG[invoice.status];
+                    const config = STATUS_CONFIG[invoice.status] || STATUS_CONFIG.draft;
                     const code = getCompanyCode(invoice.company_id);
                     return (
                       <TableRow key={invoice.id}>
@@ -669,10 +666,7 @@ export default function Invoices() {
                           </div>
                         </TableCell>
                         <TableCell>{format(new Date(invoice.issue_date), 'MMM d, yyyy')}</TableCell>
-                        <TableCell>{format(new Date(invoice.due_date), 'MMM d, yyyy')}</TableCell>
                         <TableCell><Badge className={config.className}>{config.label}</Badge></TableCell>
-                        <TableCell className="text-right">{formatCurrency(Number(invoice.subtotal))}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(Number(invoice.tax_amount))}</TableCell>
                         <TableCell className="text-right font-semibold">{formatCurrency(Number(invoice.total))}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
