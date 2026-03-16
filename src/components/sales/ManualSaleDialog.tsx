@@ -22,6 +22,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { ShoppingBag, Plus, Trash2, Package } from 'lucide-react';
 import { DeviceSearchCombobox, DeviceOption } from '@/components/inventory/DeviceSearchCombobox';
+import { ProductSearchCombobox, ProductOption } from '@/components/inventory/ProductSearchCombobox';
 
 interface ManualSaleDialogProps {
   open: boolean;
