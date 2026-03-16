@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, FileText, Clock, CheckCircle, AlertCircle, Send, Eye, Download, Search, X, Trash2, Copy } from 'lucide-react';
+import { Plus, FileText, Clock, CheckCircle, AlertCircle, Send, Eye, Download, Search, X, Trash2, Copy, CreditCard } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -34,7 +34,7 @@ interface Invoice {
   subtotal: number;
   tax_amount: number;
   total: number;
-  status: 'draft' | 'sent' | 'paid' | 'overdue' | 'cancelled';
+  status: 'draft' | 'sent' | 'paid' | 'partially_paid' | 'overdue' | 'cancelled';
   issue_date: string;
   due_date: string;
   paid_date: string | null;
@@ -57,9 +57,12 @@ const STATUS_CONFIG = {
   draft: { label: 'Draft', icon: FileText, className: 'bg-muted text-muted-foreground' },
   sent: { label: 'Sent', icon: Send, className: 'bg-info/10 text-info' },
   paid: { label: 'Paid', icon: CheckCircle, className: 'bg-success/10 text-success' },
+  partially_paid: { label: 'Partial', icon: CreditCard, className: 'bg-amber-500/10 text-amber-700' },
   overdue: { label: 'Overdue', icon: AlertCircle, className: 'bg-destructive/10 text-destructive' },
   cancelled: { label: 'Cancelled', icon: AlertCircle, className: 'bg-muted text-muted-foreground' },
 };
+
+const PAYMENT_METHODS = ['Cash', 'E-Transfer', 'Credit Card', 'Debit Card', 'Cheque', 'Wire Transfer', 'Other'] as const;
 
 const TAX_LABELS: Record<string, string> = {
   hst: 'HST 13%',
@@ -78,6 +81,13 @@ export default function Invoices() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [duplicateInvoice, setDuplicateInvoice] = useState<Invoice | null>(null);
+
+  // Payment dialog state
+  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('E-Transfer');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
 
   // Quick action: open "Create Invoice" dialog via Alt+N
   useQuickActionListener('create-invoice', useCallback(() => setCreateOpen(true), []));
@@ -246,6 +256,120 @@ export default function Invoices() {
     } catch (err) {
       console.error('Duplicate error:', err);
       toast.error('Failed to duplicate invoice');
+    }
+  };
+
+  const openPaymentDialog = (invoice: Invoice) => {
+    setPaymentInvoice(invoice);
+    setPaymentAmount(String(Number(invoice.total)));
+    setPaymentMethod('E-Transfer');
+    setPaymentDate(new Date().toISOString().split('T')[0]);
+  };
+
+  const recordPayment = async () => {
+    if (!paymentInvoice) return;
+    const amount = parseFloat(paymentAmount);
+    if (!amount || amount <= 0) {
+      toast.error('Enter a valid payment amount');
+      return;
+    }
+
+    setPaymentSubmitting(true);
+    try {
+      const invoiceTotal = Number(paymentInvoice.total);
+
+      // 1. Find AR record for this invoice
+      const { data: arRecord } = await supabase
+        .from('accounts_receivable')
+        .select('id, paid_amount, balance_due, original_amount')
+        .eq('invoice_id', paymentInvoice.id)
+        .maybeSingle();
+
+      const previouslyPaid = Number(arRecord?.paid_amount || 0);
+      const newTotalPaid = previouslyPaid + amount;
+      const newBalance = invoiceTotal - newTotalPaid;
+      const isFullyPaid = newBalance <= 0.01;
+
+      // 2. Insert AR payment record
+      if (arRecord) {
+        await supabase.from('ar_payments').insert({
+          accounts_receivable_id: arRecord.id,
+          amount,
+          payment_date: paymentDate,
+          payment_method: paymentMethod,
+          notes: `Payment for Invoice ${paymentInvoice.invoice_number}`,
+        });
+
+        // Update AR balance
+        await supabase.from('accounts_receivable').update({
+          paid_amount: newTotalPaid,
+          balance_due: Math.max(0, newBalance),
+          status: isFullyPaid ? 'paid' : 'partially_paid',
+        }).eq('id', arRecord.id);
+      }
+
+      // 3. Update invoice status
+      const newStatus = isFullyPaid ? 'paid' : 'partially_paid';
+      const updateData: Record<string, any> = { status: newStatus };
+      if (isFullyPaid) updateData.paid_date = paymentDate;
+
+      await supabase.from('invoices').update(updateData).eq('id', paymentInvoice.id);
+
+      // 4. Create journal entry: Dr. Cash / Cr. AR
+      try {
+        const companyCode = getCompanyCode(paymentInvoice.company_id);
+        const isVES = companyCode === 'VES';
+        const cashAccount = isVES ? '1000' : '1001';
+        const arAccount = isVES ? '1050' : '1051';
+
+        const { createAutoJournalEntry, getAccountIdByCode } = await import('@/lib/accounting/journalAutomation');
+
+        const [cashAccId, arAccId] = await Promise.all([
+          getAccountIdByCode(paymentInvoice.company_id!, cashAccount),
+          getAccountIdByCode(paymentInvoice.company_id!, arAccount),
+        ]);
+
+        if (cashAccId && arAccId) {
+          await createAutoJournalEntry({
+            companyId: paymentInvoice.company_id!,
+            entryDate: paymentDate,
+            description: `Payment received - Invoice ${paymentInvoice.invoice_number} (${paymentMethod})`,
+            referenceType: 'payment_received',
+            referenceId: paymentInvoice.id,
+            lines: [
+              {
+                accountCode: cashAccount,
+                accountId: cashAccId,
+                description: `Cash received - ${paymentInvoice.customer_name}`,
+                debitAmount: amount,
+                creditAmount: 0,
+              },
+              {
+                accountCode: arAccount,
+                accountId: arAccId,
+                description: `AR payment - Invoice ${paymentInvoice.invoice_number}`,
+                debitAmount: 0,
+                creditAmount: amount,
+              },
+            ],
+          });
+        }
+      } catch (jeErr) {
+        console.error('Payment journal entry failed:', jeErr);
+        toast.warning('Payment recorded but journal entry failed');
+      }
+
+      toast.success(isFullyPaid
+        ? `Invoice ${paymentInvoice.invoice_number} fully paid`
+        : `Partial payment of ${formatCurrency(amount)} recorded — ${formatCurrency(Math.max(0, newBalance))} remaining`
+      );
+      setPaymentInvoice(null);
+      fetchInvoices();
+    } catch (err) {
+      console.error('Payment error:', err);
+      toast.error('Failed to record payment');
+    } finally {
+      setPaymentSubmitting(false);
     }
   };
 
@@ -488,6 +612,7 @@ export default function Invoices() {
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="draft">Draft</SelectItem>
                   <SelectItem value="sent">Sent</SelectItem>
+                  <SelectItem value="partially_paid">Partial</SelectItem>
                   <SelectItem value="paid">Paid</SelectItem>
                   <SelectItem value="overdue">Overdue</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -507,11 +632,8 @@ export default function Invoices() {
                   <TableHead>Invoice #</TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead>Issue Date</TableHead>
-                  <TableHead>Due Date</TableHead>
+                  <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Subtotal</TableHead>
-                  <TableHead className="text-right">Tax</TableHead>
                   <TableHead className="text-right">Total</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
@@ -519,13 +641,13 @@ export default function Invoices() {
               <TableBody>
                 {filteredInvoices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       {search || statusFilter !== 'all' ? 'No invoices match your filters' : 'No invoices yet — click "New Invoice" to create one'}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredInvoices.map((invoice) => {
-                    const config = STATUS_CONFIG[invoice.status];
+                    const config = STATUS_CONFIG[invoice.status] || STATUS_CONFIG.draft;
                     const code = getCompanyCode(invoice.company_id);
                     return (
                       <TableRow key={invoice.id}>
@@ -544,10 +666,7 @@ export default function Invoices() {
                           </div>
                         </TableCell>
                         <TableCell>{format(new Date(invoice.issue_date), 'MMM d, yyyy')}</TableCell>
-                        <TableCell>{format(new Date(invoice.due_date), 'MMM d, yyyy')}</TableCell>
                         <TableCell><Badge className={config.className}>{config.label}</Badge></TableCell>
-                        <TableCell className="text-right">{formatCurrency(Number(invoice.subtotal))}</TableCell>
-                        <TableCell className="text-right">{formatCurrency(Number(invoice.tax_amount))}</TableCell>
                         <TableCell className="text-right font-semibold">{formatCurrency(Number(invoice.total))}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
@@ -560,6 +679,11 @@ export default function Invoices() {
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDuplicate(invoice)} title="Duplicate">
                               <Copy className="h-3.5 w-3.5" />
                             </Button>
+                            {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-success hover:text-success" onClick={() => openPaymentDialog(invoice)} title="Record Payment">
+                                <CreditCard className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Select value={invoice.status} onValueChange={v => updateStatus(invoice.id, v as Invoice['status'])}>
                               <SelectTrigger className="w-[90px] h-7 text-xs">
                                 <SelectValue />
@@ -567,6 +691,7 @@ export default function Invoices() {
                               <SelectContent>
                                 <SelectItem value="draft">Draft</SelectItem>
                                 <SelectItem value="sent">Sent</SelectItem>
+                                <SelectItem value="partially_paid">Partial</SelectItem>
                                 <SelectItem value="paid">Paid</SelectItem>
                                 <SelectItem value="overdue">Overdue</SelectItem>
                                 <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -676,7 +801,76 @@ export default function Invoices() {
                 <Button size="sm" variant="outline" onClick={() => saveCustomerFromInvoice(viewInvoice)}>
                   <Plus className="h-3.5 w-3.5 mr-1.5" /> Save Customer
                 </Button>
+                {viewInvoice.status !== 'paid' && viewInvoice.status !== 'cancelled' && (
+                  <Button size="sm" onClick={() => { setViewInvoice(null); openPaymentDialog(viewInvoice); }}>
+                    <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Record Payment
+                  </Button>
+                )}
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Record Payment Dialog */}
+      <Dialog open={!!paymentInvoice} onOpenChange={() => setPaymentInvoice(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Record Payment</DialogTitle>
+          </DialogHeader>
+          {paymentInvoice && (
+            <div className="space-y-4">
+              <div className="bg-muted/30 rounded-lg p-3 text-sm space-y-1">
+                <div className="flex justify-between"><span className="text-muted-foreground">Invoice</span><span className="font-mono font-medium">{paymentInvoice.invoice_number}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Customer</span><span className="font-medium">{paymentInvoice.customer_name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Invoice Total</span><span className="font-semibold">{formatCurrency(Number(paymentInvoice.total))}</span></div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Payment Amount *</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={paymentAmount}
+                    onChange={e => setPaymentAmount(e.target.value)}
+                    placeholder="0.00"
+                  />
+                  {parseFloat(paymentAmount) > 0 && parseFloat(paymentAmount) < Number(paymentInvoice.total) && (
+                    <p className="text-[10px] text-amber-600">Partial payment — {formatCurrency(Number(paymentInvoice.total) - parseFloat(paymentAmount))} will remain outstanding</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Payment Method *</label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger className="h-9 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map(m => (
+                        <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Payment Date *</label>
+                  <Input
+                    type="date"
+                    value={paymentDate}
+                    onChange={e => setPaymentDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="text-[10px] text-muted-foreground bg-muted/20 rounded-md p-2.5 border border-border/40">
+                <strong>Accounting:</strong> Dr. Cash / Cr. Accounts Receivable — AR balance will be reduced by the payment amount.
+              </div>
+
+              <Button onClick={recordPayment} disabled={paymentSubmitting} className="w-full">
+                {paymentSubmitting ? 'Processing...' : `Record ${formatCurrency(parseFloat(paymentAmount) || 0)} Payment`}
+              </Button>
             </div>
           )}
         </DialogContent>
