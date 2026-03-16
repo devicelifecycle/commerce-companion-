@@ -149,6 +149,7 @@ export default function Invoices() {
       }
       const [invoiceRes, arRes] = await Promise.all([invoiceQuery, arQuery]);
       if (invoiceRes.error) throw invoiceRes.error;
+      if (arRes.error) throw arRes.error;
 
       const fetched = (invoiceRes.data || []) as Invoice[];
       const arData = (arRes.data || []) as ARRecord[];
