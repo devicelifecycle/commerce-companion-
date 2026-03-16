@@ -97,6 +97,8 @@ interface PODraft {
   invoiceNumber: string;
   shippingCost: string;
   otherCharges: string;
+  paymentMethod: string;
+  paymentDate: string;
   items: PODraftItem[];
 }
 
