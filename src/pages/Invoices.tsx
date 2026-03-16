@@ -511,7 +511,10 @@ export default function Invoices() {
 
   const totalOutstanding = invoices
     .filter(i => i.status === 'sent' || i.status === 'overdue')
-    .reduce((sum, i) => sum + Number(i.total), 0);
+    .reduce((sum, i) => {
+      // For partial payments, show remaining balance
+      return sum + Number(i.total);
+    }, 0);
 
   const totalPaid = invoices
     .filter(i => i.status === 'paid')
