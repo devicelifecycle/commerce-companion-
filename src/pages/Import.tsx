@@ -81,11 +81,30 @@ interface SupplierInfo {
   name: string;
 }
 
+type DraftTaxStatus = 'zero_rated' | 'gst_paid' | 'hst_paid' | 'tax_included';
+
+const DRAFT_TAX_OPTIONS: { value: DraftTaxStatus; label: string; rate: number }[] = [
+  { value: 'zero_rated', label: 'Zero-Rated', rate: 0 },
+  { value: 'gst_paid', label: 'GST Paid (5%)', rate: 0.05 },
+  { value: 'hst_paid', label: 'HST Paid (13%)', rate: 0.13 },
+  { value: 'tax_included', label: 'Tax Inclusive', rate: 0 },
+];
+
+function calcTaxForItem(unitCost: number, quantity: number, taxStatus: DraftTaxStatus): { taxAmount: number; preTaxAmount: number } {
+  const opt = DRAFT_TAX_OPTIONS.find(o => o.value === taxStatus);
+  if (!opt || opt.rate === 0) {
+    if (taxStatus === 'tax_included') return { taxAmount: 0, preTaxAmount: unitCost * quantity };
+    return { taxAmount: 0, preTaxAmount: unitCost * quantity };
+  }
+  const taxAmount = parseFloat((unitCost * quantity * opt.rate).toFixed(2));
+  return { taxAmount, preTaxAmount: unitCost * quantity };
+}
+
 interface PODraftItem {
   description: string;
   quantity: number;
   unitCost: number;
-  gstHstAmount: number;
+  taxStatus: DraftTaxStatus;
   pstQstAmount: number;
   imei: string;
 }
@@ -96,7 +115,9 @@ interface PODraft {
   supplierId: string | null;
   invoiceNumber: string;
   shippingCost: string;
+  shippingTaxStatus: DraftTaxStatus;
   otherCharges: string;
+  otherChargesTaxStatus: DraftTaxStatus;
   paymentMethod: string;
   paymentDate: string;
   items: PODraftItem[];
