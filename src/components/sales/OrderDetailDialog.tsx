@@ -138,6 +138,14 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                   <p className="text-sm font-medium text-muted-foreground">Cost: {formatCurrency(costPrice)}</p>
                 </div>
               </div>
+            ) : sale.product_title ? (
+              <div className="bg-muted/30 border border-border/40 rounded-lg p-3">
+                <p className="font-semibold">{sale.product_title}</p>
+                <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                  {sale.marketplace_sku && <span className="font-mono">SKU: {sale.marketplace_sku}</span>}
+                  <span>From marketplace listing</span>
+                </div>
+              </div>
             ) : (
               <div className="bg-muted/20 border border-border/40 rounded-lg p-3 text-center">
                 <p className="text-sm text-muted-foreground">No device linked to this order</p>
