@@ -679,7 +679,7 @@ export default function Invoices() {
 
       await supabase.from('invoices').update({ status: 'cancelled' as any }).eq('id', id);
       await supabase.from('accounts_receivable')
-        .update({ status: 'cancelled', balance_due: 0, notes: `Cancelled - Invoice ${invoice.invoice_number}` })
+        .update({ status: 'cancelled', notes: `Cancelled - Invoice ${invoice.invoice_number}` })
         .eq('invoice_id', id);
 
       const { data: journalEntries } = await supabase.from('journal_entries').select('id').eq('reference_id', id).eq('reference_type', 'sale');
