@@ -82,6 +82,13 @@ export default function Invoices() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [duplicateInvoice, setDuplicateInvoice] = useState<Invoice | null>(null);
 
+  // Payment dialog state
+  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('E-Transfer');
+  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false);
+
   // Quick action: open "Create Invoice" dialog via Alt+N
   useQuickActionListener('create-invoice', useCallback(() => setCreateOpen(true), []));
 
