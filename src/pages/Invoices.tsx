@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, FileText, Clock, CheckCircle, AlertCircle, Eye, Download, Search, X, Trash2, Copy, CreditCard } from 'lucide-react';
+import { Plus, FileText, Clock, CheckCircle, AlertCircle, Download, Search, X, Trash2, Copy, CreditCard, DollarSign } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -34,7 +34,7 @@ interface Invoice {
   subtotal: number;
   tax_amount: number;
   total: number;
-  status: 'sent' | 'paid' | 'overdue' | 'cancelled';
+  status: string;
   issue_date: string;
   due_date: string;
   paid_date: string | null;
@@ -53,8 +53,30 @@ interface InvoiceItem {
   device_id: string | null;
 }
 
-const STATUS_CONFIG = {
-  sent: { label: 'Outstanding', icon: Clock, className: 'bg-warning/10 text-warning' },
+interface ARRecord {
+  id: string;
+  invoice_id: string;
+  original_amount: number;
+  paid_amount: number | null;
+  balance_due: number | null;
+  status: string | null;
+}
+
+interface ARPayment {
+  id: string;
+  amount: number;
+  payment_date: string;
+  payment_method: string | null;
+  notes: string | null;
+  created_at: string | null;
+}
+
+// Display status derived from AR data
+type DisplayStatus = 'outstanding' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled';
+
+const STATUS_CONFIG: Record<DisplayStatus, { label: string; icon: any; className: string }> = {
+  outstanding: { label: 'Outstanding', icon: Clock, className: 'bg-warning/10 text-warning' },
+  partially_paid: { label: 'Partially Paid', icon: CreditCard, className: 'bg-info/10 text-info' },
   paid: { label: 'Paid', icon: CheckCircle, className: 'bg-success/10 text-success' },
   overdue: { label: 'Overdue', icon: AlertCircle, className: 'bg-destructive/10 text-destructive' },
   cancelled: { label: 'Cancelled', icon: AlertCircle, className: 'bg-muted text-muted-foreground' },
@@ -72,13 +94,15 @@ const TAX_LABELS: Record<string, string> = {
 export default function Invoices() {
   const { selectedCompany, accessibleCompanies } = useCompany();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [arRecords, setArRecords] = useState<ARRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
   const [viewInvoice, setViewInvoice] = useState<Invoice | null>(null);
   const [viewItems, setViewItems] = useState<InvoiceItem[]>([]);
+  const [viewPayments, setViewPayments] = useState<ARPayment[]>([]);
+  const [viewAR, setViewAR] = useState<ARRecord | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [duplicateInvoice, setDuplicateInvoice] = useState<Invoice | null>(null);
 
   // Payment dialog state
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
@@ -87,7 +111,6 @@ export default function Invoices() {
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentSubmitting, setPaymentSubmitting] = useState(false);
 
-  // Quick action: open "Create Invoice" dialog via Alt+N
   useQuickActionListener('create-invoice', useCallback(() => setCreateOpen(true), []));
 
   useEffect(() => {
@@ -96,23 +119,31 @@ export default function Invoices() {
 
   const fetchInvoices = async () => {
     try {
-      let query = supabase.from('invoices').select('*').order('created_at', { ascending: false });
-      if (selectedCompany) query = query.eq('company_id', selectedCompany.id);
+      let invoiceQuery = supabase.from('invoices').select('*').order('created_at', { ascending: false });
+      let arQuery = supabase.from('accounts_receivable').select('id, invoice_id, original_amount, paid_amount, balance_due, status');
+      
+      if (selectedCompany) {
+        invoiceQuery = invoiceQuery.eq('company_id', selectedCompany.id);
+        arQuery = arQuery.eq('company_id', selectedCompany.id);
+      }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      const fetched = (data || []) as Invoice[];
+      const [invoiceRes, arRes] = await Promise.all([invoiceQuery, arQuery]);
+      if (invoiceRes.error) throw invoiceRes.error;
 
-      // Auto-detect overdue: outstanding invoices past due date
+      const fetched = (invoiceRes.data || []) as Invoice[];
+      const arData = (arRes.data || []) as ARRecord[];
+      
+      setArRecords(arData);
+
+      // Auto-detect overdue and update DB
       const today = new Date().toISOString().split('T')[0];
       const overdueIds: string[] = [];
       fetched.forEach(inv => {
-        if (inv.status === 'sent' && inv.due_date < today) {
+        if ((inv.status === 'sent' || inv.status === 'partially_paid') && inv.due_date < today) {
           inv.status = 'overdue';
           overdueIds.push(inv.id);
         }
       });
-      // Batch update overdue in DB
       if (overdueIds.length > 0) {
         supabase.from('invoices').update({ status: 'overdue' as any }).in('id', overdueIds).then();
       }
@@ -126,6 +157,31 @@ export default function Invoices() {
     }
   };
 
+  // Derive display status from AR data
+  const getDisplayStatus = useCallback((invoice: Invoice): DisplayStatus => {
+    if (invoice.status === 'cancelled') return 'cancelled';
+    if (invoice.status === 'paid') return 'paid';
+    
+    const ar = arRecords.find(a => a.invoice_id === invoice.id);
+    const paidAmount = Number(ar?.paid_amount || 0);
+    const invoiceTotal = Number(invoice.total);
+    
+    if (paidAmount >= invoiceTotal - 0.01) return 'paid';
+    
+    const today = new Date().toISOString().split('T')[0];
+    const isOverdue = invoice.due_date < today;
+    
+    if (paidAmount > 0) return 'partially_paid';
+    if (isOverdue || invoice.status === 'overdue') return 'overdue';
+    return 'outstanding';
+  }, [arRecords]);
+
+  const getBalanceRemaining = useCallback((invoice: Invoice): number => {
+    const ar = arRecords.find(a => a.invoice_id === invoice.id);
+    if (ar) return Math.max(0, Number(ar.balance_due || 0));
+    return Number(invoice.total);
+  }, [arRecords]);
+
   const getCompanyCode = (companyId: string | null) => {
     if (!companyId) return null;
     return accessibleCompanies.find(c => c.id === companyId)?.code || null;
@@ -138,12 +194,28 @@ export default function Invoices() {
 
   const viewInvoiceDetails = async (invoice: Invoice) => {
     setViewInvoice(invoice);
-    const { data } = await supabase
-      .from('invoice_items')
-      .select('*')
-      .eq('invoice_id', invoice.id)
-      .order('created_at');
-    setViewItems((data || []) as InvoiceItem[]);
+    
+    // Fetch items, AR record, and payments in parallel
+    const [itemsRes, arRes] = await Promise.all([
+      supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id).order('created_at'),
+      supabase.from('accounts_receivable').select('id, invoice_id, original_amount, paid_amount, balance_due, status').eq('invoice_id', invoice.id).maybeSingle(),
+    ]);
+    
+    setViewItems((itemsRes.data || []) as InvoiceItem[]);
+    const ar = arRes.data as ARRecord | null;
+    setViewAR(ar);
+    
+    // Fetch payment history if AR exists
+    if (ar) {
+      const { data: payments } = await supabase
+        .from('ar_payments')
+        .select('id, amount, payment_date, payment_method, notes, created_at')
+        .eq('accounts_receivable_id', ar.id)
+        .order('payment_date', { ascending: false });
+      setViewPayments((payments || []) as ARPayment[]);
+    } else {
+      setViewPayments([]);
+    }
   };
 
   const downloadInvoicePdf = async (invoiceId: string) => {
@@ -152,7 +224,6 @@ export default function Invoices() {
         body: { invoiceId },
       });
       if (error) throw error;
-
       const html = data.html;
       const printWindow = window.open('', '_blank');
       if (printWindow) {
@@ -167,88 +238,47 @@ export default function Invoices() {
     }
   };
 
-  // Save customer to CRM if new
   const saveCustomerFromInvoice = async (invoice: Invoice) => {
     if (!invoice.customer_name) return;
     const normalizedName = toTitleCase(invoice.customer_name);
     try {
-      const { data: existing } = await supabase
-        .from('customers')
-        .select('id')
-        .eq('name', normalizedName)
-        .maybeSingle();
-      
-      if (existing) {
-        toast.info('Customer already saved');
-        return;
-      }
-
+      const { data: existing } = await supabase.from('customers').select('id').eq('name', normalizedName).maybeSingle();
+      if (existing) { toast.info('Customer already saved'); return; }
       await supabase.from('customers').insert({
-        name: normalizedName,
-        email: invoice.customer_email,
-        phone: invoice.customer_phone,
-        address: invoice.customer_address,
-        company_id: invoice.company_id,
-        marketplace_source: 'invoice',
-        channel: 'In-Store',
+        name: normalizedName, email: invoice.customer_email, phone: invoice.customer_phone,
+        address: invoice.customer_address, company_id: invoice.company_id, marketplace_source: 'invoice', channel: 'In-Store',
       });
       toast.success(`Saved ${normalizedName} to customer directory`);
-    } catch (err) {
-      toast.error('Failed to save customer');
-    }
+    } catch { toast.error('Failed to save customer'); }
   };
 
-  // Duplicate an invoice (clone with new dates)
   const handleDuplicate = async (source: Invoice) => {
     try {
-      // Fetch line items from original
-      const { data: items } = await supabase
-        .from('invoice_items')
-        .select('description, quantity, unit_price, total, tax_treatment, device_id')
-        .eq('invoice_id', source.id);
-
+      const { data: items } = await supabase.from('invoice_items').select('description, quantity, unit_price, total, tax_treatment, device_id').eq('invoice_id', source.id);
       const companyCode = getCompanyCode(source.company_id);
       const prefix = companyCode || 'INV';
       const date = format(new Date(), 'yyyyMM');
       const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
       const invoiceNumber = `${prefix}-${date}-${random}`;
-
       const dueDate = new Date();
       dueDate.setDate(dueDate.getDate() + 30);
 
       const { data: newInv, error } = await supabase.from('invoices').insert({
-        invoice_number: invoiceNumber,
-        customer_name: source.customer_name,
-        customer_email: source.customer_email,
-        customer_address: source.customer_address,
-        customer_phone: source.customer_phone,
-        customer_gst_hst_number: source.customer_gst_hst_number,
-        subtotal: source.subtotal,
-        tax_amount: source.tax_amount,
-        total: source.total,
-        status: 'sent' as any,
-        issue_date: new Date().toISOString().split('T')[0],
-        due_date: dueDate.toISOString().split('T')[0],
-        notes: source.notes,
-        company_id: source.company_id,
+        invoice_number: invoiceNumber, customer_name: source.customer_name, customer_email: source.customer_email,
+        customer_address: source.customer_address, customer_phone: source.customer_phone,
+        customer_gst_hst_number: source.customer_gst_hst_number, subtotal: source.subtotal, tax_amount: source.tax_amount,
+        total: source.total, status: 'sent' as any, issue_date: new Date().toISOString().split('T')[0],
+        due_date: dueDate.toISOString().split('T')[0], notes: source.notes, company_id: source.company_id,
       }).select('id').single();
-
       if (error) throw error;
 
-      // Clone line items (without device_id to avoid marking devices as sold again)
       if (items && items.length > 0 && newInv) {
         const clonedItems = items.map(i => ({
-          invoice_id: newInv.id,
-          description: i.description,
-          quantity: i.quantity,
-          unit_price: i.unit_price,
-          total: i.total,
-          tax_treatment: i.tax_treatment,
-          device_id: null, // Don't link to same device
+          invoice_id: newInv.id, description: i.description, quantity: i.quantity,
+          unit_price: i.unit_price, total: i.total, tax_treatment: i.tax_treatment, device_id: null,
         }));
         await supabase.from('invoice_items').insert(clonedItems);
       }
-
       toast.success(`Duplicated as ${invoiceNumber}`);
       fetchInvoices();
     } catch (err) {
@@ -258,8 +288,9 @@ export default function Invoices() {
   };
 
   const openPaymentDialog = (invoice: Invoice) => {
+    const balance = getBalanceRemaining(invoice);
     setPaymentInvoice(invoice);
-    setPaymentAmount(String(Number(invoice.total)));
+    setPaymentAmount(String(balance));
     setPaymentMethod('E-Transfer');
     setPaymentDate(new Date().toISOString().split('T')[0]);
   };
@@ -267,16 +298,12 @@ export default function Invoices() {
   const recordPayment = async () => {
     if (!paymentInvoice) return;
     const amount = parseFloat(paymentAmount);
-    if (!amount || amount <= 0) {
-      toast.error('Enter a valid payment amount');
-      return;
-    }
+    if (!amount || amount <= 0) { toast.error('Enter a valid payment amount'); return; }
 
     setPaymentSubmitting(true);
     try {
       const invoiceTotal = Number(paymentInvoice.total);
 
-      // 1. Find AR record for this invoice
       const { data: arRecord } = await supabase
         .from('accounts_receivable')
         .select('id, paid_amount, balance_due, original_amount')
@@ -288,71 +315,42 @@ export default function Invoices() {
       const newBalance = invoiceTotal - newTotalPaid;
       const isFullyPaid = newBalance <= 0.01;
 
-      // 2. Insert AR payment record
       if (arRecord) {
         await supabase.from('ar_payments').insert({
-          accounts_receivable_id: arRecord.id,
-          amount,
-          payment_date: paymentDate,
-          payment_method: paymentMethod,
-          notes: `Payment for Invoice ${paymentInvoice.invoice_number}`,
+          accounts_receivable_id: arRecord.id, amount, payment_date: paymentDate,
+          payment_method: paymentMethod, notes: `Payment for Invoice ${paymentInvoice.invoice_number}`,
         });
-
-        // Update AR balance
         await supabase.from('accounts_receivable').update({
-          paid_amount: newTotalPaid,
-          balance_due: Math.max(0, newBalance),
+          paid_amount: newTotalPaid, balance_due: Math.max(0, newBalance),
           status: isFullyPaid ? 'paid' : 'partially_paid',
         }).eq('id', arRecord.id);
       }
 
-      // 3. Update invoice status (stays outstanding until fully paid)
-      const updateData: Record<string, any> = {};
-      if (isFullyPaid) {
-        updateData.status = 'paid';
-        updateData.paid_date = paymentDate;
-      }
+      // Auto-assign invoice status based on payment
+      const newStatus = isFullyPaid ? 'paid' : 'partially_paid';
+      const updateData: Record<string, any> = { status: newStatus };
+      if (isFullyPaid) updateData.paid_date = paymentDate;
+      await supabase.from('invoices').update(updateData).eq('id', paymentInvoice.id);
 
-      if (Object.keys(updateData).length > 0) {
-        await supabase.from('invoices').update(updateData).eq('id', paymentInvoice.id);
-      }
-
-      // 4. Create journal entry: Dr. Cash / Cr. AR
+      // Journal entry: Dr. Cash / Cr. AR
       try {
         const companyCode = getCompanyCode(paymentInvoice.company_id);
         const isVES = companyCode === 'VES';
         const cashAccount = isVES ? '1000' : '1001';
         const arAccount = isVES ? '1050' : '1051';
-
         const { createAutoJournalEntry, getAccountIdByCode } = await import('@/lib/accounting/journalAutomation');
-
         const [cashAccId, arAccId] = await Promise.all([
           getAccountIdByCode(paymentInvoice.company_id!, cashAccount),
           getAccountIdByCode(paymentInvoice.company_id!, arAccount),
         ]);
-
         if (cashAccId && arAccId) {
           await createAutoJournalEntry({
-            companyId: paymentInvoice.company_id!,
-            entryDate: paymentDate,
+            companyId: paymentInvoice.company_id!, entryDate: paymentDate,
             description: `Payment received - Invoice ${paymentInvoice.invoice_number} (${paymentMethod})`,
-            referenceType: 'payment_received',
-            referenceId: paymentInvoice.id,
+            referenceType: 'payment_received', referenceId: paymentInvoice.id,
             lines: [
-              {
-                accountCode: cashAccount,
-                accountId: cashAccId,
-                description: `Cash received - ${paymentInvoice.customer_name}`,
-                debitAmount: amount,
-                creditAmount: 0,
-              },
-              {
-                accountCode: arAccount,
-                accountId: arAccId,
-                description: `AR payment - Invoice ${paymentInvoice.invoice_number}`,
-                debitAmount: 0,
-                creditAmount: amount,
-              },
+              { accountCode: cashAccount, accountId: cashAccId, description: `Cash received - ${paymentInvoice.customer_name}`, debitAmount: amount, creditAmount: 0 },
+              { accountCode: arAccount, accountId: arAccId, description: `AR payment - Invoice ${paymentInvoice.invoice_number}`, debitAmount: 0, creditAmount: amount },
             ],
           });
         }
@@ -375,110 +373,68 @@ export default function Invoices() {
     }
   };
 
-  const updateStatus = async (id: string, status: Invoice['status']) => {
+  const cancelInvoice = async (id: string) => {
     try {
-      const updateData: Record<string, any> = { status };
-      if (status === 'paid') updateData.paid_date = new Date().toISOString().split('T')[0];
-
-      const { error } = await supabase.from('invoices').update(updateData).eq('id', id);
-      if (error) throw error;
-
       const invoice = invoices.find(i => i.id === id);
+      if (!invoice) return;
 
-      // If marked paid, update AR
-      if (status === 'paid' && invoice) {
-        await supabase
-          .from('accounts_receivable')
-          .update({ status: 'paid', paid_amount: invoice.total, balance_due: 0 })
-          .eq('invoice_id', id);
-      }
+      await supabase.from('invoices').update({ status: 'cancelled' as any }).eq('id', id);
 
-      // If cancelled, reverse AR and void journal entries
-      if (status === 'cancelled' && invoice) {
-        // Cancel AR record
-        await supabase
-          .from('accounts_receivable')
-          .update({ status: 'cancelled', balance_due: 0, notes: `Cancelled - Invoice ${invoice.invoice_number}` })
-          .eq('invoice_id', id);
+      // Cancel AR record
+      await supabase
+        .from('accounts_receivable')
+        .update({ status: 'cancelled', balance_due: 0, notes: `Cancelled - Invoice ${invoice.invoice_number}` })
+        .eq('invoice_id', id);
 
-        // Void related journal entries
-        const { data: journalEntries } = await supabase
-          .from('journal_entries')
-          .select('id')
-          .eq('reference_id', id)
-          .eq('reference_type', 'sale');
+      // Void related journal entries
+      const { data: journalEntries } = await supabase
+        .from('journal_entries').select('id').eq('reference_id', id).eq('reference_type', 'sale');
 
-        if (journalEntries && journalEntries.length > 0) {
-          for (const je of journalEntries) {
-            // Reverse account balances
-            const { data: lines } = await supabase
-              .from('journal_entry_lines')
-              .select('account_id, debit_amount, credit_amount')
-              .eq('journal_entry_id', je.id);
-
-            if (lines) {
-              for (const line of lines) {
-                const { data: account } = await supabase
-                  .from('chart_of_accounts')
-                  .select('current_balance, normal_balance')
-                  .eq('id', line.account_id)
-                  .single();
-
-                if (account) {
-                  const debit = Number(line.debit_amount || 0);
-                  const credit = Number(line.credit_amount || 0);
-                  const current = Number(account.current_balance || 0);
-                  // Reverse: subtract what was added
-                  const newBalance = account.normal_balance === 'debit'
-                    ? current - debit + credit
-                    : current - credit + debit;
-
-                  await supabase
-                    .from('chart_of_accounts')
-                    .update({ current_balance: newBalance })
-                    .eq('id', line.account_id);
-                }
+      if (journalEntries && journalEntries.length > 0) {
+        for (const je of journalEntries) {
+          const { data: lines } = await supabase
+            .from('journal_entry_lines').select('account_id, debit_amount, credit_amount').eq('journal_entry_id', je.id);
+          if (lines) {
+            for (const line of lines) {
+              const { data: account } = await supabase
+                .from('chart_of_accounts').select('current_balance, normal_balance').eq('id', line.account_id).single();
+              if (account) {
+                const debit = Number(line.debit_amount || 0);
+                const credit = Number(line.credit_amount || 0);
+                const current = Number(account.current_balance || 0);
+                const newBalance = account.normal_balance === 'debit' ? current - debit + credit : current - credit + debit;
+                await supabase.from('chart_of_accounts').update({ current_balance: newBalance }).eq('id', line.account_id);
               }
             }
-
-            // Mark journal entry as voided
-            await supabase
-              .from('journal_entries')
-              .update({ status: 'voided', description: `[VOIDED] ` })
-              .eq('id', je.id);
           }
+          await supabase.from('journal_entries').update({ status: 'voided', description: `[VOIDED] ` }).eq('id', je.id);
         }
       }
 
-      toast.success(status === 'cancelled' ? 'Invoice cancelled — AR reversed and journal entries voided' : 'Invoice updated');
+      toast.success('Invoice cancelled — AR reversed and journal entries voided');
       fetchInvoices();
     } catch (error) {
-      console.error('Error updating invoice:', error);
-      toast.error('Failed to update invoice');
+      console.error('Error cancelling invoice:', error);
+      toast.error('Failed to cancel invoice');
     }
   };
 
   const deleteInvoice = async (id: string) => {
     try {
       const invoice = invoices.find(i => i.id === id);
-      
-      // First cancel to reverse accounting if not already cancelled
       if (invoice && invoice.status !== 'cancelled') {
-        await updateStatus(id, 'cancelled');
+        await cancelInvoice(id);
       }
-
-      // Delete invoice items first (FK constraint)
       await supabase.from('invoice_items').delete().eq('invoice_id', id);
       
-      // Delete AR records
+      // Delete AR payments first
+      const { data: arRecord } = await supabase.from('accounts_receivable').select('id').eq('invoice_id', id).maybeSingle();
+      if (arRecord) {
+        await supabase.from('ar_payments').delete().eq('accounts_receivable_id', arRecord.id);
+      }
       await supabase.from('accounts_receivable').delete().eq('invoice_id', id);
 
-      // Delete journal entry lines and entries
-      const { data: journalEntries } = await supabase
-        .from('journal_entries')
-        .select('id')
-        .eq('reference_id', id);
-
+      const { data: journalEntries } = await supabase.from('journal_entries').select('id').eq('reference_id', id);
       if (journalEntries) {
         for (const je of journalEntries) {
           await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', je.id);
@@ -486,10 +442,8 @@ export default function Invoices() {
         }
       }
 
-      // Delete the invoice
       const { error } = await supabase.from('invoices').delete().eq('id', id);
       if (error) throw error;
-
       toast.success(`Invoice ${invoice?.invoice_number} deleted`);
       fetchInvoices();
     } catch (error: any) {
@@ -504,23 +458,23 @@ export default function Invoices() {
         inv.invoice_number.toLowerCase().includes(search.toLowerCase()) ||
         inv.customer_name.toLowerCase().includes(search.toLowerCase()) ||
         inv.customer_email?.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = statusFilter === 'all' || inv.status === statusFilter;
-      return matchSearch && matchStatus;
+      if (statusFilter === 'all') return matchSearch;
+      const displayStatus = getDisplayStatus(inv);
+      return matchSearch && displayStatus === statusFilter;
     });
-  }, [invoices, search, statusFilter]);
+  }, [invoices, search, statusFilter, getDisplayStatus]);
 
-  const totalOutstanding = invoices
-    .filter(i => i.status === 'sent' || i.status === 'overdue')
-    .reduce((sum, i) => {
-      // For partial payments, show remaining balance
-      return sum + Number(i.total);
-    }, 0);
+  const totalOutstanding = useMemo(() => {
+    return invoices
+      .filter(i => {
+        const ds = getDisplayStatus(i);
+        return ds === 'outstanding' || ds === 'overdue' || ds === 'partially_paid';
+      })
+      .reduce((sum, i) => sum + getBalanceRemaining(i), 0);
+  }, [invoices, getDisplayStatus, getBalanceRemaining]);
 
-  const totalPaid = invoices
-    .filter(i => i.status === 'paid')
-    .reduce((sum, i) => sum + Number(i.total), 0);
-
-  const overdueCount = invoices.filter(i => i.status === 'overdue').length;
+  const totalPaid = invoices.filter(i => getDisplayStatus(i) === 'paid').reduce((sum, i) => sum + Number(i.total), 0);
+  const overdueCount = invoices.filter(i => getDisplayStatus(i) === 'overdue').length;
 
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(v);
@@ -560,7 +514,7 @@ export default function Invoices() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Outstanding</p>
+                  <p className="text-sm text-muted-foreground">Outstanding Balance</p>
                   <p className="text-2xl font-bold font-display text-warning">{formatCurrency(totalOutstanding)}</p>
                 </div>
                 <div className="p-3 rounded-xl bg-warning/10"><Clock className="h-5 w-5 text-warning" /></div>
@@ -610,12 +564,13 @@ export default function Invoices() {
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[130px] h-9">
+                <SelectTrigger className="w-[150px] h-9">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="sent">Outstanding</SelectItem>
+                  <SelectItem value="outstanding">Outstanding</SelectItem>
+                  <SelectItem value="partially_paid">Partially Paid</SelectItem>
                   <SelectItem value="paid">Paid</SelectItem>
                   <SelectItem value="overdue">Overdue</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -638,22 +593,29 @@ export default function Invoices() {
                   <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredInvoices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       {search || statusFilter !== 'all' ? 'No invoices match your filters' : 'No invoices yet — click "New Invoice" to create one'}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredInvoices.map((invoice) => {
-                    const config = STATUS_CONFIG[invoice.status] || STATUS_CONFIG.sent;
+                    const displayStatus = getDisplayStatus(invoice);
+                    const config = STATUS_CONFIG[displayStatus];
                     const code = getCompanyCode(invoice.company_id);
+                    const balance = getBalanceRemaining(invoice);
                     return (
-                      <TableRow key={invoice.id}>
+                      <TableRow
+                        key={invoice.id}
+                        className="cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => viewInvoiceDetails(invoice)}
+                      >
                         <TableCell className="font-mono font-medium">{invoice.invoice_number}</TableCell>
                         <TableCell>
                           {code && (
@@ -671,34 +633,23 @@ export default function Invoices() {
                         <TableCell>{format(new Date(invoice.issue_date), 'MMM d, yyyy')}</TableCell>
                         <TableCell><Badge className={config.className}>{config.label}</Badge></TableCell>
                         <TableCell className="text-right font-semibold">{formatCurrency(Number(invoice.total))}</TableCell>
+                        <TableCell className="text-right">
+                          {displayStatus === 'paid' || displayStatus === 'cancelled' ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : (
+                            <span className={balance > 0 ? 'font-semibold text-warning' : 'text-muted-foreground'}>
+                              {formatCurrency(balance)}
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => viewInvoiceDetails(invoice)} title="View">
-                              <Eye className="h-3.5 w-3.5" />
-                            </Button>
+                          <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadInvoicePdf(invoice.id)} title="Print/PDF">
                               <Download className="h-3.5 w-3.5" />
                             </Button>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDuplicate(invoice)} title="Duplicate">
                               <Copy className="h-3.5 w-3.5" />
                             </Button>
-                            {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-success hover:text-success" onClick={() => openPaymentDialog(invoice)} title="Record Payment">
-                                <CreditCard className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                            {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
-                              <Select value={invoice.status} onValueChange={v => updateStatus(invoice.id, v as Invoice['status'])}>
-                                <SelectTrigger className="w-[100px] h-7 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="sent">Outstanding</SelectItem>
-                                  <SelectItem value="paid">Paid</SelectItem>
-                                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            )}
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete">
@@ -735,31 +686,40 @@ export default function Invoices() {
       <CreateInvoiceDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={fetchInvoices} />
 
       {/* View Invoice Detail Dialog */}
-      <Dialog open={!!viewInvoice} onOpenChange={() => setViewInvoice(null)}>
-        <DialogContent className="sm:max-w-xl">
+      <Dialog open={!!viewInvoice} onOpenChange={() => { setViewInvoice(null); setViewPayments([]); setViewAR(null); }}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-display flex items-center gap-2">
               Invoice {viewInvoice?.invoice_number}
               {viewInvoice && (() => {
                 const code = getCompanyCode(viewInvoice.company_id);
-                return code ? (
-                  <Badge variant="outline" className={`text-[10px] font-medium ${COMPANY_BADGE[code] || ''}`}>{code}</Badge>
-                ) : null;
+                const displayStatus = getDisplayStatus(viewInvoice);
+                const config = STATUS_CONFIG[displayStatus];
+                return (
+                  <>
+                    {code && <Badge variant="outline" className={`text-[10px] font-medium ${COMPANY_BADGE[code] || ''}`}>{code}</Badge>}
+                    <Badge className={config.className}>{config.label}</Badge>
+                  </>
+                );
               })()}
             </DialogTitle>
           </DialogHeader>
           {viewInvoice && (
             <div className="space-y-4 text-sm">
+              {/* Customer info */}
               <div className="grid grid-cols-2 gap-x-6 gap-y-2">
                 <div><span className="text-muted-foreground">Customer:</span> <strong>{viewInvoice.customer_name}</strong></div>
                 {viewInvoice.customer_email && <div><span className="text-muted-foreground">Email:</span> {viewInvoice.customer_email}</div>}
                 {viewInvoice.customer_phone && <div><span className="text-muted-foreground">Phone:</span> {viewInvoice.customer_phone}</div>}
                 {viewInvoice.customer_gst_hst_number && <div><span className="text-muted-foreground">GST/HST #:</span> {viewInvoice.customer_gst_hst_number}</div>}
+                <div><span className="text-muted-foreground">Issue Date:</span> {format(new Date(viewInvoice.issue_date), 'MMM d, yyyy')}</div>
+                <div><span className="text-muted-foreground">Due Date:</span> {format(new Date(viewInvoice.due_date), 'MMM d, yyyy')}</div>
                 {viewInvoice.customer_address && <div className="col-span-2"><span className="text-muted-foreground">Address:</span> {viewInvoice.customer_address}</div>}
               </div>
 
               <Separator />
 
+              {/* Line items */}
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -785,28 +745,78 @@ export default function Invoices() {
                 </TableBody>
               </Table>
 
+              {/* Totals & Balance */}
               <div className="space-y-1 bg-muted/30 rounded-lg p-3">
                 <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span>{formatCurrency(Number(viewInvoice.subtotal))}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span>{formatCurrency(Number(viewInvoice.tax_amount))}</span></div>
                 <Separator />
-                <div className="flex justify-between font-bold text-base"><span>Total</span><span className="text-primary">{formatCurrency(Number(viewInvoice.total))}</span></div>
+                <div className="flex justify-between font-bold text-base"><span>Total</span><span>{formatCurrency(Number(viewInvoice.total))}</span></div>
+                {viewAR && (
+                  <>
+                    <div className="flex justify-between text-success"><span>Paid</span><span>{formatCurrency(Number(viewAR.paid_amount || 0))}</span></div>
+                    <Separator />
+                    <div className="flex justify-between font-bold text-base">
+                      <span>Balance Remaining</span>
+                      <span className={Number(viewAR.balance_due || 0) > 0 ? 'text-warning' : 'text-success'}>
+                        {formatCurrency(Number(viewAR.balance_due || 0))}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
+
+              {/* Payment History */}
+              {viewPayments.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <DollarSign className="h-3.5 w-3.5" /> Payment History
+                  </h4>
+                  <div className="rounded-lg border border-border/50 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs">Date</TableHead>
+                          <TableHead className="text-xs">Method</TableHead>
+                          <TableHead className="text-xs text-right">Amount</TableHead>
+                          <TableHead className="text-xs">Notes</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {viewPayments.map(p => (
+                          <TableRow key={p.id}>
+                            <TableCell className="text-xs">{format(new Date(p.payment_date), 'MMM d, yyyy')}</TableCell>
+                            <TableCell className="text-xs">{p.payment_method || '—'}</TableCell>
+                            <TableCell className="text-xs text-right font-semibold text-success">{formatCurrency(Number(p.amount))}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{p.notes || '—'}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
 
               {viewInvoice.notes && (
                 <div className="text-xs text-muted-foreground bg-muted/20 p-2 rounded"><strong>Notes:</strong> {viewInvoice.notes}</div>
               )}
 
-              <div className="flex gap-2 pt-2">
+              {/* Actions */}
+              <div className="flex flex-wrap gap-2 pt-2">
                 <Button size="sm" variant="outline" onClick={() => downloadInvoicePdf(viewInvoice.id)}>
                   <Download className="h-3.5 w-3.5 mr-1.5" /> Print / PDF
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => saveCustomerFromInvoice(viewInvoice)}>
                   <Plus className="h-3.5 w-3.5 mr-1.5" /> Save Customer
                 </Button>
-                {viewInvoice.status !== 'paid' && viewInvoice.status !== 'cancelled' && (
-                  <Button size="sm" onClick={() => { setViewInvoice(null); openPaymentDialog(viewInvoice); }}>
-                    <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Record Payment
-                  </Button>
+                {getDisplayStatus(viewInvoice) !== 'paid' && getDisplayStatus(viewInvoice) !== 'cancelled' && (
+                  <>
+                    <Button size="sm" onClick={() => { setViewInvoice(null); openPaymentDialog(viewInvoice); }}>
+                      <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Record Payment
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => { cancelInvoice(viewInvoice.id); setViewInvoice(null); }}>
+                      Cancel Invoice
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
@@ -820,61 +830,63 @@ export default function Invoices() {
           <DialogHeader>
             <DialogTitle className="font-display">Record Payment</DialogTitle>
           </DialogHeader>
-          {paymentInvoice && (
-            <div className="space-y-4">
-              <div className="bg-muted/30 rounded-lg p-3 text-sm space-y-1">
-                <div className="flex justify-between"><span className="text-muted-foreground">Invoice</span><span className="font-mono font-medium">{paymentInvoice.invoice_number}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Customer</span><span className="font-medium">{paymentInvoice.customer_name}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Invoice Total</span><span className="font-semibold">{formatCurrency(Number(paymentInvoice.total))}</span></div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Payment Amount *</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={paymentAmount}
-                    onChange={e => setPaymentAmount(e.target.value)}
-                    placeholder="0.00"
-                  />
-                  {parseFloat(paymentAmount) > 0 && parseFloat(paymentAmount) < Number(paymentInvoice.total) && (
-                    <p className="text-[10px] text-amber-600">Partial payment — {formatCurrency(Number(paymentInvoice.total) - parseFloat(paymentAmount))} will remain outstanding</p>
-                  )}
+          {paymentInvoice && (() => {
+            const balance = getBalanceRemaining(paymentInvoice);
+            return (
+              <div className="space-y-4">
+                <div className="bg-muted/30 rounded-lg p-3 text-sm space-y-1">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Invoice</span><span className="font-mono font-medium">{paymentInvoice.invoice_number}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Customer</span><span className="font-medium">{paymentInvoice.customer_name}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Invoice Total</span><span>{formatCurrency(Number(paymentInvoice.total))}</span></div>
+                  <Separator />
+                  <div className="flex justify-between font-semibold"><span>Balance Remaining</span><span className="text-warning">{formatCurrency(balance)}</span></div>
                 </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Payment Method *</label>
-                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {PAYMENT_METHODS.map(m => (
-                        <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium">Payment Date *</label>
-                  <Input
-                    type="date"
-                    value={paymentDate}
-                    onChange={e => setPaymentDate(e.target.value)}
-                  />
-                </div>
-              </div>
 
-              <div className="text-[10px] text-muted-foreground bg-muted/20 rounded-md p-2.5 border border-border/40">
-                <strong>Accounting:</strong> Dr. Cash / Cr. Accounts Receivable — AR balance will be reduced by the payment amount.
-              </div>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium">Payment Amount *</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      max={balance}
+                      value={paymentAmount}
+                      onChange={e => setPaymentAmount(e.target.value)}
+                      placeholder="0.00"
+                    />
+                    {parseFloat(paymentAmount) > 0 && parseFloat(paymentAmount) < balance && (
+                      <p className="text-[10px] text-info">Partial payment — {formatCurrency(balance - parseFloat(paymentAmount))} will remain outstanding</p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium">Payment Method *</label>
+                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PAYMENT_METHODS.map(m => (
+                          <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium">Payment Date *</label>
+                    <Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} />
+                  </div>
+                </div>
 
-              <Button onClick={recordPayment} disabled={paymentSubmitting} className="w-full">
-                {paymentSubmitting ? 'Processing...' : `Record ${formatCurrency(parseFloat(paymentAmount) || 0)} Payment`}
-              </Button>
-            </div>
-          )}
+                <div className="text-[10px] text-muted-foreground bg-muted/20 rounded-md p-2.5 border border-border/40">
+                  <strong>Accounting:</strong> Dr. Cash / Cr. Accounts Receivable — AR balance will be reduced by the payment amount.
+                </div>
+
+                <Button onClick={recordPayment} disabled={paymentSubmitting} className="w-full">
+                  {paymentSubmitting ? 'Processing...' : `Record ${formatCurrency(parseFloat(paymentAmount) || 0)} Payment`}
+                </Button>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </DashboardLayout>
