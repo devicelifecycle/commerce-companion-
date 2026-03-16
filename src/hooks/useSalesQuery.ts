@@ -28,6 +28,8 @@ export interface SaleRecord {
   marketplace_status: string | null;
   is_marketplace_remitted?: boolean;
   accounting_status?: string | null;
+  product_title?: string | null;
+  marketplace_sku?: string | null;
   created_at: string;
   devices?: {
     brand: string;
@@ -121,6 +123,8 @@ export function useSalesQuery({ companyFilter, marketplaceFilter, statusFilter, 
     return (
       s.order_number.toLowerCase().includes(term) ||
       s.customer_name?.toLowerCase().includes(term) ||
+      s.product_title?.toLowerCase().includes(term) ||
+      s.marketplace_sku?.toLowerCase().includes(term) ||
       s.devices?.brand.toLowerCase().includes(term) ||
       s.devices?.model.toLowerCase().includes(term) ||
       s.devices?.imei?.toLowerCase().includes(term)

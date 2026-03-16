@@ -516,6 +516,13 @@ export default function Sales() {
                                 <p className="text-xs text-muted-foreground font-mono">{sale.devices.imei}</p>
                               )}
                             </div>
+                          ) : sale.product_title ? (
+                            <div>
+                              <p className="text-sm truncate max-w-[200px]" title={sale.product_title}>{sale.product_title}</p>
+                              {sale.marketplace_sku && (
+                                <p className="text-xs text-muted-foreground font-mono">SKU: {sale.marketplace_sku}</p>
+                              )}
+                            </div>
                           ) : (
                             <Badge variant="outline" className="text-xs">Not linked</Badge>
                           )}

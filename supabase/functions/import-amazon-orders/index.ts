@@ -455,8 +455,11 @@ serve(async (req) => {
           customer_id: customerId,
           marketplace_status: amazonMarketplaceStatus,
           fulfillment_status: fulfillmentStatus,
-          is_marketplace_remitted: true, // Amazon generally withholds and remits tax to CRA
+          is_marketplace_remitted: true,
           accounting_status: "unprocessed",
+          product_title: orderItems.length > 0 ? orderItems[0].Title : null,
+          marketplace_sku: orderItems.length > 0 ? (orderItems[0].SellerSKU || orderItems[0].ASIN) : null,
+          item_count: orderItems.reduce((sum: number, i: any) => sum + (i.QuantityOrdered || 1), 0),
         });
 
         if (insertError) {
