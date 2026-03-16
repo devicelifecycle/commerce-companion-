@@ -107,6 +107,28 @@ export default function PurchaseOrders() {
     a.href = url; a.download = 'purchase-orders.csv'; a.click();
   };
 
+  const deletePO = async (id: string) => {
+    try {
+      // Delete PO items first
+      await supabase.from('purchase_order_items').delete().eq('purchase_order_id', id);
+      // Delete related AP if any
+      // Delete the PO
+      const { error } = await supabase.from('purchase_orders').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('Purchase order deleted');
+      loadOrders();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete PO');
+    }
+  };
+
+  const deleteSelectedPOs = async () => {
+    for (const id of selectedIds) {
+      await deletePO(id);
+    }
+    clear();
+  };
+
   const fmtCurrency = (v: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(v);
 
