@@ -686,10 +686,13 @@ export default function Import() {
 
       for (const draft of poDrafts) {
         const subtotal = draft.items.reduce((s, i) => s + i.unitCost * i.quantity, 0);
-        const gstTotal = draft.items.reduce((s, i) => s + i.gstHstAmount, 0);
+        const gstTotal = draft.items.reduce((s, i) => s + calcTaxForItem(i.unitCost, i.quantity, i.taxStatus).taxAmount, 0);
         const shipping = parseFloat(draft.shippingCost) || 0;
+        const shippingTax = calcTaxForItem(shipping, 1, draft.shippingTaxStatus).taxAmount;
         const other = parseFloat(draft.otherCharges) || 0;
-        const invoiceTotal = subtotal + gstTotal + shipping + other;
+        const otherTax = calcTaxForItem(other, 1, draft.otherChargesTaxStatus).taxAmount;
+        const totalTax = gstTotal + shippingTax + otherTax;
+        const invoiceTotal = subtotal + totalTax + shipping + other;
 
         // Create PO
         const { purchaseOrder, poNumber } = await createPurchaseOrder({
