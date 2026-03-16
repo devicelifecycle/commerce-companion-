@@ -1375,10 +1375,13 @@ export default function Import() {
 
                 {poDrafts.map((draft) => {
                   const subtotal = draft.items.reduce((s, i) => s + i.unitCost * i.quantity, 0);
-                  const gstTotal = draft.items.reduce((s, i) => s + i.gstHstAmount, 0);
+                  const itemsTax = draft.items.reduce((s, i) => s + calcTaxForItem(i.unitCost, i.quantity, i.taxStatus).taxAmount, 0);
                   const shipping = parseFloat(draft.shippingCost) || 0;
+                  const shippingTax = calcTaxForItem(shipping, 1, draft.shippingTaxStatus).taxAmount;
                   const other = parseFloat(draft.otherCharges) || 0;
-                  const invoiceTotal = subtotal + gstTotal + shipping + other;
+                  const otherTax = calcTaxForItem(other, 1, draft.otherChargesTaxStatus).taxAmount;
+                  const totalTax = itemsTax + shippingTax + otherTax;
+                  const invoiceTotal = subtotal + totalTax + shipping + other;
 
                   return (
                     <Card key={draft.supplierCode} className="border-primary/20">
@@ -1393,7 +1396,7 @@ export default function Import() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        {/* Invoice matching fields */}
+                        {/* Invoice number + Payment fields */}
                         <div className="grid gap-4 md:grid-cols-3">
                           <div className="space-y-2">
                             <Label>Supplier Invoice #</Label>
@@ -1403,30 +1406,6 @@ export default function Import() {
                               placeholder="INV-2026-001"
                             />
                           </div>
-                          <div className="space-y-2">
-                            <Label>Shipping Cost ($)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={draft.shippingCost}
-                              onChange={(e) => updateDraft(draft.supplierCode, { shippingCost: e.target.value })}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Other Charges ($)</Label>
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={draft.otherCharges}
-                              onChange={(e) => updateDraft(draft.supplierCode, { otherCharges: e.target.value })}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Payment fields */}
-                        <div className="grid gap-4 md:grid-cols-2">
                           <div className="space-y-2">
                             <Label>Payment Method <span className="text-xs text-muted-foreground">(leave empty if unpaid)</span></Label>
                             <Select
@@ -1471,53 +1450,127 @@ export default function Import() {
                           <Table>
                             <TableHeader>
                               <TableRow>
-                                <TableHead className="min-w-[200px]">Description</TableHead>
-                                <TableHead className="w-40">IMEI/Serial</TableHead>
-                                <TableHead className="w-28">Unit Cost</TableHead>
-                                <TableHead className="w-28">GST/HST</TableHead>
-                                <TableHead className="w-28 text-right">Line Total</TableHead>
+                                <TableHead className="min-w-[180px]">Description</TableHead>
+                                <TableHead className="w-36">IMEI/Serial</TableHead>
+                                <TableHead className="w-24">Unit Cost</TableHead>
+                                <TableHead className="w-36">Tax Status</TableHead>
+                                <TableHead className="w-20 text-right">Tax</TableHead>
+                                <TableHead className="w-24 text-right">Line Total</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
-                              {draft.items.map((item, idx) => (
-                                <TableRow key={idx}>
-                                  <TableCell>
-                                    <Input
-                                      value={item.description}
-                                      onChange={(e) => updateDraftItem(draft.supplierCode, idx, { description: e.target.value })}
-                                      className="h-8 text-sm"
-                                    />
-                                  </TableCell>
-                                  <TableCell className="font-mono text-xs text-muted-foreground">
-                                    {item.imei || '—'}
-                                  </TableCell>
-                                  <TableCell>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
-                                      value={item.unitCost}
-                                      onChange={(e) => updateDraftItem(draft.supplierCode, idx, { unitCost: parseFloat(e.target.value) || 0 })}
-                                      className="h-8 text-sm"
-                                    />
-                                  </TableCell>
-                                  <TableCell>
-                                    <Input
-                                      type="number"
-                                      step="0.01"
-                                      min="0"
-                                      value={item.gstHstAmount}
-                                      onChange={(e) => updateDraftItem(draft.supplierCode, idx, { gstHstAmount: parseFloat(e.target.value) || 0 })}
-                                      className="h-8 text-sm"
-                                    />
-                                  </TableCell>
-                                  <TableCell className="text-right font-semibold text-sm">
-                                    ${(item.unitCost + item.gstHstAmount).toFixed(2)}
-                                  </TableCell>
-                                </TableRow>
-                              ))}
+                              {draft.items.map((item, idx) => {
+                                const { taxAmount } = calcTaxForItem(item.unitCost, item.quantity, item.taxStatus);
+                                return (
+                                  <TableRow key={idx}>
+                                    <TableCell>
+                                      <Input
+                                        value={item.description}
+                                        onChange={(e) => updateDraftItem(draft.supplierCode, idx, { description: e.target.value })}
+                                        className="h-8 text-sm"
+                                      />
+                                    </TableCell>
+                                    <TableCell className="font-mono text-xs text-muted-foreground">
+                                      {item.imei || '—'}
+                                    </TableCell>
+                                    <TableCell>
+                                      <Input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={item.unitCost}
+                                        onChange={(e) => updateDraftItem(draft.supplierCode, idx, { unitCost: parseFloat(e.target.value) || 0 })}
+                                        className="h-8 text-sm"
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Select
+                                        value={item.taxStatus}
+                                        onValueChange={(val) => updateDraftItem(draft.supplierCode, idx, { taxStatus: val as DraftTaxStatus })}
+                                      >
+                                        <SelectTrigger className="h-8 text-xs">
+                                          <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {DRAFT_TAX_OPTIONS.map(opt => (
+                                            <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </TableCell>
+                                    <TableCell className="text-right text-xs text-muted-foreground">
+                                      ${taxAmount.toFixed(2)}
+                                    </TableCell>
+                                    <TableCell className="text-right font-semibold text-sm">
+                                      ${(item.unitCost * item.quantity + taxAmount).toFixed(2)}
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
                             </TableBody>
                           </Table>
+                        </div>
+
+                        {/* Shipping & Other Charges — below items, before totals */}
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="p-3 rounded-lg border bg-muted/30 space-y-2">
+                            <Label className="text-xs font-medium">Shipping Cost</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={draft.shippingCost}
+                                onChange={(e) => updateDraft(draft.supplierCode, { shippingCost: e.target.value })}
+                                placeholder="0.00"
+                              />
+                              <Select
+                                value={draft.shippingTaxStatus}
+                                onValueChange={(val) => updateDraft(draft.supplierCode, { shippingTaxStatus: val as DraftTaxStatus })}
+                              >
+                                <SelectTrigger className="text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {DRAFT_TAX_OPTIONS.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {shippingTax > 0 && (
+                              <p className="text-xs text-muted-foreground">Tax: ${shippingTax.toFixed(2)}</p>
+                            )}
+                          </div>
+                          <div className="p-3 rounded-lg border bg-muted/30 space-y-2">
+                            <Label className="text-xs font-medium">Other Charges</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={draft.otherCharges}
+                                onChange={(e) => updateDraft(draft.supplierCode, { otherCharges: e.target.value })}
+                                placeholder="0.00"
+                              />
+                              <Select
+                                value={draft.otherChargesTaxStatus}
+                                onValueChange={(val) => updateDraft(draft.supplierCode, { otherChargesTaxStatus: val as DraftTaxStatus })}
+                              >
+                                <SelectTrigger className="text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {DRAFT_TAX_OPTIONS.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {otherTax > 0 && (
+                              <p className="text-xs text-muted-foreground">Tax: ${otherTax.toFixed(2)}</p>
+                            )}
+                          </div>
                         </div>
 
                         {/* Totals */}
@@ -1526,12 +1579,6 @@ export default function Import() {
                             <span>Subtotal ({draft.items.length} items)</span>
                             <span>${subtotal.toFixed(2)}</span>
                           </div>
-                          {gstTotal > 0 && (
-                            <div className="flex justify-between text-sm">
-                              <span>GST/HST</span>
-                              <span>${gstTotal.toFixed(2)}</span>
-                            </div>
-                          )}
                           {shipping > 0 && (
                             <div className="flex justify-between text-sm">
                               <span>Shipping</span>
@@ -1542,6 +1589,12 @@ export default function Import() {
                             <div className="flex justify-between text-sm">
                               <span>Other Charges</span>
                               <span>${other.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {totalTax > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span>Total Tax (GST/HST)</span>
+                              <span>${totalTax.toFixed(2)}</span>
                             </div>
                           )}
                           <div className="flex justify-between font-bold text-lg pt-2 border-t">
