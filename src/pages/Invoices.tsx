@@ -177,24 +177,28 @@ export default function Invoices() {
 
   const getDisplayStatus = useCallback((invoice: Invoice): DisplayStatus => {
     if (invoice.status === 'cancelled') return 'cancelled';
-    if (invoice.status === 'paid') return 'paid';
+
     const ar = arRecords.find(a => a.invoice_id === invoice.id);
-    const paidAmount = Number(ar?.paid_amount || 0);
+    const paidAmount = Number(ar?.paid_amount ?? 0);
     const invoiceTotal = Number(invoice.total);
+
     if (paidAmount >= invoiceTotal - 0.01) return 'paid';
+
     const today = new Date().toISOString().split('T')[0];
     if (paidAmount > 0) {
-      if (invoice.due_date < today) return 'overdue';
-      return 'partially_paid';
+      return invoice.due_date < today ? 'overdue' : 'partially_paid';
     }
-    if (invoice.due_date < today || invoice.status === 'overdue') return 'overdue';
-    return 'outstanding';
+
+    return invoice.due_date < today ? 'overdue' : 'outstanding';
   }, [arRecords]);
 
   const getBalanceRemaining = useCallback((invoice: Invoice): number => {
     const ar = arRecords.find(a => a.invoice_id === invoice.id);
-    if (ar) return Math.max(0, Number(ar.balance_due ?? ar.original_amount));
-    return Number(invoice.total);
+    if (!ar) return Number(invoice.total);
+
+    const originalAmount = Number(ar.original_amount ?? invoice.total);
+    const paidAmount = Number(ar.paid_amount ?? 0);
+    return Math.max(0, originalAmount - paidAmount);
   }, [arRecords]);
 
   const getCompanyCode = (companyId: string | null) => {
