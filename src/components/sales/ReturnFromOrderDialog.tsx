@@ -37,10 +37,18 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
   const [reason, setReason] = useState('');
   const [restockDevice, setRestockDevice] = useState(true);
   const [notes, setNotes] = useState('');
+  const [resolutionType, setResolutionType] = useState<'refund' | 'exchange' | 'repair'>('refund');
+  const [deviceCondition, setDeviceCondition] = useState('');
+  const [outboundTracking, setOutboundTracking] = useState('');
+  const [repairNotes, setRepairNotes] = useState('');
 
   const handleSubmit = async () => {
     if (!reason) {
       toast.error('Please select a reason');
+      return;
+    }
+    if (!deviceCondition) {
+      toast.error('Please assess the device condition');
       return;
     }
 
@@ -49,7 +57,6 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
       const companyCode = selectedCompany?.code || 'XX';
       const rmaNumber = `RMA-S-${companyCode}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(5, '0')}`;
 
-      // Create return authorization
       const { error: rmaError } = await supabase
         .from('return_authorizations')
         .insert({
@@ -61,29 +68,40 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
           customer_name: sale.customer_name,
           reason,
           original_cost: sale.sale_price,
-          refund_amount: parseFloat(refundAmount),
+          refund_amount: resolutionType === 'refund' ? parseFloat(refundAmount) : 0,
           notes,
           status: 'pending',
           created_by: user?.id,
-        });
+          resolution_type: resolutionType,
+          device_condition_on_return: deviceCondition,
+          outbound_tracking_number: outboundTracking || null,
+          repair_notes: resolutionType === 'repair' ? repairNotes : null,
+        } as any);
 
       if (rmaError) throw rmaError;
 
-      // If restock, update device back to in_stock
-      if (restockDevice && sale.device_id) {
+      // If restock (only for refund), update device back to in_stock
+      if (resolutionType === 'refund' && restockDevice && sale.device_id) {
         await supabase
           .from('devices')
           .update({ status: 'in_stock' as any, sale_price: null })
           .eq('id', sale.device_id);
 
-        // Unlink device from sale
         await supabase
           .from('sales')
           .update({ device_id: null, accounting_status: 'revenue_only' })
           .eq('id', sale.id);
       }
 
-      toast.success(`Return ${rmaNumber} created successfully`);
+      // For exchange/repair, device stays linked but status reflects the action
+      if ((resolutionType === 'exchange' || resolutionType === 'repair') && sale.device_id) {
+        await supabase
+          .from('devices')
+          .update({ status: (resolutionType === 'repair' ? 'in_repair' : 'in_stock') as any })
+          .eq('id', sale.device_id);
+      }
+
+      toast.success(`Return ${rmaNumber} created — ${resolutionType === 'refund' ? 'Refund' : resolutionType === 'exchange' ? 'Exchange' : 'Repair'}`);
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
@@ -95,7 +113,7 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Initiate Return</DialogTitle>
           <DialogDescription>
@@ -103,7 +121,7 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 max-h-[60vh] overflow-y-auto pr-1">
           <div className="bg-muted/30 border border-border/40 rounded-lg p-3 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Order</span>
@@ -119,6 +137,38 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
                 {new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(sale.sale_price)}
               </span>
             </div>
+          </div>
+
+          {/* Resolution Type */}
+          <div className="space-y-2">
+            <Label>Resolution *</Label>
+            <Select value={resolutionType} onValueChange={(v) => setResolutionType(v as any)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="refund">💰 Refund — Return money to customer</SelectItem>
+                <SelectItem value="exchange">🔄 Exchange — Send replacement device</SelectItem>
+                <SelectItem value="repair">🔧 Repair — Fix and send back</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Device Condition Assessment */}
+          <div className="space-y-2">
+            <Label>Device Condition on Return *</Label>
+            <Select value={deviceCondition || 'none'} onValueChange={(v) => setDeviceCondition(v === 'none' ? '' : v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Assess condition" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Select condition</SelectItem>
+                <SelectItem value="working">✅ Working — Fully functional</SelectItem>
+                <SelectItem value="defective">⚠️ Defective — Has issues but repairable</SelectItem>
+                <SelectItem value="damaged">🔨 Damaged — Physical damage</SelectItem>
+                <SelectItem value="unrepairable">❌ Unrepairable — Beyond repair</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
@@ -139,18 +189,64 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Refund Amount</Label>
-            <Input
-              type="number"
-              step="0.01"
-              value={refundAmount}
-              onChange={(e) => setRefundAmount(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">Adjust if partial refund</p>
-          </div>
+          {/* Refund amount — only for refund resolution */}
+          {resolutionType === 'refund' && (
+            <div className="space-y-2">
+              <Label>Refund Amount</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={refundAmount}
+                onChange={(e) => setRefundAmount(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">Adjust if partial refund</p>
+            </div>
+          )}
 
-          {sale.device_id && (
+          {/* Exchange info */}
+          {resolutionType === 'exchange' && (
+            <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 space-y-3">
+              <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Exchange Details</p>
+              <div className="space-y-2">
+                <Label>Outbound Tracking Number</Label>
+                <Input
+                  value={outboundTracking}
+                  onChange={(e) => setOutboundTracking(e.target.value)}
+                  placeholder="Tracking # for replacement shipment"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The replacement device can be linked later from the Returns page once shipped.
+              </p>
+            </div>
+          )}
+
+          {/* Repair info */}
+          {resolutionType === 'repair' && (
+            <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 space-y-3">
+              <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Repair Details</p>
+              <div className="space-y-2">
+                <Label>Repair Notes</Label>
+                <Textarea
+                  value={repairNotes}
+                  onChange={(e) => setRepairNotes(e.target.value)}
+                  placeholder="Describe the issue and planned repair..."
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Outbound Tracking Number</Label>
+                <Input
+                  value={outboundTracking}
+                  onChange={(e) => setOutboundTracking(e.target.value)}
+                  placeholder="Tracking # when sending repaired device back"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Restock toggle — only for refund */}
+          {resolutionType === 'refund' && sale.device_id && (
             <div className="flex items-center justify-between bg-muted/20 border border-border/40 rounded-lg p-3">
               <div>
                 <p className="text-sm font-medium">Restock device</p>
@@ -174,7 +270,7 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={loading} variant="destructive">
-            {loading ? 'Processing...' : 'Create Return'}
+            {loading ? 'Processing...' : resolutionType === 'refund' ? 'Create Return' : resolutionType === 'exchange' ? 'Create Exchange' : 'Create Repair'}
           </Button>
         </DialogFooter>
       </DialogContent>

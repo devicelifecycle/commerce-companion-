@@ -9,34 +9,22 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from '@/components/ui/dialog';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { 
   RotateCcw, Plus, Package, ShoppingCart, DollarSign, 
-  Clock, CheckCircle, XCircle, Truck, Search 
+  Clock, CheckCircle, XCircle, Truck, Search, Wrench, RefreshCw, ArrowRightLeft
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -57,6 +45,11 @@ interface ReturnAuthorization {
   status: string;
   notes: string | null;
   created_at: string;
+  resolution_type: string | null;
+  device_condition_on_return: string | null;
+  replacement_device_id: string | null;
+  outbound_tracking_number: string | null;
+  repair_notes: string | null;
   device?: { brand: string; model: string; imei: string | null };
   supplier?: { name: string };
 }
@@ -83,6 +76,10 @@ export function ReturnsManagement() {
     original_cost: '',
     refund_amount: '',
     notes: '',
+    resolution_type: 'refund' as 'refund' | 'exchange' | 'repair',
+    device_condition_on_return: '',
+    outbound_tracking_number: '',
+    repair_notes: '',
   });
 
   useEffect(() => {
@@ -92,7 +89,6 @@ export function ReturnsManagement() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch returns
       let rmaQuery = supabase
         .from('return_authorizations')
         .select(`
@@ -107,9 +103,8 @@ export function ReturnsManagement() {
       }
 
       const { data: rmaData } = await rmaQuery;
-      setReturns(rmaData || []);
+      setReturns((rmaData as any[]) || []);
 
-      // Fetch available devices for return
       let devicesQuery = supabase
         .from('devices')
         .select('id, brand, model, imei, cost_price, supplier_id')
@@ -122,7 +117,6 @@ export function ReturnsManagement() {
       const { data: devicesData } = await devicesQuery;
       setDevices(devicesData || []);
 
-      // Fetch suppliers
       let suppliersQuery = supabase.from('suppliers').select('id, name');
       if (selectedCompany) {
         suppliersQuery = suppliersQuery.eq('company_id', selectedCompany.id);
@@ -130,7 +124,6 @@ export function ReturnsManagement() {
       const { data: suppliersData } = await suppliersQuery;
       setSuppliers(suppliersData || []);
 
-      // Fetch recent sales for sales returns
       let salesQuery = supabase
         .from('sales')
         .select('id, order_number, customer_name, sale_price, device_id, devices(brand, model)')
@@ -164,12 +157,14 @@ export function ReturnsManagement() {
       toast.error('Please provide a reason for the return');
       return;
     }
-
+    if (!formData.device_condition_on_return) {
+      toast.error('Please assess the device condition');
+      return;
+    }
     if (formData.return_type === 'purchase_return' && !formData.device_id) {
       toast.error('Please select a device to return');
       return;
     }
-
     if (formData.return_type === 'sales_return' && !formData.sale_id) {
       toast.error('Please select a sale to process the return');
       return;
@@ -188,19 +183,23 @@ export function ReturnsManagement() {
         customer_name: formData.customer_name || null,
         reason: formData.reason,
         original_cost: formData.original_cost ? parseFloat(formData.original_cost) : null,
-        refund_amount: formData.refund_amount ? parseFloat(formData.refund_amount) : null,
+        refund_amount: formData.resolution_type === 'refund' && formData.refund_amount ? parseFloat(formData.refund_amount) : 0,
         notes: formData.notes || null,
         status: 'pending',
         created_by: user?.id,
+        resolution_type: formData.resolution_type,
+        device_condition_on_return: formData.device_condition_on_return,
+        outbound_tracking_number: formData.outbound_tracking_number || null,
+        repair_notes: formData.resolution_type === 'repair' ? formData.repair_notes : null,
       };
 
       const { error } = await supabase
         .from('return_authorizations')
-        .insert(returnData);
+        .insert(returnData as any);
 
       if (error) throw error;
 
-      toast.success(`RMA ${rmaNumber} created successfully`);
+      toast.success(`RMA ${rmaNumber} created — ${formData.resolution_type}`);
       setIsDialogOpen(false);
       resetForm();
       fetchData();
@@ -217,17 +216,14 @@ export function ReturnsManagement() {
       if (newStatus === 'refunded') {
         updateData.refund_date = new Date().toISOString().split('T')[0];
         
-        // Get the return details
         const rma = returns.find(r => r.id === id);
         if (rma?.device_id) {
-          // Update device status
           await supabase
             .from('devices')
             .update({ status: rma.return_type === 'purchase_return' ? 'returned' : 'in_stock' })
             .eq('id', rma.device_id);
         }
 
-        // Trigger return accounting reversal (journal entries)
         try {
           const { error: accError } = await supabase.functions.invoke('process-return-accounting', {
             body: { return_id: id },
@@ -270,6 +266,10 @@ export function ReturnsManagement() {
       original_cost: '',
       refund_amount: '',
       notes: '',
+      resolution_type: 'refund',
+      device_condition_on_return: '',
+      outbound_tracking_number: '',
+      repair_notes: '',
     });
   };
 
@@ -285,11 +285,40 @@ export function ReturnsManagement() {
     return <Badge className={styles[status] || 'bg-muted'}>{status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</Badge>;
   };
 
+  const getResolutionBadge = (resolution: string | null) => {
+    if (!resolution) return null;
+    const config: Record<string, { icon: React.ReactNode; className: string; label: string }> = {
+      refund: { icon: <DollarSign className="h-3 w-3" />, className: 'bg-emerald-500/10 text-emerald-600', label: 'Refund' },
+      exchange: { icon: <ArrowRightLeft className="h-3 w-3" />, className: 'bg-blue-500/10 text-blue-600', label: 'Exchange' },
+      repair: { icon: <Wrench className="h-3 w-3" />, className: 'bg-amber-500/10 text-amber-600', label: 'Repair' },
+    };
+    const c = config[resolution] || config.refund;
+    return (
+      <Badge className={`${c.className} gap-1`}>
+        {c.icon}
+        {c.label}
+      </Badge>
+    );
+  };
+
+  const getConditionBadge = (condition: string | null) => {
+    if (!condition) return null;
+    const config: Record<string, string> = {
+      working: 'bg-emerald-500/10 text-emerald-600',
+      defective: 'bg-amber-500/10 text-amber-600',
+      damaged: 'bg-orange-500/10 text-orange-600',
+      unrepairable: 'bg-red-500/10 text-red-600',
+    };
+    return <Badge className={config[condition] || 'bg-muted'}>{condition.charAt(0).toUpperCase() + condition.slice(1)}</Badge>;
+  };
+
   const filteredReturns = returns.filter(r => {
     const matchTab = activeTab === 'all' ? true
       : activeTab === 'purchase' ? r.return_type === 'purchase_return'
       : activeTab === 'sales' ? r.return_type === 'sales_return'
       : activeTab === 'pending' ? ['pending', 'approved'].includes(r.status)
+      : activeTab === 'exchanges' ? r.resolution_type === 'exchange'
+      : activeTab === 'repairs' ? r.resolution_type === 'repair'
       : true;
     if (!matchTab) return false;
     if (!searchTerm.trim()) return true;
@@ -301,7 +330,8 @@ export function ReturnsManagement() {
       r.device?.brand?.toLowerCase().includes(term) ||
       r.device?.model?.toLowerCase().includes(term) ||
       r.device?.imei?.toLowerCase().includes(term) ||
-      r.supplier?.name?.toLowerCase().includes(term)
+      r.supplier?.name?.toLowerCase().includes(term) ||
+      r.outbound_tracking_number?.toLowerCase().includes(term)
     );
   });
 
@@ -334,7 +364,7 @@ export function ReturnsManagement() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
               <div className="space-y-2">
                 <Label>Return Type</Label>
                 <Select
@@ -357,6 +387,44 @@ export function ReturnsManagement() {
                         Customer Return
                       </div>
                     </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Resolution Type */}
+              <div className="space-y-2">
+                <Label>Resolution *</Label>
+                <Select
+                  value={formData.resolution_type}
+                  onValueChange={(v) => setFormData({ ...formData, resolution_type: v as any })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="refund">💰 Refund</SelectItem>
+                    <SelectItem value="exchange">🔄 Exchange — Send replacement</SelectItem>
+                    <SelectItem value="repair">🔧 Repair — Fix and return</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Device Condition */}
+              <div className="space-y-2">
+                <Label>Device Condition on Return *</Label>
+                <Select
+                  value={formData.device_condition_on_return || 'none'}
+                  onValueChange={(v) => setFormData({ ...formData, device_condition_on_return: v === 'none' ? '' : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Assess condition" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Select condition</SelectItem>
+                    <SelectItem value="working">✅ Working</SelectItem>
+                    <SelectItem value="defective">⚠️ Defective</SelectItem>
+                    <SelectItem value="damaged">🔨 Damaged</SelectItem>
+                    <SelectItem value="unrepairable">❌ Unrepairable</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -484,16 +552,56 @@ export function ReturnsManagement() {
                     onChange={(e) => setFormData({ ...formData, original_cost: e.target.value })}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Refund Amount</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.refund_amount}
-                    onChange={(e) => setFormData({ ...formData, refund_amount: e.target.value })}
-                  />
-                </div>
+                {formData.resolution_type === 'refund' && (
+                  <div className="space-y-2">
+                    <Label>Refund Amount</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.refund_amount}
+                      onChange={(e) => setFormData({ ...formData, refund_amount: e.target.value })}
+                    />
+                  </div>
+                )}
               </div>
+
+              {/* Exchange / Repair specific fields */}
+              {formData.resolution_type === 'exchange' && (
+                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 space-y-2">
+                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Exchange Details</p>
+                  <div className="space-y-2">
+                    <Label>Outbound Tracking #</Label>
+                    <Input
+                      value={formData.outbound_tracking_number}
+                      onChange={(e) => setFormData({ ...formData, outbound_tracking_number: e.target.value })}
+                      placeholder="Tracking for replacement shipment"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {formData.resolution_type === 'repair' && (
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 space-y-2">
+                  <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Repair Details</p>
+                  <div className="space-y-2">
+                    <Label>Repair Notes</Label>
+                    <Textarea
+                      value={formData.repair_notes}
+                      onChange={(e) => setFormData({ ...formData, repair_notes: e.target.value })}
+                      placeholder="Describe the repair..."
+                      rows={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Outbound Tracking #</Label>
+                    <Input
+                      value={formData.outbound_tracking_number}
+                      onChange={(e) => setFormData({ ...formData, outbound_tracking_number: e.target.value })}
+                      placeholder="Tracking when sending back"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Notes</Label>
@@ -518,7 +626,7 @@ export function ReturnsManagement() {
           <div className="relative max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search RMA, customer, device, IMEI..."
+              placeholder="Search RMA, customer, device, tracking..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -526,13 +634,19 @@ export function ReturnsManagement() {
           </div>
         </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="all">All ({returns.length})</TabsTrigger>
             <TabsTrigger value="purchase">
               To Supplier ({returns.filter(r => r.return_type === 'purchase_return').length})
             </TabsTrigger>
             <TabsTrigger value="sales">
               From Customer ({returns.filter(r => r.return_type === 'sales_return').length})
+            </TabsTrigger>
+            <TabsTrigger value="exchanges">
+              Exchanges ({returns.filter(r => r.resolution_type === 'exchange').length})
+            </TabsTrigger>
+            <TabsTrigger value="repairs">
+              Repairs ({returns.filter(r => r.resolution_type === 'repair').length})
             </TabsTrigger>
             <TabsTrigger value="pending">
               Pending ({returns.filter(r => ['pending', 'approved'].includes(r.status)).length})
@@ -544,10 +658,13 @@ export function ReturnsManagement() {
               <TableRow>
                 <TableHead>RMA #</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Resolution</TableHead>
                 <TableHead>Device</TableHead>
+                <TableHead>Condition</TableHead>
                 <TableHead>Reason</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Tracking</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -555,7 +672,7 @@ export function ReturnsManagement() {
             <TableBody>
               {filteredReturns.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">
                     No returns found
                   </TableCell>
                 </TableRow>
@@ -568,6 +685,7 @@ export function ReturnsManagement() {
                         {rma.return_type === 'purchase_return' ? 'To Supplier' : 'From Customer'}
                       </Badge>
                     </TableCell>
+                    <TableCell>{getResolutionBadge(rma.resolution_type)}</TableCell>
                     <TableCell>
                       {rma.device ? (
                         <div>
@@ -578,9 +696,27 @@ export function ReturnsManagement() {
                         </div>
                       ) : '-'}
                     </TableCell>
-                    <TableCell>{rma.reason}</TableCell>
+                    <TableCell>{getConditionBadge(rma.device_condition_on_return)}</TableCell>
+                    <TableCell>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span className="truncate max-w-[100px] block">{rma.reason}</span>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{rma.reason}</p>
+                            {rma.repair_notes && <p className="mt-1 text-xs">🔧 {rma.repair_notes}</p>}
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </TableCell>
                     <TableCell>{formatCurrency(rma.refund_amount)}</TableCell>
                     <TableCell>{getStatusBadge(rma.status)}</TableCell>
+                    <TableCell>
+                      {rma.outbound_tracking_number ? (
+                        <span className="font-mono text-xs">{rma.outbound_tracking_number}</span>
+                      ) : '-'}
+                    </TableCell>
                     <TableCell>{format(new Date(rma.return_date), 'MMM d, yyyy')}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
@@ -594,9 +730,19 @@ export function ReturnsManagement() {
                             <Truck className="h-4 w-4" />
                           </Button>
                         )}
-                        {['shipped', 'received'].includes(rma.status) && (
+                        {['shipped', 'received'].includes(rma.status) && rma.resolution_type === 'refund' && (
                           <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'refunded')}>
                             <DollarSign className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {['shipped', 'received'].includes(rma.status) && rma.resolution_type === 'repair' && (
+                          <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'completed')}>
+                            <Wrench className="h-4 w-4 mr-1" /> Done
+                          </Button>
+                        )}
+                        {['shipped', 'received'].includes(rma.status) && rma.resolution_type === 'exchange' && (
+                          <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'completed')}>
+                            <ArrowRightLeft className="h-4 w-4 mr-1" /> Done
                           </Button>
                         )}
                       </div>
