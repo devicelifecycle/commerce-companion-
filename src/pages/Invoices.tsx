@@ -162,12 +162,12 @@ export default function Invoices() {
   // Save customer to CRM if new
   const saveCustomerFromInvoice = async (invoice: Invoice) => {
     if (!invoice.customer_name) return;
+    const normalizedName = toTitleCase(invoice.customer_name);
     try {
-      // Check if customer already exists
       const { data: existing } = await supabase
         .from('customers')
         .select('id')
-        .eq('name', invoice.customer_name)
+        .eq('name', normalizedName)
         .maybeSingle();
       
       if (existing) {
@@ -176,16 +176,76 @@ export default function Invoices() {
       }
 
       await supabase.from('customers').insert({
-        name: invoice.customer_name,
+        name: normalizedName,
         email: invoice.customer_email,
         phone: invoice.customer_phone,
         address: invoice.customer_address,
         company_id: invoice.company_id,
         marketplace_source: 'invoice',
+        channel: 'In-Store',
       });
-      toast.success(`Saved ${invoice.customer_name} to customer directory`);
+      toast.success(`Saved ${normalizedName} to customer directory`);
     } catch (err) {
       toast.error('Failed to save customer');
+    }
+  };
+
+  // Duplicate an invoice (clone with new dates)
+  const handleDuplicate = async (source: Invoice) => {
+    try {
+      // Fetch line items from original
+      const { data: items } = await supabase
+        .from('invoice_items')
+        .select('description, quantity, unit_price, total, tax_treatment, device_id')
+        .eq('invoice_id', source.id);
+
+      const companyCode = getCompanyCode(source.company_id);
+      const prefix = companyCode || 'INV';
+      const date = format(new Date(), 'yyyyMM');
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      const invoiceNumber = `${prefix}-${date}-${random}`;
+
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + 30);
+
+      const { data: newInv, error } = await supabase.from('invoices').insert({
+        invoice_number: invoiceNumber,
+        customer_name: source.customer_name,
+        customer_email: source.customer_email,
+        customer_address: source.customer_address,
+        customer_phone: source.customer_phone,
+        customer_gst_hst_number: source.customer_gst_hst_number,
+        subtotal: source.subtotal,
+        tax_amount: source.tax_amount,
+        total: source.total,
+        status: 'draft' as any,
+        issue_date: new Date().toISOString().split('T')[0],
+        due_date: dueDate.toISOString().split('T')[0],
+        notes: source.notes,
+        company_id: source.company_id,
+      }).select('id').single();
+
+      if (error) throw error;
+
+      // Clone line items (without device_id to avoid marking devices as sold again)
+      if (items && items.length > 0 && newInv) {
+        const clonedItems = items.map(i => ({
+          invoice_id: newInv.id,
+          description: i.description,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+          total: i.total,
+          tax_treatment: i.tax_treatment,
+          device_id: null, // Don't link to same device
+        }));
+        await supabase.from('invoice_items').insert(clonedItems);
+      }
+
+      toast.success(`Duplicated as ${invoiceNumber} (Draft)`);
+      fetchInvoices();
+    } catch (err) {
+      console.error('Duplicate error:', err);
+      toast.error('Failed to duplicate invoice');
     }
   };
 
