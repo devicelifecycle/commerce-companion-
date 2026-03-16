@@ -29,6 +29,8 @@ interface Sale {
   marketplace_status: string | null;
   is_marketplace_remitted?: boolean;
   accounting_status?: string | null;
+  product_title?: string | null;
+  marketplace_sku?: string | null;
   devices?: {
     brand: string;
     model: string;
