@@ -78,6 +78,7 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   const [form, setForm] = useState({
     name: '',
