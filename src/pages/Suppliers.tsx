@@ -201,7 +201,11 @@ export default function Suppliers() {
       contact_name: supplier.contact_name || '',
       email: supplier.email || '',
       phone: supplier.phone || '',
-      address: supplier.address || '',
+      street_address: supplier.street_address || '',
+      city: supplier.city || '',
+      province: supplier.province || '',
+      postal_code: supplier.postal_code || '',
+      gst_hst_number: supplier.gst_hst_number || '',
       notes: supplier.notes || '',
     });
     setIsEditDialogOpen(true);
