@@ -563,6 +563,10 @@ serve(async (req) => {
             fulfillment_status: fulfillmentStatus,
             is_marketplace_remitted: false, // Best Buy pays us the tax — we remit to CRA ourselves
             accounting_status: "unprocessed",
+            product_title: lineItem.product_title || null,
+            marketplace_sku: lineItem.offer_sku || null,
+            subtotal: salePrice,
+            item_count: lineItem.quantity || 1,
           }).select("id").single();
 
           if (insertError) {
