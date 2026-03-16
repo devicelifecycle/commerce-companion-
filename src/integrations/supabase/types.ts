@@ -705,7 +705,10 @@ export type Database = {
       customers: {
         Row: {
           address: string | null
+          channel: string | null
+          city: string | null
           company_id: string | null
+          country: string | null
           created_at: string
           created_by: string | null
           email: string | null
@@ -714,13 +717,19 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          postal_code: string | null
+          province: string | null
+          street_address: string | null
           total_purchases: number | null
           total_spent: number | null
           updated_at: string
         }
         Insert: {
           address?: string | null
+          channel?: string | null
+          city?: string | null
           company_id?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -729,13 +738,19 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          postal_code?: string | null
+          province?: string | null
+          street_address?: string | null
           total_purchases?: number | null
           total_spent?: number | null
           updated_at?: string
         }
         Update: {
           address?: string | null
+          channel?: string | null
+          city?: string | null
           company_id?: string | null
+          country?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -744,6 +759,9 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          postal_code?: string | null
+          province?: string | null
+          street_address?: string | null
           total_purchases?: number | null
           total_spent?: number | null
           updated_at?: string
