@@ -408,7 +408,7 @@ export default function Invoices() {
               companyId: viewInvoice.company_id!,
               entryDate: new Date().toISOString().split('T')[0],
               description: `Invoice ${viewInvoice.invoice_number} adjustment`,
-              referenceType: 'invoice_adjustment',
+              referenceType: 'sale',
               referenceId: viewInvoice.id,
               lines: diff > 0 ? [
                 { accountCode: arAccount, accountId: arAccId, description: `AR adjustment - Invoice ${viewInvoice.invoice_number}`, debitAmount: Math.abs(diff), creditAmount: 0 },
