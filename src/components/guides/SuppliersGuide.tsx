@@ -34,7 +34,8 @@ export function SuppliersGuide() {
               <p>For each supplier, maintain:</p>
               <ul className="list-disc list-inside space-y-1">
                 <li><strong>Contact info</strong> — Name, email, phone for quick communication</li>
-                <li><strong>Address</strong> — For invoice matching and shipping verification</li>
+                <li><strong>Address</strong> — Street, city, province, postal code for invoice matching and shipping</li>
+                <li><strong>GST/HST Number</strong> — For Input Tax Credit (ITC) claims and invoice verification</li>
                 <li><strong>Notes</strong> — Payment terms, special conditions, quality notes</li>
               </ul>
             </>

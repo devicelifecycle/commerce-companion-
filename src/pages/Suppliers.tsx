@@ -395,7 +395,7 @@ export default function Suppliers() {
         <Alert className="border-primary/30 bg-primary/5">
           <Info className="h-4 w-4" />
           <AlertDescription>
-            Each supplier is assigned a unique <strong>Supplier ID</strong> (e.g., S-001). Use this ID in the <strong>Inventory Import</strong> template's "Supplier ID" column to link imported devices to their supplier.
+            Each supplier is assigned a unique <strong>Supplier ID</strong> starting at <strong>101</strong> (e.g., S-101, S-102). Codes start at 101 instead of 001 because Excel auto-strips leading zeros. Use this ID in the <strong>Inventory Import</strong> template's "Supplier ID" column to link imported devices to their supplier.
           </AlertDescription>
         </Alert>
 
