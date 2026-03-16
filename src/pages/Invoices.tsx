@@ -503,8 +503,9 @@ export default function Invoices() {
           <CardContent>
             <Table>
               <TableHeader>
-                <TableRow>
+               <TableRow>
                   <TableHead>Invoice #</TableHead>
+                  <TableHead>Company</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Issue Date</TableHead>
                   <TableHead>Due Date</TableHead>
@@ -518,16 +519,24 @@ export default function Invoices() {
               <TableBody>
                 {filteredInvoices.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
                       {search || statusFilter !== 'all' ? 'No invoices match your filters' : 'No invoices yet — click "New Invoice" to create one'}
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredInvoices.map((invoice) => {
                     const config = STATUS_CONFIG[invoice.status];
+                    const code = getCompanyCode(invoice.company_id);
                     return (
                       <TableRow key={invoice.id}>
                         <TableCell className="font-mono font-medium">{invoice.invoice_number}</TableCell>
+                        <TableCell>
+                          {code && (
+                            <Badge variant="outline" className={`text-[10px] font-medium ${COMPANY_BADGE[code] || ''}`}>
+                              {code}
+                            </Badge>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <div>
                             <p className="font-medium">{invoice.customer_name}</p>
