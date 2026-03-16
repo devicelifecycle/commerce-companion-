@@ -570,6 +570,13 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Product Import Dialog */}
+      <ProductImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        onSuccess={fetchProducts}
+      />
     </>
   );
 }
