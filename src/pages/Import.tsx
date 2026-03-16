@@ -599,7 +599,9 @@ export default function Import() {
           supplierId: supplier?.id || null,
           invoiceNumber: '',
           shippingCost: '0',
+          shippingTaxStatus: 'zero_rated',
           otherCharges: '0',
+          otherChargesTaxStatus: 'zero_rated',
           paymentMethod: '',
           paymentDate: '',
           items: [],
@@ -611,18 +613,20 @@ export default function Import() {
       const cost = mapping.cost_price ? parseFloat(String(r.data[mapping.cost_price] || '0')) : 0;
       const imei = mapping.imei ? String(r.data[mapping.imei] || '').trim() : '';
 
-      let gst = 0;
+      let taxStatus: DraftTaxStatus = 'zero_rated';
       if (mapping.tax_status) {
         const ts = String(r.data[mapping.tax_status] || '').trim();
-        if (ts === 'Zero-Rated' || ts === 'GST Paid') gst = cost * 0.05;
-        else if (ts === 'HST Paid') gst = cost * 0.13;
+        if (ts === 'GST Paid') taxStatus = 'gst_paid';
+        else if (ts === 'HST Paid') taxStatus = 'hst_paid';
+        else if (ts === 'Tax Included') taxStatus = 'tax_included';
+        else taxStatus = 'zero_rated';
       }
 
       supplierMap.get(code)!.items.push({
         description: `${brand} ${model}`,
         quantity: 1,
         unitCost: cost,
-        gstHstAmount: parseFloat(gst.toFixed(2)),
+        taxStatus,
         pstQstAmount: 0,
         imei,
       });
