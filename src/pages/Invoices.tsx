@@ -57,9 +57,12 @@ const STATUS_CONFIG = {
   draft: { label: 'Draft', icon: FileText, className: 'bg-muted text-muted-foreground' },
   sent: { label: 'Sent', icon: Send, className: 'bg-info/10 text-info' },
   paid: { label: 'Paid', icon: CheckCircle, className: 'bg-success/10 text-success' },
+  partially_paid: { label: 'Partial', icon: CreditCard, className: 'bg-amber-500/10 text-amber-700' },
   overdue: { label: 'Overdue', icon: AlertCircle, className: 'bg-destructive/10 text-destructive' },
   cancelled: { label: 'Cancelled', icon: AlertCircle, className: 'bg-muted text-muted-foreground' },
 };
+
+const PAYMENT_METHODS = ['Cash', 'E-Transfer', 'Credit Card', 'Debit Card', 'Cheque', 'Wire Transfer', 'Other'] as const;
 
 const TAX_LABELS: Record<string, string> = {
   hst: 'HST 13%',
