@@ -9,6 +9,12 @@ interface Customer {
   email: string | null;
   phone: string | null;
   address: string | null;
+  street_address: string | null;
+  city: string | null;
+  province: string | null;
+  postal_code: string | null;
+  country: string | null;
+  channel: string | null;
 }
 
 interface Props {
@@ -41,7 +47,7 @@ export function CustomerAutoComplete({ companyId, value, onChange, onSelect }: P
   const fetchCustomers = async () => {
     let q = supabase
       .from('customers')
-      .select('id, name, email, phone, address')
+      .select('id, name, email, phone, address, street_address, city, province, postal_code, country, channel')
       .order('name')
       .limit(100);
     if (companyId) q = q.eq('company_id', companyId);
