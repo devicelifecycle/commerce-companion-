@@ -14,3 +14,13 @@ export function formatStatus(status: string | null | undefined): string {
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
+
+/** Normalize a person/company name to Title Case.
+ *  e.g. "john DOE" → "John Doe", "mcdonald" → "Mcdonald"
+ */
+export function toTitleCase(name: string): string {
+  return name
+    .trim()
+    .replace(/\s+/g, ' ')
+    .replace(/\b\w+/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+}
