@@ -212,7 +212,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
       // Insert invoice
       const { data: invoice, error: invError } = await supabase.from('invoices').insert({
         invoice_number: invoiceNumber,
-        customer_name: customerName.trim(),
+        customer_name: toTitleCase(customerName),
         customer_email: customerEmail.trim() || null,
         customer_address: customerAddress.trim() || null,
         customer_phone: customerPhone.trim() || null,
