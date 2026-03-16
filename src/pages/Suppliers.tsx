@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -303,12 +304,30 @@ export default function Suppliers() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="province">Province</Label>
-          <Input
-            id="province"
-            value={formData.province}
-            onChange={(e) => setFormData({ ...formData, province: e.target.value })}
-            placeholder="ON"
-          />
+          <Select
+            value={formData.province || 'none'}
+            onValueChange={(val) => setFormData({ ...formData, province: val === 'none' ? '' : val })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select province" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Select province</SelectItem>
+              <SelectItem value="AB">Alberta</SelectItem>
+              <SelectItem value="BC">British Columbia</SelectItem>
+              <SelectItem value="MB">Manitoba</SelectItem>
+              <SelectItem value="NB">New Brunswick</SelectItem>
+              <SelectItem value="NL">Newfoundland & Labrador</SelectItem>
+              <SelectItem value="NS">Nova Scotia</SelectItem>
+              <SelectItem value="NT">Northwest Territories</SelectItem>
+              <SelectItem value="NU">Nunavut</SelectItem>
+              <SelectItem value="ON">Ontario</SelectItem>
+              <SelectItem value="PE">Prince Edward Island</SelectItem>
+              <SelectItem value="QC">Quebec</SelectItem>
+              <SelectItem value="SK">Saskatchewan</SelectItem>
+              <SelectItem value="YT">Yukon</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-2">
           <Label htmlFor="postal_code">Postal Code</Label>
