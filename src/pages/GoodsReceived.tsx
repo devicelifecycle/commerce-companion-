@@ -90,6 +90,25 @@ export default function GoodsReceived() {
     }
   };
 
+  const deleteGRN = async (id: string) => {
+    try {
+      await supabase.from('grn_items').delete().eq('grn_id', id);
+      const { error } = await supabase.from('goods_received_notes').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('GRN deleted');
+      loadGrns();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete GRN');
+    }
+  };
+
+  const deleteSelectedGRNs = async () => {
+    for (const id of selectedIds) {
+      await deleteGRN(id);
+    }
+    clear();
+  };
+
   const exportCsv = () => {
     const rows = selectedItems.length > 0 ? selectedItems : filtered;
     const csv = [
