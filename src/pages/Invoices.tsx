@@ -34,7 +34,7 @@ interface Invoice {
   subtotal: number;
   tax_amount: number;
   total: number;
-  status: 'draft' | 'sent' | 'paid' | 'partially_paid' | 'overdue' | 'cancelled';
+  status: 'sent' | 'paid' | 'overdue' | 'cancelled';
   issue_date: string;
   due_date: string;
   paid_date: string | null;
