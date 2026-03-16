@@ -282,12 +282,52 @@ export default function Suppliers() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="address">Address</Label>
-        <Textarea
-          id="address"
-          value={formData.address}
-          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-          placeholder="123 Business St, City, State, ZIP"
+        <Label htmlFor="street_address">Street Address</Label>
+        <Input
+          id="street_address"
+          value={formData.street_address}
+          onChange={(e) => setFormData({ ...formData, street_address: e.target.value })}
+          placeholder="123 Business St"
+        />
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="city">City</Label>
+          <Input
+            id="city"
+            value={formData.city}
+            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+            placeholder="Toronto"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="province">Province</Label>
+          <Input
+            id="province"
+            value={formData.province}
+            onChange={(e) => setFormData({ ...formData, province: e.target.value })}
+            placeholder="ON"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="postal_code">Postal Code</Label>
+          <Input
+            id="postal_code"
+            value={formData.postal_code}
+            onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+            placeholder="M5V 2T6"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="gst_hst_number">GST/HST Number</Label>
+        <Input
+          id="gst_hst_number"
+          value={formData.gst_hst_number}
+          onChange={(e) => setFormData({ ...formData, gst_hst_number: e.target.value })}
+          placeholder="123456789RT0001"
         />
       </div>
 
