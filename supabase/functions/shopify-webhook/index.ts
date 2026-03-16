@@ -251,6 +251,7 @@ Deno.serve(async (req) => {
     const customerEmail = order.email || order.customer?.email || null;
     const customerPhone = order.customer?.phone || order.shipping_address?.phone || null;
     const shippingAddress = formatShippingAddress(order.shipping_address);
+    const structuredAddr = parseStructuredAddress(order.shipping_address);
     const totalPrice = parseFloat(order.total_price || "0");
 
     // Upsert customer
@@ -264,7 +265,8 @@ Deno.serve(async (req) => {
         shippingAddress,
         companyId,
         "shopify",
-        totalPrice
+        totalPrice,
+        structuredAddr
       );
     }
 
