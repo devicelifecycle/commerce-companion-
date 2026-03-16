@@ -81,7 +81,33 @@ interface SupplierInfo {
   name: string;
 }
 
-const CATEGORIES = ['phone', 'laptop', 'tablet', 'accessory', 'smartwatch', 'other'];
+interface PODraftItem {
+  description: string;
+  quantity: number;
+  unitCost: number;
+  gstHstAmount: number;
+  pstQstAmount: number;
+  imei: string;
+}
+
+interface PODraft {
+  supplierCode: string;
+  supplierName: string;
+  supplierId: string | null;
+  invoiceNumber: string;
+  shippingCost: string;
+  otherCharges: string;
+  items: PODraftItem[];
+}
+
+interface FinalizeResultItem {
+  supplierName: string;
+  poNumber: string;
+  grnNumber: string;
+  invoiceTotal: number;
+}
+
+const CATEGORIES = ['phone', 'tablet', 'laptop'];
 const VALID_TAX_STATUSES = ['Tax Included', 'Zero-Rated', 'GST Paid', 'HST Paid'];
 const TAX_STATUS_DB_MAP: Record<string, string> = {
   'Tax Included': 'tax_included',
@@ -137,19 +163,11 @@ export default function Import() {
   const [importResults, setImportResults] = useState<ImportResult[]>([]);
   const [step, setStep] = useState<'upload' | 'map' | 'validate' | 'preview' | 'results' | 'review'>('upload');
 
-  // Review screen state
+  // PO Draft state
   const [batchId, setBatchId] = useState<string | null>(null);
-  const [shippingCost, setShippingCost] = useState('0');
-  const [otherCharges, setOtherCharges] = useState('0');
-  const [reviewInvoiceNumber, setReviewInvoiceNumber] = useState('');
+  const [poDrafts, setPoDrafts] = useState<PODraft[]>([]);
   const [isFinalizingAP, setIsFinalizingAP] = useState(false);
-  const [finalizeResult, setFinalizeResult] = useState<{
-    apId: string;
-    poNumber: string;
-    grnNumber: string;
-    invoiceTotal: number;
-    supplierName: string;
-  } | null>(null);
+  const [finalizeResults, setFinalizeResults] = useState<FinalizeResultItem[]>([]);
 
   useEffect(() => {
     fetchSuppliers();
@@ -420,7 +438,6 @@ export default function Import() {
 
     const currentBatchId = batchData?.id || null;
     setBatchId(currentBatchId);
-    if (batchInvoiceNumber) setReviewInvoiceNumber(batchInvoiceNumber);
 
     // Get existing SKU count for sequence
     const { count: skuCount } = await supabase
@@ -534,208 +551,209 @@ export default function Import() {
     const successCount = results.filter(r => r.success).length;
     toast.success(`Imported ${successCount} of ${results.length} devices`);
 
-    // Auto-advance to review if there are successful imports
+    // Build PO drafts and advance to review
     if (successCount > 0) {
+      const drafts = buildPODrafts(results.filter(r => r.success));
+      setPoDrafts(drafts);
       setStep('review');
     }
   };
 
-  const getImportedSummary = () => {
-    const successfulRows = importResults.filter(r => r.success);
-    const subtotal = successfulRows.reduce((sum, r) => {
-      const cost = mapping.cost_price && r.data ? parseFloat(String(r.data[mapping.cost_price] || '0')) : 0;
-      return sum + cost;
-    }, 0);
+  const buildPODrafts = (successResults: ImportResult[]): PODraft[] => {
+    const supplierMap = new Map<string, PODraft>();
 
-    // Group by supplier
-    const supplierGroups = new Map<string, { name: string; count: number; subtotal: number; id: string | null }>();
-    for (const r of successfulRows) {
+    for (const r of successResults) {
       if (!r.data) continue;
       const code = mapping.supplier_id_code
         ? String(r.data[mapping.supplier_id_code] || '').trim().replace(/^S-/i, '').padStart(3, '0')
         : '000';
       const supplier = suppliers.find(s => s.supplier_code === code);
-      const name = supplier?.name || 'Unknown';
-      const existing = supplierGroups.get(code) || { name, count: 0, subtotal: 0, id: supplier?.id || null };
-      existing.count++;
-      existing.subtotal += mapping.cost_price ? parseFloat(String(r.data[mapping.cost_price] || '0')) : 0;
-      supplierGroups.set(code, existing);
-    }
 
-    // Tax breakdown
-    let taxIncludedCount = 0, zeroRatedCount = 0, gstPaidCount = 0, hstPaidCount = 0;
-    let estimatedTax = 0;
-    for (const r of successfulRows) {
-      if (!r.data || !mapping.tax_status) continue;
-      const ts = String(r.data[mapping.tax_status] || '').trim();
+      if (!supplierMap.has(code)) {
+        supplierMap.set(code, {
+          supplierCode: code,
+          supplierName: supplier?.name || 'Unknown',
+          supplierId: supplier?.id || null,
+          invoiceNumber: '',
+          shippingCost: '0',
+          otherCharges: '0',
+          items: [],
+        });
+      }
+
+      const brand = mapping.brand ? String(r.data[mapping.brand] || '').trim() : '';
+      const model = mapping.model ? String(r.data[mapping.model] || '').trim() : '';
       const cost = mapping.cost_price ? parseFloat(String(r.data[mapping.cost_price] || '0')) : 0;
-      if (ts === 'Tax Included') taxIncludedCount++;
-      else if (ts === 'Zero-Rated') { zeroRatedCount++; estimatedTax += cost * 0.05; }
-      else if (ts === 'GST Paid') { gstPaidCount++; estimatedTax += cost * 0.05; }
-      else if (ts === 'HST Paid') { hstPaidCount++; estimatedTax += cost * 0.13; }
+      const imei = mapping.imei ? String(r.data[mapping.imei] || '').trim() : '';
+
+      let gst = 0;
+      if (mapping.tax_status) {
+        const ts = String(r.data[mapping.tax_status] || '').trim();
+        if (ts === 'Zero-Rated' || ts === 'GST Paid') gst = cost * 0.05;
+        else if (ts === 'HST Paid') gst = cost * 0.13;
+      }
+
+      supplierMap.get(code)!.items.push({
+        description: `${brand} ${model}`,
+        quantity: 1,
+        unitCost: cost,
+        gstHstAmount: parseFloat(gst.toFixed(2)),
+        pstQstAmount: 0,
+        imei,
+      });
     }
 
-    return { subtotal, supplierGroups, taxIncludedCount, zeroRatedCount, gstPaidCount, hstPaidCount, totalItems: successfulRows.length, estimatedTax };
+    // Pre-fill invoice number from mapping if available
+    if (mapping.supplier_invoice_number && successResults[0]?.data) {
+      const invNum = String(successResults[0].data[mapping.supplier_invoice_number] || '').trim();
+      if (invNum) {
+        for (const draft of supplierMap.values()) {
+          draft.invoiceNumber = invNum;
+        }
+      }
+    }
+
+    return Array.from(supplierMap.values());
   };
 
+  const updateDraft = (supplierCode: string, updates: Partial<PODraft>) => {
+    setPoDrafts(prev => prev.map(d =>
+      d.supplierCode === supplierCode ? { ...d, ...updates } : d
+    ));
+  };
+
+  const updateDraftItem = (supplierCode: string, itemIndex: number, updates: Partial<PODraftItem>) => {
+    setPoDrafts(prev => prev.map(d => {
+      if (d.supplierCode !== supplierCode) return d;
+      const items = [...d.items];
+      items[itemIndex] = { ...items[itemIndex], ...updates };
+      return { ...d, items };
+    }));
+  };
 
   const handleFinalizeAP = async () => {
-    if (!batchId) return;
+    if (!batchId || poDrafts.length === 0) return;
     setIsFinalizingAP(true);
-    setFinalizeResult(null);
+    setFinalizeResults([]);
 
     try {
-      const summary = getImportedSummary();
-      const shipping = parseFloat(shippingCost) || 0;
-      const other = parseFloat(otherCharges) || 0;
-      const estimatedGstHst = summary.estimatedTax;
-      const invoiceTotal = summary.subtotal + estimatedGstHst + shipping + other;
-
-      // Update batch with charges and lock it
-      await supabase
-        .from('import_batches')
-        .update({
-          shipping_cost: shipping,
-          other_charges: other,
-          supplier_invoice_number: reviewInvoiceNumber || null,
-          is_finalized: true,
-        })
-        .eq('id', batchId);
-
-      // Get the batch info
+      // Get batch info
       const { data: batchInfo } = await supabase
         .from('import_batches')
-        .select('company_id, supplier_id')
+        .select('company_id')
         .eq('id', batchId)
         .single();
 
       if (!batchInfo?.company_id) throw new Error('No company linked to this batch');
 
-      // Get supplier name
-      let supplierName = 'Unknown Supplier';
-      if (batchInfo.supplier_id) {
-        const { data: supplierData } = await supabase
-          .from('suppliers')
-          .select('name')
-          .eq('id', batchInfo.supplier_id)
-          .single();
-        if (supplierData) supplierName = supplierData.name;
-      }
-
-      // Create AP record
-      const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + 30);
-
-      const { data: apRecord, error: apError } = await supabase.from('accounts_payable').insert({
-        company_id: batchInfo.company_id,
-        vendor_name: supplierName,
-        vendor_id: batchInfo.supplier_id,
-        bill_number: reviewInvoiceNumber || null,
-        bill_date: new Date().toISOString().split('T')[0],
-        due_date: dueDate.toISOString().split('T')[0],
-        original_amount: invoiceTotal,
-        gst_hst_amount: estimatedGstHst,
-        pst_amount: 0,
-        category: 'inventory_purchase',
-        description: `Inventory purchase — ${summary.totalItems} devices`,
-        status: 'outstanding',
-        created_by: user?.id,
-      }).select('id').single();
-
-      if (apError) throw apError;
-
-      // Build device data for PO items with proper tax per item
-      const successfulRows = importResults.filter(r => r.success);
-      const poItems: Array<{
-        description: string;
-        quantity: number;
-        unitCost: number;
-        gstHstAmount: number;
-        pstQstAmount: number;
-      }> = [];
-
-      for (const r of successfulRows) {
-        if (!r.data) continue;
-        const brand = mapping.brand ? String(r.data[mapping.brand] || '').trim() : '';
-        const model = mapping.model ? String(r.data[mapping.model] || '').trim() : '';
-        const cost = mapping.cost_price ? parseFloat(String(r.data[mapping.cost_price] || '0')) : 0;
-        let itemGst = 0;
-        if (mapping.tax_status) {
-          const ts = String(r.data[mapping.tax_status] || '').trim();
-          if (ts === 'Zero-Rated' || ts === 'GST Paid') itemGst = cost * 0.05;
-          else if (ts === 'HST Paid') itemGst = cost * 0.13;
-        }
-        poItems.push({
-          description: `${brand} ${model}`,
-          quantity: 1,
-          unitCost: cost,
-          gstHstAmount: itemGst,
-          pstQstAmount: 0,
-        });
-      }
-
-      // Get company code
       const { data: company } = await supabase
         .from('companies')
         .select('code')
         .eq('id', batchInfo.company_id)
         .single();
 
-      let poNumber = '';
-      let grnNumber = '';
+      const isVES = company?.code === 'VES';
+      const results: FinalizeResultItem[] = [];
 
-      if (company && poItems.length > 0) {
-        const { purchaseOrder, poNumber: pn } = await createPurchaseOrder({
+      for (const draft of poDrafts) {
+        const subtotal = draft.items.reduce((s, i) => s + i.unitCost * i.quantity, 0);
+        const gstTotal = draft.items.reduce((s, i) => s + i.gstHstAmount, 0);
+        const shipping = parseFloat(draft.shippingCost) || 0;
+        const other = parseFloat(draft.otherCharges) || 0;
+        const invoiceTotal = subtotal + gstTotal + shipping + other;
+
+        // Create PO
+        const { purchaseOrder, poNumber } = await createPurchaseOrder({
           companyId: batchInfo.company_id,
-          supplierId: batchInfo.supplier_id || undefined,
-          supplierName,
-          items: poItems,
+          supplierId: draft.supplierId || undefined,
+          supplierName: draft.supplierName,
+          items: draft.items.map(i => ({
+            description: i.description,
+            quantity: i.quantity,
+            unitCost: i.unitCost,
+            gstHstAmount: i.gstHstAmount,
+            pstQstAmount: i.pstQstAmount,
+          })),
+          notes: [
+            draft.invoiceNumber ? `Invoice: ${draft.invoiceNumber}` : '',
+            shipping > 0 ? `Shipping: $${shipping.toFixed(2)}` : '',
+            other > 0 ? `Other Charges: $${other.toFixed(2)}` : '',
+          ].filter(Boolean).join(' | ') || undefined,
           createdBy: user?.id,
         });
-        poNumber = pn;
 
-        const { grnNumber: gn } = await createGoodsReceivedNote({
+        // Create GRN
+        const { grnNumber } = await createGoodsReceivedNote({
           companyId: batchInfo.company_id,
           purchaseOrderId: purchaseOrder.id,
-          supplierId: batchInfo.supplier_id || undefined,
-          items: poItems.map(() => ({
+          supplierId: draft.supplierId || undefined,
+          items: draft.items.map(() => ({
             quantityReceived: 1,
             conditionStatus: 'passed' as const,
           })),
           receivedBy: user?.id,
         });
-        grnNumber = gn;
-      }
 
-      // Create journal entry: Dr. Inventory + Dr. GST/HST Paid → Cr. Accounts Payable
-      const isVES = company?.code === 'VES';
-      try {
-        await createPurchaseJournalEntry({
-          companyId: batchInfo.company_id,
-          purchaseId: apRecord.id,
-          receiveDate: new Date().toISOString().split('T')[0],
-          supplierName,
-          poNumber,
-          unitCost: summary.subtotal + shipping + other,
-          gstHstAmount: estimatedGstHst,
-          qstAmount: 0,
-          totalAmount: invoiceTotal,
-          deviceDescription: `${summary.totalItems} devices (Batch import)`,
-          isVES,
+        // Create AP record
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 30);
+
+        await supabase.from('accounts_payable').insert({
+          company_id: batchInfo.company_id,
+          vendor_name: draft.supplierName,
+          vendor_id: draft.supplierId,
+          bill_number: draft.invoiceNumber || null,
+          bill_date: new Date().toISOString().split('T')[0],
+          due_date: dueDate.toISOString().split('T')[0],
+          original_amount: invoiceTotal,
+          gst_hst_amount: gstTotal,
+          pst_amount: 0,
+          category: 'inventory_purchase',
+          description: `Inventory purchase — ${draft.items.length} devices`,
+          status: 'outstanding',
+          created_by: user?.id,
         });
-      } catch (jeError) {
-        console.error('Journal entry creation failed:', jeError);
+
+        // Journal entry: Dr. Inventory + Dr. GST/HST → Cr. AP
+        try {
+          await createPurchaseJournalEntry({
+            companyId: batchInfo.company_id,
+            purchaseId: purchaseOrder.id,
+            receiveDate: new Date().toISOString().split('T')[0],
+            supplierName: draft.supplierName,
+            poNumber,
+            unitCost: subtotal + shipping + other,
+            gstHstAmount: gstTotal,
+            qstAmount: 0,
+            totalAmount: invoiceTotal,
+            deviceDescription: `${draft.items.length} devices (Batch import)`,
+            isVES,
+          });
+        } catch (jeError) {
+          console.error('Journal entry creation failed:', jeError);
+        }
+
+        results.push({
+          supplierName: draft.supplierName,
+          poNumber,
+          grnNumber,
+          invoiceTotal,
+        });
       }
 
-      setFinalizeResult({
-        apId: apRecord.id,
-        poNumber,
-        grnNumber,
-        invoiceTotal,
-        supplierName,
-      });
+      // Update batch as finalized
+      await supabase
+        .from('import_batches')
+        .update({
+          shipping_cost: poDrafts.reduce((s, d) => s + (parseFloat(d.shippingCost) || 0), 0),
+          other_charges: poDrafts.reduce((s, d) => s + (parseFloat(d.otherCharges) || 0), 0),
+          supplier_invoice_number: poDrafts.map(d => d.invoiceNumber).filter(Boolean).join(', ') || null,
+          is_finalized: true,
+        })
+        .eq('id', batchId);
 
-      toast.success('AP, Purchase Order, GRN, and Journal Entry created — batch locked!');
+      setFinalizeResults(results);
+      toast.success('All POs, GRNs, AP entries, and journal entries created — batch locked!');
     } catch (error: any) {
       console.error('Finalize error:', error);
       toast.error(error.message || 'Failed to finalize');
@@ -756,7 +774,7 @@ export default function Import() {
         Colour: 'Space Black',
         'Cost Price': 800,
         Notes: '',
-        'Supplier ID': '001',
+        'Supplier ID': '101',
         'Supplier Invoice Number': 'INV-2026-001',
         'Purchase Date': '2026-02-16',
         'Tax Status': 'Zero-Rated',
@@ -773,7 +791,7 @@ export default function Import() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'inventory_import_template.xlsx';
+    a.download = 'device_import_template.xlsx';
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -790,10 +808,8 @@ export default function Import() {
     setValidationResults([]);
     setImportResults([]);
     setBatchId(null);
-    setShippingCost('0');
-    setOtherCharges('0');
-    setReviewInvoiceNumber('');
-    setFinalizeResult(null);
+    setPoDrafts([]);
+    setFinalizeResults([]);
     setStep('upload');
   };
 
@@ -817,7 +833,7 @@ export default function Import() {
   const errorCount = validationResults.filter(r => !r.valid).length;
   const warningCount = validationResults.filter(r => r.warnings.length > 0).length;
 
-  const stepLabels = ['Upload', 'Map', 'Validate', 'Preview', 'Import', 'Review'];
+  const stepLabels = ['Upload', 'Map', 'Validate', 'Preview', 'Import', 'PO Draft'];
   const stepKeys = ['upload', 'map', 'validate', 'preview', 'results', 'review'];
 
   return (
@@ -825,7 +841,7 @@ export default function Import() {
       <div className="space-y-6 animate-fade-in">
         <div>
           <h1 className="text-2xl font-bold">Import Devices</h1>
-          <p className="text-muted-foreground">Upload an Excel file to bulk import devices</p>
+          <p className="text-muted-foreground">Upload an Excel file to bulk import phones, tablets, and laptops with automatic PO, GRN, and AP creation</p>
         </div>
 
         <ImportGuide />
@@ -866,19 +882,21 @@ export default function Import() {
                   <CardContent className="pt-0">
                     <div className="grid gap-3 md:grid-cols-2 text-sm">
                       <div className="space-y-2">
-                        <h4 className="font-semibold text-primary">Case-Sensitive Rules</h4>
+                        <h4 className="font-semibold text-primary">Devices Only</h4>
                         <ul className="space-y-1 text-muted-foreground">
-                          <li>• Brand names must use exact casing (e.g., <strong>"Apple"</strong> not "apple" or "APPLE")</li>
-                          <li>• Model names must use exact casing (e.g., <strong>"iPhone 12 Pro Max"</strong>)</li>
+                          <li>• This import is for <strong>phones, tablets, and laptops</strong> tracked by IMEI or unique serial number</li>
+                          <li>• For bulk items (accessories, cables, etc.), use <strong>Purchase Orders</strong> instead</li>
+                          <li>• Brand names must use exact casing (e.g., <strong>"Apple"</strong> not "apple")</li>
                           <li>• Company must be exactly <strong>"VES"</strong> or <strong>"TGW"</strong></li>
                         </ul>
                       </div>
                       <div className="space-y-2">
                         <h4 className="font-semibold text-primary">Required Fields</h4>
                         <ul className="space-y-1 text-muted-foreground">
-                          <li>• <strong>Supplier ID</strong> — 3-digit code from the Suppliers section (e.g., "001")</li>
+                          <li>• <strong>Supplier ID</strong> — numeric code starting at 101 (e.g., 101, 102, 103)</li>
                           <li>• <strong>IMEI/Serial</strong> — must be unique; duplicates will be rejected</li>
                           <li>• <strong>SKU</strong> is auto-assigned — do not include it</li>
+                          <li>• After import, you'll review an <strong>editable PO draft</strong> per supplier before finalizing</li>
                         </ul>
                       </div>
                       <div className="space-y-2 md:col-span-2">
@@ -903,7 +921,7 @@ export default function Import() {
                     Upload Excel File
                   </CardTitle>
                   <CardDescription>
-                    Upload an Excel file containing your device inventory
+                    Upload an Excel file containing your device inventory (phones, tablets, laptops)
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -934,7 +952,7 @@ export default function Import() {
                     Download Template
                   </CardTitle>
                   <CardDescription>
-                    Download the updated template with all required fields
+                    Download the template with all required fields for device import
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -943,7 +961,7 @@ export default function Import() {
                     <li>Company (VES or TGW)</li>
                     <li>Brand, Model, Cost Price</li>
                     <li>IMEI/Serial/Unique ID</li>
-                    <li>Supplier ID (3-digit code)</li>
+                    <li>Supplier ID (numeric, starting at 101)</li>
                   </ul>
                   <Button onClick={downloadTemplate} variant="outline" className="w-full">
                     <Download className="h-4 w-4 mr-2" />
@@ -1218,7 +1236,7 @@ export default function Import() {
                     {importResults.filter(r => r.success).length > 0 && (
                       <Button onClick={() => setStep('review')}>
                         <DollarSign className="h-4 w-4 mr-2" />
-                        Continue to Review & AP
+                        Continue to PO Draft
                       </Button>
                     )}
                   </div>
@@ -1230,8 +1248,8 @@ export default function Import() {
 
         {step === 'review' && (
           <>
-            {/* Finalization success confirmation */}
-            {finalizeResult && (
+            {/* Finalization success */}
+            {finalizeResults.length > 0 && (
               <Card className="border-2 border-primary/30">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-primary">
@@ -1243,34 +1261,38 @@ export default function Import() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                    <div className="p-4 rounded-lg border bg-muted/30 text-center">
-                      <p className="text-xs text-muted-foreground mb-1">Accounts Payable</p>
-                      <p className="font-bold text-lg">${finalizeResult.invoiceTotal.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">{finalizeResult.supplierName}</p>
+                  {finalizeResults.map((r, i) => (
+                    <div key={i} className="grid gap-3 md:grid-cols-4">
+                      <div className="p-4 rounded-lg border bg-muted/30 text-center">
+                        <p className="text-xs text-muted-foreground mb-1">Supplier</p>
+                        <p className="font-bold">{r.supplierName}</p>
+                      </div>
+                      <div className="p-4 rounded-lg border bg-muted/30 text-center">
+                        <p className="text-xs text-muted-foreground mb-1">Purchase Order</p>
+                        <p className="font-bold font-mono">{r.poNumber || '—'}</p>
+                      </div>
+                      <div className="p-4 rounded-lg border bg-muted/30 text-center">
+                        <p className="text-xs text-muted-foreground mb-1">Goods Received Note</p>
+                        <p className="font-bold font-mono">{r.grnNumber || '—'}</p>
+                      </div>
+                      <div className="p-4 rounded-lg border bg-muted/30 text-center">
+                        <p className="text-xs text-muted-foreground mb-1">AP Amount</p>
+                        <p className="font-bold">${r.invoiceTotal.toFixed(2)}</p>
+                      </div>
                     </div>
-                    <div className="p-4 rounded-lg border bg-muted/30 text-center">
-                      <p className="text-xs text-muted-foreground mb-1">Purchase Order</p>
-                      <p className="font-bold font-mono">{finalizeResult.poNumber || '—'}</p>
-                    </div>
-                    <div className="p-4 rounded-lg border bg-muted/30 text-center">
-                      <p className="text-xs text-muted-foreground mb-1">Goods Received Note</p>
-                      <p className="font-bold font-mono">{finalizeResult.grnNumber || '—'}</p>
-                    </div>
-                    <div className="p-4 rounded-lg border bg-muted/30 text-center">
-                      <p className="text-xs text-muted-foreground mb-1">Status</p>
-                      <Badge className="mt-1">Outstanding</Badge>
-                    </div>
-                  </div>
+                  ))}
 
                   <Alert>
                     <CheckCircle className="h-4 w-4" />
                     <AlertTitle>What was created</AlertTitle>
                     <AlertDescription>
                       <ul className="list-disc list-inside mt-1 space-y-1 text-sm">
-                        <li>AP entry for <strong>{finalizeResult.supplierName}</strong> — ${finalizeResult.invoiceTotal.toFixed(2)} due in 30 days</li>
-                        <li>Purchase Order <strong>{finalizeResult.poNumber}</strong> with line items for each device</li>
-                        <li>Goods Received Note <strong>{finalizeResult.grnNumber}</strong> — all items marked as received</li>
+                        {finalizeResults.map((r, i) => (
+                          <li key={i}>
+                            <strong>{r.supplierName}</strong> — PO {r.poNumber}, GRN {r.grnNumber}, AP ${r.invoiceTotal.toFixed(2)} due in 30 days
+                          </li>
+                        ))}
+                        <li>Journal entries posted (Dr. Inventory + Dr. GST/HST → Cr. AP)</li>
                         <li>Batch locked — devices cannot be re-imported</li>
                       </ul>
                     </AlertDescription>
@@ -1284,134 +1306,133 @@ export default function Import() {
               </Card>
             )}
 
-            {/* Pre-finalization review form */}
-            {!finalizeResult && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
-                    Review & Finalize — Create Accounts Payable
-                  </CardTitle>
-                  <CardDescription>
-                    Match to supplier invoice, add shipping/charges. Finalizing will create AP, PO, and GRN and lock this batch.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {(() => {
-                    const summary = getImportedSummary();
-                    const shipping = parseFloat(shippingCost) || 0;
-                    const other = parseFloat(otherCharges) || 0;
-                    const invoiceTotal = summary.subtotal + summary.estimatedTax + shipping + other;
+            {/* Pre-finalization: Editable PO drafts per supplier */}
+            {finalizeResults.length === 0 && (
+              <div className="space-y-6">
+                <Alert>
+                  <FileSpreadsheet className="h-4 w-4" />
+                  <AlertTitle>Review Purchase Order Drafts</AlertTitle>
+                  <AlertDescription>
+                    Each supplier gets a separate editable PO draft below. Adjust line items, add shipping/charges, and enter the supplier invoice number so the PO matches their invoice exactly. Finalizing creates PO, GRN, AP, and journal entries for each supplier.
+                  </AlertDescription>
+                </Alert>
 
-                    return (
-                      <>
-                        {/* Import summary banner */}
-                        <Alert>
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertTitle>{summary.totalItems} devices imported successfully</AlertTitle>
-                          <AlertDescription>
-                            Complete the fields below to generate the AP entry, Purchase Order, and Goods Received Note.
-                          </AlertDescription>
-                        </Alert>
+                {poDrafts.map((draft) => {
+                  const subtotal = draft.items.reduce((s, i) => s + i.unitCost * i.quantity, 0);
+                  const gstTotal = draft.items.reduce((s, i) => s + i.gstHstAmount, 0);
+                  const shipping = parseFloat(draft.shippingCost) || 0;
+                  const other = parseFloat(draft.otherCharges) || 0;
+                  const invoiceTotal = subtotal + gstTotal + shipping + other;
 
-                        {/* Summary by supplier */}
-                        <div className="space-y-3">
-                          <h3 className="font-semibold">Items by Supplier</h3>
-                          <div className="grid gap-2">
-                            {Array.from(summary.supplierGroups.entries()).map(([code, info]) => (
-                              <div key={code} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
-                                <div>
-                                  <span className="font-mono text-primary font-semibold">S-{code}</span>
-                                  <span className="ml-2 text-muted-foreground">{info.name}</span>
-                                </div>
-                                <div className="text-right">
-                                  <span className="text-sm text-muted-foreground">{info.count} items</span>
-                                  <span className="ml-4 font-semibold">${info.subtotal.toFixed(2)}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Tax breakdown */}
-                        {(summary.taxIncludedCount + summary.zeroRatedCount + summary.gstPaidCount + summary.hstPaidCount) > 0 && (
-                          <div className="space-y-2">
-                            <h3 className="font-semibold">Tax Breakdown</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                              {summary.taxIncludedCount > 0 && (
-                                <div className="p-3 rounded-lg border text-center">
-                                  <p className="text-xs text-muted-foreground">Tax Included</p>
-                                  <p className="font-semibold">{summary.taxIncludedCount} items</p>
-                                </div>
-                              )}
-                              {summary.zeroRatedCount > 0 && (
-                                <div className="p-3 rounded-lg border text-center">
-                                  <p className="text-xs text-muted-foreground">Zero-Rated (GST implied)</p>
-                                  <p className="font-semibold">{summary.zeroRatedCount} items</p>
-                                </div>
-                              )}
-                              {summary.gstPaidCount > 0 && (
-                                <div className="p-3 rounded-lg border text-center">
-                                  <p className="text-xs text-muted-foreground">GST Paid</p>
-                                  <p className="font-semibold">{summary.gstPaidCount} items</p>
-                                </div>
-                              )}
-                              {summary.hstPaidCount > 0 && (
-                                <div className="p-3 rounded-lg border text-center">
-                                  <p className="text-xs text-muted-foreground">HST Paid</p>
-                                  <p className="font-semibold">{summary.hstPaidCount} items</p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
+                  return (
+                    <Card key={draft.supplierCode} className="border-primary/20">
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <span className="flex items-center gap-2">
+                            <Building2 className="h-5 w-5" />
+                            PO Draft — {draft.supplierName}
+                            <Badge variant="outline" className="font-mono">S-{draft.supplierCode}</Badge>
+                          </span>
+                          <span className="text-sm font-normal text-muted-foreground">{draft.items.length} items</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
                         {/* Invoice matching fields */}
-                        <div className="space-y-3">
-                          <h3 className="font-semibold">Invoice Matching</h3>
-                          <div className="grid gap-4 md:grid-cols-3">
-                            <div className="space-y-2">
-                              <Label>Supplier Invoice Number</Label>
-                              <Input
-                                value={reviewInvoiceNumber}
-                                onChange={(e) => setReviewInvoiceNumber(e.target.value)}
-                                placeholder="INV-2026-001"
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Shipping Cost ($)</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={shippingCost}
-                                onChange={(e) => setShippingCost(e.target.value)}
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Other Charges ($)</Label>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={otherCharges}
-                                onChange={(e) => setOtherCharges(e.target.value)}
-                              />
-                            </div>
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <div className="space-y-2">
+                            <Label>Supplier Invoice #</Label>
+                            <Input
+                              value={draft.invoiceNumber}
+                              onChange={(e) => updateDraft(draft.supplierCode, { invoiceNumber: e.target.value })}
+                              placeholder="INV-2026-001"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Shipping Cost ($)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={draft.shippingCost}
+                              onChange={(e) => updateDraft(draft.supplierCode, { shippingCost: e.target.value })}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Other Charges ($)</Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={draft.otherCharges}
+                              onChange={(e) => updateDraft(draft.supplierCode, { otherCharges: e.target.value })}
+                            />
                           </div>
                         </div>
 
-                        {/* Invoice total summary */}
+                        {/* Editable line items */}
+                        <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="min-w-[200px]">Description</TableHead>
+                                <TableHead className="w-40">IMEI/Serial</TableHead>
+                                <TableHead className="w-28">Unit Cost</TableHead>
+                                <TableHead className="w-28">GST/HST</TableHead>
+                                <TableHead className="w-28 text-right">Line Total</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {draft.items.map((item, idx) => (
+                                <TableRow key={idx}>
+                                  <TableCell>
+                                    <Input
+                                      value={item.description}
+                                      onChange={(e) => updateDraftItem(draft.supplierCode, idx, { description: e.target.value })}
+                                      className="h-8 text-sm"
+                                    />
+                                  </TableCell>
+                                  <TableCell className="font-mono text-xs text-muted-foreground">
+                                    {item.imei || '—'}
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      value={item.unitCost}
+                                      onChange={(e) => updateDraftItem(draft.supplierCode, idx, { unitCost: parseFloat(e.target.value) || 0 })}
+                                      className="h-8 text-sm"
+                                    />
+                                  </TableCell>
+                                  <TableCell>
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      value={item.gstHstAmount}
+                                      onChange={(e) => updateDraftItem(draft.supplierCode, idx, { gstHstAmount: parseFloat(e.target.value) || 0 })}
+                                      className="h-8 text-sm"
+                                    />
+                                  </TableCell>
+                                  <TableCell className="text-right font-semibold text-sm">
+                                    ${(item.unitCost + item.gstHstAmount).toFixed(2)}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+
+                        {/* Totals */}
                         <div className="p-4 rounded-lg border-2 border-primary/30 bg-primary/5 space-y-2">
-                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">AP Entry Preview</p>
                           <div className="flex justify-between text-sm">
-                            <span>Subtotal ({summary.totalItems} items)</span>
-                            <span>${summary.subtotal.toFixed(2)}</span>
+                            <span>Subtotal ({draft.items.length} items)</span>
+                            <span>${subtotal.toFixed(2)}</span>
                           </div>
-                          {summary.estimatedTax > 0 && (
+                          {gstTotal > 0 && (
                             <div className="flex justify-between text-sm">
-                              <span>Estimated Tax (GST/HST)</span>
-                              <span>${summary.estimatedTax.toFixed(2)}</span>
+                              <span>GST/HST</span>
+                              <span>${gstTotal.toFixed(2)}</span>
                             </div>
                           )}
                           {shipping > 0 && (
@@ -1427,48 +1448,49 @@ export default function Import() {
                             </div>
                           )}
                           <div className="flex justify-between font-bold text-lg pt-2 border-t">
-                            <span>Invoice Total (AP Amount)</span>
+                            <span>Invoice Total (PO Amount)</span>
                             <span>${invoiceTotal.toFixed(2)}</span>
                           </div>
                         </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
 
-                        {/* What will be created */}
-                        <Alert>
-                          <Info className="h-4 w-4" />
-                          <AlertTitle>On finalization, the following will be created:</AlertTitle>
-                          <AlertDescription>
-                            <ul className="list-disc list-inside mt-1 space-y-1 text-sm">
-                              <li><strong>Accounts Payable</strong> — ${invoiceTotal.toFixed(2)} due in 30 days</li>
-                              <li><strong>Purchase Order</strong> — with line items and tax per device</li>
-                              <li><strong>Goods Received Note</strong> — all items marked as received</li>
-                              <li>Batch will be <strong>locked</strong> — no further changes</li>
-                            </ul>
-                          </AlertDescription>
-                        </Alert>
+                {/* What will be created + Finalize */}
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>On finalization, the following will be created per supplier:</AlertTitle>
+                  <AlertDescription>
+                    <ul className="list-disc list-inside mt-1 space-y-1 text-sm">
+                      <li><strong>Purchase Order</strong> — with line items matching the supplier invoice</li>
+                      <li><strong>Goods Received Note</strong> — all items marked as received</li>
+                      <li><strong>Accounts Payable</strong> — invoice total due in 30 days</li>
+                      <li><strong>Journal Entry</strong> — Dr. Inventory + Dr. GST/HST → Cr. AP</li>
+                      <li>Batch will be <strong>locked</strong> — no further changes</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
 
-                        <div className="flex gap-4">
-                          <Button variant="outline" onClick={() => setStep('results')}>
-                            Back to Results
-                          </Button>
-                          <Button onClick={handleFinalizeAP} disabled={isFinalizingAP} size="lg">
-                            {isFinalizingAP ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
-                                Finalizing...
-                              </>
-                            ) : (
-                              <>
-                                <DollarSign className="h-4 w-4 mr-2" />
-                                Finalize & Create AP
-                              </>
-                            )}
-                          </Button>
-                        </div>
+                <div className="flex gap-4">
+                  <Button variant="outline" onClick={() => setStep('results')}>
+                    Back to Results
+                  </Button>
+                  <Button onClick={handleFinalizeAP} disabled={isFinalizingAP} size="lg">
+                    {isFinalizingAP ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground mr-2" />
+                        Finalizing...
                       </>
-                    );
-                  })()}
-                </CardContent>
-              </Card>
+                    ) : (
+                      <>
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        Finalize All POs & Create AP
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
             )}
           </>
         )}
