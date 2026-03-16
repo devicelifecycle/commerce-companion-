@@ -97,6 +97,8 @@ interface PODraft {
   invoiceNumber: string;
   shippingCost: string;
   otherCharges: string;
+  paymentMethod: string;
+  paymentDate: string;
   items: PODraftItem[];
 }
 
@@ -577,6 +579,8 @@ export default function Import() {
           invoiceNumber: '',
           shippingCost: '0',
           otherCharges: '0',
+          paymentMethod: '',
+          paymentDate: '',
           items: [],
         });
       }
@@ -695,10 +699,11 @@ export default function Import() {
         });
 
         // Create AP record
+        const isPaid = !!draft.paymentMethod && !!draft.paymentDate;
         const dueDate = new Date();
         dueDate.setDate(dueDate.getDate() + 30);
 
-        await supabase.from('accounts_payable').insert({
+        const { data: apRecord } = await supabase.from('accounts_payable').insert({
           company_id: batchInfo.company_id,
           vendor_name: draft.supplierName,
           vendor_id: draft.supplierId,
@@ -706,13 +711,36 @@ export default function Import() {
           bill_date: new Date().toISOString().split('T')[0],
           due_date: dueDate.toISOString().split('T')[0],
           original_amount: invoiceTotal,
+          paid_amount: isPaid ? invoiceTotal : 0,
+          balance_due: isPaid ? 0 : invoiceTotal,
           gst_hst_amount: gstTotal,
           pst_amount: 0,
           category: 'inventory_purchase',
           description: `Inventory purchase — ${draft.items.length} devices`,
-          status: 'outstanding',
+          status: isPaid ? 'paid' : 'outstanding',
           created_by: user?.id,
-        });
+        }).select('id').single();
+
+        // If paid immediately, record AP payment and mark PO as paid
+        if (isPaid && apRecord) {
+          await supabase.from('ap_payments').insert({
+            accounts_payable_id: apRecord.id,
+            amount: invoiceTotal,
+            payment_date: draft.paymentDate,
+            payment_method: draft.paymentMethod,
+            notes: `Paid on import — ${draft.paymentMethod}`,
+            created_by: user?.id,
+          });
+
+          await supabase
+            .from('purchase_orders')
+            .update({
+              payment_status: 'paid',
+              payment_date: draft.paymentDate,
+              payment_method: draft.paymentMethod,
+            })
+            .eq('id', purchaseOrder.id);
+        }
 
         // Journal entry: Dr. Inventory + Dr. GST/HST → Cr. AP
         try {
@@ -1368,6 +1396,47 @@ export default function Import() {
                             />
                           </div>
                         </div>
+
+                        {/* Payment fields */}
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label>Payment Method <span className="text-xs text-muted-foreground">(leave empty if unpaid)</span></Label>
+                            <Select
+                              value={draft.paymentMethod || 'none'}
+                              onValueChange={(val) => updateDraft(draft.supplierCode, { paymentMethod: val === 'none' ? '' : val })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Unpaid — will create AP" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Unpaid — will create AP</SelectItem>
+                                <SelectItem value="Cash">Cash</SelectItem>
+                                <SelectItem value="E-Transfer">E-Transfer</SelectItem>
+                                <SelectItem value="Wire Transfer">Wire Transfer</SelectItem>
+                                <SelectItem value="Credit Card">Credit Card</SelectItem>
+                                <SelectItem value="Debit Card">Debit Card</SelectItem>
+                                <SelectItem value="Cheque">Cheque</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Payment Date</Label>
+                            <Input
+                              type="date"
+                              value={draft.paymentDate}
+                              onChange={(e) => updateDraft(draft.supplierCode, { paymentDate: e.target.value })}
+                              disabled={!draft.paymentMethod}
+                            />
+                          </div>
+                        </div>
+                        {draft.paymentMethod && (
+                          <Alert>
+                            <CheckCircle className="h-4 w-4" />
+                            <AlertDescription className="text-sm">
+                              This PO will be marked as <strong>Paid</strong> via {draft.paymentMethod}. The AP entry will be created and immediately closed.
+                            </AlertDescription>
+                          </Alert>
+                        )}
 
                         {/* Editable line items */}
                         <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
