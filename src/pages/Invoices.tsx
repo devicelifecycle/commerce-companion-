@@ -650,7 +650,7 @@ export default function Invoices() {
                   </TableRow>
                 ) : (
                   filteredInvoices.map((invoice) => {
-                    const config = STATUS_CONFIG[invoice.status] || STATUS_CONFIG.draft;
+                    const config = STATUS_CONFIG[invoice.status] || STATUS_CONFIG.sent;
                     const code = getCompanyCode(invoice.company_id);
                     return (
                       <TableRow key={invoice.id}>
