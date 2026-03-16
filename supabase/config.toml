@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.sync-marketplace-payouts]
 verify_jwt = false
+
+[functions.temu-webhook]
+verify_jwt = false
