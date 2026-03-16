@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -10,7 +11,11 @@ import { Button } from '@/components/ui/button';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Search, Download, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, Download, ChevronDown, ChevronRight, Trash2 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { GoodsReceivedGuide } from '@/components/guides/GoodsReceivedGuide';
 import { useTableSelection } from '@/hooks/useTableSelection';
@@ -85,6 +90,25 @@ export default function GoodsReceived() {
     }
   };
 
+  const deleteGRN = async (id: string) => {
+    try {
+      await supabase.from('grn_items').delete().eq('grn_id', id);
+      const { error } = await supabase.from('goods_received_notes').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('GRN deleted');
+      loadGrns();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete GRN');
+    }
+  };
+
+  const deleteSelectedGRNs = async () => {
+    for (const id of selectedIds) {
+      await deleteGRN(id);
+    }
+    clear();
+  };
+
   const exportCsv = () => {
     const rows = selectedItems.length > 0 ? selectedItems : filtered;
     const csv = [
@@ -143,13 +167,14 @@ export default function GoodsReceived() {
                   <TableHead>Received Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Notes</TableHead>
+                  <TableHead className="w-10">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No GRNs found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No GRNs found</TableCell></TableRow>
                 ) : filtered.map(g => (
                   <Collapsible key={g.id} asChild open={expandedId === g.id} onOpenChange={() => toggleExpand(g.id)}>
                     <>
@@ -166,10 +191,31 @@ export default function GoodsReceived() {
                         <TableCell>{format(new Date(g.received_date), 'MMM d, yyyy')}</TableCell>
                         <TableCell><Badge variant={g.status === 'completed' ? 'default' : 'secondary'} className="capitalize">{g.status}</Badge></TableCell>
                         <TableCell className="text-muted-foreground text-sm truncate max-w-[200px]">{g.notes || '—'}</TableCell>
+                        <TableCell>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete">
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete GRN {g.grn_number}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete this GRN and its items. This cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteGRN(g.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TableCell>
                       </TableRow>
                       <CollapsibleContent asChild>
                         <TableRow className="bg-muted/30">
-                          <TableCell colSpan={6} className="p-4">
+                          <TableCell colSpan={7} className="p-4">
                             <div className="text-sm font-medium mb-2">Received Items</div>
                             {!grnItems[g.id] ? (
                               <p className="text-muted-foreground text-sm">Loading items...</p>
@@ -211,7 +257,10 @@ export default function GoodsReceived() {
         </Card>
 
         <BatchActionBar count={selectedIds.size} onClear={clear}
-          actions={[{ label: 'Export Selected', icon: <Download className="h-4 w-4" />, onClick: exportCsv }]}
+          actions={[
+            { label: 'Export Selected', icon: <Download className="h-4 w-4" />, onClick: exportCsv },
+            { label: 'Delete Selected', icon: <Trash2 className="h-4 w-4" />, onClick: deleteSelectedGRNs, variant: 'destructive' as const },
+          ]}
         />
       </div>
     </DashboardLayout>

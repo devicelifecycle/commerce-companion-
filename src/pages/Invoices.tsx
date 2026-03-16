@@ -13,7 +13,11 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, FileText, Clock, CheckCircle, AlertCircle, Send, Eye, Download, Search, X } from 'lucide-react';
+import { Plus, FileText, Clock, CheckCircle, AlertCircle, Send, Eye, Download, Search, X, Trash2 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { InvoicesGuide } from '@/components/guides/InvoicesGuide';
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { format } from 'date-fns';
@@ -165,22 +169,118 @@ export default function Invoices() {
       const { error } = await supabase.from('invoices').update(updateData).eq('id', id);
       if (error) throw error;
 
+      const invoice = invoices.find(i => i.id === id);
+
       // If marked paid, update AR
-      if (status === 'paid') {
-        const invoice = invoices.find(i => i.id === id);
-        if (invoice) {
-          await supabase
-            .from('accounts_receivable')
-            .update({ status: 'paid', paid_amount: invoice.total, balance_due: 0 })
-            .eq('invoice_id', id);
+      if (status === 'paid' && invoice) {
+        await supabase
+          .from('accounts_receivable')
+          .update({ status: 'paid', paid_amount: invoice.total, balance_due: 0 })
+          .eq('invoice_id', id);
+      }
+
+      // If cancelled, reverse AR and void journal entries
+      if (status === 'cancelled' && invoice) {
+        // Cancel AR record
+        await supabase
+          .from('accounts_receivable')
+          .update({ status: 'cancelled', balance_due: 0, notes: `Cancelled - Invoice ${invoice.invoice_number}` })
+          .eq('invoice_id', id);
+
+        // Void related journal entries
+        const { data: journalEntries } = await supabase
+          .from('journal_entries')
+          .select('id')
+          .eq('reference_id', id)
+          .eq('reference_type', 'sale');
+
+        if (journalEntries && journalEntries.length > 0) {
+          for (const je of journalEntries) {
+            // Reverse account balances
+            const { data: lines } = await supabase
+              .from('journal_entry_lines')
+              .select('account_id, debit_amount, credit_amount')
+              .eq('journal_entry_id', je.id);
+
+            if (lines) {
+              for (const line of lines) {
+                const { data: account } = await supabase
+                  .from('chart_of_accounts')
+                  .select('current_balance, normal_balance')
+                  .eq('id', line.account_id)
+                  .single();
+
+                if (account) {
+                  const debit = Number(line.debit_amount || 0);
+                  const credit = Number(line.credit_amount || 0);
+                  const current = Number(account.current_balance || 0);
+                  // Reverse: subtract what was added
+                  const newBalance = account.normal_balance === 'debit'
+                    ? current - debit + credit
+                    : current - credit + debit;
+
+                  await supabase
+                    .from('chart_of_accounts')
+                    .update({ current_balance: newBalance })
+                    .eq('id', line.account_id);
+                }
+              }
+            }
+
+            // Mark journal entry as voided
+            await supabase
+              .from('journal_entries')
+              .update({ status: 'voided', description: `[VOIDED] ` })
+              .eq('id', je.id);
+          }
         }
       }
 
-      toast.success('Invoice updated');
+      toast.success(status === 'cancelled' ? 'Invoice cancelled — AR reversed and journal entries voided' : 'Invoice updated');
       fetchInvoices();
     } catch (error) {
       console.error('Error updating invoice:', error);
       toast.error('Failed to update invoice');
+    }
+  };
+
+  const deleteInvoice = async (id: string) => {
+    try {
+      const invoice = invoices.find(i => i.id === id);
+      
+      // First cancel to reverse accounting if not already cancelled
+      if (invoice && invoice.status !== 'cancelled') {
+        await updateStatus(id, 'cancelled');
+      }
+
+      // Delete invoice items first (FK constraint)
+      await supabase.from('invoice_items').delete().eq('invoice_id', id);
+      
+      // Delete AR records
+      await supabase.from('accounts_receivable').delete().eq('invoice_id', id);
+
+      // Delete journal entry lines and entries
+      const { data: journalEntries } = await supabase
+        .from('journal_entries')
+        .select('id')
+        .eq('reference_id', id);
+
+      if (journalEntries) {
+        for (const je of journalEntries) {
+          await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', je.id);
+          await supabase.from('journal_entries').delete().eq('id', je.id);
+        }
+      }
+
+      // Delete the invoice
+      const { error } = await supabase.from('invoices').delete().eq('id', id);
+      if (error) throw error;
+
+      toast.success(`Invoice ${invoice?.invoice_number} deleted`);
+      fetchInvoices();
+    } catch (error: any) {
+      console.error('Error deleting invoice:', error);
+      toast.error(error.message || 'Failed to delete invoice');
     }
   };
 
@@ -372,6 +472,27 @@ export default function Invoices() {
                                 <SelectItem value="cancelled">Cancelled</SelectItem>
                               </SelectContent>
                             </Select>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete">
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Invoice {invoice.invoice_number}?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently delete this invoice, reverse all accounting entries (AR, journal entries), and cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deleteInvoice(invoice.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                         </TableCell>
                       </TableRow>

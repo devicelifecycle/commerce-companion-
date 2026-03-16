@@ -13,12 +13,17 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Search, Download, Plus, ClipboardList, Filter, X } from 'lucide-react';
+import { Search, Download, Plus, ClipboardList, Filter, X, Trash2 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { PurchaseOrdersGuide } from '@/components/guides/PurchaseOrdersGuide';
 import { CreatePurchaseOrderDialog } from '@/components/procurement/CreatePurchaseOrderDialog';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
 import { MetricCard } from '@/components/ui/metric-card';
+import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -101,6 +106,28 @@ export default function PurchaseOrders() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'purchase-orders.csv'; a.click();
+  };
+
+  const deletePO = async (id: string) => {
+    try {
+      // Delete PO items first
+      await supabase.from('purchase_order_items').delete().eq('purchase_order_id', id);
+      // Delete related AP if any
+      // Delete the PO
+      const { error } = await supabase.from('purchase_orders').delete().eq('id', id);
+      if (error) throw error;
+      toast.success('Purchase order deleted');
+      loadOrders();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete PO');
+    }
+  };
+
+  const deleteSelectedPOs = async () => {
+    for (const id of selectedIds) {
+      await deletePO(id);
+    }
+    clear();
   };
 
   const fmtCurrency = (v: number) =>
@@ -197,13 +224,14 @@ export default function PurchaseOrders() {
                   <TableHead>Status</TableHead>
                   <TableHead>Payment</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                  <TableHead className="w-10">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
                 ) : filtered.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No purchase orders found</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No purchase orders found</TableCell></TableRow>
                 ) : filtered.map(o => (
                   <TableRow key={o.id}>
                     <TableCell><Checkbox checked={selectedIds.has(o.id)} onCheckedChange={() => toggle(o.id)} /></TableCell>
@@ -214,6 +242,27 @@ export default function PurchaseOrders() {
                     <TableCell><Badge variant={statusColor(o.status)} className="capitalize">{o.status}</Badge></TableCell>
                     <TableCell><Badge variant={o.payment_status === 'paid' ? 'default' : 'secondary'} className="capitalize">{o.payment_status}</Badge></TableCell>
                     <TableCell className="text-right font-mono">{fmtCurrency(o.total_amount)}</TableCell>
+                    <TableCell>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete PO {o.po_number}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete this purchase order and its line items. This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => deletePO(o.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -224,6 +273,7 @@ export default function PurchaseOrders() {
         <BatchActionBar count={selectedIds.size} onClear={clear}
           actions={[
             { label: 'Export Selected', icon: <Download className="h-4 w-4" />, onClick: exportCsv },
+            { label: 'Delete Selected', icon: <Trash2 className="h-4 w-4" />, onClick: deleteSelectedPOs, variant: 'destructive' as const },
           ]}
         />
 
