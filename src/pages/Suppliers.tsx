@@ -329,8 +329,6 @@ export default function Suppliers() {
             </SelectContent>
           </Select>
         </div>
-          />
-        </div>
         <div className="space-y-2">
           <Label htmlFor="postal_code">Postal Code</Label>
           <Input
