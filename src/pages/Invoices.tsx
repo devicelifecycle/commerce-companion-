@@ -226,7 +226,7 @@ export default function Invoices() {
         subtotal: source.subtotal,
         tax_amount: source.tax_amount,
         total: source.total,
-        status: 'draft' as any,
+        status: 'sent' as any,
         issue_date: new Date().toISOString().split('T')[0],
         due_date: dueDate.toISOString().split('T')[0],
         notes: source.notes,
