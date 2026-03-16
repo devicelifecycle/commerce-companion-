@@ -1006,18 +1006,22 @@ export default function Invoices() {
                 <div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span>{formatCurrency(Number(viewInvoice.tax_amount))}</span></div>
                 <Separator />
                 <div className="flex justify-between font-bold text-base"><span>Total</span><span>{formatCurrency(Number(viewInvoice.total))}</span></div>
-                {viewAR && (
-                  <>
-                    <div className="flex justify-between text-success"><span>Paid</span><span>{formatCurrency(Number(viewAR.paid_amount || 0))}</span></div>
-                    <Separator />
-                    <div className="flex justify-between font-bold text-base">
-                      <span>Balance Remaining</span>
-                      <span className={Number(viewAR.balance_due || 0) > 0 ? 'text-warning' : 'text-success'}>
-                        {formatCurrency(Number(viewAR.balance_due || 0))}
-                      </span>
-                    </div>
-                  </>
-                )}
+                {viewAR && (() => {
+                  const paidAmount = Number(viewAR.paid_amount || 0);
+                  const balanceRemaining = Math.max(0, Number(viewAR.original_amount || viewInvoice.total) - paidAmount);
+                  return (
+                    <>
+                      <div className="flex justify-between text-success"><span>Paid</span><span>{formatCurrency(paidAmount)}</span></div>
+                      <Separator />
+                      <div className="flex justify-between font-bold text-base">
+                        <span>Balance Remaining</span>
+                        <span className={balanceRemaining > 0 ? 'text-warning' : 'text-success'}>
+                          {formatCurrency(balanceRemaining)}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Payment History */}
