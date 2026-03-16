@@ -258,7 +258,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
         source_reference: invoiceNumber,
         customer_name: customerName.trim(),
         original_amount: Math.round(calculations.grandTotal * 100) / 100,
-        balance_due: Math.round(calculations.grandTotal * 100) / 100,
+        paid_amount: 0,
         due_date: dueDate.toISOString().split('T')[0],
         status: 'outstanding',
       });

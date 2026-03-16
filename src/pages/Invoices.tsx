@@ -149,6 +149,7 @@ export default function Invoices() {
       }
       const [invoiceRes, arRes] = await Promise.all([invoiceQuery, arQuery]);
       if (invoiceRes.error) throw invoiceRes.error;
+      if (arRes.error) throw arRes.error;
 
       const fetched = (invoiceRes.data || []) as Invoice[];
       const arData = (arRes.data || []) as ARRecord[];
@@ -177,24 +178,28 @@ export default function Invoices() {
 
   const getDisplayStatus = useCallback((invoice: Invoice): DisplayStatus => {
     if (invoice.status === 'cancelled') return 'cancelled';
-    if (invoice.status === 'paid') return 'paid';
+
     const ar = arRecords.find(a => a.invoice_id === invoice.id);
-    const paidAmount = Number(ar?.paid_amount || 0);
+    const paidAmount = Number(ar?.paid_amount ?? 0);
     const invoiceTotal = Number(invoice.total);
+
     if (paidAmount >= invoiceTotal - 0.01) return 'paid';
+
     const today = new Date().toISOString().split('T')[0];
     if (paidAmount > 0) {
-      if (invoice.due_date < today) return 'overdue';
-      return 'partially_paid';
+      return invoice.due_date < today ? 'overdue' : 'partially_paid';
     }
-    if (invoice.due_date < today || invoice.status === 'overdue') return 'overdue';
-    return 'outstanding';
+
+    return invoice.due_date < today ? 'overdue' : 'outstanding';
   }, [arRecords]);
 
   const getBalanceRemaining = useCallback((invoice: Invoice): number => {
     const ar = arRecords.find(a => a.invoice_id === invoice.id);
-    if (ar) return Math.max(0, Number(ar.balance_due ?? ar.original_amount));
-    return Number(invoice.total);
+    if (!ar) return Number(invoice.total);
+
+    const originalAmount = Number(ar.original_amount ?? invoice.total);
+    const paidAmount = Number(ar.paid_amount ?? 0);
+    return Math.max(0, originalAmount - paidAmount);
   }, [arRecords]);
 
   const getCompanyCode = (companyId: string | null) => {
@@ -373,7 +378,6 @@ export default function Invoices() {
           const isFullyPaid = newBalance <= 0.01;
           await supabase.from('accounts_receivable').update({
             original_amount: newTotal,
-            balance_due: newBalance,
             status: isFullyPaid ? 'paid' : paidAmount > 0 ? 'partially_paid' : 'outstanding',
           }).eq('id', ar.id);
 
@@ -534,10 +538,10 @@ export default function Invoices() {
       const invoiceTotal = Number(paymentInvoice.total);
 
       // Find or create AR record
-      let arRecord: { id: string; paid_amount: number | null } | null = null;
+      let arRecord: { id: string; paid_amount: number | null; original_amount: number } | null = null;
       const { data: existingAR } = await supabase
         .from('accounts_receivable')
-        .select('id, paid_amount, balance_due, original_amount')
+        .select('id, paid_amount, original_amount')
         .eq('invoice_id', paymentInvoice.id)
         .maybeSingle();
 
@@ -545,56 +549,79 @@ export default function Invoices() {
         arRecord = existingAR;
       } else {
         // Create AR record if missing
-        const { data: newAR, error: arErr } = await supabase.from('accounts_receivable').insert({
-          company_id: paymentInvoice.company_id,
-          invoice_id: paymentInvoice.id,
-          source_type: 'invoice',
-          source_reference: paymentInvoice.invoice_number,
-          customer_name: paymentInvoice.customer_name,
-          original_amount: invoiceTotal,
-          balance_due: invoiceTotal,
-          due_date: paymentInvoice.due_date,
-          status: 'outstanding',
-        }).select('id, paid_amount').single();
-        if (arErr) { console.error('Failed to create AR:', arErr); }
-        else { arRecord = newAR; }
-      }
+        const { data: newAR, error: arErr } = await supabase
+          .from('accounts_receivable')
+          .insert({
+            company_id: paymentInvoice.company_id,
+            invoice_id: paymentInvoice.id,
+            source_type: 'invoice',
+            source_reference: paymentInvoice.invoice_number,
+            customer_name: paymentInvoice.customer_name,
+            original_amount: invoiceTotal,
+            paid_amount: 0,
+            due_date: paymentInvoice.due_date,
+            status: 'outstanding',
+          })
+          .select('id, paid_amount, original_amount')
+          .single();
 
-      const previouslyPaid = Number(arRecord?.paid_amount || 0);
-      const newTotalPaid = previouslyPaid + amount;
-      const newBalance = invoiceTotal - newTotalPaid;
-      const isFullyPaid = newBalance <= 0.01;
-
-      if (arRecord) {
-        // Insert payment record
-        const { error: payErr } = await supabase.from('ar_payments').insert({
-          accounts_receivable_id: arRecord.id,
-          amount,
-          payment_date: paymentDate,
-          payment_method: paymentMethod,
-          notes: `Payment for Invoice ${paymentInvoice.invoice_number}`,
-          created_by: user?.id,
-        });
-        if (payErr) {
-          console.error('AR payment insert error:', payErr);
-          throw payErr;
+        if (arErr || !newAR) {
+          console.error('Failed to create AR:', arErr);
+          throw arErr || new Error('Unable to create AR record for this invoice');
         }
 
-        // Update AR balance
-        const { error: arUpdateErr } = await supabase.from('accounts_receivable').update({
+        arRecord = newAR;
+      }
+
+      const originalAmount = Number(arRecord.original_amount || invoiceTotal);
+      const previouslyPaid = Number(arRecord.paid_amount || 0);
+      const currentBalance = Math.max(0, originalAmount - previouslyPaid);
+
+      if (amount > currentBalance + 0.01) {
+        toast.error(`Payment exceeds balance (${formatCurrency(currentBalance)})`);
+        return;
+      }
+
+      const newTotalPaid = previouslyPaid + amount;
+      const newBalance = Math.max(0, originalAmount - newTotalPaid);
+      const isFullyPaid = newBalance <= 0.01;
+
+      // Insert payment record
+      const { error: payErr } = await supabase.from('ar_payments').insert({
+        accounts_receivable_id: arRecord.id,
+        amount,
+        payment_date: paymentDate,
+        payment_method: paymentMethod,
+        notes: `Payment for Invoice ${paymentInvoice.invoice_number}`,
+        created_by: user?.id,
+      });
+      if (payErr) {
+        console.error('AR payment insert error:', payErr);
+        throw payErr;
+      }
+
+      // Update AR paid amount/status (balance_due is generated by DB)
+      const { error: arUpdateErr } = await supabase
+        .from('accounts_receivable')
+        .update({
           paid_amount: newTotalPaid,
-          balance_due: Math.max(0, newBalance),
           status: isFullyPaid ? 'paid' : 'partially_paid',
-        }).eq('id', arRecord.id);
-        if (arUpdateErr) console.error('AR update error:', arUpdateErr);
+        })
+        .eq('id', arRecord.id);
+      if (arUpdateErr) {
+        console.error('AR update error:', arUpdateErr);
+        throw arUpdateErr;
       }
 
       // Update invoice status
-      const newStatus = isFullyPaid ? 'paid' : 'partially_paid';
-      const updateData: Record<string, any> = { status: newStatus };
-      if (isFullyPaid) updateData.paid_date = paymentDate;
+      const updateData: Record<string, any> = isFullyPaid
+        ? { status: 'paid', paid_date: paymentDate }
+        : { status: 'partially_paid', paid_date: null };
       const { error: invUpdateErr } = await supabase.from('invoices').update(updateData).eq('id', paymentInvoice.id);
-      if (invUpdateErr) console.error('Invoice update error:', invUpdateErr);
+      if (invUpdateErr) {
+        console.error('Invoice update error:', invUpdateErr);
+        throw invUpdateErr;
+      }
 
       // Journal entry: Dr. Cash / Cr. AR
       try {
@@ -653,7 +680,7 @@ export default function Invoices() {
 
       await supabase.from('invoices').update({ status: 'cancelled' as any }).eq('id', id);
       await supabase.from('accounts_receivable')
-        .update({ status: 'cancelled', balance_due: 0, notes: `Cancelled - Invoice ${invoice.invoice_number}` })
+        .update({ status: 'cancelled', notes: `Cancelled - Invoice ${invoice.invoice_number}` })
         .eq('invoice_id', id);
 
       const { data: journalEntries } = await supabase.from('journal_entries').select('id').eq('reference_id', id).eq('reference_type', 'sale');
@@ -980,26 +1007,34 @@ export default function Invoices() {
                 <div className="flex justify-between"><span className="text-muted-foreground">Tax</span><span>{formatCurrency(Number(viewInvoice.tax_amount))}</span></div>
                 <Separator />
                 <div className="flex justify-between font-bold text-base"><span>Total</span><span>{formatCurrency(Number(viewInvoice.total))}</span></div>
-                {viewAR && (
-                  <>
-                    <div className="flex justify-between text-success"><span>Paid</span><span>{formatCurrency(Number(viewAR.paid_amount || 0))}</span></div>
-                    <Separator />
-                    <div className="flex justify-between font-bold text-base">
-                      <span>Balance Remaining</span>
-                      <span className={Number(viewAR.balance_due || 0) > 0 ? 'text-warning' : 'text-success'}>
-                        {formatCurrency(Number(viewAR.balance_due || 0))}
-                      </span>
-                    </div>
-                  </>
-                )}
+                {viewAR && (() => {
+                  const paidAmount = Number(viewAR.paid_amount || 0);
+                  const balanceRemaining = Math.max(0, Number(viewAR.original_amount || viewInvoice.total) - paidAmount);
+                  return (
+                    <>
+                      <div className="flex justify-between text-success"><span>Paid</span><span>{formatCurrency(paidAmount)}</span></div>
+                      <Separator />
+                      <div className="flex justify-between font-bold text-base">
+                        <span>Balance Remaining</span>
+                        <span className={balanceRemaining > 0 ? 'text-warning' : 'text-success'}>
+                          {formatCurrency(balanceRemaining)}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
 
               {/* Payment History */}
-              {viewPayments.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <DollarSign className="h-3.5 w-3.5" /> Payment History
-                  </h4>
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <DollarSign className="h-3.5 w-3.5" /> Payment History
+                </h4>
+                {viewPayments.length === 0 ? (
+                  <div className="rounded-lg border border-border/50 bg-muted/20 p-3 text-xs text-muted-foreground">
+                    No payments recorded yet.
+                  </div>
+                ) : (
                   <div className="rounded-lg border border-border/50 overflow-hidden">
                     <Table>
                       <TableHeader>
@@ -1022,8 +1057,8 @@ export default function Invoices() {
                       </TableBody>
                     </Table>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {viewInvoice.notes && (
                 <div className="text-xs text-muted-foreground bg-muted/20 p-2 rounded"><strong>Notes:</strong> {viewInvoice.notes}</div>
