@@ -202,7 +202,7 @@ export default function Customers() {
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
       street_address: form.street_address.trim() || null,
-      city: form.city.trim() || null,
+      city: form.city.trim() ? toTitleCase(form.city) : null,
       province: form.province || null,
       postal_code: form.postal_code.trim() || null,
       country: form.country || 'Canada',

@@ -64,6 +64,22 @@ function formatShippingAddress(address: ShopifyOrder["shipping_address"]): strin
   return parts.join("\n");
 }
 
+function toTitleCase(str: string): string {
+  return str.trim().replace(/\s+/g, ' ')
+    .replace(/\b\w+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
+function parseStructuredAddress(address: ShopifyOrder["shipping_address"]) {
+  if (!address) return { street_address: null, city: null, province: null, postal_code: null, country: null };
+  return {
+    street_address: [address.address1, address.address2].filter(Boolean).join(', ') || null,
+    city: address.city ? toTitleCase(address.city) : null,
+    province: address.province || null,
+    postal_code: address.zip || null,
+    country: address.country || 'Canada',
+  };
+}
+
 async function upsertCustomer(
   supabase: any,
   customerName: string | null,
