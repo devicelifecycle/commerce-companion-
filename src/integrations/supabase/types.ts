@@ -3233,7 +3233,13 @@ export type Database = {
         | "marketplace_fees"
         | "telecommunications"
         | "genovation_ai"
-      invoice_status: "draft" | "sent" | "paid" | "overdue" | "cancelled"
+      invoice_status:
+        | "draft"
+        | "sent"
+        | "paid"
+        | "overdue"
+        | "cancelled"
+        | "partially_paid"
       marketplace: "shopify" | "amazon" | "bestbuy" | "other"
       tax_type:
         | "sales_tax_collected"
@@ -3390,7 +3396,14 @@ export const Constants = {
         "telecommunications",
         "genovation_ai",
       ],
-      invoice_status: ["draft", "sent", "paid", "overdue", "cancelled"],
+      invoice_status: [
+        "draft",
+        "sent",
+        "paid",
+        "overdue",
+        "cancelled",
+        "partially_paid",
+      ],
       marketplace: ["shopify", "amazon", "bestbuy", "other"],
       tax_type: [
         "sales_tax_collected",
