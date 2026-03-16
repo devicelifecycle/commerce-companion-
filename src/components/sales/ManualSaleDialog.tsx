@@ -22,6 +22,7 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { ShoppingBag, Plus, Trash2, Package } from 'lucide-react';
 import { DeviceSearchCombobox, DeviceOption } from '@/components/inventory/DeviceSearchCombobox';
+import { ProductSearchCombobox, ProductOption } from '@/components/inventory/ProductSearchCombobox';
 
 interface ManualSaleDialogProps {
   open: boolean;
@@ -36,8 +37,11 @@ interface LineItem {
   unit_price: number;
   device_id: string | null;
   device?: DeviceOption | null;
+  product_id: string | null;
+  product?: ProductOption | null;
   cost_price: number;
   tax_amount: number;
+  item_type: 'device' | 'product' | 'custom';
 }
 
 const orderSchema = z.object({
@@ -63,8 +67,11 @@ function newLineItem(): LineItem {
     unit_price: 0,
     device_id: null,
     device: null,
+    product_id: null,
+    product: null,
     cost_price: 0,
     tax_amount: 0,
+    item_type: 'custom',
   };
 }
 
@@ -113,14 +120,40 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
       updateLineItem(lineId, {
         device_id: device.id,
         device,
+        product_id: null,
+        product: null,
+        item_type: 'device',
         description: `${device.brand} ${device.model}${device.storage ? ` ${device.storage}` : ''}${device.color ? ` (${device.color})` : ''}`,
         cost_price: device.cost_price,
-        unit_price: device.cost_price, // Pre-fill, user can change
+        unit_price: device.cost_price,
       });
     } else {
       updateLineItem(lineId, {
         device_id: null,
         device: null,
+        item_type: 'custom',
+        cost_price: 0,
+      });
+    }
+  };
+
+  const handleProductSelect = (lineId: string, product: ProductOption | null) => {
+    if (product) {
+      updateLineItem(lineId, {
+        product_id: product.id,
+        product,
+        device_id: null,
+        device: null,
+        item_type: 'product',
+        description: product.name,
+        cost_price: product.cost_price,
+        unit_price: product.sale_price || product.cost_price,
+      });
+    } else {
+      updateLineItem(lineId, {
+        product_id: null,
+        product: null,
+        item_type: 'custom',
         cost_price: 0,
       });
     }
@@ -181,18 +214,28 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
         const saleItems = validItems.map(item => ({
           sale_id: sale.id,
           device_id: item.device_id,
+          product_id: item.product_id,
           description: item.description,
           quantity: item.quantity,
           unit_price: item.unit_price,
           cost_price: item.cost_price,
           tax_amount: item.tax_amount,
           total: item.quantity * item.unit_price,
-          sku: item.device?.sku || null,
+          sku: item.device?.sku || item.product?.sku || null,
           imei: item.device?.imei || null,
         }));
 
         const { error: itemsError } = await supabase.from('sale_items').insert(saleItems);
         if (itemsError) throw itemsError;
+
+        // Deduct product quantities
+        for (const item of validItems) {
+          if (item.product_id && item.product) {
+            await supabase.from('products').update({
+              quantity_on_hand: Math.max(0, item.product.quantity_on_hand - item.quantity),
+            }).eq('id', item.product_id);
+          }
+        }
       }
 
       toast.success(`Sale recorded with ${validItems.length} item(s)`);
@@ -305,16 +348,30 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                       )}
                     </div>
 
-                    {/* Device Search */}
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                    {/* Inventory Link */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground block">
                         Link to Inventory (Optional)
                       </label>
-                      <DeviceSearchCombobox
-                        value={item.device_id}
-                        onSelect={(device) => handleDeviceSelect(item.id, device)}
-                        excludeIds={linkedDeviceIds.filter(id => id !== item.device_id)}
-                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Device</span>
+                          <DeviceSearchCombobox
+                            value={item.device_id}
+                            onSelect={(device) => handleDeviceSelect(item.id, device)}
+                            excludeIds={linkedDeviceIds.filter(id => id !== item.device_id)}
+                            disabled={!!item.product_id}
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Product</span>
+                          <ProductSearchCombobox
+                            value={item.product_id}
+                            onSelect={(product) => handleProductSelect(item.id, product)}
+                            disabled={!!item.device_id}
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     {/* Description & Pricing */}

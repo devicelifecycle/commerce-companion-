@@ -15,6 +15,7 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 
 import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker';
+import { ProductsManagement } from '@/components/inventory/ProductsManagement';
 import { FBAFeeAnalytics } from '@/components/inventory/FBAFeeAnalytics';
 import { DeviceProcurementDialog } from '@/components/inventory/DeviceProcurementDialog';
 import { StatusBadge, ConditionBadge } from '@/components/ui/status-badge';
@@ -806,12 +807,16 @@ export default function Inventory() {
         <Tabs defaultValue="list" className="space-y-4">
           <TabsList>
             <TabsTrigger value="list" className="flex items-center gap-2">
-              <List className="h-4 w-4" />
-              All Devices
+              <Smartphone className="h-4 w-4" />
+              Devices
+            </TabsTrigger>
+            <TabsTrigger value="products" className="flex items-center gap-2">
+              <Boxes className="h-4 w-4" />
+              Products
             </TabsTrigger>
             {isSuperAdmin && (
               <TabsTrigger value="fba" className="flex items-center gap-2">
-                <Boxes className="h-4 w-4" />
+                <List className="h-4 w-4" />
                 FBA Management
               </TabsTrigger>
             )}
@@ -1043,6 +1048,10 @@ export default function Inventory() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="products">
+            <ProductsManagement canManage={canManage} />
           </TabsContent>
 
 
