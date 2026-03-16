@@ -213,7 +213,7 @@ export default function Customers() {
     };
 
     if (editing) {
-      const { error } = await supabase.from('customers').update(payload).eq('id', editing.id);
+      const { error } = await supabase.from('customers').update(payload as any).eq('id', editing.id);
       if (error) { toast.error('Failed to update customer'); return; }
       toast.success('Customer updated');
     } else {
