@@ -434,12 +434,14 @@ serve(async (req) => {
             .maybeSingle();
 
           if (existingLineOrder) {
-            // Backfill customer data on existing line-item sales
-            if (customerName || customerPhone || shippingAddress) {
-              const updates: any = {};
-              if (customerEmail) updates.customer_email = customerEmail;
-              if (shippingAddress) updates.shipping_address = shippingAddress;
-              if (customerName) updates.customer_name = customerName;
+            // Backfill customer data and product info on existing line-item sales
+            const updates: any = {};
+            if (customerEmail) updates.customer_email = customerEmail;
+            if (shippingAddress) updates.shipping_address = shippingAddress;
+            if (customerName) updates.customer_name = customerName;
+            if (lineItem.product_title) updates.product_title = lineItem.product_title;
+            if (lineItem.offer_sku) updates.marketplace_sku = lineItem.offer_sku;
+            if (Object.keys(updates).length > 0) {
               await supabase.from("sales").update(updates).eq("id", existingLineOrder.id);
             }
             continue;
