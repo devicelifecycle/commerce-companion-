@@ -679,6 +679,11 @@ export default function Invoices() {
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDuplicate(invoice)} title="Duplicate">
                               <Copy className="h-3.5 w-3.5" />
                             </Button>
+                            {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7 text-success hover:text-success" onClick={() => openPaymentDialog(invoice)} title="Record Payment">
+                                <CreditCard className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             <Select value={invoice.status} onValueChange={v => updateStatus(invoice.id, v as Invoice['status'])}>
                               <SelectTrigger className="w-[90px] h-7 text-xs">
                                 <SelectValue />
@@ -686,6 +691,7 @@ export default function Invoices() {
                               <SelectContent>
                                 <SelectItem value="draft">Draft</SelectItem>
                                 <SelectItem value="sent">Sent</SelectItem>
+                                <SelectItem value="partially_paid">Partial</SelectItem>
                                 <SelectItem value="paid">Paid</SelectItem>
                                 <SelectItem value="overdue">Overdue</SelectItem>
                                 <SelectItem value="cancelled">Cancelled</SelectItem>
