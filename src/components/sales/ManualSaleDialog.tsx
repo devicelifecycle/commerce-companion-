@@ -37,8 +37,11 @@ interface LineItem {
   unit_price: number;
   device_id: string | null;
   device?: DeviceOption | null;
+  product_id: string | null;
+  product?: ProductOption | null;
   cost_price: number;
   tax_amount: number;
+  item_type: 'device' | 'product' | 'custom';
 }
 
 const orderSchema = z.object({
