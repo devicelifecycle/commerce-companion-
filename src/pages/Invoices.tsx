@@ -1025,11 +1025,15 @@ export default function Invoices() {
               </div>
 
               {/* Payment History */}
-              {viewPayments.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                    <DollarSign className="h-3.5 w-3.5" /> Payment History
-                  </h4>
+              <div className="space-y-2">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                  <DollarSign className="h-3.5 w-3.5" /> Payment History
+                </h4>
+                {viewPayments.length === 0 ? (
+                  <div className="rounded-lg border border-border/50 bg-muted/20 p-3 text-xs text-muted-foreground">
+                    No payments recorded yet.
+                  </div>
+                ) : (
                   <div className="rounded-lg border border-border/50 overflow-hidden">
                     <Table>
                       <TableHeader>
@@ -1052,8 +1056,8 @@ export default function Invoices() {
                       </TableBody>
                     </Table>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
 
               {viewInvoice.notes && (
                 <div className="text-xs text-muted-foreground bg-muted/20 p-2 rounded"><strong>Notes:</strong> {viewInvoice.notes}</div>
