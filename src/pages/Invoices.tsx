@@ -557,6 +557,9 @@ export default function Invoices() {
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => downloadInvoicePdf(invoice.id)} title="Print/PDF">
                               <Download className="h-3.5 w-3.5" />
                             </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDuplicate(invoice)} title="Duplicate">
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
                             <Select value={invoice.status} onValueChange={v => updateStatus(invoice.id, v as Invoice['status'])}>
                               <SelectTrigger className="w-[90px] h-7 text-xs">
                                 <SelectValue />
