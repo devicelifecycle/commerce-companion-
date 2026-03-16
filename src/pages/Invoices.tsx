@@ -103,7 +103,7 @@ export default function Invoices() {
       if (error) throw error;
       const fetched = (data || []) as Invoice[];
 
-      // Auto-detect overdue: sent invoices past due date
+      // Auto-detect overdue: outstanding invoices past due date
       const today = new Date().toISOString().split('T')[0];
       const overdueIds: string[] = [];
       fetched.forEach(inv => {
