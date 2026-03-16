@@ -28,6 +28,8 @@ export interface SaleRecord {
   marketplace_status: string | null;
   is_marketplace_remitted?: boolean;
   accounting_status?: string | null;
+  product_title?: string | null;
+  marketplace_sku?: string | null;
   created_at: string;
   devices?: {
     brand: string;
