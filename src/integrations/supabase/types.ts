@@ -2124,15 +2124,20 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           customer_name: string | null
+          device_condition_on_return: string | null
           device_id: string | null
           id: string
           notes: string | null
           original_cost: number | null
+          outbound_tracking_number: string | null
           purchase_order_id: string | null
           reason: string
           refund_amount: number | null
           refund_date: string | null
           refund_method: string | null
+          repair_notes: string | null
+          replacement_device_id: string | null
+          resolution_type: string | null
           return_date: string
           return_type: string
           rma_number: string
@@ -2148,15 +2153,20 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           customer_name?: string | null
+          device_condition_on_return?: string | null
           device_id?: string | null
           id?: string
           notes?: string | null
           original_cost?: number | null
+          outbound_tracking_number?: string | null
           purchase_order_id?: string | null
           reason: string
           refund_amount?: number | null
           refund_date?: string | null
           refund_method?: string | null
+          repair_notes?: string | null
+          replacement_device_id?: string | null
+          resolution_type?: string | null
           return_date?: string
           return_type: string
           rma_number: string
@@ -2172,15 +2182,20 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           customer_name?: string | null
+          device_condition_on_return?: string | null
           device_id?: string | null
           id?: string
           notes?: string | null
           original_cost?: number | null
+          outbound_tracking_number?: string | null
           purchase_order_id?: string | null
           reason?: string
           refund_amount?: number | null
           refund_date?: string | null
           refund_method?: string | null
+          repair_notes?: string | null
+          replacement_device_id?: string | null
+          resolution_type?: string | null
           return_date?: string
           return_type?: string
           rma_number?: string
