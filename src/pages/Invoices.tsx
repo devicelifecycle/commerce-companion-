@@ -801,7 +801,76 @@ export default function Invoices() {
                 <Button size="sm" variant="outline" onClick={() => saveCustomerFromInvoice(viewInvoice)}>
                   <Plus className="h-3.5 w-3.5 mr-1.5" /> Save Customer
                 </Button>
+                {viewInvoice.status !== 'paid' && viewInvoice.status !== 'cancelled' && (
+                  <Button size="sm" onClick={() => { setViewInvoice(null); openPaymentDialog(viewInvoice); }}>
+                    <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Record Payment
+                  </Button>
+                )}
               </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Record Payment Dialog */}
+      <Dialog open={!!paymentInvoice} onOpenChange={() => setPaymentInvoice(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Record Payment</DialogTitle>
+          </DialogHeader>
+          {paymentInvoice && (
+            <div className="space-y-4">
+              <div className="bg-muted/30 rounded-lg p-3 text-sm space-y-1">
+                <div className="flex justify-between"><span className="text-muted-foreground">Invoice</span><span className="font-mono font-medium">{paymentInvoice.invoice_number}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Customer</span><span className="font-medium">{paymentInvoice.customer_name}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Invoice Total</span><span className="font-semibold">{formatCurrency(Number(paymentInvoice.total))}</span></div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Payment Amount *</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={paymentAmount}
+                    onChange={e => setPaymentAmount(e.target.value)}
+                    placeholder="0.00"
+                  />
+                  {parseFloat(paymentAmount) > 0 && parseFloat(paymentAmount) < Number(paymentInvoice.total) && (
+                    <p className="text-[10px] text-amber-600">Partial payment — {formatCurrency(Number(paymentInvoice.total) - parseFloat(paymentAmount))} will remain outstanding</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Payment Method *</label>
+                  <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <SelectTrigger className="h-9 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map(m => (
+                        <SelectItem key={m} value={m} className="text-xs">{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium">Payment Date *</label>
+                  <Input
+                    type="date"
+                    value={paymentDate}
+                    onChange={e => setPaymentDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="text-[10px] text-muted-foreground bg-muted/20 rounded-md p-2.5 border border-border/40">
+                <strong>Accounting:</strong> Dr. Cash / Cr. Accounts Receivable — AR balance will be reduced by the payment amount.
+              </div>
+
+              <Button onClick={recordPayment} disabled={paymentSubmitting} className="w-full">
+                {paymentSubmitting ? 'Processing...' : `Record ${formatCurrency(parseFloat(paymentAmount) || 0)} Payment`}
+              </Button>
             </div>
           )}
         </DialogContent>
