@@ -687,19 +687,18 @@ export default function Invoices() {
                                 <CreditCard className="h-3.5 w-3.5" />
                               </Button>
                             )}
-                            <Select value={invoice.status} onValueChange={v => updateStatus(invoice.id, v as Invoice['status'])}>
-                              <SelectTrigger className="w-[90px] h-7 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="draft">Draft</SelectItem>
-                                <SelectItem value="sent">Sent</SelectItem>
-                                <SelectItem value="partially_paid">Partial</SelectItem>
-                                <SelectItem value="paid">Paid</SelectItem>
-                                <SelectItem value="overdue">Overdue</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                              <Select value={invoice.status} onValueChange={v => updateStatus(invoice.id, v as Invoice['status'])}>
+                                <SelectTrigger className="w-[100px] h-7 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="sent">Outstanding</SelectItem>
+                                  <SelectItem value="paid">Paid</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete">

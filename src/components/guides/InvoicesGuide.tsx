@@ -64,13 +64,14 @@ export function InvoicesGuide() {
           title: 'Invoice Lifecycle',
           content: (
             <>
+              <p>All invoices are <strong>live</strong> the moment they are created — there is no draft stage.</p>
               <ul className="list-disc list-inside space-y-1">
-                <li><strong>Draft</strong> — Created but not yet sent</li>
-                <li><strong>Sent</strong> — Delivered to customer, awaiting payment</li>
-                <li><strong>Paid</strong> — Payment received, AR settled</li>
-                <li><strong>Overdue</strong> — Past due date without payment</li>
-                <li><strong>Cancelled</strong> — Voided, no longer active</li>
+                <li><strong>Outstanding</strong> — Active invoice awaiting payment</li>
+                <li><strong>Paid</strong> — Payment received in full, AR settled</li>
+                <li><strong>Overdue</strong> — Automatically flagged when past due date without full payment</li>
+                <li><strong>Cancelled</strong> — Voided, all accounting entries reversed</li>
               </ul>
+              <p className="mt-1">Partial payments are tracked on the AR record. The invoice stays <strong>Outstanding</strong> until the full amount is received.</p>
             </>
           ),
         },
