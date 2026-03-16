@@ -24,7 +24,8 @@ import {
 import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { toast } from 'sonner';
-import { Search, Plus, Trash2, Edit2, MoreHorizontal, Package, Download, Filter } from 'lucide-react';
+import { Search, Plus, Trash2, Edit2, MoreHorizontal, Package, Download, Filter, Upload } from 'lucide-react';
+import { ProductImportDialog } from './ProductImportDialog';
 
 interface Product {
   id: string;
