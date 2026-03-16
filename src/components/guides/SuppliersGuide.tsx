@@ -21,7 +21,7 @@ export function SuppliersGuide() {
           title: 'Supplier Codes',
           content: (
             <>
-              <p>The system uses a <strong>sequential 3-digit ID</strong> starting at 101 (e.g., 101, 102, 103). This code is referenced in import files and throughout the system.</p>
+              <p>The system uses a <strong>sequential numeric ID starting at 101</strong> (e.g., 101, 102, 103). Codes start at 101 instead of 001 because <strong>Excel automatically strips leading zeros</strong> — entering "001" in a spreadsheet becomes "1", which breaks import matching.</p>
               <p>When adding a supplier manually, the code is auto-generated. You can also enter it manually if you have a preferred numbering scheme.</p>
             </>
           ),
@@ -34,7 +34,8 @@ export function SuppliersGuide() {
               <p>For each supplier, maintain:</p>
               <ul className="list-disc list-inside space-y-1">
                 <li><strong>Contact info</strong> — Name, email, phone for quick communication</li>
-                <li><strong>Address</strong> — For invoice matching and shipping verification</li>
+                <li><strong>Address</strong> — Street, city, province, postal code for invoice matching and shipping</li>
+                <li><strong>GST/HST Number</strong> — For Input Tax Credit (ITC) claims and invoice verification</li>
                 <li><strong>Notes</strong> — Payment terms, special conditions, quality notes</li>
               </ul>
             </>

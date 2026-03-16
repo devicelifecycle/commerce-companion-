@@ -37,6 +37,11 @@ interface Supplier {
   email: string | null;
   phone: string | null;
   address: string | null;
+  street_address: string | null;
+  city: string | null;
+  province: string | null;
+  postal_code: string | null;
+  gst_hst_number: string | null;
   notes: string | null;
   created_at: string;
 }
@@ -55,7 +60,11 @@ export default function Suppliers() {
     contact_name: '',
     email: '',
     phone: '',
-    address: '',
+    street_address: '',
+    city: '',
+    province: '',
+    postal_code: '',
+    gst_hst_number: '',
     notes: '',
   });
 
@@ -92,7 +101,11 @@ export default function Suppliers() {
         contact_name: formData.contact_name || null,
         email: formData.email || null,
         phone: formData.phone || null,
-        address: formData.address || null,
+        street_address: formData.street_address || null,
+        city: formData.city || null,
+        province: formData.province || null,
+        postal_code: formData.postal_code || null,
+        gst_hst_number: formData.gst_hst_number || null,
         notes: formData.notes || null,
         supplier_code: '000', // Will be overridden by DB trigger
       });
@@ -128,7 +141,11 @@ export default function Suppliers() {
           contact_name: formData.contact_name || null,
           email: formData.email || null,
           phone: formData.phone || null,
-          address: formData.address || null,
+          street_address: formData.street_address || null,
+          city: formData.city || null,
+          province: formData.province || null,
+          postal_code: formData.postal_code || null,
+          gst_hst_number: formData.gst_hst_number || null,
           notes: formData.notes || null,
         })
         .eq('id', selectedSupplier.id);
@@ -184,7 +201,11 @@ export default function Suppliers() {
       contact_name: supplier.contact_name || '',
       email: supplier.email || '',
       phone: supplier.phone || '',
-      address: supplier.address || '',
+      street_address: supplier.street_address || '',
+      city: supplier.city || '',
+      province: supplier.province || '',
+      postal_code: supplier.postal_code || '',
+      gst_hst_number: supplier.gst_hst_number || '',
       notes: supplier.notes || '',
     });
     setIsEditDialogOpen(true);
@@ -196,7 +217,11 @@ export default function Suppliers() {
       contact_name: '',
       email: '',
       phone: '',
-      address: '',
+      street_address: '',
+      city: '',
+      province: '',
+      postal_code: '',
+      gst_hst_number: '',
       notes: '',
     });
   };
@@ -257,12 +282,52 @@ export default function Suppliers() {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="address">Address</Label>
-        <Textarea
-          id="address"
-          value={formData.address}
-          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-          placeholder="123 Business St, City, State, ZIP"
+        <Label htmlFor="street_address">Street Address</Label>
+        <Input
+          id="street_address"
+          value={formData.street_address}
+          onChange={(e) => setFormData({ ...formData, street_address: e.target.value })}
+          placeholder="123 Business St"
+        />
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="city">City</Label>
+          <Input
+            id="city"
+            value={formData.city}
+            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+            placeholder="Toronto"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="province">Province</Label>
+          <Input
+            id="province"
+            value={formData.province}
+            onChange={(e) => setFormData({ ...formData, province: e.target.value })}
+            placeholder="ON"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="postal_code">Postal Code</Label>
+          <Input
+            id="postal_code"
+            value={formData.postal_code}
+            onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+            placeholder="M5V 2T6"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="gst_hst_number">GST/HST Number</Label>
+        <Input
+          id="gst_hst_number"
+          value={formData.gst_hst_number}
+          onChange={(e) => setFormData({ ...formData, gst_hst_number: e.target.value })}
+          placeholder="123456789RT0001"
         />
       </div>
 
@@ -330,7 +395,7 @@ export default function Suppliers() {
         <Alert className="border-primary/30 bg-primary/5">
           <Info className="h-4 w-4" />
           <AlertDescription>
-            Each supplier is assigned a unique <strong>Supplier ID</strong> (e.g., S-001). Use this ID in the <strong>Inventory Import</strong> template's "Supplier ID" column to link imported devices to their supplier.
+            Each supplier is assigned a unique <strong>Supplier ID</strong> starting at <strong>101</strong> (e.g., S-101, S-102). Codes start at 101 instead of 001 because Excel auto-strips leading zeros. Use this ID in the <strong>Inventory Import</strong> template's "Supplier ID" column to link imported devices to their supplier.
           </AlertDescription>
         </Alert>
 
