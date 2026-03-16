@@ -217,7 +217,7 @@ export default function Customers() {
       if (error) { toast.error('Failed to update customer'); return; }
       toast.success('Customer updated');
     } else {
-      const { error } = await supabase.from('customers').insert(payload);
+      const { error } = await supabase.from('customers').insert(payload as any);
       if (error) { toast.error('Failed to create customer'); return; }
       toast.success('Customer created');
     }
