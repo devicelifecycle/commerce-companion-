@@ -703,7 +703,7 @@ export default function Import() {
             description: i.description,
             quantity: i.quantity,
             unitCost: i.unitCost,
-            gstHstAmount: i.gstHstAmount,
+            gstHstAmount: calcTaxForItem(i.unitCost, i.quantity, i.taxStatus).taxAmount,
             pstQstAmount: i.pstQstAmount,
           })),
           notes: [
