@@ -377,7 +377,6 @@ export default function Invoices() {
           const isFullyPaid = newBalance <= 0.01;
           await supabase.from('accounts_receivable').update({
             original_amount: newTotal,
-            balance_due: newBalance,
             status: isFullyPaid ? 'paid' : paidAmount > 0 ? 'partially_paid' : 'outstanding',
           }).eq('id', ar.id);
 
