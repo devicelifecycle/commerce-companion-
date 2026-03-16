@@ -15,6 +15,7 @@ import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 
 import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker';
+import { ProductsManagement } from '@/components/inventory/ProductsManagement';
 import { FBAFeeAnalytics } from '@/components/inventory/FBAFeeAnalytics';
 import { DeviceProcurementDialog } from '@/components/inventory/DeviceProcurementDialog';
 import { StatusBadge, ConditionBadge } from '@/components/ui/status-badge';
