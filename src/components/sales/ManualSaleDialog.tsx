@@ -67,8 +67,11 @@ function newLineItem(): LineItem {
     unit_price: 0,
     device_id: null,
     device: null,
+    product_id: null,
+    product: null,
     cost_price: 0,
     tax_amount: 0,
+    item_type: 'custom',
   };
 }
 
