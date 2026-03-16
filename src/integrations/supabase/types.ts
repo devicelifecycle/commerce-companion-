@@ -2747,40 +2747,55 @@ export type Database = {
       suppliers: {
         Row: {
           address: string | null
+          city: string | null
           company_id: string | null
           contact_name: string | null
           created_at: string
           email: string | null
+          gst_hst_number: string | null
           id: string
           name: string
           notes: string | null
           phone: string | null
+          postal_code: string | null
+          province: string | null
+          street_address: string | null
           supplier_code: string
           updated_at: string
         }
         Insert: {
           address?: string | null
+          city?: string | null
           company_id?: string | null
           contact_name?: string | null
           created_at?: string
           email?: string | null
+          gst_hst_number?: string | null
           id?: string
           name: string
           notes?: string | null
           phone?: string | null
+          postal_code?: string | null
+          province?: string | null
+          street_address?: string | null
           supplier_code: string
           updated_at?: string
         }
         Update: {
           address?: string | null
+          city?: string | null
           company_id?: string | null
           contact_name?: string | null
           created_at?: string
           email?: string | null
+          gst_hst_number?: string | null
           id?: string
           name?: string
           notes?: string | null
           phone?: string | null
+          postal_code?: string | null
+          province?: string | null
+          street_address?: string | null
           supplier_code?: string
           updated_at?: string
         }
