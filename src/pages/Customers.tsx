@@ -90,7 +90,6 @@ interface SaleRecord {
   marketplace: string | null;
   product_title: string | null;
   sale_price: number;
-  status: string | null;
 }
 
 export default function Customers() {
