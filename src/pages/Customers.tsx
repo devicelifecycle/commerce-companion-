@@ -198,7 +198,7 @@ export default function Customers() {
     }
 
     const payload: Record<string, unknown> = {
-      name: form.name.trim(),
+      name: toTitleCase(form.name),
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
       street_address: form.street_address.trim() || null,
