@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { format } from 'date-fns';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
+import { toTitleCase } from '@/lib/utils';
 
 const CHANNELS = ['Shopify', 'Amazon', 'Walmart', 'BestBuy', 'Temu', 'eBay', 'In-Store', 'Other'] as const;
 
@@ -197,11 +198,11 @@ export default function Customers() {
     }
 
     const payload: Record<string, unknown> = {
-      name: form.name.trim(),
+      name: toTitleCase(form.name),
       email: form.email.trim() || null,
       phone: form.phone.trim() || null,
       street_address: form.street_address.trim() || null,
-      city: form.city.trim() || null,
+      city: form.city.trim() ? toTitleCase(form.city) : null,
       province: form.province || null,
       postal_code: form.postal_code.trim() || null,
       country: form.country || 'Canada',

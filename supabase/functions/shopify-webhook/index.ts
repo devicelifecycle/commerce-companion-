@@ -64,6 +64,22 @@ function formatShippingAddress(address: ShopifyOrder["shipping_address"]): strin
   return parts.join("\n");
 }
 
+function toTitleCase(str: string): string {
+  return str.trim().replace(/\s+/g, ' ')
+    .replace(/\b\w+/g, (w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
+}
+
+function parseStructuredAddress(address: ShopifyOrder["shipping_address"]) {
+  if (!address) return { street_address: null, city: null, province: null, postal_code: null, country: null };
+  return {
+    street_address: [address.address1, address.address2].filter(Boolean).join(', ') || null,
+    city: address.city ? toTitleCase(address.city) : null,
+    province: address.province || null,
+    postal_code: address.zip || null,
+    country: address.country || 'Canada',
+  };
+}
+
 async function upsertCustomer(
   supabase: any,
   customerName: string | null,
@@ -72,9 +88,12 @@ async function upsertCustomer(
   customerAddress: string | null,
   companyId: string,
   marketplace: string,
-  saleAmount: number
+  saleAmount: number,
+  structuredAddress?: { street_address: string | null; city: string | null; province: string | null; postal_code: string | null; country: string | null }
 ): Promise<string | null> {
   if (!customerName) return null;
+
+  const normalizedName = toTitleCase(customerName);
 
   try {
     let existingCustomer = null;
@@ -92,7 +111,7 @@ async function upsertCustomer(
       const { data } = await supabase
         .from("customers")
         .select("id, total_spent, total_purchases")
-        .eq("name", customerName)
+        .eq("name", normalizedName)
         .eq("company_id", companyId)
         .maybeSingle();
       existingCustomer = data;
@@ -100,12 +119,21 @@ async function upsertCustomer(
 
     if (existingCustomer) {
       const updates: any = {
+        name: normalizedName,
         total_spent: (existingCustomer.total_spent || 0) + saleAmount,
         total_purchases: (existingCustomer.total_purchases || 0) + 1,
       };
       if (customerEmail) updates.email = customerEmail;
       if (customerPhone) updates.phone = customerPhone;
       if (customerAddress) updates.address = customerAddress;
+      if (structuredAddress) {
+        if (structuredAddress.street_address) updates.street_address = structuredAddress.street_address;
+        if (structuredAddress.city) updates.city = structuredAddress.city;
+        if (structuredAddress.province) updates.province = structuredAddress.province;
+        if (structuredAddress.postal_code) updates.postal_code = structuredAddress.postal_code;
+        if (structuredAddress.country) updates.country = structuredAddress.country;
+      }
+      updates.channel = marketplace;
 
       await supabase
         .from("customers")
@@ -117,14 +145,16 @@ async function upsertCustomer(
       const { data: newCustomer, error } = await supabase
         .from("customers")
         .insert({
-          name: customerName,
+          name: normalizedName,
           email: customerEmail,
           phone: customerPhone,
           address: customerAddress,
           company_id: companyId,
           marketplace_source: marketplace,
+          channel: marketplace,
           total_spent: saleAmount,
           total_purchases: 1,
+          ...(structuredAddress || {}),
         })
         .select("id")
         .single();
@@ -221,6 +251,7 @@ Deno.serve(async (req) => {
     const customerEmail = order.email || order.customer?.email || null;
     const customerPhone = order.customer?.phone || order.shipping_address?.phone || null;
     const shippingAddress = formatShippingAddress(order.shipping_address);
+    const structuredAddr = parseStructuredAddress(order.shipping_address);
     const totalPrice = parseFloat(order.total_price || "0");
 
     // Upsert customer
@@ -234,7 +265,8 @@ Deno.serve(async (req) => {
         shippingAddress,
         companyId,
         "shopify",
-        totalPrice
+        totalPrice,
+        structuredAddr
       );
     }
 
