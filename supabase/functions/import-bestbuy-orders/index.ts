@@ -356,40 +356,56 @@ serve(async (req) => {
         
 
         if (existingOrder) {
-          // Backfill customer data and sync marketplace status on existing orders
-          if (customerName || customerEmail || shippingAddress) {
-            const bbyStatus = order.order_state || "UNKNOWN";
-            const updates: any = { marketplace_status: bbyStatus };
-            if (customerEmail) updates.customer_email = customerEmail;
-            if (shippingAddress) updates.shipping_address = shippingAddress;
-            if (customerName) updates.customer_name = customerName;
-            
-            // Sync fulfillment_status
-            updates.fulfillment_status = mapBestBuyToFulfillment(order.order_state);
+          // Backfill customer data, product info, and sync marketplace status on existing orders
+          const bbyStatus = order.order_state || "UNKNOWN";
+          const updates: any = { marketplace_status: bbyStatus };
+          if (customerEmail) updates.customer_email = customerEmail;
+          if (shippingAddress) updates.shipping_address = shippingAddress;
+          if (customerName) updates.customer_name = customerName;
+          updates.fulfillment_status = mapBestBuyToFulfillment(order.order_state);
 
-            await supabase
-              .from("sales")
-              .update(updates)
-              .eq("order_number", orderNumber);
-
-            // Also update all line-item sales for this order
-            await supabase
-              .from("sales")
-              .update(updates)
-              .like("order_number", `BBY-${order.commercial_id}-%`);
-
-            // Upsert customer record
-            await upsertCustomer(
-              supabase,
-              customerName,
-              customerEmail,
-              customerPhone,
-              shippingAddress,
-              companyId,
-              "bestbuy",
-              0
-            );
+          // Backfill product_title from first line item if available
+          if (order.order_lines?.length > 0) {
+            const firstLine = order.order_lines[0];
+            if (firstLine.product_title) updates.product_title = firstLine.product_title;
+            if (firstLine.offer_sku) updates.marketplace_sku = firstLine.offer_sku;
           }
+
+          await supabase
+            .from("sales")
+            .update(updates)
+            .eq("order_number", orderNumber);
+
+          // Also update all line-item sales for this order with product info per line
+          for (const lineItem of order.order_lines) {
+            const lineOrderNumber = `BBY-${order.commercial_id}-${lineItem.order_line_id}`;
+            const lineUpdates: any = { 
+              marketplace_status: bbyStatus,
+              fulfillment_status: mapBestBuyToFulfillment(order.order_state),
+            };
+            if (customerEmail) lineUpdates.customer_email = customerEmail;
+            if (shippingAddress) lineUpdates.shipping_address = shippingAddress;
+            if (customerName) lineUpdates.customer_name = customerName;
+            if (lineItem.product_title) lineUpdates.product_title = lineItem.product_title;
+            if (lineItem.offer_sku) lineUpdates.marketplace_sku = lineItem.offer_sku;
+            
+            await supabase
+              .from("sales")
+              .update(lineUpdates)
+              .eq("order_number", lineOrderNumber);
+          }
+
+          // Upsert customer record
+          await upsertCustomer(
+            supabase,
+            customerName,
+            customerEmail,
+            customerPhone,
+            shippingAddress,
+            companyId,
+            "bestbuy",
+            0
+          );
           skippedOrders.push(orderNumber);
           continue;
         }
