@@ -69,7 +69,7 @@ const TAX_LABELS: Record<string, string> = {
 };
 
 export default function Invoices() {
-  const { selectedCompany } = useCompany();
+  const { selectedCompany, accessibleCompanies } = useCompany();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
@@ -77,6 +77,7 @@ export default function Invoices() {
   const [viewItems, setViewItems] = useState<InvoiceItem[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [duplicateInvoice, setDuplicateInvoice] = useState<Invoice | null>(null);
 
   // Quick action: open "Create Invoice" dialog via Alt+N
   useQuickActionListener('create-invoice', useCallback(() => setCreateOpen(true), []));
@@ -92,13 +93,39 @@ export default function Invoices() {
 
       const { data, error } = await query;
       if (error) throw error;
-      setInvoices((data || []) as Invoice[]);
+      const fetched = (data || []) as Invoice[];
+
+      // Auto-detect overdue: sent invoices past due date
+      const today = new Date().toISOString().split('T')[0];
+      const overdueIds: string[] = [];
+      fetched.forEach(inv => {
+        if (inv.status === 'sent' && inv.due_date < today) {
+          inv.status = 'overdue';
+          overdueIds.push(inv.id);
+        }
+      });
+      // Batch update overdue in DB
+      if (overdueIds.length > 0) {
+        supabase.from('invoices').update({ status: 'overdue' as any }).in('id', overdueIds).then();
+      }
+
+      setInvoices(fetched);
     } catch (error) {
       console.error('Error fetching invoices:', error);
       toast.error('Failed to load invoices');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getCompanyCode = (companyId: string | null) => {
+    if (!companyId) return null;
+    return accessibleCompanies.find(c => c.id === companyId)?.code || null;
+  };
+
+  const COMPANY_BADGE: Record<string, string> = {
+    VES: 'bg-violet-500/15 text-violet-700 border-violet-500/30',
+    TGW: 'bg-sky-500/15 text-sky-700 border-sky-500/30',
   };
 
   const viewInvoiceDetails = async (invoice: Invoice) => {
