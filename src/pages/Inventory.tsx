@@ -1050,6 +1050,10 @@ export default function Inventory() {
             </Card>
           </TabsContent>
 
+          <TabsContent value="products">
+            <ProductsManagement canManage={canManage} />
+          </TabsContent>
+
 
           {isSuperAdmin && (
             <TabsContent value="fba" className="space-y-6">
