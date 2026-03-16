@@ -348,16 +348,30 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                       )}
                     </div>
 
-                    {/* Device Search */}
-                    <div>
-                      <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                    {/* Inventory Link */}
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground block">
                         Link to Inventory (Optional)
                       </label>
-                      <DeviceSearchCombobox
-                        value={item.device_id}
-                        onSelect={(device) => handleDeviceSelect(item.id, device)}
-                        excludeIds={linkedDeviceIds.filter(id => id !== item.device_id)}
-                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Device</span>
+                          <DeviceSearchCombobox
+                            value={item.device_id}
+                            onSelect={(device) => handleDeviceSelect(item.id, device)}
+                            excludeIds={linkedDeviceIds.filter(id => id !== item.device_id)}
+                            disabled={!!item.product_id}
+                          />
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Product</span>
+                          <ProductSearchCombobox
+                            value={item.product_id}
+                            onSelect={(product) => handleProductSelect(item.id, product)}
+                            disabled={!!item.device_id}
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     {/* Description & Pricing */}
