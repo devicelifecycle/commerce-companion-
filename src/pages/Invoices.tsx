@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, FileText, Clock, CheckCircle, AlertCircle, Send, Eye, Download, Search, X, Trash2, Copy, CreditCard } from 'lucide-react';
+import { Plus, FileText, Clock, CheckCircle, AlertCircle, Eye, Download, Search, X, Trash2, Copy, CreditCard } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -34,7 +34,7 @@ interface Invoice {
   subtotal: number;
   tax_amount: number;
   total: number;
-  status: 'draft' | 'sent' | 'paid' | 'partially_paid' | 'overdue' | 'cancelled';
+  status: 'sent' | 'paid' | 'overdue' | 'cancelled';
   issue_date: string;
   due_date: string;
   paid_date: string | null;
@@ -54,10 +54,8 @@ interface InvoiceItem {
 }
 
 const STATUS_CONFIG = {
-  draft: { label: 'Draft', icon: FileText, className: 'bg-muted text-muted-foreground' },
-  sent: { label: 'Sent', icon: Send, className: 'bg-info/10 text-info' },
+  sent: { label: 'Outstanding', icon: Clock, className: 'bg-warning/10 text-warning' },
   paid: { label: 'Paid', icon: CheckCircle, className: 'bg-success/10 text-success' },
-  partially_paid: { label: 'Partial', icon: CreditCard, className: 'bg-amber-500/10 text-amber-700' },
   overdue: { label: 'Overdue', icon: AlertCircle, className: 'bg-destructive/10 text-destructive' },
   cancelled: { label: 'Cancelled', icon: AlertCircle, className: 'bg-muted text-muted-foreground' },
 };
@@ -105,7 +103,7 @@ export default function Invoices() {
       if (error) throw error;
       const fetched = (data || []) as Invoice[];
 
-      // Auto-detect overdue: sent invoices past due date
+      // Auto-detect overdue: outstanding invoices past due date
       const today = new Date().toISOString().split('T')[0];
       const overdueIds: string[] = [];
       fetched.forEach(inv => {
@@ -228,7 +226,7 @@ export default function Invoices() {
         subtotal: source.subtotal,
         tax_amount: source.tax_amount,
         total: source.total,
-        status: 'draft' as any,
+        status: 'sent' as any,
         issue_date: new Date().toISOString().split('T')[0],
         due_date: dueDate.toISOString().split('T')[0],
         notes: source.notes,
@@ -251,7 +249,7 @@ export default function Invoices() {
         await supabase.from('invoice_items').insert(clonedItems);
       }
 
-      toast.success(`Duplicated as ${invoiceNumber} (Draft)`);
+      toast.success(`Duplicated as ${invoiceNumber}`);
       fetchInvoices();
     } catch (err) {
       console.error('Duplicate error:', err);
@@ -308,12 +306,16 @@ export default function Invoices() {
         }).eq('id', arRecord.id);
       }
 
-      // 3. Update invoice status
-      const newStatus = isFullyPaid ? 'paid' : 'partially_paid';
-      const updateData: Record<string, any> = { status: newStatus };
-      if (isFullyPaid) updateData.paid_date = paymentDate;
+      // 3. Update invoice status (stays outstanding until fully paid)
+      const updateData: Record<string, any> = {};
+      if (isFullyPaid) {
+        updateData.status = 'paid';
+        updateData.paid_date = paymentDate;
+      }
 
-      await supabase.from('invoices').update(updateData).eq('id', paymentInvoice.id);
+      if (Object.keys(updateData).length > 0) {
+        await supabase.from('invoices').update(updateData).eq('id', paymentInvoice.id);
+      }
 
       // 4. Create journal entry: Dr. Cash / Cr. AR
       try {
@@ -509,7 +511,10 @@ export default function Invoices() {
 
   const totalOutstanding = invoices
     .filter(i => i.status === 'sent' || i.status === 'overdue')
-    .reduce((sum, i) => sum + Number(i.total), 0);
+    .reduce((sum, i) => {
+      // For partial payments, show remaining balance
+      return sum + Number(i.total);
+    }, 0);
 
   const totalPaid = invoices
     .filter(i => i.status === 'paid')
@@ -610,9 +615,7 @@ export default function Invoices() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="sent">Sent</SelectItem>
-                  <SelectItem value="partially_paid">Partial</SelectItem>
+                  <SelectItem value="sent">Outstanding</SelectItem>
                   <SelectItem value="paid">Paid</SelectItem>
                   <SelectItem value="overdue">Overdue</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -647,7 +650,7 @@ export default function Invoices() {
                   </TableRow>
                 ) : (
                   filteredInvoices.map((invoice) => {
-                    const config = STATUS_CONFIG[invoice.status] || STATUS_CONFIG.draft;
+                    const config = STATUS_CONFIG[invoice.status] || STATUS_CONFIG.sent;
                     const code = getCompanyCode(invoice.company_id);
                     return (
                       <TableRow key={invoice.id}>
@@ -684,19 +687,18 @@ export default function Invoices() {
                                 <CreditCard className="h-3.5 w-3.5" />
                               </Button>
                             )}
-                            <Select value={invoice.status} onValueChange={v => updateStatus(invoice.id, v as Invoice['status'])}>
-                              <SelectTrigger className="w-[90px] h-7 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="draft">Draft</SelectItem>
-                                <SelectItem value="sent">Sent</SelectItem>
-                                <SelectItem value="partially_paid">Partial</SelectItem>
-                                <SelectItem value="paid">Paid</SelectItem>
-                                <SelectItem value="overdue">Overdue</SelectItem>
-                                <SelectItem value="cancelled">Cancelled</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            {invoice.status !== 'paid' && invoice.status !== 'cancelled' && (
+                              <Select value={invoice.status} onValueChange={v => updateStatus(invoice.id, v as Invoice['status'])}>
+                                <SelectTrigger className="w-[100px] h-7 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="sent">Outstanding</SelectItem>
+                                  <SelectItem value="paid">Paid</SelectItem>
+                                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete">

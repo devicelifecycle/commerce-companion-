@@ -220,7 +220,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
         subtotal: Math.round(calculations.subtotal * 100) / 100,
         tax_amount: Math.round(calculations.totalTax * 100) / 100,
         total: Math.round(calculations.grandTotal * 100) / 100,
-        status: 'draft' as const,
+        status: 'sent' as const,
         issue_date: new Date().toISOString().split('T')[0],
         due_date: dueDate.toISOString().split('T')[0],
         notes: notes.trim() || null,
