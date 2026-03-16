@@ -611,7 +611,15 @@ export default function Invoices() {
       <Dialog open={!!viewInvoice} onOpenChange={() => setViewInvoice(null)}>
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle className="font-display">Invoice {viewInvoice?.invoice_number}</DialogTitle>
+            <DialogTitle className="font-display flex items-center gap-2">
+              Invoice {viewInvoice?.invoice_number}
+              {viewInvoice && (() => {
+                const code = getCompanyCode(viewInvoice.company_id);
+                return code ? (
+                  <Badge variant="outline" className={`text-[10px] font-medium ${COMPANY_BADGE[code] || ''}`}>{code}</Badge>
+                ) : null;
+              })()}
+            </DialogTitle>
           </DialogHeader>
           {viewInvoice && (
             <div className="space-y-4 text-sm">
