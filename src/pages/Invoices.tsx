@@ -306,10 +306,12 @@ export default function Invoices() {
         }).eq('id', arRecord.id);
       }
 
-      // 3. Update invoice status
-      const newStatus = isFullyPaid ? 'paid' : 'partially_paid';
-      const updateData: Record<string, any> = { status: newStatus };
-      if (isFullyPaid) updateData.paid_date = paymentDate;
+      // 3. Update invoice status (stays outstanding until fully paid)
+      const updateData: Record<string, any> = {};
+      if (isFullyPaid) {
+        updateData.status = 'paid';
+        updateData.paid_date = paymentDate;
+      }
 
       await supabase.from('invoices').update(updateData).eq('id', paymentInvoice.id);
 
