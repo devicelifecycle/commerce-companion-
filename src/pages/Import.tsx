@@ -579,6 +579,8 @@ export default function Import() {
           invoiceNumber: '',
           shippingCost: '0',
           otherCharges: '0',
+          paymentMethod: '',
+          paymentDate: '',
           items: [],
         });
       }
