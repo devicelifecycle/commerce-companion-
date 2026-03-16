@@ -402,8 +402,11 @@ serve(async (req) => {
           customer_id: customerId,
           marketplace_status: shopifyMarketplaceStatus,
           fulfillment_status: fulfillmentStatus,
-          is_marketplace_remitted: false, // Shopify never remits tax — you owe CRA
+          is_marketplace_remitted: false,
           accounting_status: "unprocessed",
+          product_title: order.line_items?.length > 0 ? order.line_items[0].name : null,
+          marketplace_sku: order.line_items?.length > 0 ? (order.line_items[0].sku || null) : null,
+          item_count: order.line_items?.reduce((sum: number, i: any) => sum + (i.quantity || 1), 0) || 1,
         });
 
         if (insertError) {
