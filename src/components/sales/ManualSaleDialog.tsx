@@ -214,18 +214,28 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
         const saleItems = validItems.map(item => ({
           sale_id: sale.id,
           device_id: item.device_id,
+          product_id: item.product_id,
           description: item.description,
           quantity: item.quantity,
           unit_price: item.unit_price,
           cost_price: item.cost_price,
           tax_amount: item.tax_amount,
           total: item.quantity * item.unit_price,
-          sku: item.device?.sku || null,
+          sku: item.device?.sku || item.product?.sku || null,
           imei: item.device?.imei || null,
         }));
 
         const { error: itemsError } = await supabase.from('sale_items').insert(saleItems);
         if (itemsError) throw itemsError;
+
+        // Deduct product quantities
+        for (const item of validItems) {
+          if (item.product_id && item.product) {
+            await supabase.from('products').update({
+              quantity_on_hand: Math.max(0, item.product.quantity_on_hand - item.quantity),
+            }).eq('id', item.product_id);
+          }
+        }
       }
 
       toast.success(`Sale recorded with ${validItems.length} item(s)`);
