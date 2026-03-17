@@ -16,7 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, FileText, Clock, CheckCircle, AlertCircle, Download, Search, X, Trash2, Copy, CreditCard, DollarSign, Pencil, Save } from 'lucide-react';
+import { Plus, FileText, Clock, CheckCircle, AlertCircle, Download, Search, X, Trash2, Copy, CreditCard, DollarSign, Pencil, Save, TriangleAlert } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -780,6 +781,14 @@ export default function Invoices() {
         </div>
 
         <InvoicesGuide />
+
+        <Alert variant="destructive" className="border-destructive bg-destructive/10">
+          <TriangleAlert className="h-4 w-4" />
+          <AlertTitle>Partial Payments Not Supported</AlertTitle>
+          <AlertDescription>
+            This invoice section does not currently support partial payment tracking. Outstanding balances will not update when partial payments are recorded. Please refer to the <strong>Invoice Payment History</strong> when making adjustments for such transactions.
+          </AlertDescription>
+        </Alert>
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
