@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -13,13 +13,17 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Search, Download, Plus, ClipboardList, Filter, X, Trash2 } from 'lucide-react';
+import { Search, Download, Plus, ClipboardList, X, Trash2, PackageCheck, Copy } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { PurchaseOrdersGuide } from '@/components/guides/PurchaseOrdersGuide';
 import { CreatePurchaseOrderDialog } from '@/components/procurement/CreatePurchaseOrderDialog';
+import { ReceivePODialog } from '@/components/procurement/ReceivePODialog';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
 import { MetricCard } from '@/components/ui/metric-card';
@@ -41,6 +45,8 @@ interface PurchaseOrder {
   notes: string | null;
   expected_delivery_date: string | null;
   payment_method: string | null;
+  company_id: string | null;
+  supplier_id: string | null;
 }
 
 export default function PurchaseOrders() {
@@ -51,6 +57,9 @@ export default function PurchaseOrders() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [receivePoId, setReceivePoId] = useState<string | null>(null);
+  const [showReceiveDialog, setShowReceiveDialog] = useState(false);
+  const [cloneLoading, setCloneLoading] = useState<string | null>(null);
 
   const canManage = hasPermission('inventory_manage', 'edit') || isSuperAdmin;
 
@@ -72,7 +81,7 @@ export default function PurchaseOrders() {
   const metrics = useMemo(() => ({
     total: orders.length,
     pending: orders.filter(o => o.status === 'pending').length,
-    completed: orders.filter(o => o.status === 'completed' || o.status === 'received').length,
+    received: orders.filter(o => o.status === 'received' || o.status === 'completed' || o.status === 'partially_received').length,
     totalValue: orders.reduce((sum, o) => sum + o.total_amount, 0),
     unpaid: orders.filter(o => o.payment_status === 'unpaid').reduce((sum, o) => sum + o.total_amount, 0),
   }), [orders]);
@@ -110,10 +119,7 @@ export default function PurchaseOrders() {
 
   const deletePO = async (id: string) => {
     try {
-      // Delete PO items first
       await supabase.from('purchase_order_items').delete().eq('purchase_order_id', id);
-      // Delete related AP if any
-      // Delete the PO
       const { error } = await supabase.from('purchase_orders').delete().eq('id', id);
       if (error) throw error;
       toast.success('Purchase order deleted');
@@ -130,17 +136,87 @@ export default function PurchaseOrders() {
     clear();
   };
 
+  const clonePO = async (po: PurchaseOrder) => {
+    setCloneLoading(po.id);
+    try {
+      // Generate new PO number
+      const prefix = selectedCompany?.code || 'PO';
+      const dateStr = format(new Date(), 'yyyyMMdd');
+      const { count } = await supabase
+        .from('purchase_orders')
+        .select('id', { count: 'exact', head: true });
+      const num = (count || 0) + 1;
+      const newPoNumber = `${prefix}-${dateStr}-${String(num).padStart(3, '0')}`;
+
+      // Clone PO header
+      const { data: newPo, error: poError } = await supabase.from('purchase_orders').insert({
+        po_number: newPoNumber,
+        supplier_id: po.supplier_id,
+        supplier_name: po.supplier_name,
+        po_date: new Date().toISOString().split('T')[0],
+        expected_delivery_date: null,
+        subtotal: po.subtotal,
+        gst_hst_amount: po.gst_hst_amount,
+        pst_qst_amount: po.pst_qst_amount,
+        total_amount: po.total_amount,
+        status: 'pending',
+        payment_status: 'unpaid',
+        payment_method: po.payment_method,
+        notes: `Cloned from ${po.po_number}`,
+        company_id: po.company_id,
+      }).select('id').single();
+
+      if (poError) throw poError;
+
+      // Clone line items
+      if (newPo) {
+        const { data: origItems } = await supabase
+          .from('purchase_order_items')
+          .select('*')
+          .eq('purchase_order_id', po.id);
+
+        if (origItems && origItems.length > 0) {
+          const clonedItems = origItems.map((item: any) => ({
+            purchase_order_id: newPo.id,
+            description: item.description,
+            quantity: item.quantity,
+            unit_cost: item.unit_cost,
+            gst_hst_amount: item.gst_hst_amount,
+            pst_qst_amount: item.pst_qst_amount,
+            total_cost: item.total_cost,
+          }));
+          await supabase.from('purchase_order_items').insert(clonedItems);
+        }
+      }
+
+      toast.success(`Cloned as ${newPoNumber}`);
+      loadOrders();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to clone PO');
+    } finally {
+      setCloneLoading(null);
+    }
+  };
+
+  const openReceive = (poId: string) => {
+    setReceivePoId(poId);
+    setShowReceiveDialog(true);
+  };
+
   const fmtCurrency = (v: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(v);
 
   const statusColor = (s: string) => {
     switch (s) {
       case 'completed': case 'received': return 'default';
+      case 'partially_received': return 'outline';
       case 'pending': return 'secondary';
       case 'cancelled': return 'destructive';
       default: return 'outline';
     }
   };
+
+  const canReceive = (status: string) => status === 'pending' || status === 'partially_received';
 
   return (
     <PermissionGuard permission="inventory_view" title="Purchase Orders">
@@ -181,14 +257,15 @@ export default function PurchaseOrders() {
                 <Input placeholder="Search PO # or supplier..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[160px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="partially_received">Partially Received</SelectItem>
                   <SelectItem value="received">Received</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
@@ -224,7 +301,7 @@ export default function PurchaseOrders() {
                   <TableHead>Status</TableHead>
                   <TableHead>Payment</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="w-10">Actions</TableHead>
+                  <TableHead className="w-28 text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -239,29 +316,69 @@ export default function PurchaseOrders() {
                     <TableCell>{o.supplier_name}</TableCell>
                     <TableCell>{format(new Date(o.po_date), 'MMM d, yyyy')}</TableCell>
                     <TableCell>{o.expected_delivery_date ? format(new Date(o.expected_delivery_date), 'MMM d, yyyy') : '—'}</TableCell>
-                    <TableCell><Badge variant={statusColor(o.status)} className="capitalize">{o.status}</Badge></TableCell>
+                    <TableCell>
+                      <Badge variant={statusColor(o.status)} className="capitalize">
+                        {o.status?.replace('_', ' ')}
+                      </Badge>
+                    </TableCell>
                     <TableCell><Badge variant={o.payment_status === 'paid' ? 'default' : 'secondary'} className="capitalize">{o.payment_status}</Badge></TableCell>
                     <TableCell className="text-right font-mono">{fmtCurrency(o.total_amount)}</TableCell>
                     <TableCell>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" title="Delete">
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete PO {o.po_number}?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete this purchase order and its line items. This cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deletePO(o.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <TooltipProvider delayDuration={300}>
+                        <div className="flex items-center justify-center gap-0.5">
+                          {/* Receive */}
+                          {canManage && canReceive(o.status) && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => openReceive(o.id)}>
+                                  <PackageCheck className="h-3.5 w-3.5" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Receive Items</TooltipContent>
+                            </Tooltip>
+                          )}
+                          {/* Clone */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7"
+                                onClick={() => clonePO(o)}
+                                disabled={cloneLoading === o.id}
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Clone PO</TooltipContent>
+                          </Tooltip>
+                          {/* Delete */}
+                          <AlertDialog>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent>Delete</TooltipContent>
+                            </Tooltip>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Delete PO {o.po_number}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete this purchase order and its line items. This cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deletePO(o.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </TooltipProvider>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -281,6 +398,13 @@ export default function PurchaseOrders() {
           open={showCreateDialog}
           onOpenChange={setShowCreateDialog}
           onSuccess={loadOrders}
+        />
+
+        <ReceivePODialog
+          open={showReceiveDialog}
+          onOpenChange={setShowReceiveDialog}
+          onSuccess={loadOrders}
+          poId={receivePoId}
         />
       </div>
     </DashboardLayout>
