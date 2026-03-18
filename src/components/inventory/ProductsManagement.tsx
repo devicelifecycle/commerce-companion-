@@ -657,7 +657,7 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              {editingProduct ? 'Edit Product' : 'Add Product'}
+              Edit Product
             </DialogTitle>
             <DialogDescription>
               {editingProduct ? 'Update product details' : 'Add a new product to your inventory'}
