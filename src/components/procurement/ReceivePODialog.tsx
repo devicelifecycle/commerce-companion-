@@ -312,8 +312,11 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
           .maybeSingle();
 
         if (product) {
+          // Generate lot number from PO number
+          const lotNumber = `LOT-${po.po_number}-${line.po_item_id.slice(0, 4)}`;
           await supabase.from('product_lots').insert({
             product_id: product.id,
+            lot_number: lotNumber,
             quantity: line.received_qty,
             cost_price: poItem.unit_cost,
             received_date: receivedDate,
