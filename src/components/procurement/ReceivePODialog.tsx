@@ -167,33 +167,71 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
       const newStatus = isPartial ? 'partially_received' : 'received';
       await supabase.from('purchase_orders').update({ status: newStatus }).eq('id', po.id);
 
-      // 5. Handle defective/damaged items — create supplier RMAs
+      // 5. Add accepted items to products inventory
+      const acceptedLines = validLines.filter(l => l.condition === 'passed' || l.action === 'accept');
+      for (const line of acceptedLines) {
+        const poItem = poItems.find(p => p.id === line.po_item_id);
+        if (!poItem) continue;
+
+        const { data: existingProduct } = await supabase
+          .from('products')
+          .select('id, quantity_on_hand')
+          .eq('company_id', po.company_id!)
+          .ilike('name', line.description)
+          .maybeSingle();
+
+        if (existingProduct) {
+          await supabase.from('products').update({
+            quantity_on_hand: existingProduct.quantity_on_hand + line.received_qty,
+            cost_price: poItem.unit_cost,
+          }).eq('id', existingProduct.id);
+        } else {
+          await supabase.from('products').insert({
+            name: line.description,
+            company_id: po.company_id,
+            supplier_id: po.supplier_id,
+            cost_price: poItem.unit_cost,
+            quantity_on_hand: line.received_qty,
+            status: 'active',
+            created_by: user.id,
+          });
+        }
+      }
+
+      // 6. Handle defective/damaged items — create supplier RMAs
       const returnLines = validLines.filter(l => l.condition !== 'passed' && l.action === 'return_to_supplier');
       if (returnLines.length > 0) {
-        const rmaCount = await supabase.from('return_authorizations').select('id', { count: 'exact', head: true });
-        let rmaIdx = (rmaCount.count || 0) + 1;
+        const year = new Date().getFullYear();
+        const { count: rmaCount } = await supabase.from('return_authorizations').select('id', { count: 'exact', head: true });
+        let rmaIdx = (rmaCount || 0) + 1;
 
         for (const line of returnLines) {
           const poItem = poItems.find(p => p.id === line.po_item_id);
-          const rmaNumber = `RMA-S-${format(new Date(), 'yyyyMMdd')}-${String(rmaIdx++).padStart(3, '0')}`;
-          await supabase.from('return_authorizations').insert({
+          const rmaNumber = `RMA-P-${year}-${String(rmaIdx++).padStart(4, '0')}`;
+          const { error: rmaError } = await supabase.from('return_authorizations').insert({
             rma_number: rmaNumber,
-            return_type: 'supplier',
-            reason: `${line.condition} — ${line.description}`,
+            return_type: 'purchase_return',
+            reason: `${line.condition}: ${line.description}`,
             status: 'pending',
+            resolution_type: 'refund',
             company_id: po.company_id,
             supplier_id: po.supplier_id,
             purchase_order_id: po.id,
             original_cost: poItem ? poItem.unit_cost * line.received_qty : 0,
+            refund_amount: poItem ? poItem.total_cost : 0,
             notes: line.notes || `Auto-created from receiving PO ${po.po_number}. Condition: ${line.condition}`,
             created_by: user.id,
-            customer_name: po.supplier_name,
+            device_condition_on_return: line.condition,
           });
+          if (rmaError) {
+            console.error('RMA creation error:', rmaError);
+            toast.error(`Failed to create return for "${line.description}": ${rmaError.message}`);
+          }
         }
         toast.info(`${returnLines.length} supplier return(s) created in Returns`);
       }
 
-      // 6. Auto-create AP entry if requested (only for accepted items value)
+      // 7. Auto-create AP entry if requested (only for accepted items value)
       if (createAP) {
         const acceptedItems = validLines.filter(l => l.action === 'accept' || l.condition === 'passed');
         // Calculate accepted value proportionally
