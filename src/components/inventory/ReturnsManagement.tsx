@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/lib/auth';
@@ -22,11 +22,13 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
+import { MetricCard } from '@/components/ui/metric-card';
 import { 
   RotateCcw, Plus, Package, ShoppingCart, DollarSign, 
-  Clock, CheckCircle, XCircle, Truck, Search, Wrench, RefreshCw, ArrowRightLeft
+  Clock, CheckCircle, XCircle, Truck, Search, Wrench, RefreshCw, ArrowRightLeft,
+  AlertTriangle, Timer, Eye
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { DeviceSearchCombobox } from '@/components/inventory/DeviceSearchCombobox';
 
 interface ReturnAuthorization {
