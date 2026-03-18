@@ -1,6 +1,13 @@
 import { cn } from '@/lib/utils';
 
 type StatusType = 'in_stock' | 'reserved' | 'sold' | 'returned' | 'hold_for_refurbishment';
+type MarketplaceType = 'shopify' | 'amazon' | 'bestbuy' | 'other';
+type ConditionType = 'new' | 'refurbished' | 'used' | 'damaged';
+
+interface StatusBadgeProps {
+  status: StatusType;
+  className?: string;
+}
 
 const statusLabels: Record<StatusType, string> = {
   in_stock: 'In Stock',
