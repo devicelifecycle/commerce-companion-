@@ -18,7 +18,7 @@ export function useInventoryQuery({ statusFilter, categoryFilter, channelFilter,
   const queryClient = useQueryClient();
   const pq = usePaginatedQuery({ pageSize: 25, defaultSort: 'created_at', defaultDirection: 'desc' });
 
-  const queryKey = ['devices', statusFilter, categoryFilter, channelFilter, selectedCompany?.id, pq.pagination.page, pq.pagination.pageSize, pq.sort];
+  const queryKey = ['devices', statusFilter, categoryFilter, channelFilter, searchTerm, selectedCompany?.id, pq.pagination.page, pq.pagination.pageSize, pq.sort];
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey,
@@ -46,6 +46,12 @@ export function useInventoryQuery({ statusFilter, categoryFilter, channelFilter,
         query = query.eq('company_id', selectedCompany.id);
       }
 
+      // Server-side search
+      if (searchTerm) {
+        const term = `%${searchTerm}%`;
+        query = query.or(`brand.ilike.${term},model.ilike.${term},imei.ilike.${term},sku.ilike.${term}`);
+      }
+
       const { data, error, count } = await query;
       if (error) throw error;
 
@@ -65,22 +71,9 @@ export function useInventoryQuery({ statusFilter, categoryFilter, channelFilter,
 
   useRealtimeSubscription({ table: 'devices', onChanged: handleRealtimeChange });
 
-  // Client-side search on current page
-  const filteredDevices = data?.devices.filter((d: any) => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      d.brand?.toLowerCase().includes(term) ||
-      d.model?.toLowerCase().includes(term) ||
-      d.imei?.toLowerCase().includes(term) ||
-      d.sku?.toLowerCase().includes(term) ||
-      d.suppliers?.name?.toLowerCase().includes(term)
-    );
-  }) || [];
-
   return {
-    devices: filteredDevices,
-    allDevices: data?.devices || [],
+    devices: data?.devices || [],
+    totalCount: data?.totalCount || 0,
     isLoading,
     error,
     refetch,
