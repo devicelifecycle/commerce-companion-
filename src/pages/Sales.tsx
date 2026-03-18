@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { OrdersGuide } from '@/components/guides/OrdersGuide';
 import { useAuth } from '@/lib/auth';
