@@ -782,19 +782,13 @@ export default function Inventory() {
                     Transfer
                   </Button>
                 )}
-                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button onClick={() => { resetForm(); setIsAddDialogOpen(true); }}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Device
-                    </Button>
-                  </DialogTrigger>
+                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                   <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                      <DialogTitle>Add New Device</DialogTitle>
-                      <DialogDescription>Add a new device to your inventory</DialogDescription>
+                      <DialogTitle>Edit Device</DialogTitle>
+                      <DialogDescription>Update device information</DialogDescription>
                     </DialogHeader>
-                    <DeviceForm onSubmit={handleAddDevice} submitLabel="Add Device" />
+                    <DeviceForm onSubmit={handleUpdateDevice} submitLabel="Save Changes" />
                   </DialogContent>
                 </Dialog>
               </>
