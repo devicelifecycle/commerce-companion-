@@ -59,7 +59,10 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
       const companyCode = selectedCompany?.code || 'XX';
       const rmaNumber = `RMA-S-${companyCode}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(5, '0')}`;
 
-      const { error: rmaError } = await supabase
+      // Customer returns are auto-resolved — no approval needed
+      const finalStatus = resolutionType === 'refund' ? 'refunded' : 'completed';
+
+      const { data: rmaData, error: rmaError } = await supabase
         .from('return_authorizations')
         .insert({
           company_id: sale.company_id,
@@ -72,14 +75,17 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
           original_cost: sale.sale_price,
           refund_amount: resolutionType === 'refund' ? parseFloat(refundAmount) : 0,
           notes,
-          status: 'pending',
+          status: finalStatus,
           created_by: user?.id,
           resolution_type: resolutionType,
           device_condition_on_return: deviceCondition,
           outbound_tracking_number: outboundTracking || null,
-           repair_notes: resolutionType === 'repair' ? repairNotes : null,
-           replacement_device_id: resolutionType === 'exchange' && replacementDeviceId ? replacementDeviceId : null,
-         } as any);
+          repair_notes: resolutionType === 'repair' ? repairNotes : null,
+          replacement_device_id: resolutionType === 'exchange' && replacementDeviceId ? replacementDeviceId : null,
+          refund_date: resolutionType === 'refund' ? new Date().toISOString().split('T')[0] : null,
+        } as any)
+        .select('id')
+        .single();
 
       if (rmaError) throw rmaError;
 
@@ -96,15 +102,43 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
           .eq('id', sale.id);
       }
 
-      // For exchange/repair, device stays linked but status reflects the action
-      if ((resolutionType === 'exchange' || resolutionType === 'repair') && sale.device_id) {
+      // For exchange, mark original device returned and replacement as sold
+      if (resolutionType === 'exchange') {
+        if (sale.device_id && !restockDevice) {
+          await supabase
+            .from('devices')
+            .update({ status: 'in_stock' as any })
+            .eq('id', sale.device_id);
+        }
+        if (replacementDeviceId) {
+          await supabase
+            .from('devices')
+            .update({ status: 'sold' as any, sale_price: sale.sale_price })
+            .eq('id', replacementDeviceId);
+        }
+      }
+
+      // For repair, mark device as in_repair
+      if (resolutionType === 'repair' && sale.device_id) {
         await supabase
           .from('devices')
-          .update({ status: (resolutionType === 'repair' ? 'in_repair' : 'in_stock') as any })
+          .update({ status: 'in_repair' as any })
           .eq('id', sale.device_id);
       }
 
-      toast.success(`Return ${rmaNumber} created — ${resolutionType === 'refund' ? 'Refund' : resolutionType === 'exchange' ? 'Exchange' : 'Repair'}`);
+      // Trigger accounting reversal entries automatically
+      if (rmaData?.id) {
+        try {
+          await supabase.functions.invoke('process-return-accounting', {
+            body: { return_id: rmaData.id },
+          });
+        } catch (accErr) {
+          console.error('Return accounting error:', accErr);
+        }
+      }
+
+      const resLabel = resolutionType === 'refund' ? 'Refund processed' : resolutionType === 'exchange' ? 'Exchange completed' : 'Repair initiated';
+      toast.success(`${rmaNumber} — ${resLabel}`);
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {
