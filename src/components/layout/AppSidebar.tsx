@@ -51,15 +51,11 @@ const operationsNav = [
   { title: 'Orders', url: '/orders', icon: ShoppingCart },
   { title: 'Inventory', url: '/inventory', icon: Smartphone },
   { title: 'Import', url: '/import', icon: Upload },
+  { title: 'Purchase Orders', url: '/purchase-orders', icon: ClipboardCheck },
+  { title: 'Returns / RMA', url: '/returns', icon: RotateCcw },
   { title: 'Suppliers', url: '/suppliers', icon: Package },
   { title: 'Customers', url: '/customers', icon: Users },
   { title: 'Invoices', url: '/invoices', icon: FileText },
-];
-
-const procurementNav = [
-  { title: 'Purchase Orders', url: '/purchase-orders', icon: ClipboardCheck },
-  { title: 'Goods Received', url: '/goods-received', icon: PackageCheck },
-  { title: 'Returns / RMA', url: '/returns', icon: RotateCcw },
 ];
 
 const expenseNav = [
