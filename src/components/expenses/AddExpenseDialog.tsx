@@ -130,8 +130,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
-    gst_hst_amount: '',
-    pst_amount: '',
+    tax_category: 'hst_13',
     category: 'other',
     subcategory: '',
     expense_date: new Date().toISOString().split('T')[0],
