@@ -400,6 +400,10 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }
                       <Label className="text-xs">Notes</Label>
                       <Input value={paymentNotes} onChange={e => setPaymentNotes(e.target.value)} placeholder="Optional..." />
                     </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox checked={syncToAP} onCheckedChange={(v) => setSyncToAP(v === true)} />
+                      <span className="text-sm">Also record AP payment &amp; post journal entry (Dr. AP / Cr. Cash)</span>
+                    </label>
                     <div className="flex gap-2 justify-end">
                       <Button variant="outline" size="sm" onClick={() => setShowPaymentForm(false)}>Cancel</Button>
                       <Button size="sm" onClick={recordPayment} disabled={paymentLoading}>
