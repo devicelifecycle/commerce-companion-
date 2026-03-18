@@ -990,6 +990,13 @@ export default function Inventory() {
           deviceLabel={procurementDevice?.label || ''}
         />
 
+        {/* Device Timeline */}
+        <DeviceTimelineDialog
+          open={!!timelineDevice}
+          onOpenChange={(open) => !open && setTimelineDevice(null)}
+          device={timelineDevice}
+        />
+
         {/* Batch Action Bar */}
         <BatchActionBar
           count={selection.count}
