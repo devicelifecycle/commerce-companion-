@@ -155,8 +155,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
         setFormData({
           description: editExpense.description || '',
           amount: editExpense.amount?.toString() || '',
-          gst_hst_amount: editExpense.gst_hst_amount?.toString() || '',
-          pst_amount: editExpense.pst_amount?.toString() || '',
+          tax_category: 'hst_13',
           category: editExpense.category || 'other',
           subcategory: editExpense.subcategory || '',
           expense_date: editExpense.expense_date || new Date().toISOString().split('T')[0],
