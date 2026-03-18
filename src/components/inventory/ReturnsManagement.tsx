@@ -50,6 +50,9 @@ interface ReturnAuthorization {
   replacement_device_id: string | null;
   outbound_tracking_number: string | null;
   repair_notes: string | null;
+  purchase_order_id: string | null;
+  company_id: string | null;
+  rma_number: string;
   device?: { brand: string; model: string; imei: string | null };
   supplier?: { name: string };
 }
