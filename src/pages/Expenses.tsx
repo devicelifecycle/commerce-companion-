@@ -8,6 +8,7 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { ActivityLog } from '@/components/audit/ActivityLog';
 import { ExpenseDashboard } from '@/components/expenses/ExpenseDashboard';
 import { AddExpenseDialog } from '@/components/expenses/AddExpenseDialog';
+import { ExpenseRefundDialog } from '@/components/expenses/ExpenseRefundDialog';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,7 +39,7 @@ import {
 import { toast } from 'sonner';
 import { 
   Plus, Search, Filter, Download, LayoutDashboard, List, 
-  MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink, Info
+  MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink, Info, Undo2
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
@@ -97,6 +98,8 @@ export default function Expenses() {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [refundExpense, setRefundExpense] = useState<Expense | null>(null);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
 
   // Quick action: open "Add Expense" dialog via Alt+E
   useQuickActionListener('add-expense', useCallback(() => setDialogOpen(true), []));
@@ -402,6 +405,13 @@ export default function Expenses() {
                                         View Receipt
                                     </DropdownMenuItem>
                                   )}
+                                  <DropdownMenuItem onClick={() => {
+                                    setRefundExpense(expense);
+                                    setRefundDialogOpen(true);
+                                  }}>
+                                    <Undo2 className="h-4 w-4 mr-2" />
+                                    Record Refund
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem
                                     className="text-destructive"
                                     onClick={() => handleDelete(expense.id)}
@@ -547,6 +557,12 @@ export default function Expenses() {
           onOpenChange={setDialogOpen}
           onSuccess={fetchExpenses}
           editExpense={editingExpense}
+        />
+        <ExpenseRefundDialog
+          open={refundDialogOpen}
+          onOpenChange={setRefundDialogOpen}
+          expense={refundExpense}
+          onSuccess={fetchExpenses}
         />
         <BatchActionBar
           count={selection.count}

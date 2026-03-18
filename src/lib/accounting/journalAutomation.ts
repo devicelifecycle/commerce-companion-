@@ -625,3 +625,93 @@ export async function createTaxPaymentJournalEntry(params: TaxPaymentParams) {
     ],
   });
 }
+
+// ============================================
+// EXPENSE REFUND - Reversal when refund is received
+// ============================================
+export interface ExpenseRefundJournalParams {
+  companyId: string;
+  refundId: string;
+  refundDate: string;
+  expenseAccountCode: string;
+  amount: number;
+  gstHstAmount: number;
+  qstAmount: number;
+  totalAmount: number;
+  description: string;
+  vendor: string;
+  isVES: boolean;
+}
+
+export async function createExpenseRefundJournalEntry(params: ExpenseRefundJournalParams) {
+  const {
+    companyId, refundId, refundDate, expenseAccountCode, amount,
+    gstHstAmount, qstAmount, totalAmount, description, vendor, isVES
+  } = params;
+
+  const gstPaidAccount = isVES ? '8000' : '8001';
+  const qstPaidAccount = isVES ? '8100' : '8101';
+  const cashAccount = isVES ? '1000' : '1001';
+
+  const [expenseAccId, gstId, qstId, cashId] = await Promise.all([
+    getAccountIdByCode(companyId, expenseAccountCode),
+    getAccountIdByCode(companyId, gstPaidAccount),
+    getAccountIdByCode(companyId, qstPaidAccount),
+    getAccountIdByCode(companyId, cashAccount),
+  ]);
+
+  if (!expenseAccId || !cashId) {
+    throw new Error('Required accounts not found for refund reversal.');
+  }
+
+  const lines: JournalEntryLine[] = [];
+
+  // Dr. Cash (money received back)
+  lines.push({
+    accountCode: cashAccount,
+    accountId: cashId,
+    description: `Refund received from ${vendor}`,
+    debitAmount: totalAmount,
+    creditAmount: 0,
+  });
+
+  // Cr. Expense Account (reverse the original expense)
+  lines.push({
+    accountCode: expenseAccountCode,
+    accountId: expenseAccId,
+    description: `Expense refund: ${description}`,
+    debitAmount: 0,
+    creditAmount: amount,
+  });
+
+  // Cr. GST/HST Paid (reverse ITC)
+  if (gstHstAmount > 0 && gstId) {
+    lines.push({
+      accountCode: gstPaidAccount,
+      accountId: gstId,
+      description: `GST/HST refund reversal - ${vendor}`,
+      debitAmount: 0,
+      creditAmount: gstHstAmount,
+    });
+  }
+
+  // Cr. QST Paid (if applicable)
+  if (qstAmount > 0 && qstId) {
+    lines.push({
+      accountCode: qstPaidAccount,
+      accountId: qstId,
+      description: `QST refund reversal - ${vendor}`,
+      debitAmount: 0,
+      creditAmount: qstAmount,
+    });
+  }
+
+  await createAutoJournalEntry({
+    companyId,
+    entryDate: refundDate,
+    description: `Expense Refund: ${description} - ${vendor}`,
+    referenceType: 'expense',
+    referenceId: refundId,
+    lines,
+  });
+}
