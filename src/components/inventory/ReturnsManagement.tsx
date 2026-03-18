@@ -50,6 +50,8 @@ interface ReturnAuthorization {
   replacement_device_id: string | null;
   outbound_tracking_number: string | null;
   repair_notes: string | null;
+  purchase_order_id: string | null;
+  company_id: string | null;
   device?: { brand: string; model: string; imei: string | null };
   supplier?: { name: string };
 }
@@ -222,6 +224,41 @@ export function ReturnsManagement() {
             .from('devices')
             .update({ status: rma.return_type === 'purchase_return' ? 'returned' : 'in_stock' })
             .eq('id', rma.device_id);
+        }
+
+        // For purchase returns, reduce the linked AP balance
+        if (rma?.return_type === 'purchase_return' && rma?.purchase_order_id && rma?.company_id) {
+          // Find linked PO to get the bill_number
+          const { data: linkedPO } = await supabase
+            .from('purchase_orders')
+            .select('po_number')
+            .eq('id', rma.purchase_order_id)
+            .single();
+
+          if (linkedPO) {
+            const { data: apRecord } = await supabase
+              .from('accounts_payable')
+              .select('id, original_amount, paid_amount, balance_due')
+              .eq('company_id', rma.company_id)
+              .eq('bill_number', linkedPO.po_number)
+              .maybeSingle();
+
+            if (apRecord) {
+              const refundAmt = rma.refund_amount || rma.original_cost || 0;
+              const newOriginal = Math.max(0, apRecord.original_amount - refundAmt);
+              const newBalance = Math.max(0, (apRecord.balance_due || 0) - refundAmt);
+              const apStatus = newBalance <= 0.01 ? 'paid' : (apRecord.paid_amount || 0) > 0 ? 'partial' : 'unpaid';
+
+              await supabase.from('accounts_payable').update({
+                original_amount: newOriginal,
+                balance_due: newBalance,
+                status: apStatus,
+                notes: `Reduced by ${refundAmt} due to supplier return RMA ${rma.rma_number}`,
+              }).eq('id', apRecord.id);
+
+              toast.success(`AP balance reduced by $${refundAmt.toFixed(2)} for supplier return`);
+            }
+          }
         }
 
         try {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createPaymentMadeJournalEntry } from '@/lib/accounting/journalAutomation';
 import { useAuth } from '@/lib/auth';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -45,6 +46,9 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }
   const [paymentRef, setPaymentRef] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [syncToAP, setSyncToAP] = useState(true);
+
+  const VES_ID = '4e0fa3a6-06a9-4618-8513-f66143c05b28';
 
   useEffect(() => {
     if (open && poId) loadAll();
@@ -91,6 +95,7 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }
 
     setPaymentLoading(true);
     try {
+      // 1. Record PO payment
       const { error } = await supabase.from('po_payments').insert({
         purchase_order_id: po.id,
         payment_date: paymentDate,
@@ -102,6 +107,7 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }
       });
       if (error) throw error;
 
+      // 2. Update PO payment status
       const newPaid = totalPaid + amt;
       const newStatus = newPaid >= po.total_amount ? 'paid' : 'partial';
       await supabase.from('purchase_orders').update({
@@ -111,6 +117,60 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }
         payment_method: paymentMethod || po.payment_method,
         payment_reference: paymentRef || po.payment_reference,
       }).eq('id', po.id);
+
+      // 3. Sync to AP — find linked AP record and update it
+      if (syncToAP && po.company_id) {
+        const { data: apRecord } = await supabase
+          .from('accounts_payable')
+          .select('id, paid_amount, original_amount, balance_due')
+          .eq('company_id', po.company_id)
+          .eq('bill_number', po.po_number)
+          .maybeSingle();
+
+        if (apRecord) {
+          const apNewPaid = (apRecord.paid_amount || 0) + amt;
+          const apNewBalance = apRecord.original_amount - apNewPaid;
+          const apStatus = apNewBalance <= 0.01 ? 'paid' : 'partial';
+
+          // Create AP payment record
+          await supabase.from('ap_payments').insert({
+            accounts_payable_id: apRecord.id,
+            payment_date: paymentDate,
+            amount: amt,
+            payment_method: paymentMethod || null,
+            reference_number: paymentRef || null,
+            notes: paymentNotes || `Synced from PO ${po.po_number} payment`,
+            created_by: user.id,
+          });
+
+          // Update AP balance
+          await supabase.from('accounts_payable').update({
+            paid_amount: apNewPaid,
+            balance_due: Math.max(0, apNewBalance),
+            status: apStatus,
+          }).eq('id', apRecord.id);
+
+          // 4. Post journal entry: Dr. AP / Cr. Cash
+          const isVES = po.company_id === VES_ID;
+          try {
+            await createPaymentMadeJournalEntry({
+              companyId: po.company_id,
+              paymentDate,
+              amount: amt,
+              referenceId: apRecord.id,
+              supplierName: po.supplier_name,
+              isVES,
+            });
+          } catch (jeErr) {
+            console.error('Journal entry error:', jeErr);
+            toast.warning('Payment recorded but journal entry failed');
+          }
+
+          toast.success(`AP updated: ${fmtCurrency(apNewBalance)} remaining`);
+        } else {
+          toast.info('No linked AP record found — payment recorded on PO only');
+        }
+      }
 
       toast.success(`Payment of ${fmtCurrency(amt)} recorded`);
       setShowPaymentForm(false);
@@ -340,6 +400,10 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }
                       <Label className="text-xs">Notes</Label>
                       <Input value={paymentNotes} onChange={e => setPaymentNotes(e.target.value)} placeholder="Optional..." />
                     </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <Checkbox checked={syncToAP} onCheckedChange={(v) => setSyncToAP(v === true)} />
+                      <span className="text-sm">Also record AP payment &amp; post journal entry (Dr. AP / Cr. Cash)</span>
+                    </label>
                     <div className="flex gap-2 justify-end">
                       <Button variant="outline" size="sm" onClick={() => setShowPaymentForm(false)}>Cancel</Button>
                       <Button size="sm" onClick={recordPayment} disabled={paymentLoading}>
