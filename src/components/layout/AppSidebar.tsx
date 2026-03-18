@@ -17,7 +17,7 @@ import {
   Smartphone,
   ShoppingCart,
   ClipboardCheck,
-  PackageCheck,
+  RotateCcw,
   RotateCcw,
   Activity,
   BookOpen,
