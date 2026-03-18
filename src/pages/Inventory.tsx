@@ -14,7 +14,7 @@ import { InventoryGuide } from '@/components/guides/InventoryGuide';
 
 import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker';
 import { ProductsManagement } from '@/components/inventory/ProductsManagement';
-import { FBAFeeAnalytics } from '@/components/inventory/FBAFeeAnalytics';
+
 import { DeviceProcurementDialog } from '@/components/inventory/DeviceProcurementDialog';
 import { DeviceTimelineDialog } from '@/components/inventory/DeviceTimelineDialog';
 import { DeviceFilters } from '@/components/inventory/DeviceFilters';
