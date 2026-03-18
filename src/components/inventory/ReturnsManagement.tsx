@@ -317,7 +317,43 @@ export function ReturnsManagement() {
     });
   };
 
-  const getStatusBadge = (status: string) => {
+  // KPI calculations
+  const kpis = useMemo(() => {
+    const open = returns.filter(r => ['pending', 'approved', 'shipped'].includes(r.status));
+    const pendingRefunds = open
+      .filter(r => r.resolution_type === 'refund')
+      .reduce((sum, r) => sum + (r.refund_amount || r.original_cost || 0), 0);
+    const resolved = returns.filter(r => ['refunded', 'completed', 'cancelled'].includes(r.status));
+    const avgDays = resolved.length > 0
+      ? resolved.reduce((sum, r) => {
+          const created = new Date(r.created_at);
+          const end = r.refund_date ? new Date(r.refund_date) : new Date(r.created_at);
+          return sum + differenceInDays(end, created);
+        }, 0) / resolved.length
+      : 0;
+    const overdue = open.filter(r => differenceInDays(new Date(), new Date(r.created_at)) > 7);
+    return { openCount: open.length, pendingRefunds, avgDays: Math.round(avgDays), overdueCount: overdue.length };
+  }, [returns]);
+
+  const formatCurrencyValue = (value: number) =>
+    new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
+
+  const getRmaTimeline = (rma: ReturnAuthorization) => {
+    const steps = [
+      { label: 'Created', status: 'done', date: rma.created_at, icon: Plus },
+      { label: 'Approved', status: ['approved', 'shipped', 'received', 'refunded', 'completed'].includes(rma.status) ? 'done' : rma.status === 'pending' ? 'current' : 'upcoming', icon: CheckCircle },
+      { label: 'Shipped', status: ['shipped', 'received', 'refunded', 'completed'].includes(rma.status) ? 'done' : rma.status === 'approved' ? 'current' : 'upcoming', icon: Truck },
+      { 
+        label: rma.resolution_type === 'refund' ? 'Refunded' : rma.resolution_type === 'repair' ? 'Repaired' : 'Exchanged',
+        status: ['refunded', 'completed'].includes(rma.status) ? 'done' : ['shipped', 'received'].includes(rma.status) ? 'current' : 'upcoming',
+        date: rma.refund_date || undefined,
+        icon: rma.resolution_type === 'refund' ? DollarSign : rma.resolution_type === 'repair' ? Wrench : ArrowRightLeft,
+      },
+    ];
+    return steps;
+  };
+
+
     const styles: Record<string, string> = {
       pending: 'bg-amber-500/10 text-amber-500',
       approved: 'bg-blue-500/10 text-blue-500',
