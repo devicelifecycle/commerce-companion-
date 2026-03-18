@@ -423,6 +423,38 @@ export function ReturnsManagement() {
   }
 
   return (
+    <>
+    {/* KPI Summary Cards */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <MetricCard
+        title="Open RMAs"
+        value={kpis.openCount}
+        icon={RotateCcw}
+        change={`${returns.filter(r => r.return_type === 'purchase_return' && ['pending','approved','shipped'].includes(r.status)).length} supplier · ${returns.filter(r => r.return_type === 'sales_return' && ['pending','approved','shipped'].includes(r.status)).length} customer`}
+      />
+      <MetricCard
+        title="Pending Refunds"
+        value={formatCurrencyValue(kpis.pendingRefunds)}
+        icon={DollarSign}
+        iconClassName="bg-amber-500/10"
+      />
+      <MetricCard
+        title="Avg Resolution"
+        value={`${kpis.avgDays}d`}
+        icon={Timer}
+        change={kpis.avgDays > 7 ? 'Above target' : 'On track'}
+        changeType={kpis.avgDays > 7 ? 'negative' : 'positive'}
+      />
+      <MetricCard
+        title="Overdue (>7d)"
+        value={kpis.overdueCount}
+        icon={AlertTriangle}
+        iconClassName={kpis.overdueCount > 0 ? 'bg-destructive/10' : undefined}
+        changeType={kpis.overdueCount > 0 ? 'negative' : 'positive'}
+        change={kpis.overdueCount > 0 ? 'Needs attention' : 'All clear'}
+      />
+    </div>
+
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
