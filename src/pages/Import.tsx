@@ -225,12 +225,35 @@ export default function Import() {
     }
   }, [selectedCompany]);
 
-  // Duplicate check for manual add
+  // Duplicate check against product_catalog
   useEffect(() => {
     if (!manualForm.brand || !manualForm.model) { setManualDuplicateWarning(null); return; }
     const key = modelFuzzyKey(normalizeBrand(manualForm.brand), normalizeModel(manualForm.model));
-    // We'll just show a warning — actual check would require a DB query, but for quick UX this is fine
-    setManualDuplicateWarning(null);
+    
+    const checkCatalog = async () => {
+      const { data } = await supabase
+        .from('product_catalog' as any)
+        .select('brand, model, normalized_key')
+        .eq('normalized_key', key)
+        .maybeSingle();
+      if (data) {
+        setManualDuplicateWarning(null); // Exists in catalog — this is expected, not a warning
+      } else {
+        // Check if similar device already exists in inventory (potential dup without catalog entry)
+        const { count } = await supabase
+          .from('devices')
+          .select('id', { count: 'exact', head: true })
+          .ilike('brand', normalizeBrand(manualForm.brand))
+          .ilike('model', normalizeModel(manualForm.model));
+        if (count && count > 0) {
+          setManualDuplicateWarning(`${count} existing device(s) match "${normalizeBrand(manualForm.brand)} ${normalizeModel(manualForm.model)}" — consider adding this to the Product Catalog (Settings) first`);
+        } else {
+          setManualDuplicateWarning(null);
+        }
+      }
+    };
+    const timer = setTimeout(checkCatalog, 300);
+    return () => clearTimeout(timer);
   }, [manualForm.brand, manualForm.model]);
 
   const handleManualAddDevice = async () => {
