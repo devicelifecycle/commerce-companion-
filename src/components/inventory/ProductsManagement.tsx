@@ -440,14 +440,9 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
               <Download className="h-4 w-4 mr-1" /> Export
             </Button>
             {canManage && (
-              <>
-                <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)}>
-                  <Upload className="h-4 w-4 mr-1" /> Import
-                </Button>
-                <Button size="sm" onClick={() => { resetForm(); setIsDialogOpen(true); }}>
-                  <Plus className="h-4 w-4 mr-1" /> Add Product
-                </Button>
-              </>
+              <Button variant="outline" size="sm" onClick={() => setShowImportDialog(true)}>
+                <Upload className="h-4 w-4 mr-1" /> Import
+              </Button>
             )}
           </div>
         </CardHeader>
@@ -662,7 +657,7 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              {editingProduct ? 'Edit Product' : 'Add Product'}
+              Edit Product
             </DialogTitle>
             <DialogDescription>
               {editingProduct ? 'Update product details' : 'Add a new product to your inventory'}
@@ -756,7 +751,7 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => { resetForm(); setIsDialogOpen(false); }}>Cancel</Button>
-            <Button onClick={handleSave}>{editingProduct ? 'Save Changes' : 'Add Product'}</Button>
+            <Button onClick={handleSave}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
