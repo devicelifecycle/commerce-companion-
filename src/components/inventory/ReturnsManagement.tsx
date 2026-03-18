@@ -70,6 +70,7 @@ export function ReturnsManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewingRma, setViewingRma] = useState<ReturnAuthorization | null>(null);
   
   const [formData, setFormData] = useState({
     return_type: 'purchase_return' as 'purchase_return' | 'sales_return',
