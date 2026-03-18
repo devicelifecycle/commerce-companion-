@@ -38,7 +38,7 @@ import {
 import { toast } from 'sonner';
 import { 
   Plus, Search, Filter, Download, LayoutDashboard, List, 
-  Building, MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink, Info
+  MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink, Info
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
