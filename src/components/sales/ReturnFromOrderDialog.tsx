@@ -77,8 +77,9 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
           resolution_type: resolutionType,
           device_condition_on_return: deviceCondition,
           outbound_tracking_number: outboundTracking || null,
-          repair_notes: resolutionType === 'repair' ? repairNotes : null,
-        } as any);
+           repair_notes: resolutionType === 'repair' ? repairNotes : null,
+           replacement_device_id: resolutionType === 'exchange' && replacementDeviceId ? replacementDeviceId : null,
+         } as any);
 
       if (rmaError) throw rmaError;
 
