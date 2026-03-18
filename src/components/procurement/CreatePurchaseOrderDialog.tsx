@@ -137,7 +137,9 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
 
   const loadSuppliers = async () => {
     let query = supabase.from('suppliers').select('id, name, supplier_code').order('name');
-    if (selectedCompanyId) query = query.eq('company_id', selectedCompanyId);
+    if (selectedCompanyId) {
+      query = query.or(`company_id.eq.${selectedCompanyId},company_id.is.null`);
+    }
     const { data } = await query;
     if (data) setSuppliers(data);
   };
