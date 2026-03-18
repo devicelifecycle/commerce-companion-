@@ -64,7 +64,6 @@ const expenseNav = [
 const analyticsNav = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Financials', url: '/financials', icon: BarChart3 },
-  { title: 'Cost Ledger', url: '/cost-ledger', icon: Warehouse },
   { title: 'Forecasting', url: '/forecasting', icon: Brain },
 ];
 

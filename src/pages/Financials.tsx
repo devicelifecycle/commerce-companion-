@@ -2,9 +2,6 @@ import { useState } from 'react';
 import { FinancialsGuide } from '@/components/guides/FinancialsGuide';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useCompany } from '@/contexts/CompanyContext';
 
@@ -28,162 +25,177 @@ import { TaxCollectedReport } from '@/components/taxes/TaxCollectedReport';
 import { InputTaxCredits } from '@/components/taxes/InputTaxCredits';
 import { TaxFilingReport } from '@/components/taxes/TaxFilingReport';
 
+// Cost Ledger
+import { CostLedgerPanel } from '@/components/financials/CostLedgerPanel';
+
 import {
-  TrendingUp, BarChart3, ArrowLeftRight, Receipt, Building2, Search,
+  TrendingUp, BarChart3, ArrowLeftRight, Receipt, Building2,
   Scale, Store, CheckSquare, Calculator, FileText, LayoutDashboard,
+  Warehouse, Package, Users,
 } from 'lucide-react';
 
 type SubView =
   | 'pl' | 'balance-sheet'
   | 'executive' | 'marketplace' | 'fees' | 'reconciliation'
   | 'ap' | 'ar'
-  | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing';
+  | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing'
+  | 'cost-devices' | 'cost-batches' | 'cost-suppliers';
 
-const SUB_VIEWS: Record<string, { label: string; icon: React.ElementType; views: { value: SubView; label: string; icon: React.ElementType }[] }> = {
-  statements: {
+const SECTIONS = [
+  {
+    key: 'statements',
     label: 'Statements',
     icon: TrendingUp,
     views: [
-      { value: 'pl', label: 'Profit & Loss', icon: TrendingUp },
-      { value: 'balance-sheet', label: 'Balance Sheet', icon: Scale },
+      { value: 'pl' as SubView, label: 'Profit & Loss', icon: TrendingUp },
+      { value: 'balance-sheet' as SubView, label: 'Balance Sheet', icon: Scale },
     ],
   },
-  reports: {
-    label: 'Reports',
-    icon: BarChart3,
+  {
+    key: 'cost-ledger',
+    label: 'Cost Ledger',
+    icon: Warehouse,
     views: [
-      { value: 'executive', label: 'Executive', icon: LayoutDashboard },
-      { value: 'marketplace', label: 'Marketplace', icon: Store },
-      { value: 'fees', label: 'Fees & Commissions', icon: Receipt },
-      { value: 'reconciliation', label: 'Reconciliation', icon: CheckSquare },
+      { value: 'cost-devices' as SubView, label: 'Cost Ledger', icon: Warehouse },
     ],
   },
-  'ap-ar': {
+  {
+    key: 'ap-ar',
     label: 'AP & AR',
     icon: ArrowLeftRight,
     views: [
-      { value: 'ap', label: 'Accounts Payable', icon: ArrowLeftRight },
-      { value: 'ar', label: 'Accounts Receivable', icon: ArrowLeftRight },
+      { value: 'ap' as SubView, label: 'Payable', icon: ArrowLeftRight },
+      { value: 'ar' as SubView, label: 'Receivable', icon: ArrowLeftRight },
     ],
   },
-  taxes: {
+  {
+    key: 'reports',
+    label: 'Reports',
+    icon: BarChart3,
+    views: [
+      { value: 'executive' as SubView, label: 'Executive', icon: LayoutDashboard },
+      { value: 'marketplace' as SubView, label: 'Marketplace', icon: Store },
+      { value: 'fees' as SubView, label: 'Fees', icon: Receipt },
+      { value: 'reconciliation' as SubView, label: 'Reconciliation', icon: CheckSquare },
+    ],
+  },
+  {
+    key: 'taxes',
     label: 'Taxes',
     icon: Receipt,
     views: [
-      { value: 'tax-dashboard', label: 'Overview', icon: LayoutDashboard },
-      { value: 'tax-collected', label: 'Tax Collected', icon: Receipt },
-      { value: 'tax-itc', label: 'Input Tax Credits', icon: Calculator },
-      { value: 'tax-filing', label: 'Filing', icon: FileText },
+      { value: 'tax-dashboard' as SubView, label: 'Overview', icon: LayoutDashboard },
+      { value: 'tax-collected' as SubView, label: 'Collected', icon: Receipt },
+      { value: 'tax-itc' as SubView, label: 'ITC', icon: Calculator },
+      { value: 'tax-filing' as SubView, label: 'Filing', icon: FileText },
     ],
   },
-};
+];
 
 export default function Financials() {
   const { companies } = useCompany();
-  const [activeTab, setActiveTab] = useState('statements');
+  const [activeSection, setActiveSection] = useState('statements');
   const [subView, setSubView] = useState<SubView>('pl');
   const [companyView, setCompanyView] = useState<'consolidated' | string>('consolidated');
 
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-    // Auto-select first sub-view of the tab
-    const firstView = SUB_VIEWS[tab]?.views[0]?.value;
+  const handleSectionChange = (section: string) => {
+    if (!section) return;
+    setActiveSection(section);
+    const firstView = SECTIONS.find(s => s.key === section)?.views[0]?.value;
     if (firstView) setSubView(firstView);
   };
 
-  const currentGroup = SUB_VIEWS[activeTab];
+  const currentSection = SECTIONS.find(s => s.key === activeSection);
 
   return (
     <PermissionGuard permission="accounting_view" title="Financial Hub">
-    <DashboardLayout>
-      <div className="space-y-4 animate-fade-in">
-        {/* Header */}
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-display font-bold gradient-text">Financials</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Statements, reports, payables, receivables & tax compliance
-            </p>
-          </div>
+      <DashboardLayout>
+        <div className="space-y-4 animate-fade-in">
+          {/* Header */}
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-display font-bold gradient-text">Financials</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Statements · Cost Ledger · AP/AR · Reports · Taxes
+              </p>
+            </div>
 
-          {/* Company View Toggle */}
-          <div className="flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-            <ToggleGroup
-              type="single"
-              value={companyView}
-              onValueChange={(v) => { if (v) setCompanyView(v); }}
-              className="bg-muted rounded-lg p-0.5"
-            >
-              <ToggleGroupItem value="consolidated" className="text-xs px-2.5 py-1 data-[state=on]:bg-background data-[state=on]:shadow-sm">
-                All
-              </ToggleGroupItem>
-              {companies.map(c => (
-                <ToggleGroupItem key={c.id} value={c.id} className="text-xs px-2.5 py-1 data-[state=on]:bg-background data-[state=on]:shadow-sm">
-                  {c.code}
+            <div className="flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+              <ToggleGroup
+                type="single"
+                value={companyView}
+                onValueChange={(v) => { if (v) setCompanyView(v); }}
+                className="bg-muted rounded-lg p-0.5"
+              >
+                <ToggleGroupItem value="consolidated" className="text-xs px-2.5 py-1 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                  All
                 </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
+                {companies.map(c => (
+                  <ToggleGroupItem key={c.id} value={c.id} className="text-xs px-2.5 py-1 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                    {c.code}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </div>
           </div>
-        </div>
 
-        <FinancialsGuide />
+          <FinancialsGuide />
 
-        {/* Primary Tabs */}
-        <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="w-full justify-start">
-            {Object.entries(SUB_VIEWS).map(([key, group]) => (
-              <TabsTrigger key={key} value={key} className="flex items-center gap-1.5 text-xs">
-                <group.icon className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{group.label}</span>
-              </TabsTrigger>
+          {/* Section tabs */}
+          <ToggleGroup
+            type="single"
+            value={activeSection}
+            onValueChange={handleSectionChange}
+            className="bg-muted rounded-lg p-0.5 w-fit"
+          >
+            {SECTIONS.map(s => (
+              <ToggleGroupItem key={s.key} value={s.key} className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                <s.icon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{s.label}</span>
+              </ToggleGroupItem>
             ))}
-          </TabsList>
-        </Tabs>
+          </ToggleGroup>
 
-        {/* Sub-view selector */}
-        {currentGroup && currentGroup.views.length > 1 && (
-          <div className="flex items-center gap-2">
+          {/* Sub-view selector (only if section has multiple views) */}
+          {currentSection && currentSection.views.length > 1 && (
             <ToggleGroup
               type="single"
               value={subView}
               onValueChange={(v) => { if (v) setSubView(v as SubView); }}
-              className="bg-muted/50 rounded-lg p-0.5 border border-border/40"
+              className="bg-muted/50 rounded-lg p-0.5 border border-border/40 w-fit"
             >
-              {currentGroup.views.map(v => (
+              {currentSection.views.map(v => (
                 <ToggleGroupItem key={v.value} value={v.value} className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
                   <v.icon className="h-3 w-3" />
                   {v.label}
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
+          )}
+
+          {/* Content */}
+          <div className="min-h-[400px]">
+            {subView === 'pl' && <ProfitLossReport />}
+            {subView === 'balance-sheet' && <BalanceSheetReport />}
+
+            {subView === 'cost-devices' && <CostLedgerPanel companyView={companyView} />}
+
+            {subView === 'executive' && <ExecutiveDashboard companyView={companyView} />}
+            {subView === 'marketplace' && <MarketplaceAccounting companyView={companyView} />}
+            {subView === 'fees' && <MarketplaceFeeAnalytics companyView={companyView} />}
+            {subView === 'reconciliation' && <MarketplaceReconciliation companyView={companyView} />}
+
+            {subView === 'ap' && <AccountsPayable companyFilter={companyView} />}
+            {subView === 'ar' && <AccountsReceivable companyFilter={companyView} />}
+
+            {subView === 'tax-dashboard' && <TaxDashboard />}
+            {subView === 'tax-collected' && <TaxCollectedReport />}
+            {subView === 'tax-itc' && <InputTaxCredits />}
+            {subView === 'tax-filing' && <TaxFilingReport />}
           </div>
-        )}
-
-        {/* Content */}
-        <div className="min-h-[400px]">
-          {/* Statements */}
-          {subView === 'pl' && <ProfitLossReport />}
-          {subView === 'balance-sheet' && <BalanceSheetReport />}
-
-          {/* Reports */}
-          {subView === 'executive' && <ExecutiveDashboard companyView={companyView} />}
-          {subView === 'marketplace' && <MarketplaceAccounting companyView={companyView} />}
-          {subView === 'fees' && <MarketplaceFeeAnalytics companyView={companyView} />}
-          {subView === 'reconciliation' && <MarketplaceReconciliation companyView={companyView} />}
-
-          {/* AP & AR */}
-          {subView === 'ap' && <AccountsPayable companyFilter={companyView} />}
-          {subView === 'ar' && <AccountsReceivable companyFilter={companyView} />}
-
-          {/* Taxes */}
-          {subView === 'tax-dashboard' && <TaxDashboard />}
-          {subView === 'tax-collected' && <TaxCollectedReport />}
-          {subView === 'tax-itc' && <InputTaxCredits />}
-          {subView === 'tax-filing' && <TaxFilingReport />}
         </div>
-      </div>
-    </DashboardLayout>
+      </DashboardLayout>
     </PermissionGuard>
   );
 }
