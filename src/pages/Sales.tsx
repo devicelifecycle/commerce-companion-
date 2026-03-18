@@ -548,14 +548,10 @@ export default function Sales() {
                                 <>
                                   {!sale.device_id && (
                                     <DropdownMenuItem
-                                      onClick={() => setEditingSale({
-                                        id: sale.id,
-                                        deviceId: sale.device_id,
-                                        orderNumber: sale.order_number
-                                      })}
+                                      onClick={() => setViewingSale(sale)}
                                     >
                                       <Link className="h-4 w-4 mr-2" />
-                                      Link Device
+                                      Link Item
                                     </DropdownMenuItem>
                                   )}
                                   {sale.device_id && (
