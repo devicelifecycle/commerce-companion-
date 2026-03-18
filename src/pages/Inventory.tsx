@@ -247,19 +247,8 @@ export default function Inventory() {
           </TabsContent>
 
           {isSuperAdmin && (
-            <TabsContent value="fba" className="space-y-6">
-              <Tabs defaultValue="inventory">
-                <TabsList>
-                  <TabsTrigger value="inventory">FBA Inventory</TabsTrigger>
-                  <TabsTrigger value="fees">Fee Analytics</TabsTrigger>
-                </TabsList>
-                <TabsContent value="inventory" className="mt-4">
-                  <FBAInventoryTracker />
-                </TabsContent>
-                <TabsContent value="fees" className="mt-4">
-                  <FBAFeeAnalytics />
-                </TabsContent>
-              </Tabs>
+            <TabsContent value="fba">
+              <FBAInventoryTracker />
             </TabsContent>
           )}
         </Tabs>
