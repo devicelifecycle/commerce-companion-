@@ -1092,6 +1092,13 @@ export default function Import() {
                   </div>
                 )}
 
+                {manualDuplicateWarning && (
+                  <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                    {manualDuplicateWarning}
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Brand *</Label>
