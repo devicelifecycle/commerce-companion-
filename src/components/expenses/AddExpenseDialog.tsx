@@ -528,39 +528,49 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
             </div>
           </div>
 
-          {/* Amounts */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Amount (Before Tax) *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>GST/HST</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.gst_hst_amount}
-                onChange={(e) => setFormData({ ...formData, gst_hst_amount: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>PST/QST</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.pst_amount}
-                onChange={(e) => setFormData({ ...formData, pst_amount: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
+          {/* Amount & Tax */}
+          <div className="space-y-2">
+            <Label>Amount (Before Tax) *</Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              placeholder="0.00"
+            />
           </div>
+
+          <div className="space-y-2">
+            <Label>Tax Category</Label>
+            <Select value={formData.tax_category} onValueChange={(v) => setFormData({ ...formData, tax_category: v })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TAX_CATEGORIES.map(tc => (
+                  <SelectItem key={tc.value} value={tc.value}>{tc.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Tax Breakdown */}
+          {(totals.gst > 0 || totals.pst > 0) && (
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              {totals.gst > 0 && (
+                <div className="p-2 rounded bg-muted/50 flex justify-between">
+                  <span className="text-muted-foreground">GST/HST</span>
+                  <span className="font-medium">${totals.gst.toFixed(2)}</span>
+                </div>
+              )}
+              {totals.pst > 0 && (
+                <div className="p-2 rounded bg-muted/50 flex justify-between">
+                  <span className="text-muted-foreground">PST/QST</span>
+                  <span className="font-medium">${totals.pst.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Total Display */}
           <div className="p-3 rounded-lg bg-muted/50 flex justify-between items-center">
