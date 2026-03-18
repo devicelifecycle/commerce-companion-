@@ -559,7 +559,7 @@ export default function Sales() {
                                       onClick={() => handleUnlinkDevice(sale.id, sale.device_id!)}
                                     >
                                       <Unlink className="h-4 w-4 mr-2" />
-                                      Unlink Device
+                                      Unlink Item
                                     </DropdownMenuItem>
                                   )}
                                   {!returnSaleIds.has(sale.id) && (
