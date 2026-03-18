@@ -121,6 +121,7 @@ export default function Inventory() {
   const [showLabelDialog, setShowLabelDialog] = useState(false);
   const [labelDevice, setLabelDevice] = useState<Device | null>(null);
   const [procurementDevice, setProcurementDevice] = useState<{ id: string; label: string } | null>(null);
+  const [timelineDevice, setTimelineDevice] = useState<Device | null>(null);
 
   const canManage = hasPermission('inventory_manage', 'edit') || isSuperAdmin;
   const canView = hasPermission('inventory_view', 'view') || isSuperAdmin;
