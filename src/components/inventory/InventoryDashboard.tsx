@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Package, DollarSign, TrendingUp, Clock, AlertTriangle, BarChart3 } from 'lucide-react';
+import { Package, DollarSign, TrendingUp, Clock, AlertTriangle, BarChart3, Boxes } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { differenceInDays } from 'date-fns';
 
@@ -25,6 +25,13 @@ interface Sale {
   sale_date: string;
   device_id: string;
   company_id: string;
+}
+
+interface ProductSummary {
+  totalProducts: number;
+  totalUnits: number;
+  totalValue: number;
+  lowStock: number;
 }
 
 interface MetricCardProps {
@@ -63,6 +70,7 @@ export function InventoryDashboard() {
   const { selectedCompany, isSuperAdmin, companies } = useCompany();
   const [devices, setDevices] = useState<Device[]>([]);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [productSummary, setProductSummary] = useState<ProductSummary>({ totalProducts: 0, totalUnits: 0, totalValue: 0, lowStock: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -81,18 +89,33 @@ export function InventoryDashboard() {
         .select('id, sale_date, device_id, company_id')
         .not('device_id', 'is', null);
 
+      let productsQuery = supabase
+        .from('products')
+        .select('id, cost_price, quantity_on_hand, reorder_point, status')
+        .eq('status', 'active');
+
       if (selectedCompany) {
         devicesQuery = devicesQuery.eq('company_id', selectedCompany.id);
         salesQuery = salesQuery.eq('company_id', selectedCompany.id);
+        productsQuery = productsQuery.eq('company_id', selectedCompany.id);
       }
 
-      const [devicesRes, salesRes] = await Promise.all([devicesQuery, salesQuery]);
+      const [devicesRes, salesRes, productsRes] = await Promise.all([devicesQuery, salesQuery, productsQuery]);
 
       if (devicesRes.error) throw devicesRes.error;
       if (salesRes.error) throw salesRes.error;
 
       setDevices((devicesRes.data || []) as Device[]);
       setSales((salesRes.data || []) as Sale[]);
+
+      // Calculate product summary
+      const prods = productsRes.data || [];
+      setProductSummary({
+        totalProducts: prods.length,
+        totalUnits: prods.reduce((s, p: any) => s + (p.quantity_on_hand || 0), 0),
+        totalValue: prods.reduce((s, p: any) => s + (p.cost_price || 0) * (p.quantity_on_hand || 0), 0),
+        lowStock: prods.filter((p: any) => p.reorder_point > 0 && p.quantity_on_hand <= p.reorder_point).length,
+      });
     } catch (error) {
       console.error('Error fetching inventory data:', error);
     } finally {
@@ -106,13 +129,10 @@ export function InventoryDashboard() {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // Current month sales
     const monthlySales = sales.filter(s => new Date(s.sale_date) >= thirtyDaysAgo);
 
-    // Total inventory value
     const totalValue = inStock.reduce((sum, d) => sum + (d.cost_price || 0), 0);
 
-    // Average days to sell
     const soldWithDates = soldDevices.filter(d => d.purchase_date);
     let avgDaysToSell = 0;
     if (soldWithDates.length > 0) {
@@ -126,16 +146,13 @@ export function InventoryDashboard() {
       avgDaysToSell = Math.round(totalDays / soldWithDates.length);
     }
 
-    // Aging inventory (items > 30 days old not sold)
     const agingItems = inStock.filter(d => {
       const purchaseDate = d.purchase_date || d.created_at;
       return differenceInDays(now, new Date(purchaseDate)) > 30;
     });
 
-    // Low stock alert (less than 5 items in stock)
     const lowStock = inStock.length < 5;
 
-    // By category
     const byCategory: Record<string, { count: number; value: number }> = {};
     inStock.forEach(d => {
       const cat = d.category || 'phone';
@@ -144,13 +161,11 @@ export function InventoryDashboard() {
       byCategory[cat].value += d.cost_price || 0;
     });
 
-    // By brand
     const byBrand: Record<string, number> = {};
     inStock.forEach(d => {
       byBrand[d.brand] = (byBrand[d.brand] || 0) + 1;
     });
 
-    // By company
     const byCompany: Record<string, { count: number; value: number }> = {};
     inStock.forEach(d => {
       const company = companies.find(c => c.id === d.company_id);
@@ -160,7 +175,6 @@ export function InventoryDashboard() {
       byCompany[companyCode].value += d.cost_price || 0;
     });
 
-    // Inventory turnover (sold / avg inventory)
     const turnoverRate = inStock.length > 0 ? (soldDevices.length / inStock.length) * 100 : 0;
 
     return {
@@ -180,6 +194,10 @@ export function InventoryDashboard() {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
 
+  // Combined totals
+  const combinedValue = metrics.totalValue + productSummary.totalValue;
+  const combinedUnits = metrics.totalInStock + productSummary.totalUnits;
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -194,25 +212,25 @@ export function InventoryDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Key Metrics */}
+      {/* Combined Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
-          title="Total In Stock"
-          value={metrics.totalInStock}
-          description="Available devices"
+          title="Total Inventory"
+          value={combinedUnits}
+          description={`${metrics.totalInStock} devices + ${productSummary.totalUnits} product units`}
           icon={Package}
-          alert={metrics.lowStock}
+          alert={metrics.lowStock || productSummary.lowStock > 0}
         />
         <MetricCard
-          title="Inventory Value"
-          value={formatCurrency(metrics.totalValue)}
-          description="At cost price"
+          title="Total Value"
+          value={formatCurrency(combinedValue)}
+          description={`Devices: ${formatCurrency(metrics.totalValue)} · Products: ${formatCurrency(productSummary.totalValue)}`}
           icon={DollarSign}
         />
         <MetricCard
           title="Sold This Month"
           value={metrics.soldThisMonth}
-          description="Last 30 days"
+          description="Devices — last 30 days"
           icon={TrendingUp}
         />
         <MetricCard
@@ -223,13 +241,51 @@ export function InventoryDashboard() {
         />
       </div>
 
+      {/* Products summary card */}
+      {productSummary.totalProducts > 0 && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3 mb-2">
+              <Boxes className="h-5 w-5 text-primary" />
+              <span className="font-semibold text-sm">Products Inventory</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-xs text-muted-foreground">Active SKUs</p>
+                <p className="text-lg font-bold">{productSummary.totalProducts}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total Units</p>
+                <p className="text-lg font-bold">{productSummary.totalUnits.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Inventory Value</p>
+                <p className="text-lg font-bold">{formatCurrency(productSummary.totalValue)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Low Stock Alerts</p>
+                <p className={`text-lg font-bold ${productSummary.lowStock > 0 ? 'text-amber-600' : ''}`}>
+                  {productSummary.lowStock}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Alerts */}
-      {(metrics.lowStock || metrics.agingItems > 0) && (
+      {(metrics.lowStock || metrics.agingItems > 0 || productSummary.lowStock > 0) && (
         <div className="flex flex-wrap gap-2">
           {metrics.lowStock && (
             <Badge variant="outline" className="text-amber-600 border-amber-500">
               <AlertTriangle className="h-3 w-3 mr-1" />
-              Low Stock Alert
+              Low Device Stock
+            </Badge>
+          )}
+          {productSummary.lowStock > 0 && (
+            <Badge variant="outline" className="text-amber-600 border-amber-500">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              {productSummary.lowStock} product(s) below reorder point
             </Badge>
           )}
           {metrics.agingItems > 0 && (
@@ -275,7 +331,6 @@ export function InventoryDashboard() {
               <CardDescription>Stock distribution across companies</CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Per-company summary cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {metrics.byCompany.map((entry, index) => {
                   const fullName = companies.find(c => c.code === entry.name)?.name || entry.name;
@@ -288,7 +343,6 @@ export function InventoryDashboard() {
                   );
                 })}
               </div>
-              {/* Pie chart */}
               <div className="h-[240px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -367,7 +421,7 @@ export function InventoryDashboard() {
                   ? formatCurrency(metrics.totalValue / metrics.totalInStock) 
                   : '-'}
               </p>
-              <p className="text-sm text-muted-foreground mt-1">Avg. Item Value</p>
+              <p className="text-sm text-muted-foreground mt-1">Avg. Device Value</p>
             </div>
           </div>
         </CardContent>

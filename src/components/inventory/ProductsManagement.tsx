@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -21,11 +21,15 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { toast } from 'sonner';
-import { Search, Plus, Trash2, Edit2, MoreHorizontal, Package, Download, Filter, Upload } from 'lucide-react';
+import { Search, Plus, Trash2, Edit2, MoreHorizontal, Package, Download, Filter, Upload, ChevronDown, ChevronRight, Layers, AlertTriangle } from 'lucide-react';
 import { ProductImportDialog } from './ProductImportDialog';
+import { format } from 'date-fns';
 
 interface Product {
   id: string;
@@ -46,6 +50,30 @@ interface Product {
   created_at: string;
   product_categories?: { name: string } | null;
   suppliers?: { name: string } | null;
+}
+
+interface ProductLot {
+  id: string;
+  lot_number: string;
+  quantity: number;
+  cost_price: number;
+  received_date: string;
+  supplier_id: string | null;
+  notes: string | null;
+  suppliers?: { name: string } | null;
+}
+
+interface GrnItemWithPO {
+  id: string;
+  quantity_received: number;
+  condition_status: string;
+  grn_id: string;
+  purchase_order_item_id: string | null;
+  goods_received_notes?: {
+    grn_number: string;
+    purchase_order_id: string | null;
+    purchase_orders?: { po_number: string } | null;
+  } | null;
 }
 
 interface ProductCategory {
@@ -80,6 +108,13 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showImportDialog, setShowImportDialog] = useState(false);
 
+  // Expandable lot history
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(null);
+  const [lots, setLots] = useState<ProductLot[]>([]);
+  const [lotsLoading, setLotsLoading] = useState(false);
+  // Condition breakdown from GRN items
+  const [conditionBreakdown, setConditionBreakdown] = useState<Record<string, Record<string, number>>>({});
+
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -100,6 +135,13 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
     fetchCategories();
     fetchSuppliers();
   }, [selectedCompany]);
+
+  // Load condition breakdown for all products
+  useEffect(() => {
+    if (products.length > 0) {
+      loadConditionBreakdowns();
+    }
+  }, [products]);
 
   const fetchProducts = async () => {
     setLoading(true);
@@ -134,6 +176,48 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
     if (selectedCompany) query = query.eq('company_id', selectedCompany.id);
     const { data } = await query;
     setSuppliers(data || []);
+  };
+
+  const loadConditionBreakdowns = async () => {
+    const productIds = products.map(p => p.id);
+    // Get GRN items linked to these products
+    const { data: grnItems } = await supabase
+      .from('grn_items')
+      .select('product_id, condition_status, quantity_received')
+      .in('product_id', productIds);
+
+    if (grnItems) {
+      const breakdown: Record<string, Record<string, number>> = {};
+      for (const item of grnItems) {
+        if (!item.product_id) continue;
+        if (!breakdown[item.product_id]) breakdown[item.product_id] = {};
+        const status = item.condition_status || 'passed';
+        breakdown[item.product_id][status] = (breakdown[item.product_id][status] || 0) + item.quantity_received;
+      }
+      setConditionBreakdown(breakdown);
+    }
+  };
+
+  const loadLots = async (productId: string) => {
+    if (expandedProductId === productId) {
+      setExpandedProductId(null);
+      return;
+    }
+    setExpandedProductId(productId);
+    setLotsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('product_lots')
+        .select('*, suppliers(name)')
+        .eq('product_id', productId)
+        .order('received_date', { ascending: false });
+      if (error) throw error;
+      setLots((data || []) as ProductLot[]);
+    } catch {
+      toast.error('Failed to load lot history');
+    } finally {
+      setLotsLoading(false);
+    }
   };
 
   const filteredProducts = useMemo(() => {
@@ -286,6 +370,23 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
     };
   }, [products]);
 
+  const getConditionBadges = (productId: string) => {
+    const bd = conditionBreakdown[productId];
+    if (!bd) return null;
+    const nonPassed = Object.entries(bd).filter(([k]) => k !== 'passed');
+    if (nonPassed.length === 0) return null;
+    return (
+      <div className="flex gap-1 mt-0.5">
+        {nonPassed.map(([condition, qty]) => (
+          <Badge key={condition} variant="outline" className="text-[10px] py-0 px-1.5 text-amber-600 border-amber-400 gap-0.5">
+            <AlertTriangle className="h-2.5 w-2.5" />
+            {qty} {condition.replace('_', ' ')}
+          </Badge>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <>
       {/* Metrics row */}
@@ -370,6 +471,7 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
                   <TableHead className="w-10">
                     <Checkbox checked={selection.isAllSelected} onCheckedChange={selection.toggleAll} />
                   </TableHead>
+                  <TableHead className="w-8"></TableHead>
                   <TableHead>Product</TableHead>
                   <TableHead>SKU / Barcode</TableHead>
                   <TableHead>Category</TableHead>
@@ -383,61 +485,158 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
               </TableHeader>
               <TableBody>
                 {filteredProducts.map(product => (
-                  <TableRow key={product.id} data-state={selection.selectedIds.has(product.id) ? 'selected' : undefined}>
-                    <TableCell>
-                      <Checkbox checked={selection.selectedIds.has(product.id)} onCheckedChange={() => selection.toggle(product.id)} />
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{product.name}</p>
-                        {product.description && <p className="text-xs text-muted-foreground truncate max-w-[200px]">{product.description}</p>}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-mono text-sm">
-                      <div>
-                        {product.sku && <span>{product.sku}</span>}
-                        {product.barcode && <span className="text-xs text-muted-foreground block">{product.barcode}</span>}
-                        {!product.sku && !product.barcode && '-'}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {product.product_categories?.name ? (
-                        <Badge variant="outline">{product.product_categories.name}</Badge>
-                      ) : '-'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <span className={product.reorder_point > 0 && product.quantity_on_hand <= product.reorder_point ? 'text-amber-600 font-medium' : ''}>
-                        {product.quantity_on_hand}
-                      </span>
-                      <span className="text-xs text-muted-foreground ml-1">{product.unit_of_measure}</span>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">{formatCurrency(product.cost_price)}</TableCell>
-                    <TableCell className="text-right font-mono">{product.sale_price ? formatCurrency(product.sale_price) : '-'}</TableCell>
-                    <TableCell>
-                      <Badge variant={product.status === 'active' ? 'default' : 'secondary'} className="capitalize text-xs">
-                        {product.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">{product.suppliers?.name || '-'}</TableCell>
-                    {canManage && (
+                  <Fragment key={product.id}>
+                    <TableRow data-state={selection.selectedIds.has(product.id) ? 'selected' : undefined}>
                       <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEdit(product)}>
-                              <Edit2 className="h-4 w-4 mr-2" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(product.id)}>
-                              <Trash2 className="h-4 w-4 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Checkbox checked={selection.selectedIds.has(product.id)} onCheckedChange={() => selection.toggle(product.id)} />
                       </TableCell>
+                      <TableCell className="px-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => loadLots(product.id)}
+                          title="View lot history & PO source"
+                        >
+                          {expandedProductId === product.id ? (
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          ) : (
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{product.name}</p>
+                          {product.description && <p className="text-xs text-muted-foreground truncate max-w-[200px]">{product.description}</p>}
+                          {getConditionBadges(product.id)}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        <div>
+                          {product.sku && <span>{product.sku}</span>}
+                          {product.barcode && <span className="text-xs text-muted-foreground block">{product.barcode}</span>}
+                          {!product.sku && !product.barcode && '-'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {product.product_categories?.name ? (
+                          <Badge variant="outline">{product.product_categories.name}</Badge>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={product.reorder_point > 0 && product.quantity_on_hand <= product.reorder_point ? 'text-amber-600 font-medium' : ''}>
+                          {product.quantity_on_hand}
+                        </span>
+                        <span className="text-xs text-muted-foreground ml-1">{product.unit_of_measure}</span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">{formatCurrency(product.cost_price)}</TableCell>
+                      <TableCell className="text-right font-mono">{product.sale_price ? formatCurrency(product.sale_price) : '-'}</TableCell>
+                      <TableCell>
+                        <Badge variant={product.status === 'active' ? 'default' : 'secondary'} className="capitalize text-xs">
+                          {product.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">{product.suppliers?.name || '-'}</TableCell>
+                      {canManage && (
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openEdit(product)}>
+                                <Edit2 className="h-4 w-4 mr-2" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(product.id)}>
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      )}
+                    </TableRow>
+
+                    {/* Expandable lot history row */}
+                    {expandedProductId === product.id && (
+                      <TableRow className="bg-muted/30 hover:bg-muted/40">
+                        <TableCell colSpan={canManage ? 11 : 10} className="py-3 px-6">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                              <Layers className="h-4 w-4" />
+                              Lot History & Source
+                            </div>
+                            {lotsLoading ? (
+                              <div className="flex items-center justify-center py-4">
+                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
+                              </div>
+                            ) : lots.length === 0 ? (
+                              <p className="text-xs text-muted-foreground py-2">No lot records — stock was added manually or before lot tracking was enabled.</p>
+                            ) : (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="text-xs">Lot #</TableHead>
+                                    <TableHead className="text-xs">Received</TableHead>
+                                    <TableHead className="text-xs text-right">Qty</TableHead>
+                                    <TableHead className="text-xs text-right">Unit Cost</TableHead>
+                                    <TableHead className="text-xs">Supplier</TableHead>
+                                    <TableHead className="text-xs">PO Source</TableHead>
+                                    <TableHead className="text-xs">Notes</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {lots.map(lot => {
+                                    // Extract PO number from lot_number if it follows LOT-PO-XXXX-YYYY format
+                                    const poMatch = lot.lot_number.match(/LOT-(PO-\d{4}-\d+)/);
+                                    const poNumber = poMatch ? poMatch[1] : null;
+                                    return (
+                                      <TableRow key={lot.id}>
+                                        <TableCell className="text-xs font-mono">{lot.lot_number}</TableCell>
+                                        <TableCell className="text-xs">{format(new Date(lot.received_date), 'MMM d, yyyy')}</TableCell>
+                                        <TableCell className="text-xs text-right font-medium">{lot.quantity}</TableCell>
+                                        <TableCell className="text-xs text-right font-mono">{formatCurrency(lot.cost_price)}</TableCell>
+                                        <TableCell className="text-xs">{lot.suppliers?.name || '-'}</TableCell>
+                                        <TableCell className="text-xs">
+                                          {poNumber ? (
+                                            <Badge variant="outline" className="text-xs font-mono cursor-pointer hover:bg-primary/10">
+                                              {poNumber}
+                                            </Badge>
+                                          ) : (
+                                            <span className="text-muted-foreground">Manual</span>
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground">{lot.notes || '-'}</TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                            )}
+
+                            {/* Condition breakdown */}
+                            {conditionBreakdown[product.id] && Object.keys(conditionBreakdown[product.id]).length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-border/50">
+                                <p className="text-xs font-medium text-muted-foreground mb-1">Receiving Condition Summary</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {Object.entries(conditionBreakdown[product.id]).map(([condition, qty]) => (
+                                    <Badge
+                                      key={condition}
+                                      variant={condition === 'passed' ? 'default' : 'outline'}
+                                      className={`text-xs ${condition !== 'passed' ? 'text-amber-600 border-amber-400' : ''}`}
+                                    >
+                                      {condition === 'passed' ? '✓' : '⚠'} {qty} {condition.replace('_', ' ')}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
                     )}
-                  </TableRow>
+                  </Fragment>
                 ))}
               </TableBody>
             </Table>
@@ -487,41 +686,8 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
                 <Input value={form.sku} onChange={e => setForm(prev => ({ ...prev, sku: e.target.value }))} placeholder="SKU-001" />
               </div>
               <div className="space-y-1.5">
-                <Label>Barcode / UPC</Label>
-                <Input value={form.barcode} onChange={e => setForm(prev => ({ ...prev, barcode: e.target.value }))} placeholder="123456789" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Category</Label>
-                <Select value={form.category_id} onValueChange={v => setForm(prev => ({ ...prev, category_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                  <SelectContent>
-                    {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {/* Inline add category */}
-                <div className="flex gap-1 mt-1">
-                  <Input
-                    placeholder="New category..."
-                    value={newCategoryName}
-                    onChange={e => setNewCategoryName(e.target.value)}
-                    className="text-xs h-7"
-                  />
-                  <Button type="button" variant="outline" size="sm" className="h-7 text-xs shrink-0" onClick={handleCreateCategory} disabled={!newCategoryName.trim()}>
-                    <Plus className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Unit of Measure</Label>
-                <Select value={form.unit_of_measure} onValueChange={v => setForm(prev => ({ ...prev, unit_of_measure: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {UNITS.map(u => <SelectItem key={u} value={u} className="capitalize">{u}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>Barcode</Label>
+                <Input value={form.barcode} onChange={e => setForm(prev => ({ ...prev, barcode: e.target.value }))} placeholder="UPC / EAN" />
               </div>
             </div>
 
@@ -535,25 +701,51 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
                 <Input type="number" step="0.01" value={form.sale_price} onChange={e => setForm(prev => ({ ...prev, sale_price: e.target.value }))} placeholder="0.00" />
               </div>
               <div className="space-y-1.5">
-                <Label>Quantity</Label>
-                <Input type="number" min="0" value={form.quantity_on_hand} onChange={e => setForm(prev => ({ ...prev, quantity_on_hand: e.target.value }))} placeholder="0" />
+                <Label>Unit</Label>
+                <Select value={form.unit_of_measure} onValueChange={v => setForm(prev => ({ ...prev, unit_of_measure: v }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {UNITS.map(u => <SelectItem key={u} value={u} className="capitalize">{u}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label>Reorder Point</Label>
-                <Input type="number" min="0" value={form.reorder_point} onChange={e => setForm(prev => ({ ...prev, reorder_point: e.target.value }))} placeholder="0" />
+                <Label>Quantity</Label>
+                <Input type="number" value={form.quantity_on_hand} onChange={e => setForm(prev => ({ ...prev, quantity_on_hand: e.target.value }))} placeholder="0" />
               </div>
               <div className="space-y-1.5">
-                <Label>Supplier</Label>
-                <Select value={form.supplier_id} onValueChange={v => setForm(prev => ({ ...prev, supplier_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
+                <Label>Reorder Point</Label>
+                <Input type="number" value={form.reorder_point} onChange={e => setForm(prev => ({ ...prev, reorder_point: e.target.value }))} placeholder="0" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Category</Label>
+              <div className="flex gap-2">
+                <Select value={form.category_id} onValueChange={v => setForm(prev => ({ ...prev, category_id: v }))}>
+                  <SelectTrigger className="flex-1"><SelectValue placeholder="Select category" /></SelectTrigger>
                   <SelectContent>
-                    {suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                    {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                <div className="flex gap-1">
+                  <Input placeholder="New category" value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} className="w-32" />
+                  <Button variant="outline" size="sm" onClick={handleCreateCategory} disabled={!newCategoryName.trim()}>+</Button>
+                </div>
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Supplier</Label>
+              <Select value={form.supplier_id} onValueChange={v => setForm(prev => ({ ...prev, supplier_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Select supplier" /></SelectTrigger>
+                <SelectContent>
+                  {suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-1.5">
@@ -564,19 +756,12 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => { resetForm(); setIsDialogOpen(false); }}>Cancel</Button>
-            <Button onClick={handleSave} disabled={!form.name || !form.cost_price}>
-              {editingProduct ? 'Save Changes' : 'Add Product'}
-            </Button>
+            <Button onClick={handleSave}>{editingProduct ? 'Save Changes' : 'Add Product'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Product Import Dialog */}
-      <ProductImportDialog
-        open={showImportDialog}
-        onOpenChange={setShowImportDialog}
-        onSuccess={fetchProducts}
-      />
+      <ProductImportDialog open={showImportDialog} onOpenChange={setShowImportDialog} onSuccess={fetchProducts} />
     </>
   );
 }
