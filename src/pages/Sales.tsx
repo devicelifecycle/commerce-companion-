@@ -339,17 +339,6 @@ export default function Sales() {
                   Export
                 </Button>
 
-                {isSuperAdmin && (
-                  <Button variant="outline" onClick={() => setShowIntercompanySale(true)}>
-                    <ArrowRightLeft className="h-4 w-4 mr-2" />
-                    Intercompany
-                  </Button>
-                )}
-
-                <Button onClick={() => setShowManualSale(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Record Sale
-                </Button>
               </>
             )}
           </div>
