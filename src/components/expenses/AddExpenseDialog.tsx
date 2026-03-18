@@ -88,6 +88,18 @@ const CATEGORY_ACCOUNT_MAP: Record<string, string> = {
   other: '7100',
 };
 
+const TAX_CATEGORIES = [
+  { value: 'hst_13', label: 'HST 13% (Ontario)', rate: 0.13, gstRate: 0.13, pstRate: 0 },
+  { value: 'hst_15', label: 'HST 15% (NS/NB/NL/PEI)', rate: 0.15, gstRate: 0.15, pstRate: 0 },
+  { value: 'gst_pst_bc', label: 'GST 5% + PST 7% (BC)', rate: 0.12, gstRate: 0.05, pstRate: 0.07 },
+  { value: 'gst_pst_sk', label: 'GST 5% + PST 6% (SK)', rate: 0.11, gstRate: 0.05, pstRate: 0.06 },
+  { value: 'gst_pst_mb', label: 'GST 5% + PST 7% (MB)', rate: 0.12, gstRate: 0.05, pstRate: 0.07 },
+  { value: 'gst_qst', label: 'GST 5% + QST 9.975% (QC)', rate: 0.14975, gstRate: 0.05, pstRate: 0.09975 },
+  { value: 'gst_only', label: 'GST 5% only (AB/NT/NU/YT)', rate: 0.05, gstRate: 0.05, pstRate: 0 },
+  { value: 'zero_rated', label: 'Zero-rated / Exempt', rate: 0, gstRate: 0, pstRate: 0 },
+  { value: 'no_tax', label: 'No tax (US / International)', rate: 0, gstRate: 0, pstRate: 0 },
+];
+
 const PAYMENT_METHODS = [
   { value: 'credit_card', label: 'Credit Card' },
   { value: 'debit_card', label: 'Debit Card' },
