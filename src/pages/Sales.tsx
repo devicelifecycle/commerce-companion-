@@ -55,8 +55,6 @@ export default function Sales() {
   const [companyFilter, setCompanyFilter] = useState<CompanyFilter>('all');
   const [marketplaceFilter, setMarketplaceFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [showManualSale, setShowManualSale] = useState(false);
-  const [showIntercompanySale, setShowIntercompanySale] = useState(false);
   const [editingSale, setEditingSale] = useState<{ id: string; deviceId: string | null; orderNumber: string } | null>(null);
   const [importingFrom, setImportingFrom] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
