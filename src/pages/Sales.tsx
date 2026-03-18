@@ -64,10 +64,6 @@ export default function Sales() {
   const canManageSales = hasPermission('sales_manage', 'edit');
   const canViewSales = hasPermission('sales_view', 'view');
 
-  // Quick action: open "Record Sale" dialog via Alt+S
-  useQuickActionListener('add-sale', useCallback(() => {
-    if (canManageSales) setShowManualSale(true);
-  }, [canManageSales]));
 
   // Resolve company IDs by code
   const vesCompany = companies.find(c => c.code === 'VES');
