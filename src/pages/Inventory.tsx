@@ -69,7 +69,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 type DeviceCondition = 'new' | 'refurbished' | 'used' | 'damaged';
-type DeviceStatus = 'in_stock' | 'reserved' | 'sold' | 'returned';
+type DeviceStatus = 'in_stock' | 'reserved' | 'sold' | 'returned' | 'hold_for_refurbishment';
 
 interface Device {
   id: string;
