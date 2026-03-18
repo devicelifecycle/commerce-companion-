@@ -622,17 +622,6 @@ export default function Inventory() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="warehouse_location">Location</Label>
-          <Input
-            id="warehouse_location"
-            value={formData.warehouse_location}
-            onChange={(e) => setFormData({ ...formData, warehouse_location: e.target.value })}
-            placeholder="Warehouse A, Shelf 1"
-          />
-        </div>
-      </div>
 
       <div className="space-y-2">
         <Label htmlFor="notes">Notes</Label>
