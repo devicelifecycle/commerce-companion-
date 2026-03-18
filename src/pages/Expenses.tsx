@@ -262,10 +262,6 @@ export default function Expenses() {
               <List className="h-4 w-4" />
               All Expenses
             </TabsTrigger>
-            <TabsTrigger value="vendors" className="flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              Vendors
-            </TabsTrigger>
             <TabsTrigger value="guide" className="flex items-center gap-2">
               <Info className="h-4 w-4" />
               Guide
