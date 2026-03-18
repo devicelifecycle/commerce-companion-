@@ -300,6 +300,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
         amount: parseFloat(formData.amount),
         gst_hst_amount: computedTotals.gst,
         pst_amount: computedTotals.pst,
+        total_amount: computedTotals.total,
         category: formData.category as any,
         subcategory: formData.subcategory || null,
         expense_date: formData.expense_date,
