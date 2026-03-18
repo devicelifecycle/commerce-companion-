@@ -877,5 +877,134 @@ export function ReturnsManagement() {
         </Tabs>
       </CardContent>
     </Card>
+
+    {/* RMA Detail Dialog with Timeline */}
+    <Dialog open={!!viewingRma} onOpenChange={(open) => !open && setViewingRma(null)}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        {viewingRma && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between">
+                <span className="font-mono">{viewingRma.rma_number}</span>
+                <div className="flex gap-2">
+                  {getResolutionBadge(viewingRma.resolution_type)}
+                  {getStatusBadge(viewingRma.status)}
+                </div>
+              </DialogTitle>
+              <DialogDescription className="sr-only">Details for {viewingRma.rma_number}</DialogDescription>
+            </DialogHeader>
+
+            {/* Timeline */}
+            <div className="py-4">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Progress Timeline</h4>
+              <div className="flex items-center justify-between relative">
+                <div className="absolute top-4 left-6 right-6 h-0.5 bg-border" />
+                {getRmaTimeline(viewingRma).map((step, i) => {
+                  const StepIcon = step.icon;
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1.5 relative z-10">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                        step.status === 'done' ? 'bg-primary border-primary text-primary-foreground' :
+                        step.status === 'current' ? 'bg-background border-primary text-primary animate-pulse' :
+                        'bg-muted border-border text-muted-foreground'
+                      }`}>
+                        <StepIcon className="h-3.5 w-3.5" />
+                      </div>
+                      <span className={`text-[10px] font-medium ${step.status === 'done' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        {step.label}
+                      </span>
+                      {step.date && (
+                        <span className="text-[9px] text-muted-foreground">
+                          {format(new Date(step.date), 'MMM d')}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-4 text-sm">
+              {/* Type & Details */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-muted-foreground text-xs">Type</p>
+                  <p className="font-medium">{viewingRma.return_type === 'purchase_return' ? 'To Supplier' : 'From Customer'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Date</p>
+                  <p className="font-medium">{format(new Date(viewingRma.return_date), 'MMM d, yyyy')}</p>
+                </div>
+                {viewingRma.customer_name && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Customer</p>
+                    <p className="font-medium">{viewingRma.customer_name}</p>
+                  </div>
+                )}
+                {viewingRma.supplier && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Supplier</p>
+                    <p className="font-medium">{viewingRma.supplier.name}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Device */}
+              {viewingRma.device && (
+                <div className="bg-muted/30 border border-border/40 rounded-lg p-3">
+                  <p className="font-semibold">{viewingRma.device.brand} {viewingRma.device.model}</p>
+                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                    {viewingRma.device.imei && <span className="font-mono">IMEI: {viewingRma.device.imei}</span>}
+                    {viewingRma.device_condition_on_return && getConditionBadge(viewingRma.device_condition_on_return)}
+                  </div>
+                </div>
+              )}
+
+              {/* Financials */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-muted-foreground text-xs">Original Cost</p>
+                  <p className="font-medium">{formatCurrency(viewingRma.original_cost)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Refund Amount</p>
+                  <p className="font-medium">{formatCurrency(viewingRma.refund_amount)}</p>
+                </div>
+              </div>
+
+              {/* Tracking */}
+              {viewingRma.outbound_tracking_number && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Tracking Number</p>
+                  <p className="font-mono text-sm">{viewingRma.outbound_tracking_number}</p>
+                </div>
+              )}
+
+              {/* Notes */}
+              {(viewingRma.notes || viewingRma.repair_notes) && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Notes</p>
+                  <p className="text-sm">{viewingRma.notes}</p>
+                  {viewingRma.repair_notes && <p className="text-sm mt-1">🔧 {viewingRma.repair_notes}</p>}
+                </div>
+              )}
+
+              {/* Days open indicator */}
+              {!['refunded', 'completed', 'cancelled'].includes(viewingRma.status) && (
+                <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
+                  differenceInDays(new Date(), new Date(viewingRma.created_at)) > 7
+                    ? 'bg-destructive/10 text-destructive'
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  <Clock className="h-3.5 w-3.5" />
+                  Open for {differenceInDays(new Date(), new Date(viewingRma.created_at))} days
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
