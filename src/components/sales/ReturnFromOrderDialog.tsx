@@ -14,6 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { DeviceSearchCombobox } from '@/components/inventory/DeviceSearchCombobox';
 
 interface ReturnFromOrderDialogProps {
   open: boolean;
@@ -41,6 +42,7 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
   const [deviceCondition, setDeviceCondition] = useState('');
   const [outboundTracking, setOutboundTracking] = useState('');
   const [repairNotes, setRepairNotes] = useState('');
+  const [replacementDeviceId, setReplacementDeviceId] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (!reason) {
@@ -75,8 +77,9 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
           resolution_type: resolutionType,
           device_condition_on_return: deviceCondition,
           outbound_tracking_number: outboundTracking || null,
-          repair_notes: resolutionType === 'repair' ? repairNotes : null,
-        } as any);
+           repair_notes: resolutionType === 'repair' ? repairNotes : null,
+           replacement_device_id: resolutionType === 'exchange' && replacementDeviceId ? replacementDeviceId : null,
+         } as any);
 
       if (rmaError) throw rmaError;
 
@@ -208,6 +211,16 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
             <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 space-y-3">
               <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Exchange Details</p>
               <div className="space-y-2">
+                <Label>Replacement Device</Label>
+                <DeviceSearchCombobox
+                  value={replacementDeviceId}
+                  onSelect={(device) => setReplacementDeviceId(device?.id ?? null)}
+                  companyId={sale.company_id || undefined}
+                  placeholder="Search replacement device by IMEI, SKU..."
+                />
+                <p className="text-xs text-muted-foreground">Select the device being sent as replacement</p>
+              </div>
+              <div className="space-y-2">
                 <Label>Outbound Tracking Number</Label>
                 <Input
                   value={outboundTracking}
@@ -215,9 +228,6 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
                   placeholder="Tracking # for replacement shipment"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                The replacement device can be linked later from the Returns page once shipped.
-              </p>
             </div>
           )}
 

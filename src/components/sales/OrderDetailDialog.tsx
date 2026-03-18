@@ -8,7 +8,9 @@ import { Separator } from '@/components/ui/separator';
 import { MarketplaceBadge, FulfillmentBadge, MarketplaceStatusBadge } from '@/components/ui/status-badge';
 import { Package, User, MapPin, DollarSign, Calendar, FileText, RotateCcw, Link, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DeviceSearchCombobox } from '@/components/inventory/DeviceSearchCombobox';
+import { ProductSearchCombobox } from '@/components/inventory/ProductSearchCombobox';
 import { toast } from 'sonner';
 
 interface Sale {
@@ -56,6 +58,8 @@ interface OrderDetailDialogProps {
 export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, hasReturn, onSaleUpdated }: OrderDetailDialogProps) {
   const [showLinkDevice, setShowLinkDevice] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [linkType, setLinkType] = useState<'device' | 'product'>('device');
   const [linking, setLinking] = useState(false);
 
   const formatCurrency = (value: number) =>
@@ -71,30 +75,52 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const profit = sale.profit ?? (netRevenue - costPrice);
 
   const handleLinkDevice = async () => {
-    if (!selectedDeviceId) return;
+    if (!selectedDeviceId && !selectedProductId) return;
     setLinking(true);
     try {
-      const { data: device } = await supabase.from('devices').select('cost_price, sale_price').eq('id', selectedDeviceId).single();
-      
-      const { error: saleError } = await supabase.from('sales').update({
-        device_id: selectedDeviceId,
-        accounting_status: 'unprocessed',
-      }).eq('id', sale.id);
-      if (saleError) throw saleError;
+      if (selectedDeviceId) {
+        const { data: device } = await supabase.from('devices').select('cost_price, sale_price').eq('id', selectedDeviceId).single();
+        
+        const { error: saleError } = await supabase.from('sales').update({
+          device_id: selectedDeviceId,
+          accounting_status: 'unprocessed',
+        }).eq('id', sale.id);
+        if (saleError) throw saleError;
 
-      const { error: deviceError } = await supabase.from('devices').update({
-        status: 'sold' as any,
-        sale_price: sale.sale_price,
-      }).eq('id', selectedDeviceId);
-      if (deviceError) throw deviceError;
+        const { error: deviceError } = await supabase.from('devices').update({
+          status: 'sold' as any,
+          sale_price: sale.sale_price,
+        }).eq('id', selectedDeviceId);
+        if (deviceError) throw deviceError;
 
-      toast.success('Device linked to order');
+        toast.success('Device linked to order');
+      } else if (selectedProductId) {
+        // Create a sale_item linking the product to this sale
+        const { data: product } = await supabase.from('products').select('name, sku, cost_price, sale_price').eq('id', selectedProductId).single();
+        if (!product) throw new Error('Product not found');
+
+        const { error: itemError } = await supabase.from('sale_items').insert({
+          sale_id: sale.id,
+          product_id: selectedProductId,
+          description: product.name,
+          sku: product.sku,
+          quantity: 1,
+          unit_price: sale.sale_price,
+          cost_price: product.cost_price || 0,
+          total: sale.sale_price,
+        } as any);
+        if (itemError) throw itemError;
+
+        toast.success('Product linked to order');
+      }
+
       setShowLinkDevice(false);
       setSelectedDeviceId(null);
+      setSelectedProductId(null);
       onSaleUpdated?.();
       onOpenChange(false);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to link device');
+      toast.error(error.message || 'Failed to link item');
     } finally {
       setLinking(false);
     }
@@ -233,20 +259,35 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                   {!showLinkDevice && (
                     <Button variant="outline" size="sm" onClick={() => setShowLinkDevice(true)}>
                       <Link className="h-3.5 w-3.5 mr-1.5" />
-                      Link Device
+                      Link Item
                     </Button>
                   )}
                 </div>
                 {showLinkDevice && (
                   <div className="mt-3 pt-3 border-t border-border/40 space-y-2">
-                    <DeviceSearchCombobox
-                      value={selectedDeviceId}
-                      onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
-                      companyId={sale.company_id || undefined}
-                    />
+                    <Tabs value={linkType} onValueChange={(v) => { setLinkType(v as any); setSelectedDeviceId(null); setSelectedProductId(null); }}>
+                      <TabsList className="w-full">
+                        <TabsTrigger value="device" className="flex-1">Device</TabsTrigger>
+                        <TabsTrigger value="product" className="flex-1">Product</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="device" className="mt-2">
+                        <DeviceSearchCombobox
+                          value={selectedDeviceId}
+                          onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
+                          companyId={sale.company_id || undefined}
+                        />
+                      </TabsContent>
+                      <TabsContent value="product" className="mt-2">
+                        <ProductSearchCombobox
+                          value={selectedProductId}
+                          onSelect={(product) => setSelectedProductId(product?.id ?? null)}
+                          companyId={sale.company_id || undefined}
+                        />
+                      </TabsContent>
+                    </Tabs>
                     <div className="flex gap-2 justify-end">
-                      <Button variant="ghost" size="sm" onClick={() => { setShowLinkDevice(false); setSelectedDeviceId(null); }}>Cancel</Button>
-                      <Button size="sm" onClick={handleLinkDevice} disabled={!selectedDeviceId || linking}>
+                      <Button variant="ghost" size="sm" onClick={() => { setShowLinkDevice(false); setSelectedDeviceId(null); setSelectedProductId(null); }}>Cancel</Button>
+                      <Button size="sm" onClick={handleLinkDevice} disabled={(!selectedDeviceId && !selectedProductId) || linking}>
                         {linking ? 'Linking...' : 'Confirm Link'}
                       </Button>
                     </div>
@@ -257,25 +298,40 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
               <div className="bg-muted/20 border border-border/40 rounded-lg p-3">
                 {showLinkDevice ? (
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Search for a device to link</p>
-                    <DeviceSearchCombobox
-                      value={selectedDeviceId}
-                      onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
-                      companyId={sale.company_id || undefined}
-                    />
+                    <p className="text-sm font-medium">Link a device or product to this order</p>
+                    <Tabs value={linkType} onValueChange={(v) => { setLinkType(v as any); setSelectedDeviceId(null); setSelectedProductId(null); }}>
+                      <TabsList className="w-full">
+                        <TabsTrigger value="device" className="flex-1">Device</TabsTrigger>
+                        <TabsTrigger value="product" className="flex-1">Product</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="device" className="mt-2">
+                        <DeviceSearchCombobox
+                          value={selectedDeviceId}
+                          onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
+                          companyId={sale.company_id || undefined}
+                        />
+                      </TabsContent>
+                      <TabsContent value="product" className="mt-2">
+                        <ProductSearchCombobox
+                          value={selectedProductId}
+                          onSelect={(product) => setSelectedProductId(product?.id ?? null)}
+                          companyId={sale.company_id || undefined}
+                        />
+                      </TabsContent>
+                    </Tabs>
                     <div className="flex gap-2 justify-end">
-                      <Button variant="ghost" size="sm" onClick={() => { setShowLinkDevice(false); setSelectedDeviceId(null); }}>Cancel</Button>
-                      <Button size="sm" onClick={handleLinkDevice} disabled={!selectedDeviceId || linking}>
+                      <Button variant="ghost" size="sm" onClick={() => { setShowLinkDevice(false); setSelectedDeviceId(null); setSelectedProductId(null); }}>Cancel</Button>
+                      <Button size="sm" onClick={handleLinkDevice} disabled={(!selectedDeviceId && !selectedProductId) || linking}>
                         {linking ? 'Linking...' : 'Confirm Link'}
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">No device linked to this order</p>
+                    <p className="text-sm text-muted-foreground">No item linked to this order</p>
                     <Button variant="outline" size="sm" onClick={() => setShowLinkDevice(true)}>
                       <Link className="h-3.5 w-3.5 mr-1.5" />
-                      Link Device
+                      Link Item
                     </Button>
                   </div>
                 )}

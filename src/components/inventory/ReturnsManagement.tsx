@@ -27,6 +27,7 @@ import {
   Clock, CheckCircle, XCircle, Truck, Search, Wrench, RefreshCw, ArrowRightLeft
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { DeviceSearchCombobox } from '@/components/inventory/DeviceSearchCombobox';
 
 interface ReturnAuthorization {
   id: string;
@@ -82,6 +83,7 @@ export function ReturnsManagement() {
     device_condition_on_return: '',
     outbound_tracking_number: '',
     repair_notes: '',
+    replacement_device_id: '',
   });
 
   useEffect(() => {
@@ -193,6 +195,7 @@ export function ReturnsManagement() {
         device_condition_on_return: formData.device_condition_on_return,
         outbound_tracking_number: formData.outbound_tracking_number || null,
         repair_notes: formData.resolution_type === 'repair' ? formData.repair_notes : null,
+        replacement_device_id: formData.resolution_type === 'exchange' && formData.replacement_device_id ? formData.replacement_device_id : null,
       };
 
       const { error } = await supabase
@@ -307,6 +310,7 @@ export function ReturnsManagement() {
       device_condition_on_return: '',
       outbound_tracking_number: '',
       repair_notes: '',
+      replacement_device_id: '',
     });
   };
 
@@ -604,8 +608,18 @@ export function ReturnsManagement() {
 
               {/* Exchange / Repair specific fields */}
               {formData.resolution_type === 'exchange' && (
-                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 space-y-2">
+                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 space-y-3">
                   <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Exchange Details</p>
+                  <div className="space-y-2">
+                    <Label>Replacement Device</Label>
+                    <DeviceSearchCombobox
+                      value={formData.replacement_device_id || null}
+                      onSelect={(device) => setFormData({ ...formData, replacement_device_id: device?.id || '' })}
+                      companyId={selectedCompany?.id}
+                      placeholder="Search replacement device by IMEI, SKU..."
+                    />
+                    <p className="text-xs text-muted-foreground">Select the device being sent as replacement</p>
+                  </div>
                   <div className="space-y-2">
                     <Label>Outbound Tracking #</Label>
                     <Input
