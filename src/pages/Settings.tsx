@@ -11,8 +11,9 @@ import { AppSettings } from '@/components/settings/AppSettings';
 import { SecuritySettings } from '@/components/settings/SecuritySettings';
 import { UserManagementTable } from '@/components/team/UserManagementTable';
 import { PermissionsMatrix } from '@/components/team/PermissionsMatrix';
-import { Settings as SettingsIcon, User, Bell, Shield, Building2, Sliders, Plug, Users } from 'lucide-react';
+import { Settings as SettingsIcon, User, Bell, Shield, Building2, Sliders, Plug, Users, Barcode } from 'lucide-react';
 import { ShopifyIntegration } from '@/components/settings/ShopifyIntegration';
+import { ProductCatalog } from '@/components/settings/ProductCatalog';
 
 export default function Settings() {
   const { user } = useAuth();
