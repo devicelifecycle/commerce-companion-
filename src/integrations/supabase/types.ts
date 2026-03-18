@@ -968,6 +968,63 @@ export type Database = {
         }
         Relationships: []
       }
+      expense_refunds: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          expense_id: string
+          id: string
+          notes: string | null
+          reason: string | null
+          reference_number: string | null
+          refund_amount: number
+          refund_date: string
+          refund_method: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          expense_id: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          reference_number?: string | null
+          refund_amount: number
+          refund_date?: string
+          refund_method?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          expense_id?: string
+          id?: string
+          notes?: string | null
+          reason?: string | null
+          reference_number?: string | null
+          refund_amount?: number
+          refund_date?: string
+          refund_method?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_refunds_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_refunds_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expense_subcategories: {
         Row: {
           category: string
