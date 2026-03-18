@@ -1882,6 +1882,50 @@ export type Database = {
         }
         Relationships: []
       }
+      po_payments: {
+        Row: {
+          amount: number
+          created_at: string | null
+          created_by: string | null
+          id: string
+          notes: string | null
+          payment_date: string
+          payment_method: string | null
+          purchase_order_id: string
+          reference_number: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          purchase_order_id: string
+          reference_number?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          payment_date?: string
+          payment_method?: string | null
+          purchase_order_id?: string
+          reference_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "po_payments_purchase_order_id_fkey"
+            columns: ["purchase_order_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_categories: {
         Row: {
           company_id: string | null
@@ -2257,6 +2301,7 @@ export type Database = {
           gst_hst_amount: number | null
           id: string
           notes: string | null
+          paid_amount: number | null
           payment_date: string | null
           payment_method: string | null
           payment_reference: string | null
@@ -2279,6 +2324,7 @@ export type Database = {
           gst_hst_amount?: number | null
           id?: string
           notes?: string | null
+          paid_amount?: number | null
           payment_date?: string | null
           payment_method?: string | null
           payment_reference?: string | null
@@ -2301,6 +2347,7 @@ export type Database = {
           gst_hst_amount?: number | null
           id?: string
           notes?: string | null
+          paid_amount?: number | null
           payment_date?: string | null
           payment_method?: string | null
           payment_reference?: string | null
