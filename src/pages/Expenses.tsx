@@ -405,6 +405,13 @@ export default function Expenses() {
                                         View Receipt
                                     </DropdownMenuItem>
                                   )}
+                                  <DropdownMenuItem onClick={() => {
+                                    setRefundExpense(expense);
+                                    setRefundDialogOpen(true);
+                                  }}>
+                                    <Undo2 className="h-4 w-4 mr-2" />
+                                    Record Refund
+                                  </DropdownMenuItem>
                                   <DropdownMenuItem
                                     className="text-destructive"
                                     onClick={() => handleDelete(expense.id)}
