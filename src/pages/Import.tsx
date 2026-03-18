@@ -35,8 +35,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { toast } from 'sonner';
 import { 
   Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, 
-  Download, AlertTriangle, Building2, Info, ChevronDown, ChevronUp, DollarSign
+  Download, AlertTriangle, Building2, Info, ChevronDown, ChevronUp, DollarSign,
+  Plus, Smartphone
 } from 'lucide-react';
+import { normalizeBrand, normalizeModel, modelFuzzyKey } from '@/lib/modelNormalization';
+import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 import { createPurchaseOrder, createGoodsReceivedNote } from '@/lib/import/automatedImport';
 import { createPurchaseJournalEntry } from '@/lib/accounting/journalAutomation';
 
