@@ -241,7 +241,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                   <div className="mt-3 pt-3 border-t border-border/40 space-y-2">
                     <DeviceSearchCombobox
                       value={selectedDeviceId}
-                      onSelect={setSelectedDeviceId}
+                      onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
                       companyId={sale.company_id || undefined}
                     />
                     <div className="flex gap-2 justify-end">
