@@ -800,7 +800,7 @@ export function ReturnsManagement() {
                 </TableRow>
               ) : (
                 filteredReturns.map((rma) => (
-                  <TableRow key={rma.id}>
+                  <TableRow key={rma.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setViewingRma(rma)}>
                     <TableCell className="font-mono text-sm">{rma.rma_number}</TableCell>
                     <TableCell>
                       <Badge variant="outline">
