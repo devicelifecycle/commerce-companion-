@@ -98,6 +98,8 @@ export default function Expenses() {
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [refundExpense, setRefundExpense] = useState<Expense | null>(null);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
 
   // Quick action: open "Add Expense" dialog via Alt+E
   useQuickActionListener('add-expense', useCallback(() => setDialogOpen(true), []));
