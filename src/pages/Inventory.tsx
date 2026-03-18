@@ -738,7 +738,9 @@ export default function Inventory() {
                     <SelectContent>
                       <SelectItem value="all">All Status</SelectItem>
                       <SelectItem value="in_stock">In Stock</SelectItem>
+                      <SelectItem value="in_stock">In Stock</SelectItem>
                       <SelectItem value="reserved">Reserved</SelectItem>
+                      <SelectItem value="hold_for_refurbishment">Hold for Refurb</SelectItem>
                       <SelectItem value="sold">Sold</SelectItem>
                       <SelectItem value="returned">Returned</SelectItem>
                     </SelectContent>
