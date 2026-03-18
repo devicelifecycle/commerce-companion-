@@ -80,8 +80,8 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
 
       if (rmaError) throw rmaError;
 
-      // If restock (only for refund), update device back to in_stock
-      if (resolutionType === 'refund' && restockDevice && sale.device_id) {
+      // If restock, update device back to in_stock
+      if (restockDevice && sale.device_id) {
         await supabase
           .from('devices')
           .update({ status: 'in_stock' as any, sale_price: null })
