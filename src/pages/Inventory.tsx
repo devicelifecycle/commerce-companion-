@@ -877,15 +877,12 @@ export default function Inventory() {
                                         <FileText className="h-4 w-4 mr-2" />
                                         View PO / GRN
                                       </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setTimelineDevice(device)}>
+                                        <Clock className="h-4 w-4 mr-2" />
+                                        View Timeline
+                                      </DropdownMenuItem>
                                       {device.status === 'in_stock' && (
                                         <>
-                                          <DropdownMenuSeparator />
-                                          <DropdownMenuItem onClick={() => handleQuickStatusChange(device.id, 'reserved')}>
-                                            Mark Reserved
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleQuickStatusChange(device.id, 'sold')}>
-                                            Mark Sold
-                                          </DropdownMenuItem>
                                           {isSuperAdmin && (
                                             <DropdownMenuItem onClick={() => {
                                               setTransferDevice(device);
@@ -895,7 +892,6 @@ export default function Inventory() {
                                               Transfer
                                             </DropdownMenuItem>
                                           )}
-                                          {/* Send to FBA for VES devices */}
                                           {companies.find(c => c.id === device.company_id)?.code === 'VES' && (
                                             <DropdownMenuItem onClick={async () => {
                                               try {
@@ -909,14 +905,6 @@ export default function Inventory() {
                                               Send to FBA
                                             </DropdownMenuItem>
                                           )}
-                                        </>
-                                      )}
-                                      {device.status === 'reserved' && (
-                                        <>
-                                          <DropdownMenuSeparator />
-                                          <DropdownMenuItem onClick={() => handleQuickStatusChange(device.id, 'in_stock')}>
-                                            Return to Stock
-                                          </DropdownMenuItem>
                                         </>
                                       )}
                                       <DropdownMenuSeparator />
