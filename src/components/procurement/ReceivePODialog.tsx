@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createPurchaseJournalEntry } from '@/lib/accounting/journalAutomation';
 import { useAuth } from '@/lib/auth';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
