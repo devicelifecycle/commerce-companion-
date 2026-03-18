@@ -691,15 +691,6 @@ export default function Inventory() {
                     Transfer
                   </Button>
                 )}
-                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                  <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>Edit Device</DialogTitle>
-                      <DialogDescription>Update device information</DialogDescription>
-                    </DialogHeader>
-                    <DeviceForm onSubmit={handleUpdateDevice} submitLabel="Save Changes" />
-                  </DialogContent>
-                </Dialog>
               </>
             )}
           </div>
