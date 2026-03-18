@@ -618,8 +618,6 @@ export default function Sales() {
         <ActivityLog tableName="sales" title="Orders Activity" limit={10} />
       </div>
 
-      <ManualSaleDialog open={showManualSale} onOpenChange={setShowManualSale} onSuccess={fetchSales} />
-      <IntercompanySaleDialog open={showIntercompanySale} onOpenChange={setShowIntercompanySale} onSuccess={fetchSales} />
 
       {editingSale && (
         <EditSaleDialog
