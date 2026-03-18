@@ -293,11 +293,13 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
         receiptUrl = uploadData.path;
       }
 
+      const computedTotals = calculateTotals();
+
       const expenseData = {
         description: formData.description,
         amount: parseFloat(formData.amount),
-        gst_hst_amount: parseFloat(formData.gst_hst_amount) || 0,
-        pst_amount: parseFloat(formData.pst_amount) || 0,
+        gst_hst_amount: computedTotals.gst,
+        pst_amount: computedTotals.pst,
         category: formData.category as any,
         subcategory: formData.subcategory || null,
         expense_date: formData.expense_date,
