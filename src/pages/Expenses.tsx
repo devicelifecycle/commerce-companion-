@@ -8,7 +8,7 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { ActivityLog } from '@/components/audit/ActivityLog';
 import { ExpenseDashboard } from '@/components/expenses/ExpenseDashboard';
 import { AddExpenseDialog } from '@/components/expenses/AddExpenseDialog';
-import { VendorManagement } from '@/components/expenses/VendorManagement';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,7 +38,7 @@ import {
 import { toast } from 'sonner';
 import { 
   Plus, Search, Filter, Download, LayoutDashboard, List, 
-  Building, MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink, Info
+  MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink, Info
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
@@ -262,10 +262,6 @@ export default function Expenses() {
               <List className="h-4 w-4" />
               All Expenses
             </TabsTrigger>
-            <TabsTrigger value="vendors" className="flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              Vendors
-            </TabsTrigger>
             <TabsTrigger value="guide" className="flex items-center gap-2">
               <Info className="h-4 w-4" />
               Guide
@@ -329,7 +325,7 @@ export default function Expenses() {
                           <TableHead>Date</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
-                          <TableHead>Vendor</TableHead>
+                          
                           <TableHead>Company</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead className="text-right">Total</TableHead>
@@ -368,9 +364,6 @@ export default function Expenses() {
                               <Badge variant="secondary" className="capitalize">
                                 {getCategoryLabel(expense.category)}
                               </Badge>
-                            </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {expense.vendor || '-'}
                             </TableCell>
                             <TableCell>{getCompanyBadge(expense)}</TableCell>
                             <TableCell className="text-right">
@@ -429,9 +422,6 @@ export default function Expenses() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="vendors">
-            <VendorManagement />
-          </TabsContent>
 
           <TabsContent value="guide">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

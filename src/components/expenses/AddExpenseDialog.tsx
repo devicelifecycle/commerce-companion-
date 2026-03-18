@@ -88,6 +88,18 @@ const CATEGORY_ACCOUNT_MAP: Record<string, string> = {
   other: '7100',
 };
 
+const TAX_CATEGORIES = [
+  { value: 'hst_13', label: 'HST 13% (Ontario)', rate: 0.13, gstRate: 0.13, pstRate: 0 },
+  { value: 'hst_15', label: 'HST 15% (NS/NB/NL/PEI)', rate: 0.15, gstRate: 0.15, pstRate: 0 },
+  { value: 'gst_pst_bc', label: 'GST 5% + PST 7% (BC)', rate: 0.12, gstRate: 0.05, pstRate: 0.07 },
+  { value: 'gst_pst_sk', label: 'GST 5% + PST 6% (SK)', rate: 0.11, gstRate: 0.05, pstRate: 0.06 },
+  { value: 'gst_pst_mb', label: 'GST 5% + PST 7% (MB)', rate: 0.12, gstRate: 0.05, pstRate: 0.07 },
+  { value: 'gst_qst', label: 'GST 5% + QST 9.975% (QC)', rate: 0.14975, gstRate: 0.05, pstRate: 0.09975 },
+  { value: 'gst_only', label: 'GST 5% only (AB/NT/NU/YT)', rate: 0.05, gstRate: 0.05, pstRate: 0 },
+  { value: 'zero_rated', label: 'Zero-rated / Exempt', rate: 0, gstRate: 0, pstRate: 0 },
+  { value: 'no_tax', label: 'No tax (US / International)', rate: 0, gstRate: 0, pstRate: 0 },
+];
+
 const PAYMENT_METHODS = [
   { value: 'credit_card', label: 'Credit Card' },
   { value: 'debit_card', label: 'Debit Card' },
@@ -118,8 +130,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
-    gst_hst_amount: '',
-    pst_amount: '',
+    tax_category: 'hst_13',
     category: 'other',
     subcategory: '',
     expense_date: new Date().toISOString().split('T')[0],
@@ -144,8 +155,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
         setFormData({
           description: editExpense.description || '',
           amount: editExpense.amount?.toString() || '',
-          gst_hst_amount: editExpense.gst_hst_amount?.toString() || '',
-          pst_amount: editExpense.pst_amount?.toString() || '',
+          tax_category: 'hst_13',
           category: editExpense.category || 'other',
           subcategory: editExpense.subcategory || '',
           expense_date: editExpense.expense_date || new Date().toISOString().split('T')[0],
@@ -181,8 +191,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
     setFormData({
       description: '',
       amount: '',
-      gst_hst_amount: '',
-      pst_amount: '',
+      tax_category: 'hst_13',
       category: 'other',
       subcategory: '',
       expense_date: new Date().toISOString().split('T')[0],
@@ -246,8 +255,9 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
 
   const calculateTotals = () => {
     const amount = parseFloat(formData.amount) || 0;
-    const gst = parseFloat(formData.gst_hst_amount) || 0;
-    const pst = parseFloat(formData.pst_amount) || 0;
+    const taxCat = TAX_CATEGORIES.find(t => t.value === formData.tax_category);
+    const gst = amount * (taxCat?.gstRate || 0);
+    const pst = amount * (taxCat?.pstRate || 0);
     return {
       subtotal: amount,
       gst,
@@ -283,11 +293,14 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
         receiptUrl = uploadData.path;
       }
 
+      const computedTotals = calculateTotals();
+
       const expenseData = {
         description: formData.description,
         amount: parseFloat(formData.amount),
-        gst_hst_amount: parseFloat(formData.gst_hst_amount) || 0,
-        pst_amount: parseFloat(formData.pst_amount) || 0,
+        gst_hst_amount: computedTotals.gst,
+        pst_amount: computedTotals.pst,
+        total_amount: computedTotals.total,
         category: formData.category as any,
         subcategory: formData.subcategory || null,
         expense_date: formData.expense_date,
@@ -329,8 +342,8 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
               if (allocationPct <= 0) continue;
 
               const allocatedAmount = (parseFloat(formData.amount) || 0) * (allocationPct / 100);
-              const allocatedGst = (parseFloat(formData.gst_hst_amount) || 0) * (allocationPct / 100);
-              const allocatedPst = (parseFloat(formData.pst_amount) || 0) * (allocationPct / 100);
+              const allocatedGst = computedTotals.gst * (allocationPct / 100);
+              const allocatedPst = computedTotals.pst * (allocationPct / 100);
               const allocatedTotal = allocatedAmount + allocatedGst + allocatedPst;
 
               const baseAccountCode = CATEGORY_ACCOUNT_MAP[formData.category] || '7100';
@@ -374,10 +387,10 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
                 vendor: formData.vendor || 'Unknown',
                 description: formData.description,
                 expenseAccountCode: accountCode,
-                amount: parseFloat(formData.amount) || 0,
-                gstHstAmount: parseFloat(formData.gst_hst_amount) || 0,
-                qstAmount: parseFloat(formData.pst_amount) || 0,
-                totalAmount: (parseFloat(formData.amount) || 0) + (parseFloat(formData.gst_hst_amount) || 0) + (parseFloat(formData.pst_amount) || 0),
+                amount: computedTotals.subtotal,
+                gstHstAmount: computedTotals.gst,
+                qstAmount: computedTotals.pst,
+                totalAmount: computedTotals.total,
                 isVES: isVES ?? true,
                 isPaidImmediately: ['credit_card', 'debit_card', 'cash'].includes(formData.payment_method),
               });
@@ -516,39 +529,49 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
             </div>
           </div>
 
-          {/* Amounts */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Amount (Before Tax) *</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>GST/HST</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.gst_hst_amount}
-                onChange={(e) => setFormData({ ...formData, gst_hst_amount: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>PST/QST</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.pst_amount}
-                onChange={(e) => setFormData({ ...formData, pst_amount: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
+          {/* Amount & Tax */}
+          <div className="space-y-2">
+            <Label>Amount (Before Tax) *</Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={formData.amount}
+              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              placeholder="0.00"
+            />
           </div>
+
+          <div className="space-y-2">
+            <Label>Tax Category</Label>
+            <Select value={formData.tax_category} onValueChange={(v) => setFormData({ ...formData, tax_category: v })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TAX_CATEGORIES.map(tc => (
+                  <SelectItem key={tc.value} value={tc.value}>{tc.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Tax Breakdown */}
+          {(totals.gst > 0 || totals.pst > 0) && (
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              {totals.gst > 0 && (
+                <div className="p-2 rounded bg-muted/50 flex justify-between">
+                  <span className="text-muted-foreground">GST/HST</span>
+                  <span className="font-medium">${totals.gst.toFixed(2)}</span>
+                </div>
+              )}
+              {totals.pst > 0 && (
+                <div className="p-2 rounded bg-muted/50 flex justify-between">
+                  <span className="text-muted-foreground">PST/QST</span>
+                  <span className="font-medium">${totals.pst.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Total Display */}
           <div className="p-3 rounded-lg bg-muted/50 flex justify-between items-center">
