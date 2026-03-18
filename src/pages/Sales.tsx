@@ -6,8 +6,6 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { ActivityLog } from '@/components/audit/ActivityLog';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { ManualSaleDialog } from '@/components/sales/ManualSaleDialog';
-import { IntercompanySaleDialog } from '@/components/sales/IntercompanySaleDialog';
 import { EditSaleDialog } from '@/components/sales/EditSaleDialog';
 import { OrderDetailDialog } from '@/components/sales/OrderDetailDialog';
 import { ReturnFromOrderDialog } from '@/components/sales/ReturnFromOrderDialog';
