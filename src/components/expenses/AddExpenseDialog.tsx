@@ -108,6 +108,7 @@ const PAYMENT_METHODS = [
   { value: 'cash', label: 'Cash' },
   { value: 'cheque', label: 'Cheque' },
   { value: 'paypal', label: 'PayPal' },
+  { value: 'tax_inclusive', label: 'Tax Inclusive' },
   { value: 'other', label: 'Other' },
 ];
 
