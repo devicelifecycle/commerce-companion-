@@ -751,7 +751,7 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => { resetForm(); setIsDialogOpen(false); }}>Cancel</Button>
-            <Button onClick={handleSave}>{editingProduct ? 'Save Changes' : 'Add Product'}</Button>
+            <Button onClick={handleSave}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
