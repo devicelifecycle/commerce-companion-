@@ -83,6 +83,7 @@ export function ReturnsManagement() {
     device_condition_on_return: '',
     outbound_tracking_number: '',
     repair_notes: '',
+    replacement_device_id: '',
   });
 
   useEffect(() => {
