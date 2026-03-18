@@ -339,6 +339,19 @@ export function ReturnsManagement() {
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
 
   const getRmaTimeline = (rma: ReturnAuthorization) => {
+    // Customer returns skip approval — they go straight to resolved
+    if (rma.return_type === 'sales_return') {
+      return [
+        { label: 'Created', status: 'done', date: rma.created_at, icon: Plus },
+        { 
+          label: rma.resolution_type === 'refund' ? 'Refunded' : rma.resolution_type === 'repair' ? 'In Repair' : 'Exchanged',
+          status: ['refunded', 'completed'].includes(rma.status) ? 'done' : 'current',
+          date: rma.refund_date || undefined,
+          icon: rma.resolution_type === 'refund' ? DollarSign : rma.resolution_type === 'repair' ? Wrench : ArrowRightLeft,
+        },
+      ];
+    }
+    // Supplier returns go through approval pipeline
     const steps = [
       { label: 'Created', status: 'done', date: rma.created_at, icon: Plus },
       { label: 'Approved', status: ['approved', 'shipped', 'received', 'refunded', 'completed'].includes(rma.status) ? 'done' : rma.status === 'pending' ? 'current' : 'upcoming', icon: CheckCircle },
