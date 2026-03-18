@@ -328,10 +328,10 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                   </div>
                 ) : (
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">No device linked to this order</p>
+                    <p className="text-sm text-muted-foreground">No item linked to this order</p>
                     <Button variant="outline" size="sm" onClick={() => setShowLinkDevice(true)}>
                       <Link className="h-3.5 w-3.5 mr-1.5" />
-                      Link Device
+                      Link Item
                     </Button>
                   </div>
                 )}
