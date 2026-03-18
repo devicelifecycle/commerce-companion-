@@ -188,6 +188,11 @@ export default function Settings() {
             <NotificationPreferences />
           </TabsContent>
 
+          {/* Product Catalog Tab */}
+          <TabsContent value="catalog">
+            <ProductCatalog />
+          </TabsContent>
+
           {/* App Settings Tab */}
           <TabsContent value="app">
             {selectedCompany ? (
