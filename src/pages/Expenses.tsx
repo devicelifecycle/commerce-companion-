@@ -8,6 +8,7 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { ActivityLog } from '@/components/audit/ActivityLog';
 import { ExpenseDashboard } from '@/components/expenses/ExpenseDashboard';
 import { AddExpenseDialog } from '@/components/expenses/AddExpenseDialog';
+import { ExpenseRefundDialog } from '@/components/expenses/ExpenseRefundDialog';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
