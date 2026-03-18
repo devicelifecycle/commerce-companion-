@@ -75,30 +75,52 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const profit = sale.profit ?? (netRevenue - costPrice);
 
   const handleLinkDevice = async () => {
-    if (!selectedDeviceId) return;
+    if (!selectedDeviceId && !selectedProductId) return;
     setLinking(true);
     try {
-      const { data: device } = await supabase.from('devices').select('cost_price, sale_price').eq('id', selectedDeviceId).single();
-      
-      const { error: saleError } = await supabase.from('sales').update({
-        device_id: selectedDeviceId,
-        accounting_status: 'unprocessed',
-      }).eq('id', sale.id);
-      if (saleError) throw saleError;
+      if (selectedDeviceId) {
+        const { data: device } = await supabase.from('devices').select('cost_price, sale_price').eq('id', selectedDeviceId).single();
+        
+        const { error: saleError } = await supabase.from('sales').update({
+          device_id: selectedDeviceId,
+          accounting_status: 'unprocessed',
+        }).eq('id', sale.id);
+        if (saleError) throw saleError;
 
-      const { error: deviceError } = await supabase.from('devices').update({
-        status: 'sold' as any,
-        sale_price: sale.sale_price,
-      }).eq('id', selectedDeviceId);
-      if (deviceError) throw deviceError;
+        const { error: deviceError } = await supabase.from('devices').update({
+          status: 'sold' as any,
+          sale_price: sale.sale_price,
+        }).eq('id', selectedDeviceId);
+        if (deviceError) throw deviceError;
 
-      toast.success('Device linked to order');
+        toast.success('Device linked to order');
+      } else if (selectedProductId) {
+        // Create a sale_item linking the product to this sale
+        const { data: product } = await supabase.from('products').select('name, sku, cost_price, sale_price').eq('id', selectedProductId).single();
+        if (!product) throw new Error('Product not found');
+
+        const { error: itemError } = await supabase.from('sale_items').insert({
+          sale_id: sale.id,
+          product_id: selectedProductId,
+          description: product.name,
+          sku: product.sku,
+          quantity: 1,
+          unit_price: sale.sale_price,
+          cost_price: product.cost_price || 0,
+          total: sale.sale_price,
+        } as any);
+        if (itemError) throw itemError;
+
+        toast.success('Product linked to order');
+      }
+
       setShowLinkDevice(false);
       setSelectedDeviceId(null);
+      setSelectedProductId(null);
       onSaleUpdated?.();
       onOpenChange(false);
     } catch (error: any) {
-      toast.error(error.message || 'Failed to link device');
+      toast.error(error.message || 'Failed to link item');
     } finally {
       setLinking(false);
     }
