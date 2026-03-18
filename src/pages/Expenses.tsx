@@ -558,6 +558,11 @@ export default function Expenses() {
           onSuccess={fetchExpenses}
           editExpense={editingExpense}
         />
+        <ExpenseRefundDialog
+          open={refundDialogOpen}
+          onOpenChange={setRefundDialogOpen}
+          expense={refundExpense}
+          onSuccess={fetchExpenses}
         <BatchActionBar
           count={selection.count}
           onClear={selection.clear}
