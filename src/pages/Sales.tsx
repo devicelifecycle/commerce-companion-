@@ -637,6 +637,7 @@ export default function Sales() {
           sale={viewingSale}
           hasReturn={returnSaleIds.has(viewingSale.id)}
           onInitiateReturn={() => setReturningSale(viewingSale)}
+          onSaleUpdated={fetchSales}
         />
       )}
 
