@@ -235,23 +235,25 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
       // 7. Auto-create AP entry if requested (only for accepted items value)
       if (createAP) {
         const acceptedItems = validLines.filter(l => l.action === 'accept' || l.condition === 'passed');
-        // Calculate accepted value proportionally
         const totalOrderedQty = receiveLines.reduce((s, l) => s + l.ordered_qty, 0);
         const acceptedQty = acceptedItems.reduce((s, l) => s + l.received_qty, 0);
         const ratio = totalOrderedQty > 0 ? acceptedQty / totalOrderedQty : 1;
-        const apAmount = po.total_amount * ratio;
+        const apAmount = parseFloat((po.total_amount * ratio).toFixed(2));
+        const apGst = parseFloat(((po.gst_hst_amount || 0) * ratio).toFixed(2));
+        const apPst = parseFloat(((po.pst_qst_amount || 0) * ratio).toFixed(2));
+        const apSubtotal = parseFloat((apAmount - apGst - apPst).toFixed(2));
 
         if (apAmount > 0) {
           const dueDate = new Date();
           dueDate.setDate(dueDate.getDate() + 30);
 
-          const { error: apError } = await supabase.from('accounts_payable').insert({
+          const { data: apRecord, error: apError } = await supabase.from('accounts_payable').insert({
             vendor_name: po.supplier_name,
             vendor_id: po.supplier_id,
-            original_amount: parseFloat(apAmount.toFixed(2)),
-            balance_due: parseFloat(apAmount.toFixed(2)),
-            gst_hst_amount: parseFloat(((po.gst_hst_amount || 0) * ratio).toFixed(2)),
-            pst_amount: parseFloat(((po.pst_qst_amount || 0) * ratio).toFixed(2)),
+            original_amount: apAmount,
+            balance_due: apAmount,
+            gst_hst_amount: apGst,
+            pst_amount: apPst,
             bill_date: receivedDate,
             due_date: dueDate.toISOString().split('T')[0],
             status: 'unpaid',
@@ -260,13 +262,64 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
             bill_number: po.po_number,
             company_id: po.company_id,
             created_by: user.id,
-          });
+          }).select('id').single();
+
           if (apError) {
             console.error('AP creation error:', apError);
             toast.warning('PO received but AP entry failed — create manually in Accounts Payable');
           } else {
             toast.success(`AP entry created for ${fmtCurrency(apAmount)}`);
           }
+
+          // 8. Auto-post journal entry: Dr. Inventory + Dr. GST/HST Paid / Cr. AP
+          if (po.company_id) {
+            const VES_ID = '4e0fa3a6-06a9-4618-8513-f66143c05b28';
+            const isVES = po.company_id === VES_ID;
+            try {
+              await createPurchaseJournalEntry({
+                companyId: po.company_id,
+                purchaseId: apRecord?.id || po.id,
+                receiveDate: receivedDate,
+                supplierName: po.supplier_name,
+                poNumber: po.po_number,
+                unitCost: apSubtotal,
+                gstHstAmount: apGst,
+                qstAmount: apPst,
+                totalAmount: apAmount,
+                deviceDescription: `PO ${po.po_number} — bulk items`,
+                isVES,
+              });
+              toast.success('Journal entry posted (Dr. Inventory / Cr. AP)');
+            } catch (jeErr: any) {
+              console.error('Journal entry error:', jeErr);
+              toast.warning('AP created but journal entry failed — post manually');
+            }
+          }
+        }
+      }
+
+      // 9. Create product lot records for accepted items
+      for (const line of acceptedLines) {
+        const poItem = poItems.find(p => p.id === line.po_item_id);
+        if (!poItem) continue;
+
+        // Find or get the product that was just created/updated
+        const { data: product } = await supabase
+          .from('products')
+          .select('id')
+          .eq('company_id', po.company_id!)
+          .ilike('name', line.description)
+          .maybeSingle();
+
+        if (product) {
+          await supabase.from('product_lots').insert({
+            product_id: product.id,
+            quantity: line.received_qty,
+            cost_price: poItem.unit_cost,
+            received_date: receivedDate,
+            supplier_id: po.supplier_id,
+            notes: `From PO ${po.po_number}`,
+          });
         }
       }
 
