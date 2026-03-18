@@ -211,6 +211,16 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
             <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 space-y-3">
               <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Exchange Details</p>
               <div className="space-y-2">
+                <Label>Replacement Device</Label>
+                <DeviceSearchCombobox
+                  value={replacementDeviceId}
+                  onSelect={(device) => setReplacementDeviceId(device?.id ?? null)}
+                  companyId={sale.company_id || undefined}
+                  placeholder="Search replacement device by IMEI, SKU..."
+                />
+                <p className="text-xs text-muted-foreground">Select the device being sent as replacement</p>
+              </div>
+              <div className="space-y-2">
                 <Label>Outbound Tracking Number</Label>
                 <Input
                   value={outboundTracking}
@@ -218,9 +228,6 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
                   placeholder="Tracking # for replacement shipment"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                The replacement device can be linked later from the Returns page once shipped.
-              </p>
             </div>
           )}
 
