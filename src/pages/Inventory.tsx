@@ -69,7 +69,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 
 type DeviceCondition = 'new' | 'refurbished' | 'used' | 'damaged';
-type DeviceStatus = 'in_stock' | 'reserved' | 'sold' | 'returned';
+type DeviceStatus = 'in_stock' | 'reserved' | 'sold' | 'returned' | 'hold_for_refurbishment';
 
 interface Device {
   id: string;
@@ -113,7 +113,6 @@ export default function Inventory() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [showTransferDialog, setShowTransferDialog] = useState(false);
@@ -222,97 +221,7 @@ export default function Inventory() {
     }
   }, [formData.brand, formData.model, devices, selectedDevice]);
 
-  const handleAddDevice = async () => {
-    if (!selectedCompany && !isSuperAdmin) {
-      toast.error('Please select a company');
-      return;
-    }
-    
-    // Anti-laziness validations
-    if (!formData.supplier_id) {
-      toast.error('Supplier is required — every device must be linked to a supplier');
-      return;
-    }
-    if (!formData.purchase_date) {
-      toast.error('Purchase date is required');
-      return;
-    }
-    if (!formData.payment_method) {
-      toast.error('Payment method is required — specify how this device was acquired');
-      return;
-    }
-
-    // Normalize brand and model before saving
-    const normalizedBrand = normalizeBrand(formData.brand);
-    const normalizedModel = normalizeModel(formData.model);
-
-    try {
-      const { data: insertedDevice, error } = await supabase.from('devices').insert({
-        imei: formData.imei || null,
-        sku: formData.sku || null,
-        category: formData.category,
-        model: normalizedModel,
-        brand: normalizedBrand,
-        storage: formData.storage || null,
-        color: formData.color || null,
-        condition: formData.condition,
-        status: formData.status,
-        cost_price: parseFloat(formData.cost_price),
-        sale_price: formData.sale_price ? parseFloat(formData.sale_price) : null,
-        supplier_id: formData.supplier_id || null,
-        purchase_date: formData.purchase_date,
-        warehouse_location: formData.warehouse_location || null,
-        notes: formData.notes || null,
-        company_id: selectedCompany?.id,
-        created_by: user?.id,
-      }).select('id').single();
-
-      if (error) throw error;
-
-      // Auto-post accounting based on payment method
-      const costPrice = parseFloat(formData.cost_price);
-      const paymentMethod = formData.payment_method;
-      
-      if (paymentMethod === 'cash' || paymentMethod === 'credit_card' || paymentMethod === 'debit_card') {
-        // Immediate payment — no AP needed, just log
-        logEvent({ 
-          action: 'INSERT' as any, tableName: 'devices', module: 'Inventory', 
-          notes: `Added ${normalizedBrand} ${normalizedModel} — paid via ${paymentMethod} ($${costPrice})` 
-        });
-      } else {
-        // Credit/other — create AP record
-        const supplier = suppliers.find(s => s.id === formData.supplier_id);
-        if (selectedCompany) {
-          await supabase.from('accounts_payable').insert({
-            vendor_name: supplier?.name || 'Unknown Supplier',
-            vendor_id: formData.supplier_id ? undefined : undefined,
-            original_amount: costPrice,
-            balance_due: costPrice,
-            bill_date: formData.purchase_date,
-            due_date: new Date(new Date(formData.purchase_date).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            description: `Manual device: ${normalizedBrand} ${normalizedModel}`,
-            category: 'inventory_purchase',
-            company_id: selectedCompany.id,
-            status: 'outstanding',
-            created_by: user?.id,
-          });
-        }
-        logEvent({ 
-          action: 'INSERT' as any, tableName: 'devices', module: 'Inventory', 
-          notes: `Added ${normalizedBrand} ${normalizedModel} — on credit, AP created ($${costPrice})` 
-        });
-        toast.info('Accounts Payable record created for this purchase');
-      }
-
-      toast.success('Device added to inventory');
-      setIsAddDialogOpen(false);
-      resetForm();
-      fetchDevices();
-    } catch (error: any) {
-      console.error('Error adding device:', error);
-      toast.error(error.message || 'Failed to add device');
-    }
-  };
+  // handleAddDevice removed — manual device entry moved to Import page
 
   const handleUpdateDevice = async () => {
     if (!selectedDevice) return;
@@ -695,6 +604,7 @@ export default function Inventory() {
             <SelectContent>
               <SelectItem value="in_stock">In Stock</SelectItem>
               <SelectItem value="reserved">Reserved</SelectItem>
+              <SelectItem value="hold_for_refurbishment">Hold for Refurbishment</SelectItem>
               <SelectItem value="sold">Sold</SelectItem>
               <SelectItem value="returned">Returned</SelectItem>
             </SelectContent>
@@ -712,17 +622,6 @@ export default function Inventory() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="warehouse_location">Location</Label>
-          <Input
-            id="warehouse_location"
-            value={formData.warehouse_location}
-            onChange={(e) => setFormData({ ...formData, warehouse_location: e.target.value })}
-            placeholder="Warehouse A, Shelf 1"
-          />
-        </div>
-      </div>
 
       <div className="space-y-2">
         <Label htmlFor="notes">Notes</Label>
@@ -782,21 +681,6 @@ export default function Inventory() {
                     Transfer
                   </Button>
                 )}
-                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button onClick={() => { resetForm(); setIsAddDialogOpen(true); }}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Device
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>Add New Device</DialogTitle>
-                      <DialogDescription>Add a new device to your inventory</DialogDescription>
-                    </DialogHeader>
-                    <DeviceForm onSubmit={handleAddDevice} submitLabel="Add Device" />
-                  </DialogContent>
-                </Dialog>
               </>
             )}
           </div>
@@ -843,7 +727,9 @@ export default function Inventory() {
                     <SelectContent>
                       <SelectItem value="all">All Status</SelectItem>
                       <SelectItem value="in_stock">In Stock</SelectItem>
+                      <SelectItem value="in_stock">In Stock</SelectItem>
                       <SelectItem value="reserved">Reserved</SelectItem>
+                      <SelectItem value="hold_for_refurbishment">Hold for Refurb</SelectItem>
                       <SelectItem value="sold">Sold</SelectItem>
                       <SelectItem value="returned">Returned</SelectItem>
                     </SelectContent>

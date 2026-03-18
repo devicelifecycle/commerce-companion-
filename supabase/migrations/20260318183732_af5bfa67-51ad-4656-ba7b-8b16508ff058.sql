@@ -1,0 +1,1 @@
+ALTER TYPE public.device_status ADD VALUE IF NOT EXISTS 'hold_for_refurbishment';

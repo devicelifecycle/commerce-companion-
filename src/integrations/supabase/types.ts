@@ -3261,7 +3261,12 @@ export type Database = {
     Enums: {
       app_role: "admin" | "manager" | "viewer"
       device_condition: "new" | "refurbished" | "used" | "damaged"
-      device_status: "in_stock" | "reserved" | "sold" | "returned"
+      device_status:
+        | "in_stock"
+        | "reserved"
+        | "sold"
+        | "returned"
+        | "hold_for_refurbishment"
       expense_category:
         | "inventory"
         | "shipping"
@@ -3423,7 +3428,13 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "manager", "viewer"],
       device_condition: ["new", "refurbished", "used", "damaged"],
-      device_status: ["in_stock", "reserved", "sold", "returned"],
+      device_status: [
+        "in_stock",
+        "reserved",
+        "sold",
+        "returned",
+        "hold_for_refurbishment",
+      ],
       expense_category: [
         "inventory",
         "shipping",
