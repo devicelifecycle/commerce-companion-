@@ -18,6 +18,7 @@ import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker'
 import { ProductsManagement } from '@/components/inventory/ProductsManagement';
 import { FBAFeeAnalytics } from '@/components/inventory/FBAFeeAnalytics';
 import { DeviceProcurementDialog } from '@/components/inventory/DeviceProcurementDialog';
+import { DeviceTimelineDialog } from '@/components/inventory/DeviceTimelineDialog';
 import { StatusBadge, ConditionBadge } from '@/components/ui/status-badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
