@@ -58,6 +58,8 @@ interface OrderDetailDialogProps {
 export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, hasReturn, onSaleUpdated }: OrderDetailDialogProps) {
   const [showLinkDevice, setShowLinkDevice] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [linkType, setLinkType] = useState<'device' | 'product'>('device');
   const [linking, setLinking] = useState(false);
 
   const formatCurrency = (value: number) =>
