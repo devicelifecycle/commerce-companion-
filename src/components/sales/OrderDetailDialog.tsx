@@ -8,7 +8,9 @@ import { Separator } from '@/components/ui/separator';
 import { MarketplaceBadge, FulfillmentBadge, MarketplaceStatusBadge } from '@/components/ui/status-badge';
 import { Package, User, MapPin, DollarSign, Calendar, FileText, RotateCcw, Link, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DeviceSearchCombobox } from '@/components/inventory/DeviceSearchCombobox';
+import { ProductSearchCombobox } from '@/components/inventory/ProductSearchCombobox';
 import { toast } from 'sonner';
 
 interface Sale {
