@@ -276,15 +276,30 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
               <div className="bg-muted/20 border border-border/40 rounded-lg p-3">
                 {showLinkDevice ? (
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Search for a device to link</p>
-                    <DeviceSearchCombobox
-                      value={selectedDeviceId}
-                      onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
-                      companyId={sale.company_id || undefined}
-                    />
+                    <p className="text-sm font-medium">Link a device or product to this order</p>
+                    <Tabs value={linkType} onValueChange={(v) => { setLinkType(v as any); setSelectedDeviceId(null); setSelectedProductId(null); }}>
+                      <TabsList className="w-full">
+                        <TabsTrigger value="device" className="flex-1">Device</TabsTrigger>
+                        <TabsTrigger value="product" className="flex-1">Product</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="device" className="mt-2">
+                        <DeviceSearchCombobox
+                          value={selectedDeviceId}
+                          onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
+                          companyId={sale.company_id || undefined}
+                        />
+                      </TabsContent>
+                      <TabsContent value="product" className="mt-2">
+                        <ProductSearchCombobox
+                          value={selectedProductId}
+                          onSelect={(product) => setSelectedProductId(product?.id ?? null)}
+                          companyId={sale.company_id || undefined}
+                        />
+                      </TabsContent>
+                    </Tabs>
                     <div className="flex gap-2 justify-end">
-                      <Button variant="ghost" size="sm" onClick={() => { setShowLinkDevice(false); setSelectedDeviceId(null); }}>Cancel</Button>
-                      <Button size="sm" onClick={handleLinkDevice} disabled={!selectedDeviceId || linking}>
+                      <Button variant="ghost" size="sm" onClick={() => { setShowLinkDevice(false); setSelectedDeviceId(null); setSelectedProductId(null); }}>Cancel</Button>
+                      <Button size="sm" onClick={handleLinkDevice} disabled={(!selectedDeviceId && !selectedProductId) || linking}>
                         {linking ? 'Linking...' : 'Confirm Link'}
                       </Button>
                     </div>
