@@ -325,7 +325,7 @@ export default function Expenses() {
                           <TableHead>Date</TableHead>
                           <TableHead>Description</TableHead>
                           <TableHead>Category</TableHead>
-                          <TableHead>Vendor</TableHead>
+                          
                           <TableHead>Company</TableHead>
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead className="text-right">Total</TableHead>
