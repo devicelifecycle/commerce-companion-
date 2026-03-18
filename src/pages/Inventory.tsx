@@ -18,6 +18,7 @@ import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker'
 import { ProductsManagement } from '@/components/inventory/ProductsManagement';
 import { FBAFeeAnalytics } from '@/components/inventory/FBAFeeAnalytics';
 import { DeviceProcurementDialog } from '@/components/inventory/DeviceProcurementDialog';
+import { DeviceTimelineDialog } from '@/components/inventory/DeviceTimelineDialog';
 import { StatusBadge, ConditionBadge } from '@/components/ui/status-badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
@@ -64,7 +65,7 @@ import { toast } from 'sonner';
 import { 
   Search, Plus, Filter, Smartphone, Trash2, Edit2, MoreHorizontal,
   List, ArrowRightLeft, QrCode, Link, Upload, Boxes,
-  FileText, Download, Send, AlertTriangle,
+  FileText, Download, Send, AlertTriangle, Clock,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -120,6 +121,7 @@ export default function Inventory() {
   const [showLabelDialog, setShowLabelDialog] = useState(false);
   const [labelDevice, setLabelDevice] = useState<Device | null>(null);
   const [procurementDevice, setProcurementDevice] = useState<{ id: string; label: string } | null>(null);
+  const [timelineDevice, setTimelineDevice] = useState<Device | null>(null);
 
   const canManage = hasPermission('inventory_manage', 'edit') || isSuperAdmin;
   const canView = hasPermission('inventory_view', 'view') || isSuperAdmin;
@@ -802,7 +804,11 @@ export default function Inventory() {
                         {filteredDevices.map((device) => {
                           const company = companies.find(c => c.id === device.company_id);
                           return (
-                            <TableRow key={device.id} data-state={selection.selectedIds.has(device.id) ? 'selected' : undefined}>
+                            <TableRow key={device.id} data-state={selection.selectedIds.has(device.id) ? 'selected' : undefined} className="cursor-pointer" onClick={(e) => {
+                              // Don't open timeline if clicking checkbox or dropdown
+                              if ((e.target as HTMLElement).closest('button, [role="checkbox"], [role="menuitem"]')) return;
+                              setTimelineDevice(device);
+                            }}>
                               <TableCell>
                                 <Checkbox
                                   checked={selection.selectedIds.has(device.id)}
@@ -871,15 +877,12 @@ export default function Inventory() {
                                         <FileText className="h-4 w-4 mr-2" />
                                         View PO / GRN
                                       </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setTimelineDevice(device)}>
+                                        <Clock className="h-4 w-4 mr-2" />
+                                        View Timeline
+                                      </DropdownMenuItem>
                                       {device.status === 'in_stock' && (
                                         <>
-                                          <DropdownMenuSeparator />
-                                          <DropdownMenuItem onClick={() => handleQuickStatusChange(device.id, 'reserved')}>
-                                            Mark Reserved
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleQuickStatusChange(device.id, 'sold')}>
-                                            Mark Sold
-                                          </DropdownMenuItem>
                                           {isSuperAdmin && (
                                             <DropdownMenuItem onClick={() => {
                                               setTransferDevice(device);
@@ -889,7 +892,6 @@ export default function Inventory() {
                                               Transfer
                                             </DropdownMenuItem>
                                           )}
-                                          {/* Send to FBA for VES devices */}
                                           {companies.find(c => c.id === device.company_id)?.code === 'VES' && (
                                             <DropdownMenuItem onClick={async () => {
                                               try {
@@ -903,14 +905,6 @@ export default function Inventory() {
                                               Send to FBA
                                             </DropdownMenuItem>
                                           )}
-                                        </>
-                                      )}
-                                      {device.status === 'reserved' && (
-                                        <>
-                                          <DropdownMenuSeparator />
-                                          <DropdownMenuItem onClick={() => handleQuickStatusChange(device.id, 'in_stock')}>
-                                            Return to Stock
-                                          </DropdownMenuItem>
                                         </>
                                       )}
                                       <DropdownMenuSeparator />
@@ -994,6 +988,13 @@ export default function Inventory() {
           onOpenChange={(open) => !open && setProcurementDevice(null)}
           deviceId={procurementDevice?.id || ''}
           deviceLabel={procurementDevice?.label || ''}
+        />
+
+        {/* Device Timeline */}
+        <DeviceTimelineDialog
+          open={!!timelineDevice}
+          onOpenChange={(open) => !open && setTimelineDevice(null)}
+          device={timelineDevice}
         />
 
         {/* Batch Action Bar */}
