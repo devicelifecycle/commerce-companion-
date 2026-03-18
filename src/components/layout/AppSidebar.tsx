@@ -18,7 +18,6 @@ import {
   ShoppingCart,
   ClipboardCheck,
   RotateCcw,
-  RotateCcw,
   Activity,
   BookOpen,
 } from 'lucide-react';
