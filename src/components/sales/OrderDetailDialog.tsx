@@ -260,7 +260,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                     <p className="text-sm font-medium">Search for a device to link</p>
                     <DeviceSearchCombobox
                       value={selectedDeviceId}
-                      onSelect={setSelectedDeviceId}
+                      onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
                       companyId={sale.company_id || undefined}
                     />
                     <div className="flex gap-2 justify-end">
