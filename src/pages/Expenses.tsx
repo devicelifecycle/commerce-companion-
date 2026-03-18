@@ -365,9 +365,6 @@ export default function Expenses() {
                                 {getCategoryLabel(expense.category)}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-muted-foreground">
-                              {expense.vendor || '-'}
-                            </TableCell>
                             <TableCell>{getCompanyBadge(expense)}</TableCell>
                             <TableCell className="text-right">
                               {formatCurrency(expense.amount)}
