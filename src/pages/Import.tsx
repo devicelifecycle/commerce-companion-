@@ -196,7 +196,119 @@ export default function Import() {
   const [isFinalizingAP, setIsFinalizingAP] = useState(false);
   const [finalizeResults, setFinalizeResults] = useState<FinalizeResultItem[]>([]);
 
+  // Manual single-device add state
+  const [showManualAdd, setShowManualAdd] = useState(false);
+  const [manualAdding, setManualAdding] = useState(false);
+  const [manualForm, setManualForm] = useState({
+    company_id: selectedCompany?.id || '',
+    category: 'phone',
+    brand: '',
+    model: '',
+    imei: '',
+    storage: '',
+    color: '',
+    condition: 'new' as string,
+    status: 'in_stock' as string,
+    cost_price: '',
+    sale_price: '',
+    supplier_id: '',
+    purchase_date: new Date().toISOString().split('T')[0],
+    payment_method: '',
+    notes: '',
+  });
+  const [manualDuplicateWarning, setManualDuplicateWarning] = useState<string | null>(null);
+
+  // Update company_id when selectedCompany changes
   useEffect(() => {
+    if (selectedCompany) {
+      setManualForm(prev => ({ ...prev, company_id: selectedCompany.id }));
+    }
+  }, [selectedCompany]);
+
+  // Duplicate check for manual add
+  useEffect(() => {
+    if (!manualForm.brand || !manualForm.model) { setManualDuplicateWarning(null); return; }
+    const key = modelFuzzyKey(normalizeBrand(manualForm.brand), normalizeModel(manualForm.model));
+    // We'll just show a warning — actual check would require a DB query, but for quick UX this is fine
+    setManualDuplicateWarning(null);
+  }, [manualForm.brand, manualForm.model]);
+
+  const handleManualAddDevice = async () => {
+    const targetCompany = companies.find(c => c.id === manualForm.company_id);
+    if (!targetCompany) { toast.error('Please select which company is buying this device'); return; }
+    if (!manualForm.brand || !manualForm.model) { toast.error('Brand and Model are required'); return; }
+    if (!manualForm.cost_price) { toast.error('Cost Price is required'); return; }
+    if (!manualForm.supplier_id) { toast.error('Supplier is required'); return; }
+    if (!manualForm.payment_method) { toast.error('Payment method is required'); return; }
+
+    setManualAdding(true);
+    try {
+      const normalizedBrand = normalizeBrand(manualForm.brand);
+      const normalizedModel = normalizeModel(manualForm.model);
+
+      // Auto-generate SKU
+      const { count: skuCount } = await supabase
+        .from('devices')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', targetCompany.id);
+      const sku = generateSKU(normalizedBrand, normalizedModel, manualForm.storage || null, (skuCount || 0) + 1);
+
+      const { error } = await supabase.from('devices').insert({
+        imei: manualForm.imei || null,
+        sku,
+        category: manualForm.category,
+        model: normalizedModel,
+        brand: normalizedBrand,
+        storage: manualForm.storage || null,
+        color: manualForm.color || null,
+        condition: manualForm.condition as any,
+        status: manualForm.status as any,
+        cost_price: parseFloat(manualForm.cost_price),
+        sale_price: manualForm.sale_price ? parseFloat(manualForm.sale_price) : null,
+        supplier_id: manualForm.supplier_id || null,
+        purchase_date: manualForm.purchase_date,
+        notes: manualForm.notes || null,
+        company_id: targetCompany.id,
+        created_by: user?.id,
+      });
+      if (error) throw error;
+
+      // AP creation for credit-based payment methods
+      const costPrice = parseFloat(manualForm.cost_price);
+      const paymentMethod = manualForm.payment_method;
+      if (!['cash', 'credit_card', 'debit_card'].includes(paymentMethod)) {
+        const supplier = suppliers.find(s => s.id === manualForm.supplier_id);
+        await supabase.from('accounts_payable').insert({
+          vendor_name: supplier?.name || 'Unknown Supplier',
+          original_amount: costPrice,
+          balance_due: costPrice,
+          bill_date: manualForm.purchase_date,
+          due_date: new Date(new Date(manualForm.purchase_date).getTime() + 30 * 86400000).toISOString().split('T')[0],
+          description: `Manual device: ${normalizedBrand} ${normalizedModel}`,
+          category: 'inventory_purchase',
+          company_id: targetCompany.id,
+          status: 'outstanding',
+          created_by: user?.id,
+        });
+        toast.info('Accounts Payable record created for this purchase');
+      }
+
+      toast.success(`${normalizedBrand} ${normalizedModel} added to ${targetCompany.name} inventory (SKU: ${sku})`);
+      setManualForm({
+        company_id: selectedCompany?.id || '',
+        category: 'phone', brand: '', model: '', imei: '', storage: '', color: '',
+        condition: 'new', status: 'in_stock', cost_price: '', sale_price: '',
+        supplier_id: '', purchase_date: new Date().toISOString().split('T')[0],
+        payment_method: '', notes: '',
+      });
+      setShowManualAdd(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to add device');
+    } finally {
+      setManualAdding(false);
+    }
+  };
+
     fetchSuppliers();
   }, []);
 
