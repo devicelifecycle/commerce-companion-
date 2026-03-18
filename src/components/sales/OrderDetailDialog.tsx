@@ -259,7 +259,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                   {!showLinkDevice && (
                     <Button variant="outline" size="sm" onClick={() => setShowLinkDevice(true)}>
                       <Link className="h-3.5 w-3.5 mr-1.5" />
-                      Link Device
+                      Link Item
                     </Button>
                   )}
                 </div>
