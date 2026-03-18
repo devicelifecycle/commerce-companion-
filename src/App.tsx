@@ -91,7 +91,7 @@ const App = () => (
               <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
               <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
               <Route path="/purchase-orders" element={<ProtectedRoute><PurchaseOrders /></ProtectedRoute>} />
-              <Route path="/goods-received" element={<ProtectedRoute><GoodsReceived /></ProtectedRoute>} />
+              <Route path="/goods-received" element={<Navigate to="/purchase-orders" replace />} />
               <Route path="/returns" element={<ProtectedRoute><Returns /></ProtectedRoute>} />
               <Route path="/financials" element={<ProtectedRoute><Financials /></ProtectedRoute>} />
               <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
