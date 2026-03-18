@@ -353,7 +353,7 @@ export function ReturnsManagement() {
     return steps;
   };
 
-
+  const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       pending: 'bg-amber-500/10 text-amber-500',
       approved: 'bg-blue-500/10 text-blue-500',
