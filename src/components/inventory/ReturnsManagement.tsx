@@ -27,6 +27,7 @@ import {
   Clock, CheckCircle, XCircle, Truck, Search, Wrench, RefreshCw, ArrowRightLeft
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { DeviceSearchCombobox } from '@/components/inventory/DeviceSearchCombobox';
 
 interface ReturnAuthorization {
   id: string;
