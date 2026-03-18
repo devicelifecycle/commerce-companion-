@@ -840,7 +840,7 @@ export function ReturnsManagement() {
                       ) : '-'}
                     </TableCell>
                     <TableCell>{format(new Date(rma.return_date), 'MMM d, yyyy')}</TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         {rma.status === 'pending' && (
                           <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'approved')}>
