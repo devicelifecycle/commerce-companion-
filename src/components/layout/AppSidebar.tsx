@@ -156,17 +156,6 @@ export function AppSidebar() {
 
         <SidebarGroup>
           <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
-            Procurement
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            {renderNavItems(procurementNav)}
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <Separator className="my-1.5 bg-border/50" />
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
             Expenses
           </SidebarGroupLabel>
           <SidebarGroupContent>
