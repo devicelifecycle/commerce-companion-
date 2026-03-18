@@ -17,7 +17,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { PackageCheck, AlertCircle, AlertTriangle } from 'lucide-react';
+import { PackageCheck, AlertCircle, AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface ReceivePODialogProps {
@@ -50,28 +50,38 @@ interface POItem {
   total_cost: number;
 }
 
-interface ReceiveLine {
+/** Each PO line item can have multiple split rows with different conditions */
+interface SplitRow {
+  id: string; // unique key for React
+  qty: number;
+  condition: string;
+  action: 'accept' | 'return_to_supplier' | 'write_off';
+  notes: string;
+}
+
+interface ReceiveGroup {
   po_item_id: string;
   description: string;
   ordered_qty: number;
-  received_qty: number;
-  condition: string;
-  notes: string;
-  action: 'accept' | 'return_to_supplier' | 'write_off';
+  splits: SplitRow[];
 }
+
+let splitCounter = 0;
+const newSplitId = () => `split-${++splitCounter}`;
 
 export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: ReceivePODialogProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [po, setPO] = useState<PODetail | null>(null);
   const [poItems, setPOItems] = useState<POItem[]>([]);
-  const [receiveLines, setReceiveLines] = useState<ReceiveLine[]>([]);
+  const [groups, setGroups] = useState<ReceiveGroup[]>([]);
   const [receivedDate, setReceivedDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [createAP, setCreateAP] = useState(true);
 
   useEffect(() => {
     if (open && poId) {
+      splitCounter = 0;
       loadPOData();
     }
   }, [open, poId]);
@@ -86,45 +96,88 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
     if (poData) setPO(poData as unknown as PODetail);
     if (items) {
       setPOItems(items as POItem[]);
-      setReceiveLines(items.map((item: any) => ({
+      setGroups(items.map((item: any) => ({
         po_item_id: item.id,
         description: item.description,
         ordered_qty: item.quantity,
-        received_qty: item.quantity,
-        condition: 'passed',
-        notes: '',
-        action: 'accept',
+        splits: [{
+          id: newSplitId(),
+          qty: item.quantity,
+          condition: 'passed',
+          action: 'accept' as const,
+          notes: '',
+        }],
       })));
     }
   };
 
-  const updateLine = (index: number, updates: Partial<ReceiveLine>) => {
-    setReceiveLines(prev => prev.map((line, i) => {
-      if (i !== index) return line;
-      const updated = { ...line, ...updates };
-      // Auto-set action based on condition
-      if (updates.condition && updates.condition !== 'passed') {
-        updated.action = 'return_to_supplier';
-      } else if (updates.condition === 'passed') {
-        updated.action = 'accept';
-      }
-      return updated;
+  const updateSplit = (groupIdx: number, splitIdx: number, updates: Partial<SplitRow>) => {
+    setGroups(prev => prev.map((g, gi) => {
+      if (gi !== groupIdx) return g;
+      return {
+        ...g,
+        splits: g.splits.map((s, si) => {
+          if (si !== splitIdx) return s;
+          const updated = { ...s, ...updates };
+          if (updates.condition && updates.condition !== 'passed') {
+            updated.action = 'return_to_supplier';
+          } else if (updates.condition === 'passed') {
+            updated.action = 'accept';
+          }
+          return updated;
+        }),
+      };
     }));
   };
 
-  const totalReceived = receiveLines.reduce((sum, l) => sum + l.received_qty, 0);
-  const totalOrdered = receiveLines.reduce((sum, l) => sum + l.ordered_qty, 0);
+  const addSplit = (groupIdx: number) => {
+    setGroups(prev => prev.map((g, gi) => {
+      if (gi !== groupIdx) return g;
+      const usedQty = g.splits.reduce((s, r) => s + r.qty, 0);
+      const remaining = Math.max(0, g.ordered_qty - usedQty);
+      return {
+        ...g,
+        splits: [...g.splits, {
+          id: newSplitId(),
+          qty: remaining,
+          condition: 'damaged',
+          action: 'return_to_supplier' as const,
+          notes: '',
+        }],
+      };
+    }));
+  };
+
+  const removeSplit = (groupIdx: number, splitIdx: number) => {
+    setGroups(prev => prev.map((g, gi) => {
+      if (gi !== groupIdx || g.splits.length <= 1) return g;
+      return { ...g, splits: g.splits.filter((_, si) => si !== splitIdx) };
+    }));
+  };
+
+  // Flatten all splits for summary
+  const allSplits = groups.flatMap(g => g.splits.map(s => ({ ...s, po_item_id: g.po_item_id, description: g.description, ordered_qty: g.ordered_qty })));
+  const totalReceived = allSplits.reduce((sum, s) => sum + s.qty, 0);
+  const totalOrdered = groups.reduce((sum, g) => sum + g.ordered_qty, 0);
   const isPartial = totalReceived < totalOrdered && totalReceived > 0;
-  const defectiveLines = receiveLines.filter(l => l.condition !== 'passed' && l.received_qty > 0);
-  const hasDefectiveItems = defectiveLines.length > 0;
+  const defectiveSplits = allSplits.filter(s => s.condition !== 'passed' && s.qty > 0);
+  const hasDefectiveItems = defectiveSplits.length > 0;
+
+  // Validation: check if any group exceeds ordered qty
+  const overAllocated = groups.some(g => g.splits.reduce((s, r) => s + r.qty, 0) > g.ordered_qty);
 
   const fmtCurrency = (v: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(v);
 
   const handleSubmit = async () => {
     if (!po || !user) return;
-    const validLines = receiveLines.filter(l => l.received_qty > 0);
-    if (validLines.length === 0) {
+    if (overAllocated) {
+      toast.error('Some items have more received than ordered — fix the quantities');
+      return;
+    }
+
+    const validSplits = allSplits.filter(s => s.qty > 0);
+    if (validSplits.length === 0) {
       toast.error('Receive at least one item');
       return;
     }
@@ -151,14 +204,14 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
 
       if (grnError) throw grnError;
 
-      // 3. Create GRN items
+      // 3. Create GRN items — one per split row
       if (grn) {
-        const grnItems = validLines.map(line => ({
+        const grnItems = validSplits.map(split => ({
           grn_id: grn.id,
-          purchase_order_item_id: line.po_item_id,
-          quantity_received: line.received_qty,
-          condition_status: line.condition,
-          notes: line.notes || null,
+          purchase_order_item_id: split.po_item_id,
+          quantity_received: split.qty,
+          condition_status: split.condition,
+          notes: split.notes || null,
         }));
         const { error: itemsError } = await supabase.from('grn_items').insert(grnItems);
         if (itemsError) throw itemsError;
@@ -168,76 +221,86 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
       const newStatus = isPartial ? 'partially_received' : 'received';
       await supabase.from('purchase_orders').update({ status: newStatus }).eq('id', po.id);
 
-      // 5. Add accepted items to products inventory
-      const acceptedLines = validLines.filter(l => l.condition === 'passed' || l.action === 'accept');
-      for (const line of acceptedLines) {
-        const poItem = poItems.find(p => p.id === line.po_item_id);
+      // 5. Add accepted items to products inventory (aggregate by po_item)
+      const acceptedByItem = new Map<string, { qty: number; description: string; po_item_id: string }>();
+      for (const split of validSplits) {
+        if (split.condition === 'passed' || split.action === 'accept') {
+          const existing = acceptedByItem.get(split.po_item_id);
+          if (existing) {
+            existing.qty += split.qty;
+          } else {
+            acceptedByItem.set(split.po_item_id, { qty: split.qty, description: split.description, po_item_id: split.po_item_id });
+          }
+        }
+      }
+
+      for (const [, item] of acceptedByItem) {
+        const poItem = poItems.find(p => p.id === item.po_item_id);
         if (!poItem) continue;
 
         const { data: existingProduct } = await supabase
           .from('products')
           .select('id, quantity_on_hand')
           .eq('company_id', po.company_id!)
-          .ilike('name', line.description)
+          .ilike('name', item.description)
           .maybeSingle();
 
         if (existingProduct) {
           await supabase.from('products').update({
-            quantity_on_hand: existingProduct.quantity_on_hand + line.received_qty,
+            quantity_on_hand: existingProduct.quantity_on_hand + item.qty,
             cost_price: poItem.unit_cost,
           }).eq('id', existingProduct.id);
         } else {
           await supabase.from('products').insert({
-            name: line.description,
+            name: item.description,
             company_id: po.company_id,
             supplier_id: po.supplier_id,
             cost_price: poItem.unit_cost,
-            quantity_on_hand: line.received_qty,
+            quantity_on_hand: item.qty,
             status: 'active',
             created_by: user.id,
           });
         }
       }
 
-      // 6. Handle defective/damaged items — create supplier RMAs
-      const returnLines = validLines.filter(l => l.condition !== 'passed' && l.action === 'return_to_supplier');
-      if (returnLines.length > 0) {
+      // 6. Handle defective/damaged items — create supplier RMAs (one per split row)
+      const returnSplits = validSplits.filter(s => s.condition !== 'passed' && s.action === 'return_to_supplier');
+      if (returnSplits.length > 0) {
         const year = new Date().getFullYear();
         const { count: rmaCount } = await supabase.from('return_authorizations').select('id', { count: 'exact', head: true });
         let rmaIdx = (rmaCount || 0) + 1;
 
-        for (const line of returnLines) {
-          const poItem = poItems.find(p => p.id === line.po_item_id);
+        for (const split of returnSplits) {
+          const poItem = poItems.find(p => p.id === split.po_item_id);
           const rmaNumber = `RMA-P-${year}-${String(rmaIdx++).padStart(4, '0')}`;
           const { error: rmaError } = await supabase.from('return_authorizations').insert({
             rma_number: rmaNumber,
             return_type: 'purchase_return',
-            reason: `${line.condition}: ${line.description}`,
+            reason: `${split.condition}: ${split.description} (${split.qty} units)`,
             status: 'pending',
             resolution_type: 'refund',
             company_id: po.company_id,
             supplier_id: po.supplier_id,
             purchase_order_id: po.id,
-            original_cost: poItem ? poItem.unit_cost * line.received_qty : 0,
-            refund_amount: poItem ? poItem.total_cost : 0,
-            notes: line.notes || `Auto-created from receiving PO ${po.po_number}. Condition: ${line.condition}`,
+            original_cost: poItem ? poItem.unit_cost * split.qty : 0,
+            refund_amount: poItem ? poItem.unit_cost * split.qty : 0,
+            notes: split.notes || `Auto-created from receiving PO ${po.po_number}. Condition: ${split.condition}. Qty: ${split.qty}`,
             created_by: user.id,
-            device_condition_on_return: line.condition,
+            device_condition_on_return: split.condition,
           });
           if (rmaError) {
             console.error('RMA creation error:', rmaError);
-            toast.error(`Failed to create return for "${line.description}": ${rmaError.message}`);
+            toast.error(`Failed to create return for "${split.description}": ${rmaError.message}`);
           }
         }
-        toast.info(`${returnLines.length} supplier return(s) created in Returns`);
+        toast.info(`${returnSplits.length} supplier return(s) created in Returns`);
       }
 
-      // 7. Auto-create AP entry if requested (only for accepted items value)
+      // 7. Auto-create AP entry (only for accepted items value)
       if (createAP) {
-        const acceptedItems = validLines.filter(l => l.action === 'accept' || l.condition === 'passed');
-        const totalOrderedQty = receiveLines.reduce((s, l) => s + l.ordered_qty, 0);
-        const acceptedQty = acceptedItems.reduce((s, l) => s + l.received_qty, 0);
-        const ratio = totalOrderedQty > 0 ? acceptedQty / totalOrderedQty : 1;
+        let acceptedQty = 0;
+        for (const [, item] of acceptedByItem) acceptedQty += item.qty;
+        const ratio = totalOrdered > 0 ? acceptedQty / totalOrdered : 1;
         const apAmount = parseFloat((po.total_amount * ratio).toFixed(2));
         const apGst = parseFloat(((po.gst_hst_amount || 0) * ratio).toFixed(2));
         const apPst = parseFloat(((po.pst_qst_amount || 0) * ratio).toFixed(2));
@@ -271,7 +334,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
             toast.success(`AP entry created for ${fmtCurrency(apAmount)}`);
           }
 
-          // 8. Auto-post journal entry: Dr. Inventory + Dr. GST/HST Paid / Cr. AP
+          // 8. Auto-post journal entry
           if (po.company_id) {
             const VES_ID = '4e0fa3a6-06a9-4618-8513-f66143c05b28';
             const isVES = po.company_id === VES_ID;
@@ -299,25 +362,23 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
       }
 
       // 9. Create product lot records for accepted items
-      for (const line of acceptedLines) {
-        const poItem = poItems.find(p => p.id === line.po_item_id);
+      for (const [, item] of acceptedByItem) {
+        const poItem = poItems.find(p => p.id === item.po_item_id);
         if (!poItem) continue;
 
-        // Find or get the product that was just created/updated
         const { data: product } = await supabase
           .from('products')
           .select('id')
           .eq('company_id', po.company_id!)
-          .ilike('name', line.description)
+          .ilike('name', item.description)
           .maybeSingle();
 
         if (product) {
-          // Generate lot number from PO number
-          const lotNumber = `LOT-${po.po_number}-${line.po_item_id.slice(0, 4)}`;
+          const lotNumber = `LOT-${po.po_number}-${item.po_item_id.slice(0, 4)}`;
           await supabase.from('product_lots').insert({
             product_id: product.id,
             lot_number: lotNumber,
-            quantity: line.received_qty,
+            quantity: item.qty,
             cost_price: poItem.unit_cost,
             received_date: receivedDate,
             supplier_id: po.supplier_id,
@@ -340,7 +401,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
   const resetForm = () => {
     setPO(null);
     setPOItems([]);
-    setReceiveLines([]);
+    setGroups([]);
     setReceivedDate(new Date().toISOString().split('T')[0]);
     setNotes('');
     setCreateAP(true);
@@ -350,14 +411,14 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
-      <DialogContent className="sm:max-w-[750px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <PackageCheck className="h-5 w-5" />
             Receive PO — {po.po_number}
           </DialogTitle>
           <DialogDescription>
-            Record items received from <strong>{po.supplier_name}</strong>. A Goods Received Note (GRN) will be created automatically.
+            Record items received from <strong>{po.supplier_name}</strong>. Use "Split" to separate good and defective units within the same line item.
           </DialogDescription>
         </DialogHeader>
 
@@ -376,80 +437,128 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
                   <AlertCircle className="h-3 w-3 mr-1" /> Partial
                 </Badge>
               )}
+              {overAllocated && (
+                <Badge variant="destructive" className="text-xs">
+                  Over-allocated!
+                </Badge>
+              )}
             </div>
           </div>
 
-          {/* Items to receive */}
-          <div className="space-y-2">
+          {/* Items to receive — grouped with splits */}
+          <div className="space-y-3">
             <span className="font-medium text-sm">Items to Receive</span>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Description</TableHead>
-                  <TableHead className="w-16 text-center">Ordered</TableHead>
-                  <TableHead className="w-20 text-center">Received</TableHead>
-                  <TableHead className="w-28">Condition</TableHead>
-                  <TableHead className="w-32">Action</TableHead>
-                  <TableHead className="w-28">Notes</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {receiveLines.map((line, index) => (
-                  <TableRow key={line.po_item_id} className={line.condition !== 'passed' ? 'bg-destructive/5' : ''}>
-                    <TableCell className="text-sm">{line.description}</TableCell>
-                    <TableCell className="text-center font-mono">{line.ordered_qty}</TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={line.ordered_qty}
-                        value={line.received_qty}
-                        onChange={e => updateLine(index, { received_qty: Math.min(parseInt(e.target.value) || 0, line.ordered_qty) })}
-                        className="h-8 text-center"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Select value={line.condition} onValueChange={v => updateLine(index, { condition: v })}>
-                        <SelectTrigger className="h-8 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="passed">✓ Passed</SelectItem>
-                          <SelectItem value="damaged">⚠ Damaged</SelectItem>
-                          <SelectItem value="defective">✕ Defective</SelectItem>
-                          <SelectItem value="wrong_item">↩ Wrong Item</SelectItem>
-                          <SelectItem value="missing">∅ Missing/Short</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      {line.condition !== 'passed' ? (
-                        <Select value={line.action} onValueChange={(v: any) => updateLine(index, { action: v })}>
-                          <SelectTrigger className="h-8 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="return_to_supplier">Return to Supplier</SelectItem>
-                            <SelectItem value="accept">Accept As-Is</SelectItem>
-                            <SelectItem value="write_off">Write Off</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
+            {groups.map((group, groupIdx) => {
+              const groupTotal = group.splits.reduce((s, r) => s + r.qty, 0);
+              const isOver = groupTotal > group.ordered_qty;
+              return (
+                <div key={group.po_item_id} className={`rounded-lg border p-3 space-y-2 ${isOver ? 'border-destructive bg-destructive/5' : 'bg-muted/20'}`}>
+                  {/* Group header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{group.description}</span>
+                      <Badge variant="outline" className="text-xs font-mono">
+                        Ordered: {group.ordered_qty}
+                      </Badge>
+                      {isOver && (
+                        <Badge variant="destructive" className="text-xs">
+                          Total {groupTotal} exceeds {group.ordered_qty}
+                        </Badge>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        placeholder="Optional"
-                        value={line.notes}
-                        onChange={e => updateLine(index, { notes: e.target.value })}
-                        className="h-8 text-xs"
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => addSplit(groupIdx)}
+                    >
+                      <Plus className="h-3 w-3" /> Split
+                    </Button>
+                  </div>
+
+                  {/* Split rows */}
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-20 text-center">Qty</TableHead>
+                        <TableHead className="w-32">Condition</TableHead>
+                        <TableHead className="w-36">Action</TableHead>
+                        <TableHead>Notes</TableHead>
+                        <TableHead className="w-10"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {group.splits.map((split, splitIdx) => (
+                        <TableRow key={split.id} className={split.condition !== 'passed' ? 'bg-destructive/5' : ''}>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min={0}
+                              max={group.ordered_qty}
+                              value={split.qty}
+                              onChange={e => updateSplit(groupIdx, splitIdx, { qty: Math.max(0, parseInt(e.target.value) || 0) })}
+                              className="h-8 text-center"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Select value={split.condition} onValueChange={v => updateSplit(groupIdx, splitIdx, { condition: v })}>
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="passed">✓ Passed</SelectItem>
+                                <SelectItem value="damaged">⚠ Damaged</SelectItem>
+                                <SelectItem value="defective">✕ Defective</SelectItem>
+                                <SelectItem value="wrong_item">↩ Wrong Item</SelectItem>
+                                <SelectItem value="missing">∅ Missing/Short</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell>
+                            {split.condition !== 'passed' ? (
+                              <Select value={split.action} onValueChange={(v: any) => updateSplit(groupIdx, splitIdx, { action: v })}>
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="return_to_supplier">Return to Supplier</SelectItem>
+                                  <SelectItem value="accept">Accept As-Is</SelectItem>
+                                  <SelectItem value="write_off">Write Off</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">Accept → Inventory</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              placeholder="Optional"
+                              value={split.notes}
+                              onChange={e => updateSplit(groupIdx, splitIdx, { notes: e.target.value })}
+                              className="h-8 text-xs"
+                            />
+                          </TableCell>
+                          <TableCell>
+                            {group.splits.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => removeSplit(groupIdx, splitIdx)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              );
+            })}
           </div>
 
           {/* Defective items warning */}
@@ -458,12 +567,10 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
               <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
               <div className="text-sm">
                 <p className="font-medium text-warning">
-                  {defectiveLines.length} item(s) flagged with issues
+                  {defectiveSplits.length} split(s) flagged with issues ({defectiveSplits.reduce((s, d) => s + d.qty, 0)} units)
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Items marked "Return to Supplier" will automatically create a supplier RMA in Returns. 
-                  "Accept As-Is" records the condition but keeps the item. 
-                  "Write Off" records a loss.
+                  "Return to Supplier" auto-creates a supplier RMA. "Accept As-Is" adds to inventory with noted condition. "Write Off" records a loss.
                 </p>
               </div>
             </div>
@@ -471,7 +578,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
 
           <Separator />
 
-          {/* AP auto-generation toggle with checkbox */}
+          {/* AP auto-generation toggle */}
           <label className="flex items-start gap-3 rounded-lg border p-3 bg-muted/30 cursor-pointer">
             <Checkbox
               checked={createAP}
@@ -499,7 +606,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
 
         <DialogFooter>
           <Button variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={loading}>
+          <Button onClick={handleSubmit} disabled={loading || overAllocated}>
             {loading ? 'Processing...' : `Receive ${totalReceived} Item${totalReceived !== 1 ? 's' : ''}`}
           </Button>
         </DialogFooter>
