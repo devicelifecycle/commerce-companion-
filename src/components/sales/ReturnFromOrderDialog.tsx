@@ -42,6 +42,7 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
   const [deviceCondition, setDeviceCondition] = useState('');
   const [outboundTracking, setOutboundTracking] = useState('');
   const [repairNotes, setRepairNotes] = useState('');
+  const [replacementDeviceId, setReplacementDeviceId] = useState<string | null>(null);
 
   const handleSubmit = async () => {
     if (!reason) {
