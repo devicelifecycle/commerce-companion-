@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/lib/auth';
@@ -22,11 +22,13 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
+import { MetricCard } from '@/components/ui/metric-card';
 import { 
   RotateCcw, Plus, Package, ShoppingCart, DollarSign, 
-  Clock, CheckCircle, XCircle, Truck, Search, Wrench, RefreshCw, ArrowRightLeft
+  Clock, CheckCircle, XCircle, Truck, Search, Wrench, RefreshCw, ArrowRightLeft,
+  AlertTriangle, Timer, Eye
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, differenceInDays } from 'date-fns';
 import { DeviceSearchCombobox } from '@/components/inventory/DeviceSearchCombobox';
 
 interface ReturnAuthorization {
@@ -68,6 +70,7 @@ export function ReturnsManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [viewingRma, setViewingRma] = useState<ReturnAuthorization | null>(null);
   
   const [formData, setFormData] = useState({
     return_type: 'purchase_return' as 'purchase_return' | 'sales_return',
@@ -314,6 +317,42 @@ export function ReturnsManagement() {
     });
   };
 
+  // KPI calculations
+  const kpis = useMemo(() => {
+    const open = returns.filter(r => ['pending', 'approved', 'shipped'].includes(r.status));
+    const pendingRefunds = open
+      .filter(r => r.resolution_type === 'refund')
+      .reduce((sum, r) => sum + (r.refund_amount || r.original_cost || 0), 0);
+    const resolved = returns.filter(r => ['refunded', 'completed', 'cancelled'].includes(r.status));
+    const avgDays = resolved.length > 0
+      ? resolved.reduce((sum, r) => {
+          const created = new Date(r.created_at);
+          const end = r.refund_date ? new Date(r.refund_date) : new Date(r.created_at);
+          return sum + differenceInDays(end, created);
+        }, 0) / resolved.length
+      : 0;
+    const overdue = open.filter(r => differenceInDays(new Date(), new Date(r.created_at)) > 7);
+    return { openCount: open.length, pendingRefunds, avgDays: Math.round(avgDays), overdueCount: overdue.length };
+  }, [returns]);
+
+  const formatCurrencyValue = (value: number) =>
+    new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
+
+  const getRmaTimeline = (rma: ReturnAuthorization) => {
+    const steps = [
+      { label: 'Created', status: 'done', date: rma.created_at, icon: Plus },
+      { label: 'Approved', status: ['approved', 'shipped', 'received', 'refunded', 'completed'].includes(rma.status) ? 'done' : rma.status === 'pending' ? 'current' : 'upcoming', icon: CheckCircle },
+      { label: 'Shipped', status: ['shipped', 'received', 'refunded', 'completed'].includes(rma.status) ? 'done' : rma.status === 'approved' ? 'current' : 'upcoming', icon: Truck },
+      { 
+        label: rma.resolution_type === 'refund' ? 'Refunded' : rma.resolution_type === 'repair' ? 'Repaired' : 'Exchanged',
+        status: ['refunded', 'completed'].includes(rma.status) ? 'done' : ['shipped', 'received'].includes(rma.status) ? 'current' : 'upcoming',
+        date: rma.refund_date || undefined,
+        icon: rma.resolution_type === 'refund' ? DollarSign : rma.resolution_type === 'repair' ? Wrench : ArrowRightLeft,
+      },
+    ];
+    return steps;
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       pending: 'bg-amber-500/10 text-amber-500',
@@ -384,6 +423,38 @@ export function ReturnsManagement() {
   }
 
   return (
+    <>
+    {/* KPI Summary Cards */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <MetricCard
+        title="Open RMAs"
+        value={kpis.openCount}
+        icon={RotateCcw}
+        change={`${returns.filter(r => r.return_type === 'purchase_return' && ['pending','approved','shipped'].includes(r.status)).length} supplier · ${returns.filter(r => r.return_type === 'sales_return' && ['pending','approved','shipped'].includes(r.status)).length} customer`}
+      />
+      <MetricCard
+        title="Pending Refunds"
+        value={formatCurrencyValue(kpis.pendingRefunds)}
+        icon={DollarSign}
+        iconClassName="bg-amber-500/10"
+      />
+      <MetricCard
+        title="Avg Resolution"
+        value={`${kpis.avgDays}d`}
+        icon={Timer}
+        change={kpis.avgDays > 7 ? 'Above target' : 'On track'}
+        changeType={kpis.avgDays > 7 ? 'negative' : 'positive'}
+      />
+      <MetricCard
+        title="Overdue (>7d)"
+        value={kpis.overdueCount}
+        icon={AlertTriangle}
+        iconClassName={kpis.overdueCount > 0 ? 'bg-destructive/10' : undefined}
+        changeType={kpis.overdueCount > 0 ? 'negative' : 'positive'}
+        change={kpis.overdueCount > 0 ? 'Needs attention' : 'All clear'}
+      />
+    </div>
+
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="flex items-center gap-2">
@@ -729,7 +800,7 @@ export function ReturnsManagement() {
                 </TableRow>
               ) : (
                 filteredReturns.map((rma) => (
-                  <TableRow key={rma.id}>
+                  <TableRow key={rma.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setViewingRma(rma)}>
                     <TableCell className="font-mono text-sm">{rma.rma_number}</TableCell>
                     <TableCell>
                       <Badge variant="outline">
@@ -769,7 +840,7 @@ export function ReturnsManagement() {
                       ) : '-'}
                     </TableCell>
                     <TableCell>{format(new Date(rma.return_date), 'MMM d, yyyy')}</TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         {rma.status === 'pending' && (
                           <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'approved')}>
@@ -806,5 +877,134 @@ export function ReturnsManagement() {
         </Tabs>
       </CardContent>
     </Card>
+
+    {/* RMA Detail Dialog with Timeline */}
+    <Dialog open={!!viewingRma} onOpenChange={(open) => !open && setViewingRma(null)}>
+      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+        {viewingRma && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between">
+                <span className="font-mono">{viewingRma.rma_number}</span>
+                <div className="flex gap-2">
+                  {getResolutionBadge(viewingRma.resolution_type)}
+                  {getStatusBadge(viewingRma.status)}
+                </div>
+              </DialogTitle>
+              <DialogDescription className="sr-only">Details for {viewingRma.rma_number}</DialogDescription>
+            </DialogHeader>
+
+            {/* Timeline */}
+            <div className="py-4">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Progress Timeline</h4>
+              <div className="flex items-center justify-between relative">
+                <div className="absolute top-4 left-6 right-6 h-0.5 bg-border" />
+                {getRmaTimeline(viewingRma).map((step, i) => {
+                  const StepIcon = step.icon;
+                  return (
+                    <div key={i} className="flex flex-col items-center gap-1.5 relative z-10">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                        step.status === 'done' ? 'bg-primary border-primary text-primary-foreground' :
+                        step.status === 'current' ? 'bg-background border-primary text-primary animate-pulse' :
+                        'bg-muted border-border text-muted-foreground'
+                      }`}>
+                        <StepIcon className="h-3.5 w-3.5" />
+                      </div>
+                      <span className={`text-[10px] font-medium ${step.status === 'done' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                        {step.label}
+                      </span>
+                      {step.date && (
+                        <span className="text-[9px] text-muted-foreground">
+                          {format(new Date(step.date), 'MMM d')}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-4 text-sm">
+              {/* Type & Details */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-muted-foreground text-xs">Type</p>
+                  <p className="font-medium">{viewingRma.return_type === 'purchase_return' ? 'To Supplier' : 'From Customer'}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Date</p>
+                  <p className="font-medium">{format(new Date(viewingRma.return_date), 'MMM d, yyyy')}</p>
+                </div>
+                {viewingRma.customer_name && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Customer</p>
+                    <p className="font-medium">{viewingRma.customer_name}</p>
+                  </div>
+                )}
+                {viewingRma.supplier && (
+                  <div>
+                    <p className="text-muted-foreground text-xs">Supplier</p>
+                    <p className="font-medium">{viewingRma.supplier.name}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Device */}
+              {viewingRma.device && (
+                <div className="bg-muted/30 border border-border/40 rounded-lg p-3">
+                  <p className="font-semibold">{viewingRma.device.brand} {viewingRma.device.model}</p>
+                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                    {viewingRma.device.imei && <span className="font-mono">IMEI: {viewingRma.device.imei}</span>}
+                    {viewingRma.device_condition_on_return && getConditionBadge(viewingRma.device_condition_on_return)}
+                  </div>
+                </div>
+              )}
+
+              {/* Financials */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-muted-foreground text-xs">Original Cost</p>
+                  <p className="font-medium">{formatCurrency(viewingRma.original_cost)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground text-xs">Refund Amount</p>
+                  <p className="font-medium">{formatCurrency(viewingRma.refund_amount)}</p>
+                </div>
+              </div>
+
+              {/* Tracking */}
+              {viewingRma.outbound_tracking_number && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Tracking Number</p>
+                  <p className="font-mono text-sm">{viewingRma.outbound_tracking_number}</p>
+                </div>
+              )}
+
+              {/* Notes */}
+              {(viewingRma.notes || viewingRma.repair_notes) && (
+                <div>
+                  <p className="text-muted-foreground text-xs">Notes</p>
+                  <p className="text-sm">{viewingRma.notes}</p>
+                  {viewingRma.repair_notes && <p className="text-sm mt-1">🔧 {viewingRma.repair_notes}</p>}
+                </div>
+              )}
+
+              {/* Days open indicator */}
+              {!['refunded', 'completed', 'cancelled'].includes(viewingRma.status) && (
+                <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
+                  differenceInDays(new Date(), new Date(viewingRma.created_at)) > 7
+                    ? 'bg-destructive/10 text-destructive'
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  <Clock className="h-3.5 w-3.5" />
+                  Open for {differenceInDays(new Date(), new Date(viewingRma.created_at))} days
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
