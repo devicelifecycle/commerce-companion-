@@ -341,8 +341,8 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
               if (allocationPct <= 0) continue;
 
               const allocatedAmount = (parseFloat(formData.amount) || 0) * (allocationPct / 100);
-              const allocatedGst = (parseFloat(formData.gst_hst_amount) || 0) * (allocationPct / 100);
-              const allocatedPst = (parseFloat(formData.pst_amount) || 0) * (allocationPct / 100);
+              const allocatedGst = computedTotals.gst * (allocationPct / 100);
+              const allocatedPst = computedTotals.pst * (allocationPct / 100);
               const allocatedTotal = allocatedAmount + allocatedGst + allocatedPst;
 
               const baseAccountCode = CATEGORY_ACCOUNT_MAP[formData.category] || '7100';
