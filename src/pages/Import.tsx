@@ -1291,10 +1291,10 @@ export default function Import() {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Upload className="h-5 w-5" />
-                    Upload Excel File
+                    Bulk Import from Excel
                   </CardTitle>
                   <CardDescription>
-                    Upload an Excel file containing your device inventory (phones, tablets, laptops)
+                    Import multiple devices at once from a spreadsheet — creates POs, GRNs, and AP entries automatically
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
