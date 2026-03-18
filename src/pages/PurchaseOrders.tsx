@@ -13,7 +13,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Search, Download, Plus, ClipboardList, X, Trash2, PackageCheck, Copy } from 'lucide-react';
+import { Search, Download, Plus, ClipboardList, X, Trash2, PackageCheck, Copy, Eye } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -24,6 +24,7 @@ import {
 import { PurchaseOrdersGuide } from '@/components/guides/PurchaseOrdersGuide';
 import { CreatePurchaseOrderDialog } from '@/components/procurement/CreatePurchaseOrderDialog';
 import { ReceivePODialog } from '@/components/procurement/ReceivePODialog';
+import { PODetailDialog } from '@/components/procurement/PODetailDialog';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
 import { MetricCard } from '@/components/ui/metric-card';
@@ -42,6 +43,7 @@ interface PurchaseOrder {
   gst_hst_amount: number;
   pst_qst_amount: number;
   total_amount: number;
+  paid_amount: number;
   notes: string | null;
   expected_delivery_date: string | null;
   payment_method: string | null;
@@ -59,6 +61,8 @@ export default function PurchaseOrders() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [receivePoId, setReceivePoId] = useState<string | null>(null);
   const [showReceiveDialog, setShowReceiveDialog] = useState(false);
+  const [detailPoId, setDetailPoId] = useState<string | null>(null);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [cloneLoading, setCloneLoading] = useState<string | null>(null);
 
   const canManage = hasPermission('inventory_manage', 'edit') || isSuperAdmin;
@@ -83,7 +87,7 @@ export default function PurchaseOrders() {
     pending: orders.filter(o => o.status === 'pending').length,
     received: orders.filter(o => o.status === 'received' || o.status === 'completed' || o.status === 'partially_received').length,
     totalValue: orders.reduce((sum, o) => sum + o.total_amount, 0),
-    unpaid: orders.filter(o => o.payment_status === 'unpaid').reduce((sum, o) => sum + o.total_amount, 0),
+    unpaid: orders.filter(o => o.payment_status !== 'paid').reduce((sum, o) => sum + o.total_amount - (o.paid_amount || 0), 0),
   }), [orders]);
 
   useEffect(() => {
@@ -108,8 +112,8 @@ export default function PurchaseOrders() {
   const exportCsv = () => {
     const rows = selectedItems.length > 0 ? selectedItems : filtered;
     const csv = [
-      ['PO #', 'Supplier', 'Date', 'Status', 'Payment', 'Subtotal', 'GST/HST', 'PST/QST', 'Total'].join(','),
-      ...rows.map(o => [o.po_number, o.supplier_name, o.po_date, o.status, o.payment_status, o.subtotal, o.gst_hst_amount, o.pst_qst_amount, o.total_amount].join(','))
+      ['PO #', 'Supplier', 'Date', 'Status', 'Payment', 'Subtotal', 'GST/HST', 'PST/QST', 'Total', 'Paid'].join(','),
+      ...rows.map(o => [o.po_number, o.supplier_name, o.po_date, o.status, o.payment_status, o.subtotal, o.gst_hst_amount, o.pst_qst_amount, o.total_amount, o.paid_amount || 0].join(','))
     ].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -139,7 +143,6 @@ export default function PurchaseOrders() {
   const clonePO = async (po: PurchaseOrder) => {
     setCloneLoading(po.id);
     try {
-      // Generate new PO number
       const prefix = selectedCompany?.code || 'PO';
       const dateStr = format(new Date(), 'yyyyMMdd');
       const { count } = await supabase
@@ -148,7 +151,6 @@ export default function PurchaseOrders() {
       const num = (count || 0) + 1;
       const newPoNumber = `${prefix}-${dateStr}-${String(num).padStart(3, '0')}`;
 
-      // Clone PO header
       const { data: newPo, error: poError } = await supabase.from('purchase_orders').insert({
         po_number: newPoNumber,
         supplier_id: po.supplier_id,
@@ -168,7 +170,6 @@ export default function PurchaseOrders() {
 
       if (poError) throw poError;
 
-      // Clone line items
       if (newPo) {
         const { data: origItems } = await supabase
           .from('purchase_order_items')
@@ -203,16 +204,29 @@ export default function PurchaseOrders() {
     setShowReceiveDialog(true);
   };
 
+  const openDetail = (poId: string) => {
+    setDetailPoId(poId);
+    setShowDetailDialog(true);
+  };
+
   const fmtCurrency = (v: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(v);
 
   const statusColor = (s: string) => {
     switch (s) {
-      case 'completed': case 'received': return 'default';
-      case 'partially_received': return 'outline';
-      case 'pending': return 'secondary';
-      case 'cancelled': return 'destructive';
-      default: return 'outline';
+      case 'completed': case 'received': return 'default' as const;
+      case 'partially_received': return 'outline' as const;
+      case 'pending': return 'secondary' as const;
+      case 'cancelled': return 'destructive' as const;
+      default: return 'outline' as const;
+    }
+  };
+
+  const paymentColor = (s: string) => {
+    switch (s) {
+      case 'paid': return 'default' as const;
+      case 'partial': return 'outline' as const;
+      default: return 'secondary' as const;
     }
   };
 
@@ -225,7 +239,7 @@ export default function PurchaseOrders() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Purchase Orders</h1>
-            <p className="text-sm text-muted-foreground">Track and manage supplier purchase orders</p>
+            <p className="text-sm text-muted-foreground">Track POs, receive goods, and manage payments</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={exportCsv}>
@@ -297,11 +311,11 @@ export default function PurchaseOrders() {
                   <TableHead>PO #</TableHead>
                   <TableHead>Supplier</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Expected Delivery</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Payment</TableHead>
                   <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="w-28 text-center">Actions</TableHead>
+                  <TableHead className="text-right">Paid</TableHead>
+                  <TableHead className="w-32 text-center">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -310,22 +324,37 @@ export default function PurchaseOrders() {
                 ) : filtered.length === 0 ? (
                   <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No purchase orders found</TableCell></TableRow>
                 ) : filtered.map(o => (
-                  <TableRow key={o.id}>
-                    <TableCell><Checkbox checked={selectedIds.has(o.id)} onCheckedChange={() => toggle(o.id)} /></TableCell>
+                  <TableRow key={o.id} className="cursor-pointer" onClick={() => openDetail(o.id)}>
+                    <TableCell onClick={e => e.stopPropagation()}>
+                      <Checkbox checked={selectedIds.has(o.id)} onCheckedChange={() => toggle(o.id)} />
+                    </TableCell>
                     <TableCell className="font-medium">{o.po_number}</TableCell>
                     <TableCell>{o.supplier_name}</TableCell>
                     <TableCell>{format(new Date(o.po_date), 'MMM d, yyyy')}</TableCell>
-                    <TableCell>{o.expected_delivery_date ? format(new Date(o.expected_delivery_date), 'MMM d, yyyy') : '—'}</TableCell>
                     <TableCell>
                       <Badge variant={statusColor(o.status)} className="capitalize">
                         {o.status?.replace('_', ' ')}
                       </Badge>
                     </TableCell>
-                    <TableCell><Badge variant={o.payment_status === 'paid' ? 'default' : 'secondary'} className="capitalize">{o.payment_status}</Badge></TableCell>
-                    <TableCell className="text-right font-mono">{fmtCurrency(o.total_amount)}</TableCell>
                     <TableCell>
+                      <Badge variant={paymentColor(o.payment_status)} className="capitalize">
+                        {o.payment_status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">{fmtCurrency(o.total_amount)}</TableCell>
+                    <TableCell className="text-right font-mono">{fmtCurrency(o.paid_amount || 0)}</TableCell>
+                    <TableCell onClick={e => e.stopPropagation()}>
                       <TooltipProvider delayDuration={300}>
                         <div className="flex items-center justify-center gap-0.5">
+                          {/* View Detail */}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDetail(o.id)}>
+                                <Eye className="h-3.5 w-3.5" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>View Details</TooltipContent>
+                          </Tooltip>
                           {/* Receive */}
                           {canManage && canReceive(o.status) && (
                             <Tooltip>
@@ -405,6 +434,14 @@ export default function PurchaseOrders() {
           onOpenChange={setShowReceiveDialog}
           onSuccess={loadOrders}
           poId={receivePoId}
+        />
+
+        <PODetailDialog
+          open={showDetailDialog}
+          onOpenChange={setShowDetailDialog}
+          onUpdate={loadOrders}
+          poId={detailPoId}
+          canManage={canManage}
         />
       </div>
     </DashboardLayout>
