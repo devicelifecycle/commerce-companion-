@@ -804,7 +804,11 @@ export default function Inventory() {
                         {filteredDevices.map((device) => {
                           const company = companies.find(c => c.id === device.company_id);
                           return (
-                            <TableRow key={device.id} data-state={selection.selectedIds.has(device.id) ? 'selected' : undefined}>
+                            <TableRow key={device.id} data-state={selection.selectedIds.has(device.id) ? 'selected' : undefined} className="cursor-pointer" onClick={(e) => {
+                              // Don't open timeline if clicking checkbox or dropdown
+                              if ((e.target as HTMLElement).closest('button, [role="checkbox"], [role="menuitem"]')) return;
+                              setTimelineDevice(device);
+                            }}>
                               <TableCell>
                                 <Checkbox
                                   checked={selection.selectedIds.has(device.id)}
