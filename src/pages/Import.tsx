@@ -1013,9 +1013,209 @@ export default function Import() {
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
         <div>
-          <h1 className="text-2xl font-bold">Import Devices</h1>
-          <p className="text-muted-foreground">Upload an Excel file to bulk import phones, tablets, and laptops with automatic PO, GRN, and AP creation</p>
+          <h1 className="text-2xl font-bold">Import & Add Devices</h1>
+          <p className="text-muted-foreground">Bulk import from Excel or manually add a single device — phones, tablets, and laptops</p>
         </div>
+
+        {/* Manual Single-Device Entry */}
+        {step === 'upload' && (
+          <Card className="border-2 border-dashed border-accent">
+            <CardHeader className="cursor-pointer" onClick={() => setShowManualAdd(!showManualAdd)}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-lg bg-accent/20 flex items-center justify-center">
+                    <Smartphone className="h-5 w-5 text-accent-foreground" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">Add Single Device</CardTitle>
+                    <CardDescription>Manually add one device at a time with full details — ideal for walk-in purchases or one-off acquisitions</CardDescription>
+                  </div>
+                </div>
+                {showManualAdd ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+              </div>
+            </CardHeader>
+            {showManualAdd && (
+              <CardContent className="space-y-4 pt-0">
+                <Separator />
+                
+                {/* Company Selector — prominent */}
+                <div className="p-4 rounded-lg border-2 border-primary/30 bg-primary/5">
+                  <Label className="text-sm font-semibold text-primary flex items-center gap-2 mb-2">
+                    <Building2 className="h-4 w-4" />
+                    Which company is buying this device? *
+                  </Label>
+                  <Select
+                    value={manualForm.company_id}
+                    onValueChange={v => setManualForm(prev => ({ ...prev, company_id: v }))}
+                  >
+                    <SelectTrigger className={!manualForm.company_id ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Select company..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          <span className="font-medium">{c.name}</span>
+                          <span className="text-muted-foreground ml-2">({c.code})</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Normalized preview */}
+                {manualForm.brand && manualForm.model && (
+                  <div className="rounded-md border bg-muted/30 p-2 text-xs text-muted-foreground">
+                    Will be saved as: <span className="font-medium text-foreground">{normalizeBrand(manualForm.brand)} {normalizeModel(manualForm.model)}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Brand *</Label>
+                    <Input value={manualForm.brand} onChange={e => setManualForm(prev => ({ ...prev, brand: e.target.value }))} placeholder="Apple, Samsung..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Model *</Label>
+                    <Input value={manualForm.model} onChange={e => setManualForm(prev => ({ ...prev, model: e.target.value }))} placeholder="iPhone 15 Pro" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Category</Label>
+                    <Select value={manualForm.category} onValueChange={v => setManualForm(prev => ({ ...prev, category: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map(cat => <SelectItem key={cat} value={cat} className="capitalize">{cat}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>SKU</Label>
+                    <Input disabled value="Auto-generated on save" className="bg-muted text-muted-foreground" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>IMEI / Serial Number</Label>
+                    <Input value={manualForm.imei} onChange={e => setManualForm(prev => ({ ...prev, imei: e.target.value }))} placeholder="123456789012345" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Storage</Label>
+                    <Input value={manualForm.storage} onChange={e => setManualForm(prev => ({ ...prev, storage: e.target.value }))} placeholder="256GB" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Color</Label>
+                    <Input value={manualForm.color} onChange={e => setManualForm(prev => ({ ...prev, color: e.target.value }))} placeholder="Space Black" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Condition</Label>
+                    <Select value={manualForm.condition} onValueChange={v => setManualForm(prev => ({ ...prev, condition: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="new">New</SelectItem>
+                        <SelectItem value="refurbished">Refurbished</SelectItem>
+                        <SelectItem value="used">Used</SelectItem>
+                        <SelectItem value="damaged">Damaged</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Cost Price *</Label>
+                    <Input type="number" value={manualForm.cost_price} onChange={e => setManualForm(prev => ({ ...prev, cost_price: e.target.value }))} placeholder="500.00" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Sale Price</Label>
+                    <Input type="number" value={manualForm.sale_price} onChange={e => setManualForm(prev => ({ ...prev, sale_price: e.target.value }))} placeholder="699.00" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-amber-600 dark:text-amber-400">Supplier * (required)</Label>
+                    <Select value={manualForm.supplier_id} onValueChange={v => setManualForm(prev => ({ ...prev, supplier_id: v }))}>
+                      <SelectTrigger className={!manualForm.supplier_id ? 'border-amber-500' : ''}>
+                        <SelectValue placeholder="Select supplier" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {suppliers.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-amber-600 dark:text-amber-400">Payment Method * (required)</Label>
+                    <Select value={manualForm.payment_method} onValueChange={v => setManualForm(prev => ({ ...prev, payment_method: v }))}>
+                      <SelectTrigger className={!manualForm.payment_method ? 'border-amber-500' : ''}>
+                        <SelectValue placeholder="How was this acquired?" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">Cash (paid immediately)</SelectItem>
+                        <SelectItem value="credit_card">Credit Card (paid immediately)</SelectItem>
+                        <SelectItem value="debit_card">Debit Card (paid immediately)</SelectItem>
+                        <SelectItem value="credit">On Credit (creates AP)</SelectItem>
+                        <SelectItem value="wire_transfer">Wire Transfer (creates AP)</SelectItem>
+                        <SelectItem value="e_transfer">E-Transfer (creates AP)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {manualForm.payment_method && !['cash', 'credit_card', 'debit_card'].includes(manualForm.payment_method) && (
+                      <p className="text-xs text-muted-foreground">An Accounts Payable record will be auto-created</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select value={manualForm.status} onValueChange={v => setManualForm(prev => ({ ...prev, status: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="in_stock">In Stock</SelectItem>
+                        <SelectItem value="hold_for_refurbishment">Hold for Refurbishment</SelectItem>
+                        <SelectItem value="reserved">Reserved</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-amber-600 dark:text-amber-400">Purchase Date * (required)</Label>
+                    <Input type="date" value={manualForm.purchase_date} onChange={e => setManualForm(prev => ({ ...prev, purchase_date: e.target.value }))} />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Notes</Label>
+                  <Textarea value={manualForm.notes} onChange={e => setManualForm(prev => ({ ...prev, notes: e.target.value }))} placeholder="Additional notes..." />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button variant="outline" onClick={() => setShowManualAdd(false)}>Cancel</Button>
+                  <Button
+                    onClick={handleManualAddDevice}
+                    disabled={manualAdding || !manualForm.brand || !manualForm.model || !manualForm.cost_price || !manualForm.supplier_id || !manualForm.payment_method || !manualForm.company_id}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    {manualAdding ? 'Adding...' : 'Add Device'}
+                  </Button>
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        )}
+
+        {/* Divider between manual and bulk */}
+        {step === 'upload' && (
+          <div className="flex items-center gap-4">
+            <Separator className="flex-1" />
+            <span className="text-sm font-medium text-muted-foreground">OR</span>
+            <Separator className="flex-1" />
+          </div>
+        )}
 
         <ImportGuide />
 
