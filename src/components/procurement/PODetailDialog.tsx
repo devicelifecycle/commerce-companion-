@@ -46,6 +46,9 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }
   const [paymentRef, setPaymentRef] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [syncToAP, setSyncToAP] = useState(true);
+
+  const VES_ID = '4e0fa3a6-06a9-4618-8513-f66143c05b28';
 
   useEffect(() => {
     if (open && poId) loadAll();
