@@ -425,9 +425,6 @@ export default function Expenses() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="vendors">
-            <VendorManagement />
-          </TabsContent>
 
           <TabsContent value="guide">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
