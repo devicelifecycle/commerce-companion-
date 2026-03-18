@@ -63,6 +63,10 @@ export default function Settings() {
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">Notifications</span>
             </TabsTrigger>
+            <TabsTrigger value="catalog" className="gap-2">
+              <Barcode className="h-4 w-4" />
+              <span className="hidden sm:inline">Product Catalog</span>
+            </TabsTrigger>
             <TabsTrigger value="app" className="gap-2">
               <Sliders className="h-4 w-4" />
               <span className="hidden sm:inline">App Settings</span>
