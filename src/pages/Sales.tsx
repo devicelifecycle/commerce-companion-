@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { OrdersGuide } from '@/components/guides/OrdersGuide';
 import { useAuth } from '@/lib/auth';
@@ -6,15 +6,13 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { ActivityLog } from '@/components/audit/ActivityLog';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { ManualSaleDialog } from '@/components/sales/ManualSaleDialog';
-import { IntercompanySaleDialog } from '@/components/sales/IntercompanySaleDialog';
 import { EditSaleDialog } from '@/components/sales/EditSaleDialog';
 import { OrderDetailDialog } from '@/components/sales/OrderDetailDialog';
 import { ReturnFromOrderDialog } from '@/components/sales/ReturnFromOrderDialog';
 import { useSalesQuery, SaleRecord } from '@/hooks/useSalesQuery';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
-import { useQuickActionListener } from '@/hooks/useGlobalShortcuts';
+
 import { MarketplaceBadge, FulfillmentBadge, MarketplaceStatusBadge } from '@/components/ui/status-badge';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
 import { MetricCard } from '@/components/ui/metric-card';
@@ -35,8 +33,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-  Search, Plus, Trash2, Link, Unlink, MoreHorizontal,
-  Download, ArrowRightLeft, RefreshCw, AlertCircle, CheckSquare,
+  Search, Trash2, Link, Unlink, MoreHorizontal,
+  Download, RefreshCw, AlertCircle,
   Package, Clock, Truck, PackageCheck, ShoppingCart, RotateCcw, Eye,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -57,8 +55,6 @@ export default function Sales() {
   const [companyFilter, setCompanyFilter] = useState<CompanyFilter>('all');
   const [marketplaceFilter, setMarketplaceFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [showManualSale, setShowManualSale] = useState(false);
-  const [showIntercompanySale, setShowIntercompanySale] = useState(false);
   const [editingSale, setEditingSale] = useState<{ id: string; deviceId: string | null; orderNumber: string } | null>(null);
   const [importingFrom, setImportingFrom] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -68,10 +64,6 @@ export default function Sales() {
   const canManageSales = hasPermission('sales_manage', 'edit');
   const canViewSales = hasPermission('sales_view', 'view');
 
-  // Quick action: open "Record Sale" dialog via Alt+S
-  useQuickActionListener('add-sale', useCallback(() => {
-    if (canManageSales) setShowManualSale(true);
-  }, [canManageSales]));
 
   // Resolve company IDs by code
   const vesCompany = companies.find(c => c.code === 'VES');
@@ -347,17 +339,6 @@ export default function Sales() {
                   Export
                 </Button>
 
-                {isSuperAdmin && (
-                  <Button variant="outline" onClick={() => setShowIntercompanySale(true)}>
-                    <ArrowRightLeft className="h-4 w-4 mr-2" />
-                    Intercompany
-                  </Button>
-                )}
-
-                <Button onClick={() => setShowManualSale(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Record Sale
-                </Button>
               </>
             )}
           </div>
@@ -637,8 +618,6 @@ export default function Sales() {
         <ActivityLog tableName="sales" title="Orders Activity" limit={10} />
       </div>
 
-      <ManualSaleDialog open={showManualSale} onOpenChange={setShowManualSale} onSuccess={fetchSales} />
-      <IntercompanySaleDialog open={showIntercompanySale} onOpenChange={setShowIntercompanySale} onSuccess={fetchSales} />
 
       {editingSale && (
         <EditSaleDialog
@@ -658,6 +637,7 @@ export default function Sales() {
           sale={viewingSale}
           hasReturn={returnSaleIds.has(viewingSale.id)}
           onInitiateReturn={() => setReturningSale(viewingSale)}
+          onSaleUpdated={fetchSales}
         />
       )}
 

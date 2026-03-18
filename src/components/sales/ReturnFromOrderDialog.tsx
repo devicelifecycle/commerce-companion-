@@ -80,8 +80,8 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
 
       if (rmaError) throw rmaError;
 
-      // If restock (only for refund), update device back to in_stock
-      if (resolutionType === 'refund' && restockDevice && sale.device_id) {
+      // If restock, update device back to in_stock
+      if (restockDevice && sale.device_id) {
         await supabase
           .from('devices')
           .update({ status: 'in_stock' as any, sale_price: null })
@@ -245,12 +245,12 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
             </div>
           )}
 
-          {/* Restock toggle — only for refund */}
-          {resolutionType === 'refund' && sale.device_id && (
+          {/* Restock toggle — available for all resolution types when device is linked */}
+          {sale.device_id && (
             <div className="flex items-center justify-between bg-muted/20 border border-border/40 rounded-lg p-3">
               <div>
-                <p className="text-sm font-medium">Restock device</p>
-                <p className="text-xs text-muted-foreground">Put device back in inventory as in-stock</p>
+                <p className="text-sm font-medium">Add device back to inventory</p>
+                <p className="text-xs text-muted-foreground">Unlink device from this order and set status back to in-stock</p>
               </div>
               <Switch checked={restockDevice} onCheckedChange={setRestockDevice} />
             </div>

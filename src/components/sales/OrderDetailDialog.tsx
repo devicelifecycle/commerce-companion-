@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
@@ -6,8 +6,10 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { MarketplaceBadge, FulfillmentBadge, MarketplaceStatusBadge } from '@/components/ui/status-badge';
-import { Package, User, MapPin, DollarSign, Calendar, FileText, RotateCcw } from 'lucide-react';
+import { Package, User, MapPin, DollarSign, Calendar, FileText, RotateCcw, Link, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DeviceSearchCombobox } from '@/components/inventory/DeviceSearchCombobox';
+import { toast } from 'sonner';
 
 interface Sale {
   id: string;
@@ -48,9 +50,14 @@ interface OrderDetailDialogProps {
   sale: Sale;
   onInitiateReturn: () => void;
   hasReturn: boolean;
+  onSaleUpdated?: () => void;
 }
 
-export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, hasReturn }: OrderDetailDialogProps) {
+export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, hasReturn, onSaleUpdated }: OrderDetailDialogProps) {
+  const [showLinkDevice, setShowLinkDevice] = useState(false);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
+  const [linking, setLinking] = useState(false);
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
 
@@ -62,6 +69,76 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const totalDeductions = sale.shipping_cost + sale.marketplace_fees + sale.tax_amount;
   const netRevenue = grossRevenue - totalDeductions;
   const profit = sale.profit ?? (netRevenue - costPrice);
+
+  const handleLinkDevice = async () => {
+    if (!selectedDeviceId) return;
+    setLinking(true);
+    try {
+      const { data: device } = await supabase.from('devices').select('cost_price, sale_price').eq('id', selectedDeviceId).single();
+      
+      const { error: saleError } = await supabase.from('sales').update({
+        device_id: selectedDeviceId,
+        accounting_status: 'unprocessed',
+      }).eq('id', sale.id);
+      if (saleError) throw saleError;
+
+      const { error: deviceError } = await supabase.from('devices').update({
+        status: 'sold' as any,
+        sale_price: sale.sale_price,
+      }).eq('id', selectedDeviceId);
+      if (deviceError) throw deviceError;
+
+      toast.success('Device linked to order');
+      setShowLinkDevice(false);
+      setSelectedDeviceId(null);
+      onSaleUpdated?.();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to link device');
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const handleUnlinkDevice = async () => {
+    if (!sale.device_id) return;
+    setLinking(true);
+    try {
+      const { error: saleError } = await supabase.from('sales').update({
+        device_id: null,
+        accounting_status: 'revenue_only',
+      }).eq('id', sale.id);
+      if (saleError) throw saleError;
+
+      const { error: deviceError } = await supabase.from('devices').update({
+        status: 'in_stock' as any,
+        sale_price: null,
+      }).eq('id', sale.device_id);
+      if (deviceError) throw deviceError;
+
+      // Clean up COGS journal entries
+      const { data: cogsEntries } = await supabase
+        .from('journal_entries')
+        .select('id')
+        .eq('reference_id', sale.id)
+        .eq('reference_type', 'sale')
+        .ilike('description', 'COGS%');
+
+      if (cogsEntries && cogsEntries.length > 0) {
+        const entryIds = cogsEntries.map(e => e.id);
+        await supabase.from('journal_entry_lines').delete().in('journal_entry_id', entryIds);
+        await supabase.from('journal_entries').delete().in('id', entryIds);
+      }
+
+      toast.success('Device unlinked — COGS entries reversed');
+      onSaleUpdated?.();
+      onOpenChange(false);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to unlink device');
+    } finally {
+      setLinking(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -135,20 +212,73 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                       {sale.devices.color && <span>{sale.devices.color}</span>}
                     </div>
                   </div>
-                  <p className="text-sm font-medium text-muted-foreground">Cost: {formatCurrency(costPrice)}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-muted-foreground">Cost: {formatCurrency(costPrice)}</p>
+                    <Button variant="ghost" size="sm" onClick={handleUnlinkDevice} disabled={linking} className="text-destructive hover:text-destructive">
+                      <Unlink className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             ) : sale.product_title ? (
               <div className="bg-muted/30 border border-border/40 rounded-lg p-3">
-                <p className="font-semibold">{sale.product_title}</p>
-                <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                  {sale.marketplace_sku && <span className="font-mono">SKU: {sale.marketplace_sku}</span>}
-                  <span>From marketplace listing</span>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-semibold">{sale.product_title}</p>
+                    <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                      {sale.marketplace_sku && <span className="font-mono">SKU: {sale.marketplace_sku}</span>}
+                      <span>From marketplace listing</span>
+                    </div>
+                  </div>
+                  {!showLinkDevice && (
+                    <Button variant="outline" size="sm" onClick={() => setShowLinkDevice(true)}>
+                      <Link className="h-3.5 w-3.5 mr-1.5" />
+                      Link Device
+                    </Button>
+                  )}
                 </div>
+                {showLinkDevice && (
+                  <div className="mt-3 pt-3 border-t border-border/40 space-y-2">
+                    <DeviceSearchCombobox
+                      value={selectedDeviceId}
+                      onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
+                      companyId={sale.company_id || undefined}
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="ghost" size="sm" onClick={() => { setShowLinkDevice(false); setSelectedDeviceId(null); }}>Cancel</Button>
+                      <Button size="sm" onClick={handleLinkDevice} disabled={!selectedDeviceId || linking}>
+                        {linking ? 'Linking...' : 'Confirm Link'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="bg-muted/20 border border-border/40 rounded-lg p-3 text-center">
-                <p className="text-sm text-muted-foreground">No device linked to this order</p>
+              <div className="bg-muted/20 border border-border/40 rounded-lg p-3">
+                {showLinkDevice ? (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">Search for a device to link</p>
+                    <DeviceSearchCombobox
+                      value={selectedDeviceId}
+                      onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
+                      companyId={sale.company_id || undefined}
+                    />
+                    <div className="flex gap-2 justify-end">
+                      <Button variant="ghost" size="sm" onClick={() => { setShowLinkDevice(false); setSelectedDeviceId(null); }}>Cancel</Button>
+                      <Button size="sm" onClick={handleLinkDevice} disabled={!selectedDeviceId || linking}>
+                        {linking ? 'Linking...' : 'Confirm Link'}
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">No device linked to this order</p>
+                    <Button variant="outline" size="sm" onClick={() => setShowLinkDevice(true)}>
+                      <Link className="h-3.5 w-3.5 mr-1.5" />
+                      Link Device
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
