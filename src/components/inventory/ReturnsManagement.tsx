@@ -195,6 +195,7 @@ export function ReturnsManagement() {
         device_condition_on_return: formData.device_condition_on_return,
         outbound_tracking_number: formData.outbound_tracking_number || null,
         repair_notes: formData.resolution_type === 'repair' ? formData.repair_notes : null,
+        replacement_device_id: formData.resolution_type === 'exchange' && formData.replacement_device_id ? formData.replacement_device_id : null,
       };
 
       const { error } = await supabase
