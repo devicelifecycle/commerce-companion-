@@ -39,7 +39,7 @@ import {
 import { toast } from 'sonner';
 import { 
   Plus, Search, Filter, Download, LayoutDashboard, List, 
-  MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink, Info
+  MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink, Info, Undo2
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
