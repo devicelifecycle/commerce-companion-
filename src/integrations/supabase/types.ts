@@ -1926,6 +1926,63 @@ export type Database = {
           },
         ]
       }
+      product_catalog: {
+        Row: {
+          brand: string
+          category: string | null
+          color: string | null
+          created_at: string | null
+          default_cost_price: number | null
+          default_sale_price: number | null
+          ean: string | null
+          id: string
+          internal_sku_prefix: string | null
+          is_active: boolean | null
+          model: string
+          normalized_key: string
+          notes: string | null
+          storage: string | null
+          upc: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          brand: string
+          category?: string | null
+          color?: string | null
+          created_at?: string | null
+          default_cost_price?: number | null
+          default_sale_price?: number | null
+          ean?: string | null
+          id?: string
+          internal_sku_prefix?: string | null
+          is_active?: boolean | null
+          model: string
+          normalized_key: string
+          notes?: string | null
+          storage?: string | null
+          upc?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          brand?: string
+          category?: string | null
+          color?: string | null
+          created_at?: string | null
+          default_cost_price?: number | null
+          default_sale_price?: number | null
+          ean?: string | null
+          id?: string
+          internal_sku_prefix?: string | null
+          is_active?: boolean | null
+          model?: string
+          normalized_key?: string
+          notes?: string | null
+          storage?: string | null
+          upc?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       product_categories: {
         Row: {
           company_id: string | null
