@@ -855,30 +855,41 @@ export function ReturnsManagement() {
                     <TableCell>{format(new Date(rma.return_date), 'MMM d, yyyy')}</TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
-                        {rma.status === 'pending' && (
-                          <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'approved')}>
-                            Approve
-                          </Button>
+                        {/* Customer returns are auto-resolved — show completed badge */}
+                        {rma.return_type === 'sales_return' && ['refunded', 'completed'].includes(rma.status) && (
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                            <CheckCircle className="h-3 w-3 mr-1" /> Resolved
+                          </Badge>
                         )}
-                        {rma.status === 'approved' && (
-                          <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'shipped')}>
-                            <Truck className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {['shipped', 'received'].includes(rma.status) && rma.resolution_type === 'refund' && (
-                          <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'refunded')}>
-                            <DollarSign className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {['shipped', 'received'].includes(rma.status) && rma.resolution_type === 'repair' && (
-                          <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'completed')}>
-                            <Wrench className="h-4 w-4 mr-1" /> Done
-                          </Button>
-                        )}
-                        {['shipped', 'received'].includes(rma.status) && rma.resolution_type === 'exchange' && (
-                          <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'completed')}>
-                            <ArrowRightLeft className="h-4 w-4 mr-1" /> Done
-                          </Button>
+                        {/* Supplier returns go through approval pipeline */}
+                        {rma.return_type === 'purchase_return' && (
+                          <>
+                            {rma.status === 'pending' && (
+                              <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'approved')}>
+                                Approve
+                              </Button>
+                            )}
+                            {rma.status === 'approved' && (
+                              <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'shipped')}>
+                                <Truck className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {['shipped', 'received'].includes(rma.status) && rma.resolution_type === 'refund' && (
+                              <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'refunded')}>
+                                <DollarSign className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {['shipped', 'received'].includes(rma.status) && rma.resolution_type === 'repair' && (
+                              <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'completed')}>
+                                <Wrench className="h-4 w-4 mr-1" /> Done
+                              </Button>
+                            )}
+                            {['shipped', 'received'].includes(rma.status) && rma.resolution_type === 'exchange' && (
+                              <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'completed')}>
+                                <ArrowRightLeft className="h-4 w-4 mr-1" /> Done
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     </TableCell>
