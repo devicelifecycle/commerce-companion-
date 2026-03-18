@@ -255,8 +255,9 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
 
   const calculateTotals = () => {
     const amount = parseFloat(formData.amount) || 0;
-    const gst = parseFloat(formData.gst_hst_amount) || 0;
-    const pst = parseFloat(formData.pst_amount) || 0;
+    const taxCat = TAX_CATEGORIES.find(t => t.value === formData.tax_category);
+    const gst = amount * (taxCat?.gstRate || 0);
+    const pst = amount * (taxCat?.pstRate || 0);
     return {
       subtotal: amount,
       gst,
