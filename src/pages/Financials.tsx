@@ -34,7 +34,7 @@ import {
 
 type SubView =
   | 'pl' | 'balance-sheet'
-  | 'reconciliation'
+  | 'reconciliation' | 'payouts'
   | 'ap' | 'ar'
   | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing'
   | 'cost-devices';
