@@ -263,7 +263,6 @@ export default function Inventory() {
             <RepairPartsManagement canManage={canManage} />
           </TabsContent>
         </Tabs>
-        </Tabs>
 
         <ActivityLog tableName="devices" title="Inventory Activity" limit={10} />
 
