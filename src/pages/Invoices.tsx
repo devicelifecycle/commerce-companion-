@@ -13,7 +13,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { Plus, FileText, Clock, CheckCircle, AlertCircle, Download, Search, X, Trash2, Copy, CreditCard, DollarSign, Pencil, Save } from 'lucide-react';
@@ -600,12 +600,11 @@ export default function Invoices() {
         throw payErr;
       }
 
-      // Update AR paid amount, balance_due, and status
+      // Update AR paid amount and status
       const { error: arUpdateErr } = await supabase
         .from('accounts_receivable')
         .update({
           paid_amount: newTotalPaid,
-          balance_due: newBalance,
           status: isFullyPaid ? 'paid' : 'partially_paid',
         })
         .eq('id', arRecord.id);
@@ -622,6 +621,40 @@ export default function Invoices() {
       if (invUpdateErr) {
         console.error('Invoice update error:', invUpdateErr);
         throw invUpdateErr;
+      }
+
+      // Optimistically sync local state so list/detail balances update immediately
+      setArRecords(prev => {
+        const updatedAr: ARRecord = {
+          id: arRecord.id,
+          invoice_id: paymentInvoice.id,
+          original_amount: originalAmount,
+          paid_amount: newTotalPaid,
+          balance_due: newBalance,
+          status: isFullyPaid ? 'paid' : 'partially_paid',
+        };
+
+        const exists = prev.some(ar => ar.id === arRecord.id);
+        if (!exists) return [updatedAr, ...prev];
+        return prev.map(ar => (ar.id === arRecord.id ? { ...ar, ...updatedAr } : ar));
+      });
+
+      setInvoices(prev => prev.map(inv =>
+        inv.id === paymentInvoice.id
+          ? { ...inv, status: isFullyPaid ? 'paid' : 'partially_paid', paid_date: isFullyPaid ? paymentDate : null }
+          : inv
+      ));
+
+      if (viewAR?.id === arRecord.id) {
+        setViewAR(prev => prev
+          ? {
+              ...prev,
+              paid_amount: newTotalPaid,
+              balance_due: newBalance,
+              status: isFullyPaid ? 'paid' : 'partially_paid',
+            }
+          : prev
+        );
       }
 
       // Journal entry: Dr. Cash / Cr. AR
@@ -962,6 +995,9 @@ export default function Invoices() {
                 </Button>
               )}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Review invoice details, payment history, and available invoice actions.
+            </DialogDescription>
           </DialogHeader>
 
           {viewInvoice && !editMode && (
@@ -1075,35 +1111,9 @@ export default function Invoices() {
                   <Plus className="h-3.5 w-3.5 mr-1.5" /> Save Customer
                 </Button>
                 {getDisplayStatus(viewInvoice) !== 'paid' && getDisplayStatus(viewInvoice) !== 'cancelled' && (
-                  <>
-                    <Button size="sm" onClick={() => openPaymentDialog(viewInvoice)}>
-                      <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Record Payment
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="destructive">
-                          Cancel Invoice
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Cancel Invoice {viewInvoice.invoice_number}?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will cancel the invoice, reverse all accounting entries (AR, journal entries), and mark it as cancelled. This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Keep Invoice</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => { cancelInvoice(viewInvoice.id); setViewInvoice(null); }}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Yes, Cancel Invoice
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </>
+                  <Button size="sm" onClick={() => openPaymentDialog(viewInvoice)}>
+                    <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Record Payment
+                  </Button>
                 )}
               </div>
             </div>
@@ -1239,6 +1249,9 @@ export default function Invoices() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-display">Record Payment</DialogTitle>
+            <DialogDescription className="sr-only">
+              Enter payment amount, method, and date to apply payment to this invoice.
+            </DialogDescription>
           </DialogHeader>
           {paymentInvoice && (() => {
             const balance = getBalanceRemaining(paymentInvoice);
