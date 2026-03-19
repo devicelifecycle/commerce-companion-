@@ -3032,6 +3032,51 @@ export type Database = {
           },
         ]
       }
+      system_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          details: Json | null
+          dismissed_at: string | null
+          dismissed_by: string | null
+          id: string
+          is_dismissed: boolean
+          message: string
+          severity: string
+          source: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          details?: Json | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: string
+          is_dismissed?: boolean
+          message: string
+          severity?: string
+          source: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          details?: Json | null
+          dismissed_at?: string | null
+          dismissed_by?: string | null
+          id?: string
+          is_dismissed?: boolean
+          message?: string
+          severity?: string
+          source?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tax_filing_periods: {
         Row: {
           company_id: string | null
