@@ -80,9 +80,20 @@ export default function Dashboard() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const months = parseInt(dateRange);
       const now = new Date();
-      const startDate = startOfMonth(subMonths(now, months - 1));
+      let startDate: Date;
+      const months = parseInt(dateRange);
+      if (dateRange === 'mtd') {
+        startDate = startOfMonth(now);
+      } else if (dateRange === 'qtd') {
+        startDate = startOfQuarter(now);
+      } else if (dateRange === 'ytd') {
+        startDate = startOfYear(now);
+      } else if (!isNaN(months)) {
+        startDate = startOfMonth(subMonths(now, months - 1));
+      } else {
+        startDate = startOfMonth(subMonths(now, 5));
+      }
       const mtdStart = startOfMonth(now);
       const qtdStart = startOfQuarter(now);
       const ytdStart = startOfYear(now);
