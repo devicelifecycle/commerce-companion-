@@ -35,7 +35,7 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
 
   useEffect(() => {
     fetchData();
-  }, [companyView, selectedPeriod]);
+  }, [companyView, dateRange]);
 
   const fetchData = async () => {
     setLoading(true);
