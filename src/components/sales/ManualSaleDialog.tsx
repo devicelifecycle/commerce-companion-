@@ -101,6 +101,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
       customer_name: '',
       customer_email: '',
       shipping_address: '',
+      shipping_province: 'ON',
       notes: '',
     },
   });
