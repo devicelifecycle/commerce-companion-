@@ -489,6 +489,7 @@ export default function Sales() {
                       <TableHead>Order</TableHead>
                       <TableHead>Item</TableHead>
                       <TableHead>Channel</TableHead>
+                      <TableHead>Prov</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Revenue</TableHead>
