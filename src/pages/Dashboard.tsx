@@ -195,10 +195,11 @@ export default function Dashboard() {
         expenseToRevenueRatio, returnOnInventory,
       });
 
-      // Monthly trend
+      // Monthly trend — compute buckets dynamically
+      const bucketMonths = !isNaN(months) ? months : Math.max(1, Math.ceil(differenceInDays(now, startDate) / 30));
       const monthlyData: Record<string, { revenue: number; profit: number; expenses: number; cogs: number }> = {};
-      for (let i = 0; i < months; i++) {
-        const date = subMonths(now, months - 1 - i);
+      for (let i = 0; i < bucketMonths; i++) {
+        const date = subMonths(now, bucketMonths - 1 - i);
         monthlyData[format(date, 'MMM')] = { revenue: 0, profit: 0, expenses: 0, cogs: 0 };
       }
       sales?.forEach(s => {
@@ -218,6 +219,22 @@ export default function Dashboard() {
         month, ...d, netProfit: d.profit - d.expenses,
         margin: d.revenue > 0 ? ((d.revenue - d.cogs) / d.revenue * 100) : 0,
       })));
+
+      // Fees & commissions per marketplace
+      const feeTotals: Record<string, { marketplace: string; revenue: number; fees: number; shipping: number; orders: number }> = {};
+      sales?.forEach(s => {
+        const mp = s.marketplace;
+        if (!feeTotals[mp]) feeTotals[mp] = { marketplace: mp, revenue: 0, fees: 0, shipping: 0, orders: 0 };
+        feeTotals[mp].revenue += Number(s.sale_price);
+        feeTotals[mp].fees += Number(s.marketplace_fees || 0);
+        feeTotals[mp].shipping += Number(s.shipping_cost || 0);
+        feeTotals[mp].orders += 1;
+      });
+      setFeeMetrics(Object.values(feeTotals).map(m => ({
+        ...m,
+        feeRate: m.revenue > 0 ? (m.fees / m.revenue) * 100 : 0,
+        revenueAfterFees: m.revenue - m.fees - m.shipping,
+      })).sort((a, b) => b.fees - a.fees));
 
       // Marketplace
       const mpTotals: Record<string, { revenue: number; profit: number; orders: number }> = {};
