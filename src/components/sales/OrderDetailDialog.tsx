@@ -8,6 +8,9 @@ import {
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { MarketplaceBadge, FulfillmentBadge, MarketplaceStatusBadge } from '@/components/ui/status-badge';
 import { Package, User, MapPin, DollarSign, Calendar, FileText, RotateCcw, Link, Unlink, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
