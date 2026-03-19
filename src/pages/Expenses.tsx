@@ -370,6 +370,12 @@ export default function Expenses() {
                                         {expense.recurring_frequency}
                                       </Badge>
                                     )}
+                                    {(refundMap[expense.id] || 0) > 0 && (
+                                      <Badge variant="outline" className="text-xs border-[hsl(var(--success))] text-[hsl(var(--success))]">
+                                        <Undo2 className="h-3 w-3 mr-1" />
+                                        {refundMap[expense.id] >= (expense.total_amount || expense.amount) ? 'Fully Refunded' : 'Partial Refund'}
+                                      </Badge>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -388,8 +394,15 @@ export default function Expenses() {
                                 </p>
                               )}
                             </TableCell>
-                            <TableCell className="text-right font-medium text-destructive">
-                              -{formatCurrency(expense.total_amount || expense.amount)}
+                            <TableCell className="text-right font-medium">
+                              <span className={`${(refundMap[expense.id] || 0) > 0 ? 'line-through text-muted-foreground' : 'text-destructive'}`}>
+                                -{formatCurrency(expense.total_amount || expense.amount)}
+                              </span>
+                              {(refundMap[expense.id] || 0) > 0 && (
+                                <p className="text-xs font-medium text-destructive">
+                                  Net: -{formatCurrency((expense.total_amount || expense.amount) - refundMap[expense.id])}
+                                </p>
+                              )}
                             </TableCell>
                             <TableCell>
                               <DropdownMenu>
