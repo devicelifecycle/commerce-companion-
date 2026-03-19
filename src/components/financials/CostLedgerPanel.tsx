@@ -198,14 +198,14 @@ export function CostLedgerPanel({ companyView }: CostLedgerPanelProps) {
             ))}
           </SelectContent>
         </Select>
-        <ToggleGroup type="single" value={subTab} onValueChange={(v) => { if (v) setSubTab(v); }} className="bg-muted/50 rounded-lg p-0.5 border border-border/40">
-          <ToggleGroupItem value="devices" className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+        <ToggleGroup type="single" value={subTab} onValueChange={(v) => { if (v) setSubTab(v); }} className="bg-muted/50 rounded-lg p-0.5 border border-border/50">
+          <ToggleGroupItem value="devices" className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm">
             <Package className="h-3 w-3" /> Devices
           </ToggleGroupItem>
-          <ToggleGroupItem value="batches" className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+          <ToggleGroupItem value="batches" className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm">
             <FileText className="h-3 w-3" /> Batches
           </ToggleGroupItem>
-          <ToggleGroupItem value="suppliers" className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+          <ToggleGroupItem value="suppliers" className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm">
             <Users className="h-3 w-3" /> Suppliers
           </ToggleGroupItem>
         </ToggleGroup>

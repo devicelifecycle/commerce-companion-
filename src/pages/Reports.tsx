@@ -38,11 +38,11 @@ export default function Reports() {
               onValueChange={(v) => { if (v) setCompanyView(v); }}
               className="bg-muted rounded-lg p-1"
             >
-              <ToggleGroupItem value="consolidated" className="text-xs px-3 py-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+              <ToggleGroupItem value="consolidated" className="text-xs px-3 py-1.5 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm">
                 Consolidated
               </ToggleGroupItem>
               {companies.map(c => (
-                <ToggleGroupItem key={c.id} value={c.id} className="text-xs px-3 py-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                <ToggleGroupItem key={c.id} value={c.id} className="text-xs px-3 py-1.5 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm">
                   {c.code}
                 </ToggleGroupItem>
               ))}
