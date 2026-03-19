@@ -134,7 +134,7 @@ export const CASH_BASIS_CHART_OF_ACCOUNTS = ACCRUAL_CHART_OF_ACCOUNTS;
 
 // Helper to get account by code
 export function getAccountByCode(code: string): AccountDefinition | undefined {
-  return CASH_BASIS_CHART_OF_ACCOUNTS.find(acc => acc.code === code);
+  return ACCRUAL_CHART_OF_ACCOUNTS.find(acc => acc.code === code);
 }
 
 // Helper to get accounts by company
