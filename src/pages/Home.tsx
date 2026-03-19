@@ -35,7 +35,7 @@ export default function Home() {
           <div className="flex items-center justify-center gap-2 mt-3">
             <Badge variant="outline" className="text-xs border-primary/40 text-primary">Automated Bookkeeping</Badge>
             <Badge variant="outline" className="text-xs border-secondary/40 text-secondary">Canadian Tax Compliant</Badge>
-            <Badge variant="outline" className="text-xs border-accent/40 text-accent">Role-Based Access</Badge>
+            <Badge variant="outline" className="text-xs border-accent/40 text-accent">Multi-Company</Badge>
           </div>
         </div>
 
