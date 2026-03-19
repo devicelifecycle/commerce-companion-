@@ -16,7 +16,7 @@ import {
   Calculator, Scale, TrendingUp, ShieldCheck, Zap, GitBranch,
   LayoutDashboard, CheckSquare, Banknote,
 } from 'lucide-react';
-import { CASH_BASIS_CHART_OF_ACCOUNTS } from '@/lib/accounting/chartOfAccounts';
+import { ACCRUAL_CHART_OF_ACCOUNTS } from '@/lib/accounting/chartOfAccounts';
 
 // ─── FAQ ─────────────────────────────────────────────────────
 const FAQ_ITEMS = [
@@ -400,12 +400,12 @@ export default function HelpAndGuides() {
     return matchesSearch && matchesCategory;
   });
 
-  const coaByType = CASH_BASIS_CHART_OF_ACCOUNTS.reduce((acc, account) => {
+  const coaByType = ACCRUAL_CHART_OF_ACCOUNTS.reduce((acc, account) => {
     const type = account.type;
     if (!acc[type]) acc[type] = [];
     acc[type].push(account);
     return acc;
-  }, {} as Record<string, typeof CASH_BASIS_CHART_OF_ACCOUNTS>);
+  }, {} as Record<string, typeof ACCRUAL_CHART_OF_ACCOUNTS>);
 
   const typeOrder = ['asset', 'liability', 'equity', 'revenue', 'expense', 'tax_paid'];
   const typeLabels: Record<string, string> = {
@@ -413,7 +413,7 @@ export default function HelpAndGuides() {
     revenue: 'Revenue (4xxx)', expense: 'Expenses (5xxx–7xxx)', tax_paid: 'Tax Paid / ITCs (8xxx)',
   };
 
-  const filteredCOA = CASH_BASIS_CHART_OF_ACCOUNTS.filter(a =>
+  const filteredCOA = ACCRUAL_CHART_OF_ACCOUNTS.filter(a =>
     !searchTerm || a.code.includes(searchTerm) || a.name.toLowerCase().includes(searchTerm.toLowerCase()) || (a.description || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -627,7 +627,7 @@ export default function HelpAndGuides() {
                   <div className="p-2 rounded-lg bg-primary/10"><Calculator className="h-5 w-5 text-primary" /></div>
                   <div>
                     <CardTitle className="text-lg">Chart of Accounts</CardTitle>
-                    <CardDescription>{CASH_BASIS_CHART_OF_ACCOUNTS.length} accounts · Live-synced from system configuration</CardDescription>
+                    <CardDescription>{ACCRUAL_CHART_OF_ACCOUNTS.length} accounts · Live-synced from system configuration</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -788,7 +788,7 @@ export default function HelpAndGuides() {
         <Card className="bg-muted/30 border-dashed">
           <CardContent className="py-4">
             <p className="text-xs text-muted-foreground text-center">
-              <strong>{MODULE_GUIDES.length} modules</strong> · {CASH_BASIS_CHART_OF_ACCOUNTS.length} accounts · {ENTITY_RELATIONSHIPS.length} relationships · {ACCOUNTING_FLOWS.length} flow diagrams · Content auto-updates with system changes
+              <strong>{MODULE_GUIDES.length} modules</strong> · {ACCRUAL_CHART_OF_ACCOUNTS.length} accounts · {ENTITY_RELATIONSHIPS.length} relationships · {ACCOUNTING_FLOWS.length} flow diagrams · Content auto-updates with system changes
             </p>
           </CardContent>
         </Card>

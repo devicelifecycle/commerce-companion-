@@ -119,7 +119,7 @@ export const TAX_PAID_ACCOUNTS: AccountDefinition[] = [
 ];
 
 // Combined Chart of Accounts
-export const CASH_BASIS_CHART_OF_ACCOUNTS: AccountDefinition[] = [
+export const ACCRUAL_CHART_OF_ACCOUNTS: AccountDefinition[] = [
   ...ASSET_ACCOUNTS,
   ...LIABILITY_ACCOUNTS,
   ...EQUITY_ACCOUNTS,
@@ -130,19 +130,19 @@ export const CASH_BASIS_CHART_OF_ACCOUNTS: AccountDefinition[] = [
 ];
 
 // Alias for backward compatibility
-export const ACCRUAL_CHART_OF_ACCOUNTS = CASH_BASIS_CHART_OF_ACCOUNTS;
+export const CASH_BASIS_CHART_OF_ACCOUNTS = ACCRUAL_CHART_OF_ACCOUNTS;
 
 // Helper to get account by code
 export function getAccountByCode(code: string): AccountDefinition | undefined {
-  return CASH_BASIS_CHART_OF_ACCOUNTS.find(acc => acc.code === code);
+  return ACCRUAL_CHART_OF_ACCOUNTS.find(acc => acc.code === code);
 }
 
 // Helper to get accounts by company
 export function getAccountsByCompany(company: 'VES' | 'TGW' | 'shared'): AccountDefinition[] {
-  return CASH_BASIS_CHART_OF_ACCOUNTS.filter(acc => acc.company === company || acc.company === 'shared');
+  return ACCRUAL_CHART_OF_ACCOUNTS.filter(acc => acc.company === company || acc.company === 'shared');
 }
 
 // Helper to get accounts by type
 export function getAccountsByType(type: AccountDefinition['type']): AccountDefinition[] {
-  return CASH_BASIS_CHART_OF_ACCOUNTS.filter(acc => acc.type === type);
+  return ACCRUAL_CHART_OF_ACCOUNTS.filter(acc => acc.type === type);
 }

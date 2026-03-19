@@ -34,7 +34,8 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
-import { Plus, ChevronRight, ChevronDown, Edit2, Trash2, FileText, Download, Wallet } from 'lucide-react';
+import { Plus, ChevronRight, ChevronDown, Edit2, Trash2, FileText, Download, Wallet, Eye } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Account {
   id: string;
@@ -138,6 +139,9 @@ export function ChartOfAccounts() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [subLedgerAccount, setSubLedgerAccount] = useState<Account | null>(null);
+  const [subLedgerLines, setSubLedgerLines] = useState<any[]>([]);
+  const [subLedgerLoading, setSubLedgerLoading] = useState(false);
   const [expandedTypes, setExpandedTypes] = useState<string[]>(['asset', 'liability', 'equity', 'revenue', 'expense']);
   const [formData, setFormData] = useState({
     account_code: '',
@@ -175,7 +179,27 @@ export function ChartOfAccounts() {
     }
   };
 
-  const initializeDefaultAccounts = async () => {
+  const openSubLedger = async (account: Account) => {
+    setSubLedgerAccount(account);
+    setSubLedgerLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('journal_entry_lines')
+        .select('*, journal_entries!inner(entry_number, entry_date, description, status)')
+        .eq('account_id', account.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      setSubLedgerLines(data || []);
+    } catch (err) {
+      console.error('Sub-ledger fetch error:', err);
+      setSubLedgerLines([]);
+    } finally {
+      setSubLedgerLoading(false);
+    }
+  };
+
+
     if (!selectedCompany) {
       toast.error('Please select a company first');
       return;
@@ -410,7 +434,7 @@ export function ChartOfAccounts() {
                       </TableHeader>
                       <TableBody>
                         {getAccountsByType(type.value).map(account => (
-                          <TableRow key={account.id}>
+                          <TableRow key={account.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openSubLedger(account)}>
                             <TableCell className="font-mono">{account.account_code}</TableCell>
                             <TableCell className="font-medium">{account.account_name}</TableCell>
                             <TableCell>{account.account_subtype || '-'}</TableCell>
@@ -424,11 +448,14 @@ export function ChartOfAccounts() {
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-1">
-                                <Button size="icon" variant="ghost" onClick={() => handleEdit(account)}>
+                                <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); openSubLedger(account); }}>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleEdit(account); }}>
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
                                 {!account.is_system_account && (
-                                  <Button size="icon" variant="ghost" onClick={() => handleDelete(account.id)}>
+                                  <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete(account.id); }}>
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                   </Button>
                                 )}
@@ -531,6 +558,56 @@ export function ChartOfAccounts() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSubmit}>{editingAccount ? 'Update' : 'Create'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sub-Ledger Dialog */}
+      <Dialog open={!!subLedgerAccount} onOpenChange={(open) => { if (!open) setSubLedgerAccount(null); }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-primary" />
+              Sub-Ledger: {subLedgerAccount?.account_code} — {subLedgerAccount?.account_name}
+            </DialogTitle>
+          </DialogHeader>
+          {subLedgerLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+            </div>
+          ) : subLedgerLines.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground">No journal entry lines found for this account.</p>
+          ) : (
+            <ScrollArea className="max-h-[400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Entry #</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Debit</TableHead>
+                    <TableHead className="text-right">Credit</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {subLedgerLines.map((line: any) => (
+                    <TableRow key={line.id}>
+                      <TableCell className="text-xs">{line.journal_entries?.entry_date}</TableCell>
+                      <TableCell className="font-mono text-xs">{line.journal_entries?.entry_number}</TableCell>
+                      <TableCell className="text-xs max-w-[200px] truncate">{line.description || line.journal_entries?.description}</TableCell>
+                      <TableCell className="text-right text-xs tabular-nums">{Number(line.debit_amount) > 0 ? formatCurrency(line.debit_amount) : '-'}</TableCell>
+                      <TableCell className="text-right text-xs tabular-nums">{Number(line.credit_amount) > 0 ? formatCurrency(line.credit_amount) : '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          )}
+          <DialogFooter>
+            <div className="flex justify-between w-full items-center">
+              <p className="text-xs text-muted-foreground">{subLedgerLines.length} entries (most recent 50)</p>
+              <Button variant="outline" onClick={() => setSubLedgerAccount(null)}>Close</Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

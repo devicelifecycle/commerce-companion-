@@ -26,7 +26,7 @@ export default function Home() {
         <div className="text-center py-6">
           <h1 className="text-3xl font-display font-bold gradient-text">Warehouse Management System</h1>
           <p className="text-muted-foreground mt-2 text-sm max-w-2xl mx-auto">
-            Accrual-Basis Accounting • IFRS Compliant • FIFO Inventory • Multi-Company (VES & TGW)
+            Accrual-Basis Accounting • IFRS Compliant • FIFO Inventory • Multi-Company (Virtual eShop & Tech Genius Warehouse)
           </p>
           <div className="flex items-center justify-center gap-2 mt-3">
             <Badge variant="outline" className="text-xs border-primary/40 text-primary">Automated Bookkeeping</Badge>
@@ -287,7 +287,7 @@ export default function Home() {
                 <ReportLink icon={<Building2 className="h-4 w-4 text-[hsl(var(--info))]" />} title="Balance Sheet" desc="Assets, liabilities & equity" href="/financials" />
                 <ReportLink icon={<Coins className="h-4 w-4 text-[hsl(var(--warning))]" />} title="Cash Flow" desc="Cash movements by activity" href="/financials" />
                 <ReportLink icon={<Calculator className="h-4 w-4 text-[hsl(var(--accent))]" />} title="Tax Reconciliation" desc="CRA-formatted filing reports" href="/financials" />
-                <ReportLink icon={<Package className="h-4 w-4 text-[hsl(var(--secondary))]" />} title="Inventory Valuation" desc="FIFO cost, aging & turnover" href="/reports" />
+                <ReportLink icon={<Package className="h-4 w-4 text-[hsl(var(--secondary))]" />} title="Inventory Valuation" desc="FIFO cost, aging & turnover" href="/inventory" />
                 <ReportLink icon={<Receipt className="h-4 w-4 text-destructive" />} title="AR/AP Aging" desc="Outstanding by age bucket" href="/financials" />
               </div>
             </CardContent>

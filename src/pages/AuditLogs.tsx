@@ -224,8 +224,6 @@ export default function AuditLogs() {
   // Data change logs
   const dataChangeLogs = useMemo(() => logs.filter(l => ['INSERT', 'UPDATE', 'DELETE'].includes(l.action)), [logs]);
 
-  // Accounting trail
-  const accountingLogs = useMemo(() => logs.filter(l => l.module === 'Accounting' || l.table_name === 'journal_entries' || l.table_name === 'journal_entry_lines' || l.table_name === 'accounts_payable' || l.table_name === 'accounts_receivable'), [logs]);
 
   const getActionBadgeClass = (action: string) => {
     switch (action.toUpperCase()) {
