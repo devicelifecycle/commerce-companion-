@@ -411,7 +411,7 @@ export function ChartOfAccounts() {
                       </TableHeader>
                       <TableBody>
                         {getAccountsByType(type.value).map(account => (
-                          <TableRow key={account.id}>
+                          <TableRow key={account.id} className="cursor-pointer hover:bg-muted/50" onClick={() => openSubLedger(account)}>
                             <TableCell className="font-mono">{account.account_code}</TableCell>
                             <TableCell className="font-medium">{account.account_name}</TableCell>
                             <TableCell>{account.account_subtype || '-'}</TableCell>
@@ -425,11 +425,14 @@ export function ChartOfAccounts() {
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-1">
-                                <Button size="icon" variant="ghost" onClick={() => handleEdit(account)}>
+                                <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); openSubLedger(account); }}>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleEdit(account); }}>
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
                                 {!account.is_system_account && (
-                                  <Button size="icon" variant="ghost" onClick={() => handleDelete(account.id)}>
+                                  <Button size="icon" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete(account.id); }}>
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                   </Button>
                                 )}
