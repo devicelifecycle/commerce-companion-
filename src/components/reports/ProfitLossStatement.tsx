@@ -218,11 +218,24 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
         const totalOperatingExpenses = Object.values(operatingExpensesByCategory).reduce((sum, v) => sum + v, 0);
         const operatingProfit = grossProfit - totalOperatingExpenses;
 
+        // Fetch capitalized repair labor for the period (from completed device_repairs)
+        let repairsQuery = supabase
+          .from('device_repairs')
+          .select('total_labor_cost, total_parts_cost')
+          .eq('status', 'completed')
+          .gte('completed_at', startDate.toISOString())
+          .lte('completed_at', endDate.toISOString());
+        if (companyFilter) repairsQuery = repairsQuery.or(companyFilter);
+        const { data: repairs } = await repairsQuery;
+
+        const capitalizedRepairLabor = repairs?.reduce((sum, r) => sum + Number(r.total_labor_cost || 0), 0) || 0;
+        const repairPartsCost = repairs?.reduce((sum, r) => sum + Number(r.total_parts_cost || 0), 0) || 0;
+
         // Other income/expenses
-        const intercompanyCharges = 0; // Would need specific tracking
+        const intercompanyCharges = 0;
         const otherIncome = 0;
         const netProfitBeforeTax = operatingProfit + otherIncome - intercompanyCharges;
-        const incomeTax = netProfitBeforeTax > 0 ? netProfitBeforeTax * 0.15 : 0; // Simplified tax calculation
+        const incomeTax = netProfitBeforeTax > 0 ? netProfitBeforeTax * 0.15 : 0;
         const netProfitAfterTax = netProfitBeforeTax - incomeTax;
 
         return {
@@ -242,6 +255,8 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
           netProfitBeforeTax,
           incomeTax,
           netProfitAfterTax,
+          capitalizedRepairLabor,
+          repairPartsCost,
         };
       };
 
