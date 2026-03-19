@@ -12,7 +12,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Download, FileText, Printer, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
+import { Download, FileText, Printer, TrendingUp, TrendingDown, Calendar, Info, ToggleLeft } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear, startOfQuarter, endOfQuarter, endOfYear } from 'date-fns';
 
 interface PLData {
@@ -36,6 +38,9 @@ interface PLData {
   netProfitBeforeTax: number;
   incomeTax: number;
   netProfitAfterTax: number;
+  // Repair costing data
+  capitalizedRepairLabor: number;
+  repairPartsCost: number;
 }
 
 interface ComparisonData {
@@ -59,6 +64,7 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
   const [periodType, setPeriodType] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const [selectedPeriod, setSelectedPeriod] = useState(format(new Date(), 'yyyy-MM'));
   const [showComparison, setShowComparison] = useState(false);
+  const [costingView, setCostingView] = useState<'accounting' | 'management'>('accounting');
   const [data, setData] = useState<ComparisonData | null>(null);
 
   useEffect(() => {
@@ -212,11 +218,24 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
         const totalOperatingExpenses = Object.values(operatingExpensesByCategory).reduce((sum, v) => sum + v, 0);
         const operatingProfit = grossProfit - totalOperatingExpenses;
 
+        // Fetch capitalized repair labor for the period (from completed device_repairs)
+        let repairsQuery = supabase
+          .from('device_repairs')
+          .select('total_labor_cost, total_parts_cost')
+          .eq('status', 'completed')
+          .gte('completed_at', startDate.toISOString())
+          .lte('completed_at', endDate.toISOString());
+        if (companyFilter) repairsQuery = repairsQuery.or(companyFilter);
+        const { data: repairs } = await repairsQuery;
+
+        const capitalizedRepairLabor = repairs?.reduce((sum, r) => sum + Number(r.total_labor_cost || 0), 0) || 0;
+        const repairPartsCost = repairs?.reduce((sum, r) => sum + Number(r.total_parts_cost || 0), 0) || 0;
+
         // Other income/expenses
-        const intercompanyCharges = 0; // Would need specific tracking
+        const intercompanyCharges = 0;
         const otherIncome = 0;
         const netProfitBeforeTax = operatingProfit + otherIncome - intercompanyCharges;
-        const incomeTax = netProfitBeforeTax > 0 ? netProfitBeforeTax * 0.15 : 0; // Simplified tax calculation
+        const incomeTax = netProfitBeforeTax > 0 ? netProfitBeforeTax * 0.15 : 0;
         const netProfitAfterTax = netProfitBeforeTax - incomeTax;
 
         return {
@@ -236,6 +255,8 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
           netProfitBeforeTax,
           incomeTax,
           netProfitAfterTax,
+          capitalizedRepairLabor,
+          repairPartsCost,
         };
       };
 
@@ -426,6 +447,24 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
           Compare
         </Button>
 
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={costingView === 'management' ? 'default' : 'outline'}
+                onClick={() => setCostingView(v => v === 'accounting' ? 'management' : 'accounting')}
+              >
+                <ToggleLeft className="h-4 w-4 mr-2" />
+                {costingView === 'accounting' ? 'Accounting View' : 'Management View'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <p><strong>Accounting View:</strong> Shows actual payroll expenses and original device costs (GAAP-compliant).</p>
+              <p className="mt-1"><strong>Management View:</strong> Shows fully-loaded device costs (including repair labor) with payroll reduced by the capitalized amount. Net profit is the same in both views.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
         <div className="ml-auto flex gap-2">
           <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
@@ -437,6 +476,19 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
           </Button>
         </div>
       </div>
+
+      {/* Costing View Explanation */}
+      {costingView === 'management' && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>Management Costing View</AlertTitle>
+          <AlertDescription>
+            Device COGS includes capitalized repair costs (parts + labor). Payroll is reduced by{' '}
+            <strong>{formatCurrency(data.current.capitalizedRepairLabor)}</strong> in capitalized repair labor to avoid double-counting.
+            This view shows the true per-unit cost of bringing devices to sale condition. Net profit is identical to the Accounting View.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* P&L Statement */}
       <Card className="print:shadow-none">
@@ -501,11 +553,31 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
               prevValue={data.previous.purchases}
               indent
             />
+            {costingView === 'management' && (data.current.capitalizedRepairLabor > 0 || data.current.repairPartsCost > 0) && (
+              <>
+                <LineItem
+                  label="Repair Parts (capitalized)"
+                  value={data.current.repairPartsCost}
+                  prevValue={data.previous.repairPartsCost}
+                  indent
+                />
+                <LineItem
+                  label="Repair Labor (capitalized)"
+                  value={data.current.capitalizedRepairLabor}
+                  prevValue={data.previous.capitalizedRepairLabor}
+                  indent
+                />
+              </>
+            )}
             <Separator className="my-2" />
             <LineItem
               label="TOTAL COGS"
-              value={data.current.totalCOGS}
-              prevValue={data.previous.totalCOGS}
+              value={costingView === 'management'
+                ? data.current.totalCOGS + data.current.capitalizedRepairLabor + data.current.repairPartsCost
+                : data.current.totalCOGS}
+              prevValue={costingView === 'management'
+                ? data.previous.totalCOGS + data.previous.capitalizedRepairLabor + data.previous.repairPartsCost
+                : data.previous.totalCOGS}
               bold
               negative
             />
@@ -515,8 +587,12 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
           <div className="bg-muted/30 p-4 rounded-lg">
             <LineItem
               label="GROSS PROFIT"
-              value={data.current.grossProfit}
-              prevValue={data.previous.grossProfit}
+              value={costingView === 'management'
+                ? data.current.grossProfit - data.current.capitalizedRepairLabor - data.current.repairPartsCost
+                : data.current.grossProfit}
+              prevValue={costingView === 'management'
+                ? data.previous.grossProfit - data.previous.capitalizedRepairLabor - data.previous.repairPartsCost
+                : data.previous.grossProfit}
               bold
             />
           </div>
@@ -541,11 +617,24 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
                 />
               );
             })}
+            {costingView === 'management' && data.current.capitalizedRepairLabor > 0 && (
+              <LineItem
+                label="Less: Capitalized Repair Labor"
+                value={data.current.capitalizedRepairLabor}
+                prevValue={data.previous.capitalizedRepairLabor}
+                indent
+                negative
+              />
+            )}
             <Separator className="my-2" />
             <LineItem
               label="TOTAL OPERATING EXPENSES"
-              value={data.current.totalOperatingExpenses}
-              prevValue={data.previous.totalOperatingExpenses}
+              value={costingView === 'management'
+                ? data.current.totalOperatingExpenses - data.current.capitalizedRepairLabor
+                : data.current.totalOperatingExpenses}
+              prevValue={costingView === 'management'
+                ? data.previous.totalOperatingExpenses - data.previous.capitalizedRepairLabor
+                : data.previous.totalOperatingExpenses}
               bold
               negative
             />
