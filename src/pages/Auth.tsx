@@ -71,16 +71,24 @@ export default function Auth() {
         {/* Layered background */}
         <div className="absolute inset-0 bg-gradient-to-br from-card via-background to-card" />
 
-        {/* Animated ambient orbs */}
+        {/* Animated ambient orbs — drifting with keyframes */}
         <div className="absolute top-[-15%] left-[-10%] w-[600px] h-[600px] rounded-full bg-primary/10 blur-[140px] animate-[pulse_8s_ease-in-out_infinite]" />
         <div className="absolute bottom-[-10%] right-[-5%] w-[500px] h-[500px] rounded-full bg-secondary/10 blur-[140px] animate-[pulse_10s_ease-in-out_infinite_1s]" />
         <div className="absolute top-[40%] left-[50%] w-[400px] h-[400px] rounded-full bg-accent/8 blur-[120px] animate-[pulse_12s_ease-in-out_infinite_2s]" />
 
-        {/* Subtle grid overlay */}
-        <div className="absolute inset-0 opacity-[0.025]" style={{
-          backgroundImage: 'linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }} />
+        {/* Floating ring elements instead of grid */}
+        <div className="absolute top-[12%] left-[15%] w-40 h-40 rounded-full border border-primary/10 animate-[spin_30s_linear_infinite]" />
+        <div className="absolute top-[8%] left-[12%] w-52 h-52 rounded-full border border-primary/5 animate-[spin_45s_linear_infinite_reverse]" />
+        <div className="absolute bottom-[18%] right-[12%] w-32 h-32 rounded-full border border-secondary/10 animate-[spin_25s_linear_infinite]" />
+        <div className="absolute bottom-[14%] right-[8%] w-48 h-48 rounded-full border border-secondary/5 animate-[spin_40s_linear_infinite_reverse]" />
+        <div className="absolute top-[55%] left-[35%] w-24 h-24 rounded-full border border-accent/8 animate-[spin_20s_linear_infinite]" />
+
+        {/* Small floating dots */}
+        <div className="absolute top-[25%] right-[30%] w-2 h-2 rounded-full bg-primary/30 animate-[pulse_3s_ease-in-out_infinite]" />
+        <div className="absolute top-[60%] left-[20%] w-1.5 h-1.5 rounded-full bg-secondary/30 animate-[pulse_4s_ease-in-out_infinite_1s]" />
+        <div className="absolute bottom-[35%] right-[25%] w-2.5 h-2.5 rounded-full bg-accent/25 animate-[pulse_5s_ease-in-out_infinite_2s]" />
+        <div className="absolute top-[15%] left-[55%] w-1.5 h-1.5 rounded-full bg-primary/20 animate-[pulse_3.5s_ease-in-out_infinite_0.5s]" />
+        <div className="absolute bottom-[50%] left-[65%] w-2 h-2 rounded-full bg-secondary/20 animate-[pulse_4.5s_ease-in-out_infinite_1.5s]" />
 
         {/* Diagonal glass divider on right edge */}
         <div className="absolute top-0 right-0 bottom-0 w-24 bg-gradient-to-l from-background/80 to-transparent backdrop-blur-sm z-20" />
@@ -93,17 +101,14 @@ export default function Auth() {
                 <div className="absolute inset-0 rounded-xl bg-primary/30 blur-xl scale-[2] group-hover:scale-[2.2] transition-transform duration-700" />
                 <img
                   src={warehouseLogo}
-                  alt="Tech Genius Warehouse"
+                  alt="Warehouse"
                   className="relative w-14 h-14 rounded-xl ring-1 ring-primary/30 shadow-lg shadow-primary/20"
                   draggable={false}
                 />
               </div>
-              <div>
-                <h1 className="text-2xl font-display font-bold text-foreground tracking-tight">
-                  Warehouse Management
-                </h1>
-                <p className="text-xs text-muted-foreground mt-0.5">by Tech Genius</p>
-              </div>
+              <h1 className="text-2xl font-display font-bold text-foreground tracking-tight">
+                Warehouse Management
+              </h1>
             </div>
           </div>
 
