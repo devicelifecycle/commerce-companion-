@@ -83,6 +83,7 @@ export default function Inventory() {
   const [procurementDevice, setProcurementDevice] = useState<{ id: string; label: string } | null>(null);
   const [timelineDevice, setTimelineDevice] = useState<any>(null);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [repairDevice, setRepairDevice] = useState<any>(null);
 
   const selection = useTableSelection(devices);
 
