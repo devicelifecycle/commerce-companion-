@@ -16,7 +16,7 @@ import {
   Calculator, Scale, TrendingUp, ShieldCheck, Zap, GitBranch,
   LayoutDashboard, CheckSquare, Banknote,
 } from 'lucide-react';
-import { CASH_BASIS_CHART_OF_ACCOUNTS } from '@/lib/accounting/chartOfAccounts';
+import { ACCRUAL_CHART_OF_ACCOUNTS } from '@/lib/accounting/chartOfAccounts';
 
 // ─── FAQ ─────────────────────────────────────────────────────
 const FAQ_ITEMS = [

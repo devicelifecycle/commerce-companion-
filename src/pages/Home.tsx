@@ -287,7 +287,7 @@ export default function Home() {
                 <ReportLink icon={<Building2 className="h-4 w-4 text-[hsl(var(--info))]" />} title="Balance Sheet" desc="Assets, liabilities & equity" href="/financials" />
                 <ReportLink icon={<Coins className="h-4 w-4 text-[hsl(var(--warning))]" />} title="Cash Flow" desc="Cash movements by activity" href="/financials" />
                 <ReportLink icon={<Calculator className="h-4 w-4 text-[hsl(var(--accent))]" />} title="Tax Reconciliation" desc="CRA-formatted filing reports" href="/financials" />
-                <ReportLink icon={<Package className="h-4 w-4 text-[hsl(var(--secondary))]" />} title="Inventory Valuation" desc="FIFO cost, aging & turnover" href="/reports" />
+                <ReportLink icon={<Package className="h-4 w-4 text-[hsl(var(--secondary))]" />} title="Inventory Valuation" desc="FIFO cost, aging & turnover" href="/inventory" />
                 <ReportLink icon={<Receipt className="h-4 w-4 text-destructive" />} title="AR/AP Aging" desc="Outstanding by age bucket" href="/financials" />
               </div>
             </CardContent>
