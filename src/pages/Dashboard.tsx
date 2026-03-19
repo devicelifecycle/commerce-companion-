@@ -333,7 +333,7 @@ export default function Dashboard() {
         <Tabs defaultValue="profitability" className="space-y-3">
           <TabsList className="h-8">
             <TabsTrigger value="profitability" className="text-xs gap-1.5 h-7"><BarChart3 className="h-3.5 w-3.5" />Profitability</TabsTrigger>
-            <TabsTrigger value="marketplace" className="text-xs gap-1.5 h-7"><Store className="h-3.5 w-3.5" />Marketplace</TabsTrigger>
+          </TabsList>
           </TabsList>
 
           <TabsContent value="profitability" className="space-y-3">
