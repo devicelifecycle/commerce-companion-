@@ -34,7 +34,8 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { toast } from 'sonner';
-import { Plus, ChevronRight, ChevronDown, Edit2, Trash2, FileText, Download, Wallet } from 'lucide-react';
+import { Plus, ChevronRight, ChevronDown, Edit2, Trash2, FileText, Download, Wallet, Eye } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Account {
   id: string;
