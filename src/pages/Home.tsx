@@ -238,43 +238,6 @@ export default function Home() {
           </CardContent>
         </Card>
 
-        {/* Role Access */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Shield className="h-5 w-5 text-[hsl(var(--accent))]" />
-              Role-Based Access
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="p-4 rounded-lg border border-border/60 bg-muted/20">
-                <div className="flex items-center gap-2 mb-3">
-                  <Badge className="bg-primary/20 text-primary border-primary/30">Admin</Badge>
-                </div>
-                <ul className="space-y-1.5 text-xs text-muted-foreground">
-                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-[hsl(var(--success))]" /> Full system access</li>
-                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-[hsl(var(--success))]" /> Financial statements & analytics</li>
-                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-[hsl(var(--success))]" /> Team management & audit logs</li>
-                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-[hsl(var(--success))]" /> Tax center & accounting guide</li>
-                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-[hsl(var(--success))]" /> Settings & configuration</li>
-                </ul>
-              </div>
-              <div className="p-4 rounded-lg border border-border/60 bg-muted/20">
-                <div className="flex items-center gap-2 mb-3">
-                  <Badge className="bg-secondary/20 text-secondary border-secondary/30">Associate</Badge>
-                </div>
-                <ul className="space-y-1.5 text-xs text-muted-foreground">
-                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-[hsl(var(--success))]" /> Orders & sales management</li>
-                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-[hsl(var(--success))]" /> Inventory & stock tracking</li>
-                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-[hsl(var(--success))]" /> Import devices & suppliers</li>
-                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-[hsl(var(--success))]" /> Invoice creation</li>
-                  <li className="flex items-center gap-1.5"><CheckCircle className="h-3 w-3 text-[hsl(var(--success))]" /> Expense entry</li>
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Available Reports - Admin hint */}
         {isAdmin && (
