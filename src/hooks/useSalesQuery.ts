@@ -31,6 +31,8 @@ export interface SaleRecord {
   accounting_status?: string | null;
   product_title?: string | null;
   marketplace_sku?: string | null;
+  manual_cost?: number | null;
+  manual_cost_description?: string | null;
   created_at: string;
   devices?: {
     brand: string;
