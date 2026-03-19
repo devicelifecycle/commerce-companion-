@@ -107,9 +107,9 @@ const App = () => (
               <Route path="/audit-logs" element={<ProtectedRoute><AuditLogs /></ProtectedRoute>} />
               <Route path="/integration-health" element={<ProtectedRoute><IntegrationHealth /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-              <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
-              <Route path="/guides" element={<ProtectedRoute><Guides /></ProtectedRoute>} />
-              <Route path="/accounting-guides" element={<ProtectedRoute><AccountingKnowledge /></ProtectedRoute>} />
+              <Route path="/help" element={<ProtectedRoute><HelpAndGuides /></ProtectedRoute>} />
+              <Route path="/guides" element={<Navigate to="/help" replace />} />
+              <Route path="/accounting-guides" element={<Navigate to="/help" replace />} />
               {/* Redirects for old routes */}
               <Route path="/sales" element={<Navigate to="/orders" replace />} />
               <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />

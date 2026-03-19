@@ -75,8 +75,6 @@ const adminNav = [
 
 const helpNav = [
   { title: 'Help & Guides', url: '/help', icon: HelpCircle },
-  { title: 'Module Guides', url: '/guides', icon: BookOpen },
-  { title: 'Accounting Guides', url: '/accounting-guides', icon: BookOpen },
 ];
 
 export function AppSidebar() {
