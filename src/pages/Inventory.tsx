@@ -35,7 +35,7 @@ import {
 import { toast } from 'sonner';
 import {
   Upload, ArrowRightLeft, Smartphone, Boxes, List,
-  Download, Send, Trash2,
+  Download, Send, Trash2, Wrench,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
