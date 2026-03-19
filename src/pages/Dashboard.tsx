@@ -562,13 +562,6 @@ export default function Dashboard() {
             <MarketplaceFeeAnalytics companyView={companyView} />
           </TabsContent>
 
-          <TabsContent value="reconciliation" className="space-y-4">
-            <MarketplaceReconciliation companyView={companyView} />
-          </TabsContent>
-
-          <TabsContent value="payouts" className="space-y-4">
-            <PayoutReconciliation companyView={companyView} />
-          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
