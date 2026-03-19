@@ -124,11 +124,11 @@ export default function Financials() {
                 onValueChange={(v) => { if (v) setCompanyView(v); }}
                 className="bg-muted rounded-lg p-0.5"
               >
-                <ToggleGroupItem value="consolidated" className="text-xs px-2.5 py-1 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+               <ToggleGroupItem value="consolidated" className="text-xs px-2.5 py-1 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm">
                   All
                 </ToggleGroupItem>
                 {companies.map(c => (
-                  <ToggleGroupItem key={c.id} value={c.id} className="text-xs px-2.5 py-1 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                  <ToggleGroupItem key={c.id} value={c.id} className="text-xs px-2.5 py-1 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm">
                     {c.code}
                   </ToggleGroupItem>
                 ))}
