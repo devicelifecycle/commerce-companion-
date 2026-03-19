@@ -196,10 +196,13 @@ export default function Inventory() {
               <Boxes className="h-4 w-4" /> Products
             </TabsTrigger>
             {isSuperAdmin && (
-              <TabsTrigger value="fba" className="flex items-center gap-2">
+            <TabsTrigger value="fba" className="flex items-center gap-2">
                 <List className="h-4 w-4" /> FBA Management
               </TabsTrigger>
             )}
+            <TabsTrigger value="repairs" className="flex items-center gap-2">
+              <Wrench className="h-4 w-4" /> Repair Parts
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="list">
