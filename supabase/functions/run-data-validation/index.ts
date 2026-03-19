@@ -43,7 +43,7 @@ serve(async (req) => {
       .from("sales")
       .select("id, order_number, marketplace, sale_price, tax_amount, company_id, sale_date")
       .or("tax_amount.is.null,tax_amount.eq.0")
-      .not("marketplace", "eq", "amazon") // Amazon remits tax, so $0 tax is expected sometimes
+      .not("marketplace", "eq", "amazon")
       .order("sale_date", { ascending: false })
       .limit(100);
 
@@ -95,9 +95,9 @@ serve(async (req) => {
       .limit(500);
 
     const expectedFeeRanges: Record<string, [number, number]> = {
-      amazon: [0.05, 0.25],   // 5-25%
-      bestbuy: [0.05, 0.25],  // 5-25%
-      shopify: [0.01, 0.10],  // 1-10%
+      amazon: [0.05, 0.25],
+      bestbuy: [0.05, 0.25],
+      shopify: [0.01, 0.10],
     };
 
     for (const sale of salesForFees || []) {
@@ -147,7 +147,6 @@ serve(async (req) => {
         .limit(200);
 
       if (recentOrders && recentOrders.length > 1) {
-        // Extract numeric parts and check for gaps
         const numbers = recentOrders
           .map((o) => {
             const match = o.order_number.match(/\d+$/);
@@ -159,7 +158,7 @@ serve(async (req) => {
         const gaps: number[] = [];
         for (let i = 1; i < numbers.length; i++) {
           const diff = numbers[i] - numbers[i - 1];
-          if (diff > 1 && diff < 10) { // Small gaps are suspicious, large gaps might be normal
+          if (diff > 1 && diff < 10) {
             for (let g = numbers[i - 1] + 1; g < numbers[i]; g++) {
               gaps.push(g);
             }
@@ -188,13 +187,12 @@ serve(async (req) => {
     const { data: salesNoProvince } = await supabase
       .from("sales")
       .select("id, order_number, marketplace, company_id, notes, shipping_address")
-      .not("marketplace", "eq", "amazon") // Amazon handles tax
+      .not("marketplace", "eq", "amazon")
       .is("shipping_address", null)
       .order("sale_date", { ascending: false })
       .limit(50);
 
     for (const sale of salesNoProvince || []) {
-      // Check if province is also missing from notes
       const hasProvince = sale.notes?.includes("Province:") && !sale.notes?.includes("Province: N/A");
       if (!hasProvince) {
         issuesFound.push({
@@ -210,11 +208,163 @@ serve(async (req) => {
       }
     }
 
+    // === CHECK 7: Unbalanced journal entries (total_debit ≠ total_credit) ===
+    const { data: unbalancedJEs } = await supabase
+      .from("journal_entries")
+      .select("id, entry_number, company_id, total_debit, total_credit, description")
+      .neq("status", "voided")
+      .order("entry_date", { ascending: false })
+      .limit(1000);
+
+    for (const je of unbalancedJEs || []) {
+      const debit = Number(je.total_debit || 0);
+      const credit = Number(je.total_credit || 0);
+      if (Math.abs(debit - credit) > 0.01) {
+        issuesFound.push({
+          issue_type: "unbalanced_je",
+          severity: "critical",
+          company_id: je.company_id,
+          record_id: je.id,
+          record_type: "journal_entry",
+          description: `Journal entry ${je.entry_number} is unbalanced: debit $${debit.toFixed(2)} ≠ credit $${credit.toFixed(2)}`,
+          details: { total_debit: debit, total_credit: credit, difference: Math.abs(debit - credit) },
+        });
+      }
+    }
+
+    // === CHECK 8: Orphan journal entries (reference_id points to missing records) ===
+    const { data: jeWithRefs } = await supabase
+      .from("journal_entries")
+      .select("id, entry_number, company_id, reference_type, reference_id")
+      .not("reference_id", "is", null)
+      .not("reference_type", "is", null)
+      .neq("status", "voided")
+      .order("entry_date", { ascending: false })
+      .limit(500);
+
+    for (const je of jeWithRefs || []) {
+      let exists = true;
+      if (je.reference_type === "sale") {
+        const { data } = await supabase.from("sales").select("id").eq("id", je.reference_id).maybeSingle();
+        exists = !!data;
+      } else if (je.reference_type === "expense") {
+        const { data } = await supabase.from("expenses").select("id").eq("id", je.reference_id).maybeSingle();
+        exists = !!data;
+      } else if (je.reference_type === "invoice") {
+        const { data } = await supabase.from("invoices").select("id").eq("id", je.reference_id).maybeSingle();
+        exists = !!data;
+      }
+      if (!exists) {
+        issuesFound.push({
+          issue_type: "orphan_je",
+          severity: "warning",
+          company_id: je.company_id,
+          record_id: je.id,
+          record_type: "journal_entry",
+          description: `Journal entry ${je.entry_number} references a deleted ${je.reference_type} (${je.reference_id?.slice(0, 8)}...)`,
+          details: { reference_type: je.reference_type, reference_id: je.reference_id },
+        });
+      }
+    }
+
+    // === CHECK 9: AP/AR records without linked journal entries ===
+    const { data: arRecords } = await supabase
+      .from("accounts_receivable")
+      .select("id, customer_name, original_amount, company_id, source_type, source_reference")
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    for (const ar of arRecords || []) {
+      const { data: linkedJE } = await supabase
+        .from("journal_entries")
+        .select("id")
+        .or(`reference_id.eq.${ar.id},description.ilike.%${ar.source_reference || 'NONE'}%`)
+        .limit(1);
+
+      if (!linkedJE || linkedJE.length === 0) {
+        // Check if any JE references this AR via its source reference
+        const { data: jeByRef } = await supabase
+          .from("journal_entries")
+          .select("id")
+          .eq("reference_id", ar.id)
+          .limit(1);
+
+        if (!jeByRef || jeByRef.length === 0) {
+          issuesFound.push({
+            issue_type: "ar_no_je",
+            severity: "warning",
+            company_id: ar.company_id,
+            record_id: ar.id,
+            record_type: "accounts_receivable",
+            description: `AR for ${ar.customer_name || 'Unknown'} ($${ar.original_amount}) has no linked journal entry`,
+            details: { original_amount: ar.original_amount, source_type: ar.source_type },
+          });
+        }
+      }
+    }
+
+    // === CHECK 10: Expenses without journal entries ===
+    const { data: expensesAll } = await supabase
+      .from("expenses")
+      .select("id, description, amount, company_id, expense_date")
+      .eq("approval_status", "approved")
+      .order("expense_date", { ascending: false })
+      .limit(500);
+
+    for (const expense of expensesAll || []) {
+      const { data: linkedJE } = await supabase
+        .from("journal_entries")
+        .select("id")
+        .eq("reference_type", "expense")
+        .eq("reference_id", expense.id)
+        .limit(1);
+
+      if (!linkedJE || linkedJE.length === 0) {
+        issuesFound.push({
+          issue_type: "expense_no_je",
+          severity: "warning",
+          company_id: expense.company_id,
+          record_id: expense.id,
+          record_type: "expense",
+          description: `Expense "${expense.description}" ($${expense.amount}) has no journal entry`,
+          details: { amount: expense.amount, expense_date: expense.expense_date },
+        });
+      }
+    }
+
+    // === CHECK 11: Unmapped chart of accounts codes ===
+    const knownCodes = new Set([
+      '1000','1001','1050','1051','1100','1101','1200','1201',
+      '2000','2001','2010','2011','2050','2051','2100','2101',
+      '3000','3001',
+      '4000','4100','4200','4300','4400','4401',
+      '5000','5001',
+      '6000','6001','6100','6101','6200','6201','6300','6301','6400','6401','6500','6501',
+      '7000','7001','7100','7101',
+      '8000','8001','8100','8101',
+    ]);
+
+    const { data: allAccounts } = await supabase
+      .from("chart_of_accounts")
+      .select("id, account_code, account_name, company_id")
+      .eq("is_active", true);
+
+    for (const acc of allAccounts || []) {
+      if (!knownCodes.has(acc.account_code)) {
+        issuesFound.push({
+          issue_type: "unmapped_account",
+          severity: "warning",
+          company_id: acc.company_id,
+          record_id: acc.id,
+          record_type: "chart_of_accounts",
+          description: `Account ${acc.account_code} (${acc.account_name}) is not mapped in reports — may be excluded from P&L/Balance Sheet`,
+          details: { account_code: acc.account_code, account_name: acc.account_name },
+        });
+      }
+    }
+
     // === Clear old resolved issues and upsert new ones ===
-    // First, mark all existing open issues as potentially stale
-    // Then insert new issues (avoiding duplicates by record_id + issue_type)
     for (const issue of issuesFound) {
-      // Check if this exact issue already exists
       let query = supabase
         .from("data_validation_issues")
         .select("id")
@@ -235,7 +385,6 @@ serve(async (req) => {
     }
 
     // Auto-resolve issues that no longer exist
-    // Get all open issues and check if they're still in the found set
     const { data: openIssues } = await supabase
       .from("data_validation_issues")
       .select("id, record_id, issue_type")
@@ -267,6 +416,11 @@ serve(async (req) => {
           zero_sale: issuesFound.filter((i) => i.issue_type === "zero_sale").length,
           order_gap: issuesFound.filter((i) => i.issue_type === "order_gap").length,
           missing_province: issuesFound.filter((i) => i.issue_type === "missing_province").length,
+          unbalanced_je: issuesFound.filter((i) => i.issue_type === "unbalanced_je").length,
+          orphan_je: issuesFound.filter((i) => i.issue_type === "orphan_je").length,
+          ar_no_je: issuesFound.filter((i) => i.issue_type === "ar_no_je").length,
+          expense_no_je: issuesFound.filter((i) => i.issue_type === "expense_no_je").length,
+          unmapped_account: issuesFound.filter((i) => i.issue_type === "unmapped_account").length,
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
