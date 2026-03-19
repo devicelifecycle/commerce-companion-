@@ -447,6 +447,24 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
           Compare
         </Button>
 
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={costingView === 'management' ? 'default' : 'outline'}
+                onClick={() => setCostingView(v => v === 'accounting' ? 'management' : 'accounting')}
+              >
+                <ToggleLeft className="h-4 w-4 mr-2" />
+                {costingView === 'accounting' ? 'Accounting View' : 'Management View'}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              <p><strong>Accounting View:</strong> Shows actual payroll expenses and original device costs (GAAP-compliant).</p>
+              <p className="mt-1"><strong>Management View:</strong> Shows fully-loaded device costs (including repair labor) with payroll reduced by the capitalized amount. Net profit is the same in both views.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+
         <div className="ml-auto flex gap-2">
           <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />
@@ -458,6 +476,19 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
           </Button>
         </div>
       </div>
+
+      {/* Costing View Explanation */}
+      {costingView === 'management' && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>Management Costing View</AlertTitle>
+          <AlertDescription>
+            Device COGS includes capitalized repair costs (parts + labor). Payroll is reduced by{' '}
+            <strong>{formatCurrency(data.current.capitalizedRepairLabor)}</strong> in capitalized repair labor to avoid double-counting.
+            This view shows the true per-unit cost of bringing devices to sale condition. Net profit is identical to the Accounting View.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* P&L Statement */}
       <Card className="print:shadow-none">
