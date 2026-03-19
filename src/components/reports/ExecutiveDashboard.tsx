@@ -52,6 +52,7 @@ interface ExecutiveDashboardProps {
 
 export function ExecutiveDashboard({ companyView = 'consolidated' }: ExecutiveDashboardProps) {
   const { selectedCompany, companies, isSuperAdmin } = useCompany();
+  const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('12'); // months
   const viewMode = companyView;
   const [metrics, setMetrics] = useState<DashboardMetrics>({
