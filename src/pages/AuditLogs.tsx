@@ -624,6 +624,11 @@ export default function AuditLogs() {
             </div>
           </TabsContent>
 
+
+          {/* ========== TAB: UNACCOUNTED MARKETPLACE DATA ========== */}
+          <TabsContent value="unaccounted">
+            <UnaccountedMarketplaceData companyFilter={selectedCompany?.id || null} />
+          </TabsContent>
           {/* ========== TAB 2: USER SESSIONS ========== */}
           <TabsContent value="sessions">
             <Card>
