@@ -420,7 +420,7 @@ export default function AuditLogs() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="relationships" className="flex items-center gap-1.5 text-xs">
               <Link2 className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Relationships</span>
@@ -432,10 +432,6 @@ export default function AuditLogs() {
             <TabsTrigger value="changes" className="flex items-center gap-1.5 text-xs">
               <Activity className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Data Changes</span>
-            </TabsTrigger>
-            <TabsTrigger value="accounting" className="flex items-center gap-1.5 text-xs">
-              <BookOpen className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Accounting Trail</span>
             </TabsTrigger>
             <TabsTrigger value="all" className="flex items-center gap-1.5 text-xs">
               <Layers className="h-3.5 w-3.5" />
