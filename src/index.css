@@ -6,109 +6,109 @@
 
 @layer base {
   :root {
-    /* Rich & Readable Dark Theme */
-    --background: 230 25% 8%;
-    --foreground: 220 20% 95%;
+    /* Refined Dark Theme – high contrast & readability */
+    --background: 228 20% 10%;
+    --foreground: 220 20% 96%;
 
-    --card: 230 25% 12%;
-    --card-foreground: 220 20% 95%;
+    --card: 228 20% 14%;
+    --card-foreground: 220 20% 96%;
 
-    --popover: 230 25% 12%;
-    --popover-foreground: 220 20% 95%;
+    --popover: 228 20% 14%;
+    --popover-foreground: 220 20% 96%;
 
     /* Warm Amber Primary */
-    --primary: 38 95% 55%;
-    --primary-foreground: 230 25% 8%;
+    --primary: 38 92% 56%;
+    --primary-foreground: 230 25% 6%;
 
     /* Cool Cyan Secondary */
-    --secondary: 185 70% 45%;
-    --secondary-foreground: 230 25% 8%;
+    --secondary: 185 65% 48%;
+    --secondary-foreground: 220 20% 96%;
 
-    --muted: 230 20% 18%;
-    --muted-foreground: 220 15% 60%;
+    --muted: 228 18% 20%;
+    --muted-foreground: 220 15% 72%;
 
     /* Soft Lavender Accent */
-    --accent: 270 60% 65%;
-    --accent-foreground: 230 25% 8%;
+    --accent: 270 55% 62%;
+    --accent-foreground: 220 20% 96%;
 
     /* Rose Destructive */
-    --destructive: 0 75% 55%;
+    --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 230 20% 20%;
-    --input: 230 20% 20%;
-    --ring: 38 95% 55%;
+    --border: 228 18% 26%;
+    --input: 228 18% 24%;
+    --ring: 38 92% 56%;
 
     --radius: 0.75rem;
 
-    /* Semantic colors - more vibrant */
-    --success: 150 80% 45%;
-    --success-foreground: 230 25% 8%;
-    --warning: 38 95% 55%;
-    --warning-foreground: 230 25% 8%;
-    --info: 200 90% 55%;
-    --info-foreground: 230 25% 8%;
+    /* Semantic colors */
+    --success: 150 70% 48%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 56%;
+    --warning-foreground: 230 25% 6%;
+    --info: 200 85% 58%;
+    --info-foreground: 0 0% 100%;
 
-    /* Status colors - bright and distinct */
-    --status-in-stock: 150 80% 50%;
-    --status-reserved: 38 95% 60%;
-    --status-sold: 200 90% 55%;
-    --status-returned: 0 75% 55%;
+    /* Status colors – bright and distinct */
+    --status-in-stock: 150 70% 52%;
+    --status-reserved: 38 90% 60%;
+    --status-sold: 200 85% 58%;
+    --status-returned: 0 72% 58%;
 
     /* Marketplace colors */
-    --shopify: 145 65% 50%;
-    --amazon: 32 100% 50%;
-    --bestbuy: 210 100% 55%;
+    --shopify: 145 60% 52%;
+    --amazon: 32 95% 52%;
+    --bestbuy: 210 95% 58%;
 
     /* Gradient colors */
-    --gradient-start: 38 95% 55%;
-    --gradient-mid: 185 70% 50%;
-    --gradient-end: 270 60% 60%;
+    --gradient-start: 38 92% 56%;
+    --gradient-mid: 185 65% 52%;
+    --gradient-end: 270 55% 62%;
 
-    /* Sidebar - slightly elevated */
-    --sidebar-background: 230 25% 6%;
-    --sidebar-foreground: 220 20% 95%;
-    --sidebar-primary: 38 95% 55%;
-    --sidebar-primary-foreground: 230 25% 8%;
-    --sidebar-accent: 230 20% 15%;
-    --sidebar-accent-foreground: 220 20% 95%;
-    --sidebar-border: 230 20% 18%;
-    --sidebar-ring: 38 95% 55%;
+    /* Sidebar – slightly elevated */
+    --sidebar-background: 228 22% 8%;
+    --sidebar-foreground: 220 20% 92%;
+    --sidebar-primary: 38 92% 56%;
+    --sidebar-primary-foreground: 230 25% 6%;
+    --sidebar-accent: 228 18% 18%;
+    --sidebar-accent-foreground: 220 20% 96%;
+    --sidebar-border: 228 18% 22%;
+    --sidebar-ring: 38 92% 56%;
 
     /* Section colors for visual hierarchy */
-    --section-primary: 230 25% 10%;
-    --section-secondary: 230 22% 14%;
-    --section-tertiary: 230 20% 18%;
+    --section-primary: 228 20% 12%;
+    --section-secondary: 228 18% 16%;
+    --section-tertiary: 228 16% 20%;
   }
 
   .dark {
-    --background: 230 25% 8%;
-    --foreground: 220 20% 95%;
-    --card: 230 25% 12%;
-    --card-foreground: 220 20% 95%;
-    --popover: 230 25% 12%;
-    --popover-foreground: 220 20% 95%;
-    --primary: 38 95% 55%;
-    --primary-foreground: 230 25% 8%;
-    --secondary: 185 70% 45%;
-    --secondary-foreground: 230 25% 8%;
-    --muted: 230 20% 18%;
-    --muted-foreground: 220 15% 60%;
-    --accent: 270 60% 65%;
-    --accent-foreground: 230 25% 8%;
-    --destructive: 0 75% 55%;
+    --background: 228 20% 10%;
+    --foreground: 220 20% 96%;
+    --card: 228 20% 14%;
+    --card-foreground: 220 20% 96%;
+    --popover: 228 20% 14%;
+    --popover-foreground: 220 20% 96%;
+    --primary: 38 92% 56%;
+    --primary-foreground: 230 25% 6%;
+    --secondary: 185 65% 48%;
+    --secondary-foreground: 220 20% 96%;
+    --muted: 228 18% 20%;
+    --muted-foreground: 220 15% 72%;
+    --accent: 270 55% 62%;
+    --accent-foreground: 220 20% 96%;
+    --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
-    --border: 230 20% 20%;
-    --input: 230 20% 20%;
-    --ring: 38 95% 55%;
-    --sidebar-background: 230 25% 6%;
-    --sidebar-foreground: 220 20% 95%;
-    --sidebar-primary: 38 95% 55%;
-    --sidebar-primary-foreground: 230 25% 8%;
-    --sidebar-accent: 230 20% 15%;
-    --sidebar-accent-foreground: 220 20% 95%;
-    --sidebar-border: 230 20% 18%;
-    --sidebar-ring: 38 95% 55%;
+    --border: 228 18% 26%;
+    --input: 228 18% 24%;
+    --ring: 38 92% 56%;
+    --sidebar-background: 228 22% 8%;
+    --sidebar-foreground: 220 20% 92%;
+    --sidebar-primary: 38 92% 56%;
+    --sidebar-primary-foreground: 230 25% 6%;
+    --sidebar-accent: 228 18% 18%;
+    --sidebar-accent-foreground: 220 20% 96%;
+    --sidebar-border: 228 18% 22%;
+    --sidebar-ring: 38 92% 56%;
   }
 }
 
@@ -137,12 +137,12 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    @apply bg-muted-foreground/20 rounded-full;
+    @apply bg-muted-foreground/25 rounded-full;
     transition: background 0.2s;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    @apply bg-muted-foreground/40;
+    @apply bg-muted-foreground/45;
   }
 }
 
@@ -160,18 +160,18 @@
     background: linear-gradient(135deg, hsl(var(--gradient-start)) 0%, hsl(var(--gradient-mid)) 50%, hsl(var(--gradient-end)) 100%);
   }
 
+  /* FIXED: gradient-text now uses a visible solid primary color instead of transparent clip */
   .gradient-text {
-    @apply bg-clip-text text-transparent;
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--secondary)) 100%);
+    color: hsl(var(--primary));
   }
 
   /* Section containers for visual hierarchy */
   .section-container {
-    @apply bg-card/80 border border-border/60 rounded-xl p-4 backdrop-blur-sm;
+    @apply bg-card border border-border/70 rounded-xl p-4 backdrop-blur-sm;
   }
 
   .section-header {
-    @apply flex items-center gap-2.5 mb-3 pb-2.5 border-b border-border/50;
+    @apply flex items-center gap-2.5 mb-3 pb-2.5 border-b border-border/60;
   }
 
   .section-title {
@@ -183,12 +183,12 @@
   }
 
   .subsection {
-    @apply bg-muted/30 border border-border/40 rounded-lg p-3;
+    @apply bg-muted/40 border border-border/50 rounded-lg p-3;
   }
 
-  /* Metric card component - compact */
+  /* Metric card component – compact */
   .metric-card {
-    @apply bg-card border border-border/60 rounded-lg p-3.5 transition-all duration-300 relative overflow-hidden;
+    @apply bg-card border border-border/70 rounded-lg p-3.5 transition-all duration-300 relative overflow-hidden;
   }
 
   .metric-card::before {
@@ -200,55 +200,55 @@
   }
 
   .metric-card:hover {
-    @apply border-primary/50 shadow-lg;
+    @apply border-primary/60 shadow-lg;
     box-shadow: 0 0 30px -10px hsl(var(--primary) / 0.4);
   }
 
-  /* Status badges - more vibrant */
+  /* Status badges – bright text */
   .status-badge {
     @apply inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide;
   }
 
   .status-in-stock {
-    @apply bg-[hsl(var(--status-in-stock)/.2)] text-[hsl(var(--status-in-stock))] border border-[hsl(var(--status-in-stock)/.4)];
+    @apply bg-[hsl(var(--status-in-stock)/.15)] text-[hsl(var(--status-in-stock))] border border-[hsl(var(--status-in-stock)/.35)];
   }
 
   .status-reserved {
-    @apply bg-[hsl(var(--status-reserved)/.2)] text-[hsl(var(--status-reserved))] border border-[hsl(var(--status-reserved)/.4)];
+    @apply bg-[hsl(var(--status-reserved)/.15)] text-[hsl(var(--status-reserved))] border border-[hsl(var(--status-reserved)/.35)];
   }
 
   .status-sold {
-    @apply bg-[hsl(var(--status-sold)/.2)] text-[hsl(var(--status-sold))] border border-[hsl(var(--status-sold)/.4)];
+    @apply bg-[hsl(var(--status-sold)/.15)] text-[hsl(var(--status-sold))] border border-[hsl(var(--status-sold)/.35)];
   }
 
   .status-returned {
-    @apply bg-[hsl(var(--status-returned)/.2)] text-[hsl(var(--status-returned))] border border-[hsl(var(--status-returned)/.4)];
+    @apply bg-[hsl(var(--status-returned)/.15)] text-[hsl(var(--status-returned))] border border-[hsl(var(--status-returned)/.35)];
   }
 
   /* Marketplace badges */
   .marketplace-shopify {
-    @apply bg-[hsl(var(--shopify)/.2)] text-[hsl(var(--shopify))] border border-[hsl(var(--shopify)/.4)];
+    @apply bg-[hsl(var(--shopify)/.15)] text-[hsl(var(--shopify))] border border-[hsl(var(--shopify)/.35)];
   }
 
   .marketplace-amazon {
-    @apply bg-[hsl(var(--amazon)/.2)] text-[hsl(var(--amazon))] border border-[hsl(var(--amazon)/.4)];
+    @apply bg-[hsl(var(--amazon)/.15)] text-[hsl(var(--amazon))] border border-[hsl(var(--amazon)/.35)];
   }
 
   .marketplace-bestbuy {
-    @apply bg-[hsl(var(--bestbuy)/.2)] text-[hsl(var(--bestbuy))] border border-[hsl(var(--bestbuy)/.4)];
+    @apply bg-[hsl(var(--bestbuy)/.15)] text-[hsl(var(--bestbuy))] border border-[hsl(var(--bestbuy)/.35)];
   }
 
-  /* Data table styles - compact & dense */
+  /* Data table styles – compact & dense */
   .data-table {
     @apply w-full text-xs;
   }
 
   .data-table th {
-    @apply text-left text-muted-foreground font-semibold py-2.5 px-3 border-b border-border uppercase text-[10px] tracking-wider bg-muted/20;
+    @apply text-left text-muted-foreground font-semibold py-2.5 px-3 border-b border-border uppercase text-[10px] tracking-wider bg-muted/30;
   }
 
   .data-table td {
-    @apply py-2 px-3 border-b border-border/40;
+    @apply py-2 px-3 border-b border-border/50 text-foreground;
   }
 
   .data-table tr {
@@ -256,16 +256,16 @@
   }
 
   .data-table tr:hover td {
-    @apply bg-muted/40;
+    @apply bg-muted/50;
   }
 
-  /* Glass effect - refined */
+  /* Glass effect – refined */
   .glass {
-    @apply bg-card/70 backdrop-blur-xl border border-border/50;
+    @apply bg-card/80 backdrop-blur-xl border border-border/60;
     box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
   }
 
-  /* Glow effects - warmer */
+  /* Glow effects – warmer */
   .glow-primary {
     box-shadow: 0 0 40px -10px hsl(var(--primary) / 0.6);
   }
@@ -278,9 +278,9 @@
     box-shadow: 0 0 40px -10px hsl(var(--secondary) / 0.5);
   }
 
-  /* Interactive cards - compact */
+  /* Interactive cards – compact */
   .interactive-card {
-    @apply bg-card border border-border/60 rounded-lg p-3 transition-all duration-200 cursor-pointer;
+    @apply bg-card border border-border/70 rounded-lg p-3 transition-all duration-200 cursor-pointer;
   }
 
   .interactive-card:hover {
@@ -288,14 +288,14 @@
     box-shadow: 0 8px 20px -8px hsl(var(--primary) / 0.25);
   }
 
-  /* Dashboard section - compact */
+  /* Dashboard section – compact */
   .dashboard-section {
-    @apply bg-card/60 border border-border/50 rounded-xl p-4;
+    @apply bg-card/70 border border-border/60 rounded-xl p-4;
   }
 
   /* Chart container */
   .chart-container {
-    @apply bg-card/80 border border-border/50 rounded-lg p-3 relative overflow-hidden;
+    @apply bg-card border border-border/60 rounded-lg p-3 relative overflow-hidden;
   }
 
   .chart-container::after {
@@ -310,18 +310,18 @@
     opacity: 0.3;
   }
 
-  /* Quick action buttons */
+  /* Quick action buttons – visible borders */
   .quick-action {
-    @apply flex items-center gap-1.5 px-3 py-2 rounded-md bg-muted/50 border border-border/50 text-xs font-medium transition-all duration-200;
+    @apply flex items-center gap-1.5 px-3 py-2 rounded-md bg-muted/60 border border-border/70 text-xs font-medium text-foreground transition-all duration-200;
   }
 
   .quick-action:hover {
-    @apply bg-primary/20 border-primary/50 text-primary;
+    @apply bg-primary/20 border-primary/60 text-primary;
   }
 
   /* Info cards */
   .info-card {
-    @apply flex items-start gap-2 p-3 rounded-lg bg-muted/30 border border-border/40;
+    @apply flex items-start gap-2 p-3 rounded-lg bg-muted/40 border border-border/50;
   }
 
   .info-card-icon {
