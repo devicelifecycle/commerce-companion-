@@ -995,6 +995,9 @@ export default function Invoices() {
                 </Button>
               )}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Review invoice details, payment history, and available invoice actions.
+            </DialogDescription>
           </DialogHeader>
 
           {viewInvoice && !editMode && (
