@@ -125,9 +125,19 @@ export default function Expenses() {
         query = query.or(`company_id.eq.${selectedCompany.id},is_shared.eq.true`);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      setExpenses((data || []) as Expense[]);
+      const [expResult, refundResult] = await Promise.all([
+        query,
+        supabase.from('expense_refunds').select('expense_id, refund_amount'),
+      ]);
+
+      if (expResult.error) throw expResult.error;
+      setExpenses((expResult.data || []) as Expense[]);
+
+      const map: Record<string, number> = {};
+      (refundResult.data || []).forEach((r: any) => {
+        map[r.expense_id] = (map[r.expense_id] || 0) + Number(r.refund_amount || 0);
+      });
+      setRefundMap(map);
     } catch (error) {
       console.error('Error fetching expenses:', error);
       toast.error('Failed to load expenses');
