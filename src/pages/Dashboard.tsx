@@ -307,8 +307,8 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h1 className="text-2xl font-display font-bold gradient-text">Dashboard</h1>
-            <p className="text-[11px] text-muted-foreground">{format(new Date(), 'EEEE, MMM d, yyyy')}</p>
+            <h1 className="text-2xl font-display font-bold gradient-text">Reports</h1>
+            <p className="text-[11px] text-muted-foreground">Financial reporting & analytics · {format(new Date(), 'EEEE, MMM d, yyyy')}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             {companies.length > 1 && (
