@@ -318,6 +318,43 @@ serve(async (req) => {
 
     console.log(`Found ${orders.length} orders from Best Buy Canada (total: ${data.total_count})`);
 
+    // Schema validation — check first order against expected Mirakl structure
+    if (orders.length > 0) {
+      const sampleOrder = orders[0];
+      const bbExpectedFields = [
+        { path: 'commercial_id', required: true, type: 'string' },
+        { path: 'order_state', required: true, type: 'string' },
+        { path: 'created_date', required: true, type: 'string' },
+        { path: 'customer', required: true, type: 'object' },
+        { path: 'customer.firstname', required: true, type: 'string' },
+        { path: 'customer.lastname', required: true, type: 'string' },
+        { path: 'customer.email', required: false, type: 'string' },
+        { path: 'customer.shipping_address', required: false, type: 'object' },
+        { path: 'customer.shipping_address.state', required: false, type: 'string' },
+        { path: 'customer.shipping_address.city', required: false, type: 'string' },
+        { path: 'customer.shipping_address.zip_code', required: false, type: 'string' },
+        { path: 'order_lines', required: true },
+        { path: 'price', required: true, type: 'number' },
+        { path: 'total_price', required: true, type: 'number' },
+        { path: 'total_commission', required: true, type: 'number' },
+      ];
+      const bbKnownPaths = [
+        'id', 'order_id', 'commercial_id', 'created_date', 'last_updated_date',
+        'order_state', 'order_state_reason_code', 'order_state_reason_label',
+        'customer', 'customer.civility', 'customer.customer_id', 'customer.firstname',
+        'customer.lastname', 'customer.email', 'customer.locale',
+        'customer.billing_address', 'customer.shipping_address',
+        'order_lines', 'price', 'total_price', 'total_commission',
+        'shipping_price', 'shipping_zone_code', 'shipping_zone_label',
+        'payment_type', 'payment_workflow', 'channel', 'can_cancel',
+      ];
+      const schemaResult = validateSchema(sampleOrder, bbExpectedFields, bbKnownPaths);
+      if (!schemaResult.valid) {
+        console.warn('Best Buy schema validation failed:', JSON.stringify(schemaResult));
+        await raiseSchemaAlert(supabase, 'Best Buy (Mirakl)', schemaResult, Object.keys(sampleOrder));
+      }
+    }
+
     const importedOrders: string[] = [];
     const skippedOrders: string[] = [];
     const errors: string[] = [];
