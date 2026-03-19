@@ -547,6 +547,30 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
 
             <FormField
               control={form.control}
+              name="shipping_province"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Province</FormLabel>
+                  <FormDescription className="text-[11px]">Used for tax calculation</FormDescription>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select province" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {PROVINCES.map(p => (
+                        <SelectItem key={p.code} value={p.code}>{p.name} ({p.code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="notes"
               render={({ field }) => (
                 <FormItem>
