@@ -50,6 +50,7 @@ export default function Dashboard() {
   const isAdmin = isSuperAdmin || assignments.some(a => a.role === 'admin');
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('6');
+  const [feeMetrics, setFeeMetrics] = useState<{ marketplace: string; revenue: number; fees: number; feeRate: number; shipping: number; revenueAfterFees: number; orders: number }[]>([]);
   const [companyView, setCompanyView] = useState<'consolidated' | string>('consolidated');
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
 
