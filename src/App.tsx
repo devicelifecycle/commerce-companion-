@@ -26,14 +26,12 @@ import Forecasting from "./pages/Forecasting";
 import NotFound from "./pages/NotFound";
 import AuditLogs from "./pages/AuditLogs";
 import Help from "./pages/Help";
+import HelpAndGuides from "./pages/HelpAndGuides";
 import PurchaseOrders from "./pages/PurchaseOrders";
-import GoodsReceived from "./pages/GoodsReceived";
 import Returns from "./pages/Returns";
 import IntegrationHealth from "./pages/IntegrationHealth";
 import CostLedger from "./pages/CostLedger";
 import Customers from "./pages/Customers";
-import Guides from "./pages/Guides";
-import AccountingKnowledge from "./pages/AccountingKnowledge";
 
 const queryClient = new QueryClient();
 
