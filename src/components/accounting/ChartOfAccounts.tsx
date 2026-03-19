@@ -139,6 +139,9 @@ export function ChartOfAccounts() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
+  const [subLedgerAccount, setSubLedgerAccount] = useState<Account | null>(null);
+  const [subLedgerLines, setSubLedgerLines] = useState<any[]>([]);
+  const [subLedgerLoading, setSubLedgerLoading] = useState(false);
   const [expandedTypes, setExpandedTypes] = useState<string[]>(['asset', 'liability', 'equity', 'revenue', 'expense']);
   const [formData, setFormData] = useState({
     account_code: '',
