@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateSchema, raiseSchemaAlert } from "../_shared/schemaValidator.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -262,6 +263,43 @@ serve(async (req) => {
     const orders: AmazonOrder[] = ordersData.payload?.Orders || [];
 
     console.log(`Found ${orders.length} orders from Amazon Canada`);
+
+    // Schema validation — check first order against expected SP-API structure
+    if (orders.length > 0) {
+      const sampleOrder = orders[0];
+      const amzExpectedFields = [
+        { path: 'AmazonOrderId', required: true, type: 'string' },
+        { path: 'PurchaseDate', required: true, type: 'string' },
+        { path: 'OrderStatus', required: true, type: 'string' },
+        { path: 'OrderTotal', required: false, type: 'object' },
+        { path: 'OrderTotal.Amount', required: false, type: 'string' },
+        { path: 'ShippingAddress', required: false, type: 'object' },
+        { path: 'ShippingAddress.StateOrRegion', required: false, type: 'string' },
+        { path: 'BuyerInfo', required: false, type: 'object' },
+        { path: 'BuyerInfo.BuyerEmail', required: false, type: 'string' },
+        { path: 'OrderItems', required: false },
+      ];
+      const amzKnownPaths = [
+        'AmazonOrderId', 'PurchaseDate', 'OrderStatus', 'OrderTotal',
+        'OrderTotal.Amount', 'OrderTotal.CurrencyCode',
+        'ShippingAddress', 'ShippingAddress.Name', 'ShippingAddress.AddressLine1',
+        'ShippingAddress.AddressLine2', 'ShippingAddress.City',
+        'ShippingAddress.StateOrRegion', 'ShippingAddress.PostalCode',
+        'ShippingAddress.CountryCode', 'ShippingAddress.Phone',
+        'BuyerInfo', 'BuyerInfo.BuyerEmail', 'BuyerInfo.BuyerName',
+        'OrderItems', 'NumberOfItemsShipped', 'NumberOfItemsUnshipped',
+        'PaymentMethod', 'PaymentMethodDetails', 'MarketplaceId',
+        'SalesChannel', 'ShipServiceLevel', 'FulfillmentChannel',
+        'IsBusinessOrder', 'IsPrime', 'IsGlobalExpressEnabled',
+        'LastUpdateDate', 'EarliestShipDate', 'LatestShipDate',
+        'EarliestDeliveryDate', 'LatestDeliveryDate',
+      ];
+      const schemaResult = validateSchema(sampleOrder, amzExpectedFields, amzKnownPaths);
+      if (!schemaResult.valid) {
+        console.warn('Amazon schema validation failed:', JSON.stringify(schemaResult));
+        await raiseSchemaAlert(supabase, 'Amazon (SP-API)', schemaResult, Object.keys(sampleOrder));
+      }
+    }
 
     const importedOrders: string[] = [];
     const skippedOrders: string[] = [];

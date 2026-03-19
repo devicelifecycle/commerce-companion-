@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { SystemAlertsBanner } from '@/components/alerts/SystemAlertsBanner';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
@@ -302,6 +303,7 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-3 animate-fade-in">
+        <SystemAlertsBanner />
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>

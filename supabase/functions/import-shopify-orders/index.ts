@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { validateSchema, raiseSchemaAlert } from "../_shared/schemaValidator.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -196,6 +197,46 @@ serve(async (req) => {
     const orders = data.orders || [];
 
     console.log(`Found ${orders.length} orders from Shopify`);
+
+    // Schema validation — check first order against expected Shopify Admin API structure
+    if (orders.length > 0) {
+      const sampleOrder = orders[0];
+      const shopExpectedFields = [
+        { path: 'order_number', required: true, type: 'number' },
+        { path: 'created_at', required: true, type: 'string' },
+        { path: 'financial_status', required: true, type: 'string' },
+        { path: 'total_price', required: true, type: 'string' },
+        { path: 'subtotal_price', required: false, type: 'string' },
+        { path: 'total_tax', required: false, type: 'string' },
+        { path: 'customer', required: false, type: 'object' },
+        { path: 'customer.first_name', required: false, type: 'string' },
+        { path: 'customer.last_name', required: false, type: 'string' },
+        { path: 'customer.email', required: false, type: 'string' },
+        { path: 'shipping_address', required: false, type: 'object' },
+        { path: 'shipping_address.province_code', required: false, type: 'string' },
+        { path: 'line_items', required: true },
+      ];
+      const shopKnownPaths = [
+        'id', 'order_number', 'name', 'created_at', 'updated_at', 'closed_at',
+        'cancelled_at', 'cancel_reason', 'financial_status', 'fulfillment_status',
+        'total_price', 'subtotal_price', 'total_tax', 'total_discounts',
+        'total_shipping_price_set', 'currency', 'presentment_currency',
+        'customer', 'customer.id', 'customer.first_name', 'customer.last_name',
+        'customer.email', 'customer.phone',
+        'shipping_address', 'shipping_address.address1', 'shipping_address.address2',
+        'shipping_address.city', 'shipping_address.province', 'shipping_address.province_code',
+        'shipping_address.zip', 'shipping_address.country', 'shipping_address.phone',
+        'billing_address', 'line_items', 'refunds', 'shipping_lines',
+        'tax_lines', 'note', 'tags', 'email', 'phone',
+        'gateway', 'payment_gateway_names', 'processing_method',
+        'source_name', 'browser_ip', 'landing_site',
+      ];
+      const schemaResult = validateSchema(sampleOrder, shopExpectedFields, shopKnownPaths);
+      if (!schemaResult.valid) {
+        console.warn('Shopify schema validation failed:', JSON.stringify(schemaResult));
+        await raiseSchemaAlert(supabase, 'Shopify (Admin API)', schemaResult, Object.keys(sampleOrder));
+      }
+    }
 
     const importedOrders: string[] = [];
     const skippedOrders: string[] = [];
