@@ -79,7 +79,7 @@ const formatCurrency = (value: number) =>
 
 export function DeviceTable({
   devices, companies, selectedCompany, canManage, isSuperAdmin,
-  selection, onEdit, onLabel, onProcurement, onTimeline, onTransfer, onRefresh,
+  selection, onEdit, onLabel, onProcurement, onTimeline, onTransfer, onRepair, onRefresh,
 }: DeviceTableProps) {
   const { logEvent } = useAuditLog();
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
