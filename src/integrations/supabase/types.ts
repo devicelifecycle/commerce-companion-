@@ -2745,6 +2745,8 @@ export type Database = {
           is_marketplace_remitted: boolean | null
           is_multi_item: boolean | null
           item_count: number | null
+          manual_cost: number | null
+          manual_cost_description: string | null
           marketplace: Database["public"]["Enums"]["marketplace"]
           marketplace_fees: number | null
           marketplace_sku: string | null
@@ -2776,6 +2778,8 @@ export type Database = {
           is_marketplace_remitted?: boolean | null
           is_multi_item?: boolean | null
           item_count?: number | null
+          manual_cost?: number | null
+          manual_cost_description?: string | null
           marketplace: Database["public"]["Enums"]["marketplace"]
           marketplace_fees?: number | null
           marketplace_sku?: string | null
@@ -2807,6 +2811,8 @@ export type Database = {
           is_marketplace_remitted?: boolean | null
           is_multi_item?: boolean | null
           item_count?: number | null
+          manual_cost?: number | null
+          manual_cost_description?: string | null
           marketplace?: Database["public"]["Enums"]["marketplace"]
           marketplace_fees?: number | null
           marketplace_sku?: string | null
