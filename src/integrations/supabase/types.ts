@@ -911,6 +911,7 @@ export type Database = {
           import_batch_id: string | null
           model: string
           notes: string | null
+          original_cost_price: number | null
           purchase_date: string | null
           sale_price: number | null
           sku: string | null
@@ -937,6 +938,7 @@ export type Database = {
           import_batch_id?: string | null
           model: string
           notes?: string | null
+          original_cost_price?: number | null
           purchase_date?: string | null
           sale_price?: number | null
           sku?: string | null
@@ -963,6 +965,7 @@ export type Database = {
           import_batch_id?: string | null
           model?: string
           notes?: string | null
+          original_cost_price?: number | null
           purchase_date?: string | null
           sale_price?: number | null
           sku?: string | null
