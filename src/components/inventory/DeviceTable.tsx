@@ -70,6 +70,7 @@ interface DeviceTableProps {
   onProcurement: (device: { id: string; label: string }) => void;
   onTimeline: (device: Device) => void;
   onTransfer: (device: Device) => void;
+  onRepair?: (device: Device) => void;
   onRefresh: () => void;
 }
 
