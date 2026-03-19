@@ -273,6 +273,16 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
       return;
     }
 
+    if (!formData.category || formData.category === '') {
+      toast.error('Please select a category');
+      return;
+    }
+
+    if (!formData.vendor || formData.vendor.trim() === '') {
+      toast.error('Please enter a vendor');
+      return;
+    }
+
     if (!formData.is_shared && !formData.company_id && !isSuperAdmin) {
       toast.error('Please select a company');
       return;
@@ -301,7 +311,6 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
         amount: parseFloat(formData.amount),
         gst_hst_amount: computedTotals.gst,
         pst_amount: computedTotals.pst,
-        total_amount: computedTotals.total,
         category: formData.category as any,
         subcategory: formData.subcategory || null,
         expense_date: formData.expense_date,
@@ -497,7 +506,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
           {/* Category & Subcategory */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Category</Label>
+              <Label>Category *</Label>
               <Select value={formData.category} onValueChange={handleCategoryChange}>
                 <SelectTrigger>
                   <SelectValue />
@@ -596,7 +605,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
               />
             </div>
             <div className="space-y-2">
-              <Label>Vendor</Label>
+              <Label>Vendor *</Label>
               <Input
                 value={formData.vendor}
                 onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
