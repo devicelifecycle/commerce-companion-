@@ -303,6 +303,7 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-3 animate-fade-in">
+        <SystemAlertsBanner />
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
