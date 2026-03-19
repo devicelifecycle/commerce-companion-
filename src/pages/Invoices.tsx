@@ -398,7 +398,7 @@ export default function Invoices() {
           const companyCode = getCompanyCode(viewInvoice.company_id);
           const isVES = companyCode === 'VES';
           const arAccount = isVES ? '1050' : '1051';
-          const revenueAccount = isVES ? '4000' : '4100';
+          const revenueAccount = isVES ? '4400' : '4401';
           const { createAutoJournalEntry, getAccountIdByCode } = await import('@/lib/accounting/journalAutomation');
           const [arAccId, revAccId] = await Promise.all([
             getAccountIdByCode(viewInvoice.company_id!, arAccount),

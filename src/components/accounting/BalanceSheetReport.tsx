@@ -12,12 +12,14 @@ import { format } from 'date-fns';
 interface BalanceSheetData {
   assets: {
     cash: number;
+    accountsReceivable: number;
     inventory: number;
     prepaidExpenses: number;
     intercompanyReceivable: number;
     totalAssets: number;
   };
   liabilities: {
+    accountsPayable: number;
     gstPayable: number;
     qstPayable: number;
     intercompanyPayable: number;
@@ -33,68 +35,64 @@ interface BalanceSheetData {
   isBalanced: boolean;
 }
 
-export function BalanceSheetReport() {
-  const { selectedCompany } = useCompany();
+interface Props {
+  companyView?: string;
+}
+
+export function BalanceSheetReport({ companyView }: Props) {
+  const { selectedCompany, companies } = useCompany();
   const [loading, setLoading] = useState(true);
   const [asOfDate, setAsOfDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [data, setData] = useState<BalanceSheetData | null>(null);
 
+  const effectiveCompany = (() => {
+    if (companyView && companyView !== 'consolidated') {
+      return companies.find(c => c.id === companyView) || null;
+    }
+    if (companyView === 'consolidated') return null;
+    return selectedCompany;
+  })();
+
   useEffect(() => {
     fetchBalanceSheet();
-  }, [selectedCompany, asOfDate]);
+  }, [effectiveCompany?.id, asOfDate]);
 
   const fetchBalanceSheet = async () => {
     setLoading(true);
     try {
-      // Fetch all account balances
       let query = supabase
         .from('chart_of_accounts')
         .select('account_code, account_name, account_type, current_balance, normal_balance')
         .eq('is_active', true);
 
-      if (selectedCompany) {
-        query = query.eq('company_id', selectedCompany.id);
+      if (effectiveCompany) {
+        query = query.eq('company_id', effectiveCompany.id);
       }
 
       const { data: accounts, error } = await query;
       if (error) throw error;
 
       const bs: BalanceSheetData = {
-        assets: {
-          cash: 0,
-          inventory: 0,
-          prepaidExpenses: 0,
-          intercompanyReceivable: 0,
-          totalAssets: 0,
-        },
-        liabilities: {
-          gstPayable: 0,
-          qstPayable: 0,
-          intercompanyPayable: 0,
-          totalLiabilities: 0,
-        },
-        equity: {
-          ownersEquity: 0,
-          retainedEarnings: 0,
-          currentYearPL: 0,
-          totalEquity: 0,
-        },
+        assets: { cash: 0, accountsReceivable: 0, inventory: 0, prepaidExpenses: 0, intercompanyReceivable: 0, totalAssets: 0 },
+        liabilities: { accountsPayable: 0, gstPayable: 0, qstPayable: 0, intercompanyPayable: 0, totalLiabilities: 0 },
+        equity: { ownersEquity: 0, retainedEarnings: 0, currentYearPL: 0, totalEquity: 0 },
         totalLiabilitiesEquity: 0,
         isBalanced: false,
       };
 
-      // Process accounts
       (accounts || []).forEach((acc: any) => {
         const code = acc.account_code;
         const balance = Number(acc.current_balance || 0);
 
         // Assets
         if (code === '1000' || code === '1001') bs.assets.cash += balance;
+        else if (code === '1050' || code === '1051') bs.assets.accountsReceivable += balance;
         else if (code === '1100' || code === '1101') bs.assets.inventory += balance;
         else if (code === '1200' || code === '1201') bs.assets.prepaidExpenses += balance;
         else if (code === '2201') bs.assets.intercompanyReceivable += balance;
 
         // Liabilities
+        else if (code === '2010' || code === '2011') bs.liabilities.accountsPayable += balance;
         else if (code === '2000' || code === '2001') bs.liabilities.gstPayable += balance;
         else if (code === '2100' || code === '2101') bs.liabilities.qstPayable += balance;
         else if (code === '2200') bs.liabilities.intercompanyPayable += balance;
@@ -105,16 +103,14 @@ export function BalanceSheetReport() {
         else if (code === '3200' || code === '3201') bs.equity.currentYearPL += balance;
       });
 
-      // Calculate totals
-      bs.assets.totalAssets = bs.assets.cash + bs.assets.inventory + 
-        bs.assets.prepaidExpenses + bs.assets.intercompanyReceivable;
-      
-      bs.liabilities.totalLiabilities = bs.liabilities.gstPayable + 
-        bs.liabilities.qstPayable + bs.liabilities.intercompanyPayable;
-      
-      bs.equity.totalEquity = bs.equity.ownersEquity + 
-        bs.equity.retainedEarnings + bs.equity.currentYearPL;
-      
+      bs.assets.totalAssets = bs.assets.cash + bs.assets.accountsReceivable + bs.assets.inventory
+        + bs.assets.prepaidExpenses + bs.assets.intercompanyReceivable;
+
+      bs.liabilities.totalLiabilities = bs.liabilities.accountsPayable + bs.liabilities.gstPayable
+        + bs.liabilities.qstPayable + bs.liabilities.intercompanyPayable;
+
+      bs.equity.totalEquity = bs.equity.ownersEquity + bs.equity.retainedEarnings + bs.equity.currentYearPL;
+
       bs.totalLiabilitiesEquity = bs.liabilities.totalLiabilities + bs.equity.totalEquity;
       bs.isBalanced = Math.abs(bs.assets.totalAssets - bs.totalLiabilitiesEquity) < 0.01;
 
@@ -129,22 +125,26 @@ export function BalanceSheetReport() {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
 
+  const companyLabel = effectiveCompany?.name || 'All Companies';
+
   const handleExport = () => {
     if (!data) return;
-    
+
     const lines = [
       `Balance Sheet`,
-      `${selectedCompany?.name || 'All Companies'}`,
+      companyLabel,
       `As of: ${format(new Date(asOfDate), 'MMMM d, yyyy')}`,
       '',
       'ASSETS',
       `Cash,${data.assets.cash.toFixed(2)}`,
+      `Accounts Receivable,${data.assets.accountsReceivable.toFixed(2)}`,
       `Inventory (FIFO),${data.assets.inventory.toFixed(2)}`,
       `Prepaid Expenses,${data.assets.prepaidExpenses.toFixed(2)}`,
       `Inter-company Receivable,${data.assets.intercompanyReceivable.toFixed(2)}`,
       `Total Assets,${data.assets.totalAssets.toFixed(2)}`,
       '',
       'LIABILITIES',
+      `Accounts Payable,${data.liabilities.accountsPayable.toFixed(2)}`,
       `GST/HST Payable,${data.liabilities.gstPayable.toFixed(2)}`,
       `QST Payable,${data.liabilities.qstPayable.toFixed(2)}`,
       `Inter-company Payable,${data.liabilities.intercompanyPayable.toFixed(2)}`,
@@ -187,21 +187,14 @@ export function BalanceSheetReport() {
       <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-2">
           <Label>As of Date</Label>
-          <Input
-            type="date"
-            value={asOfDate}
-            onChange={(e) => setAsOfDate(e.target.value)}
-            className="w-[180px]"
-          />
+          <Input type="date" value={asOfDate} onChange={(e) => setAsOfDate(e.target.value)} className="w-[180px]" />
         </div>
         <div className="ml-auto flex gap-2">
           <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export
+            <Download className="h-4 w-4 mr-2" />Export
           </Button>
           <Button variant="outline" onClick={() => window.print()}>
-            <Printer className="h-4 w-4 mr-2" />
-            Print
+            <Printer className="h-4 w-4 mr-2" />Print
           </Button>
         </div>
       </div>
@@ -214,7 +207,7 @@ export function BalanceSheetReport() {
             Balance Sheet
           </CardTitle>
           <CardDescription>
-            {selectedCompany?.name || 'All Companies'} | As of {format(new Date(asOfDate), 'MMMM d, yyyy')}
+            {companyLabel} | As of {format(new Date(asOfDate), 'MMMM d, yyyy')}
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
@@ -222,11 +215,15 @@ export function BalanceSheetReport() {
             <div className="grid md:grid-cols-2 gap-8">
               {/* Assets */}
               <div>
-                <h3 className="font-bold text-lg text-blue-600 mb-4 pb-2 border-b">ASSETS</h3>
+                <h3 className="font-bold text-lg text-blue-500 mb-4 pb-2 border-b">ASSETS</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span>Cash</span>
                     <span className="font-medium">{formatCurrency(data.assets.cash)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Accounts Receivable</span>
+                    <span className="font-medium">{formatCurrency(data.assets.accountsReceivable)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Inventory (FIFO valuation)</span>
@@ -243,7 +240,7 @@ export function BalanceSheetReport() {
                     </div>
                   )}
                 </div>
-                <div className="flex justify-between font-bold text-lg mt-4 pt-4 border-t-2 border-blue-200">
+                <div className="flex justify-between font-bold text-lg mt-4 pt-4 border-t-2 border-blue-500/30">
                   <span>Total Assets</span>
                   <span>{formatCurrency(data.assets.totalAssets)}</span>
                 </div>
@@ -251,8 +248,12 @@ export function BalanceSheetReport() {
 
               {/* Liabilities & Equity */}
               <div>
-                <h3 className="font-bold text-lg text-amber-600 mb-4 pb-2 border-b">LIABILITIES</h3>
+                <h3 className="font-bold text-lg text-primary mb-4 pb-2 border-b">LIABILITIES</h3>
                 <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span>Accounts Payable</span>
+                    <span className="font-medium">{formatCurrency(data.liabilities.accountsPayable)}</span>
+                  </div>
                   <div className="flex justify-between">
                     <span>GST/HST Payable</span>
                     <span className="font-medium">{formatCurrency(data.liabilities.gstPayable)}</span>
@@ -277,7 +278,7 @@ export function BalanceSheetReport() {
 
                 <Separator className="my-6" />
 
-                <h3 className="font-bold text-lg text-purple-600 mb-4 pb-2 border-b">EQUITY</h3>
+                <h3 className="font-bold text-lg text-purple-500 mb-4 pb-2 border-b">EQUITY</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span>Owner's Equity</span>
@@ -289,7 +290,7 @@ export function BalanceSheetReport() {
                   </div>
                   <div className="flex justify-between">
                     <span>Current Year Profit/Loss</span>
-                    <span className={`font-medium ${data.equity.currentYearPL >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                    <span className={`font-medium ${data.equity.currentYearPL >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
                       {formatCurrency(data.equity.currentYearPL)}
                     </span>
                   </div>
@@ -299,7 +300,7 @@ export function BalanceSheetReport() {
                   <span>{formatCurrency(data.equity.totalEquity)}</span>
                 </div>
 
-                <div className={`flex justify-between font-bold text-lg mt-6 pt-4 border-t-2 ${data.isBalanced ? 'border-emerald-200' : 'border-destructive'}`}>
+                <div className={`flex justify-between font-bold text-lg mt-6 pt-4 border-t-2 ${data.isBalanced ? 'border-emerald-500/30' : 'border-destructive'}`}>
                   <span>Total Liabilities + Equity</span>
                   <span>{formatCurrency(data.totalLiabilitiesEquity)}</span>
                 </div>
@@ -312,9 +313,9 @@ export function BalanceSheetReport() {
           )}
 
           {data && (
-            <div className={`mt-6 p-4 rounded-lg text-center ${data.isBalanced ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+            <div className={`mt-6 p-4 rounded-lg text-center border ${data.isBalanced ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-destructive/40 bg-destructive/10'}`}>
               {data.isBalanced ? (
-                <p className="text-emerald-700 dark:text-emerald-300 font-medium">
+                <p className="text-emerald-500 font-medium">
                   ✓ Balance Sheet is balanced (Assets = Liabilities + Equity)
                 </p>
               ) : (

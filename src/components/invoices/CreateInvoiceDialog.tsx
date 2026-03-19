@@ -271,7 +271,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
       try {
         const isVES = invoiceCompany?.code === 'VES';
         const arAccount = isVES ? '1050' : '1051';
-        const revenueAccount = isVES ? '4000' : '4100';
+        const revenueAccount = isVES ? '4400' : '4401';
         const taxCollectedAccount = isVES ? '4200' : '4201';
 
         const [arAccId, revenueAccId, taxAccId] = await Promise.all([

@@ -4,6 +4,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useCompany } from '@/contexts/CompanyContext';
+import { getCompanyDisplayName } from '@/lib/companyNames';
 
 // Statements
 import { ProfitLossReport } from '@/components/accounting/ProfitLossReport';
@@ -35,9 +36,10 @@ import { CostLedgerPanel } from '@/components/financials/CostLedgerPanel';
 import { AccountingAuditTrail } from '@/components/financials/AccountingAuditTrail';
 
 import {
-  TrendingUp, ArrowLeftRight, Receipt, Building2,
+  TrendingUp, ArrowLeftRight, Receipt,
   Scale, CheckSquare, Calculator, FileText, LayoutDashboard,
   Warehouse, Banknote, Wallet, BookOpen, ClipboardCheck,
+  Building2,
 } from 'lucide-react';
 
 type SubView =
@@ -136,32 +138,38 @@ export default function Financials() {
       <DashboardLayout>
         <div className="space-y-4 animate-fade-in">
           {/* Header */}
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-display font-bold gradient-text">Financials</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Statements · Ledger · Cost Ledger · AP/AR · Reconciliation · Taxes · Audit Trail
-              </p>
-            </div>
+          <div>
+            <h1 className="text-2xl font-display font-bold text-foreground">Financials</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Statements · Ledger · Cost Ledger · AP/AR · Reconciliation · Taxes · Audit Trail
+            </p>
+          </div>
 
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-              <ToggleGroup
-                type="single"
-                value={companyView}
-                onValueChange={(v) => { if (v) setCompanyView(v); }}
-                className="bg-muted rounded-lg p-0.5"
+          {/* Company Filter — Prominent */}
+          <div className="flex items-center gap-3">
+            <Building2 className="h-5 w-5 text-muted-foreground" />
+            <ToggleGroup
+              type="single"
+              value={companyView}
+              onValueChange={(v) => { if (v) setCompanyView(v); }}
+              className="bg-muted rounded-lg p-1 border border-border"
+            >
+              <ToggleGroupItem
+                value="consolidated"
+                className="text-sm px-4 py-2 font-medium"
               >
-               <ToggleGroupItem value="consolidated" className="text-xs px-2.5 py-1">
-                  All
+                All Companies
+              </ToggleGroupItem>
+              {companies.map(c => (
+                <ToggleGroupItem
+                  key={c.id}
+                  value={c.id}
+                  className="text-sm px-4 py-2 font-medium"
+                >
+                  {getCompanyDisplayName(c.code)}
                 </ToggleGroupItem>
-                {companies.map(c => (
-                  <ToggleGroupItem key={c.id} value={c.id} className="text-xs px-2.5 py-1">
-                    {c.code}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-            </div>
+              ))}
+            </ToggleGroup>
           </div>
 
           <FinancialsGuide />
@@ -181,7 +189,7 @@ export default function Financials() {
             ))}
           </ToggleGroup>
 
-          {/* Sub-view selector (only if section has multiple views) */}
+          {/* Sub-view selector */}
           {currentSection && currentSection.views.length > 1 && (
             <ToggleGroup
               type="single"
@@ -200,8 +208,8 @@ export default function Financials() {
 
           {/* Content */}
           <div className="min-h-[400px]">
-            {subView === 'pl' && <ProfitLossReport />}
-            {subView === 'balance-sheet' && <BalanceSheetReport />}
+            {subView === 'pl' && <ProfitLossReport companyView={companyView} />}
+            {subView === 'balance-sheet' && <BalanceSheetReport companyView={companyView} />}
 
             {subView === 'chart-of-accounts' && <ChartOfAccounts />}
             {subView === 'journal-entries' && <JournalEntries />}
