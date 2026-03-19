@@ -3,15 +3,34 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { MarketplaceBadge, FulfillmentBadge, MarketplaceStatusBadge } from '@/components/ui/status-badge';
-import { Package, User, MapPin, DollarSign, Calendar, FileText, RotateCcw, Link, Unlink } from 'lucide-react';
+import { Package, User, MapPin, DollarSign, Calendar, FileText, RotateCcw, Link, Unlink, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DeviceSearchCombobox } from '@/components/inventory/DeviceSearchCombobox';
 import { ProductSearchCombobox } from '@/components/inventory/ProductSearchCombobox';
 import { toast } from 'sonner';
+
+const PROVINCES = [
+  { code: 'AB', name: 'Alberta' },
+  { code: 'BC', name: 'British Columbia' },
+  { code: 'MB', name: 'Manitoba' },
+  { code: 'NB', name: 'New Brunswick' },
+  { code: 'NL', name: 'Newfoundland and Labrador' },
+  { code: 'NS', name: 'Nova Scotia' },
+  { code: 'NT', name: 'Northwest Territories' },
+  { code: 'NU', name: 'Nunavut' },
+  { code: 'ON', name: 'Ontario' },
+  { code: 'PE', name: 'Prince Edward Island' },
+  { code: 'QC', name: 'Quebec' },
+  { code: 'SK', name: 'Saskatchewan' },
+  { code: 'YT', name: 'Yukon' },
+];
 
 interface Sale {
   id: string;
@@ -35,6 +54,7 @@ interface Sale {
   accounting_status?: string | null;
   product_title?: string | null;
   marketplace_sku?: string | null;
+  shipping_province?: string | null;
   devices?: {
     brand: string;
     model: string;
@@ -61,6 +81,66 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [linkType, setLinkType] = useState<'device' | 'product'>('device');
   const [linking, setLinking] = useState(false);
+  const [savingProvince, setSavingProvince] = useState(false);
+
+  const handleProvinceChange = async (provinceCode: string) => {
+    setSavingProvince(true);
+    try {
+      // Fetch tax rates for the selected province
+      const { data: taxRate, error: taxError } = await supabase
+        .from('provincial_tax_rates')
+        .select('*')
+        .eq('province_code', provinceCode)
+        .single();
+
+      if (taxError) throw taxError;
+
+      // Recalculate tax based on sale price
+      let newTaxAmount = 0;
+      let calculatedGst = 0, calculatedHst = 0, calculatedPst = 0, calculatedQst = 0;
+
+      if (taxRate.is_hst_province && taxRate.hst_rate) {
+        calculatedHst = parseFloat((sale.sale_price * taxRate.hst_rate / 100).toFixed(2));
+        newTaxAmount = calculatedHst;
+      } else {
+        if (taxRate.gst_rate) calculatedGst = parseFloat((sale.sale_price * taxRate.gst_rate / 100).toFixed(2));
+        if (taxRate.pst_rate) calculatedPst = parseFloat((sale.sale_price * taxRate.pst_rate / 100).toFixed(2));
+        if (taxRate.qst_rate) calculatedQst = parseFloat((sale.sale_price * taxRate.qst_rate / 100).toFixed(2));
+        newTaxAmount = calculatedGst + calculatedPst + calculatedQst;
+      }
+
+      // Update the sale with new province and recalculated tax
+      const { error: updateError } = await supabase
+        .from('sales')
+        .update({
+          shipping_province: provinceCode,
+          tax_amount: parseFloat(newTaxAmount.toFixed(2)),
+        })
+        .eq('id', sale.id);
+
+      if (updateError) throw updateError;
+
+      // Update sales_tax_details
+      await supabase
+        .from('sales_tax_details')
+        .update({
+          customer_province: provinceCode,
+          gst_amount: calculatedGst,
+          hst_amount: calculatedHst,
+          pst_amount: calculatedPst,
+          qst_amount: calculatedQst,
+          total_tax: parseFloat(newTaxAmount.toFixed(2)),
+        })
+        .eq('sale_id', sale.id);
+
+      toast.success(`Province updated to ${provinceCode} — tax recalculated to ${new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(newTaxAmount)}`);
+      onSaleUpdated?.();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update province');
+    } finally {
+      setSavingProvince(false);
+    }
+  };
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
@@ -217,6 +297,31 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                   <p className="font-medium">{sale.shipping_address}</p>
                 </div>
               )}
+              <div className="col-span-2">
+                <p className="text-muted-foreground text-xs flex items-center gap-1 mb-1">
+                  <MapPin className="h-3 w-3" /> Shipping Province (for tax)
+                  {!sale.shipping_province && (
+                    <span className="inline-flex items-center gap-0.5 text-destructive ml-1">
+                      <AlertTriangle className="h-3 w-3" /> Not set
+                    </span>
+                  )}
+                </p>
+                <Select
+                  value={sale.shipping_province || 'none'}
+                  onValueChange={(v) => { if (v !== 'none') handleProvinceChange(v); }}
+                  disabled={savingProvince}
+                >
+                  <SelectTrigger className="h-8 text-sm w-[220px]">
+                    <SelectValue placeholder="Select province" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Select province…</SelectItem>
+                    {PROVINCES.map(p => (
+                      <SelectItem key={p.code} value={p.code}>{p.code} — {p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
