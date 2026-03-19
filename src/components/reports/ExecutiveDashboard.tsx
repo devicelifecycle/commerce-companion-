@@ -67,6 +67,8 @@ export function ExecutiveDashboard({ companyView = 'consolidated' }: ExecutiveDa
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [expenseData, setExpenseData] = useState<any[]>([]);
 
+  useEffect(() => { fetchData(); }, [dateRange, companyView]);
+
   const fetchData = async () => {
     setLoading(true);
     try {
