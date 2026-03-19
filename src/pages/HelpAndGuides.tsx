@@ -253,7 +253,7 @@ const GENERAL_SECTIONS = [
   { title: 'Double-Entry Bookkeeping', icon: <Calculator className="h-4 w-4 text-primary" />, content: 'Every financial transaction is recorded with at least two entries: a debit and a credit of equal value. Assets and expenses increase with debits; liabilities, equity, and revenue increase with credits. The fundamental equation (Assets = Liabilities + Equity) must always balance.' },
   { title: 'FIFO Inventory Valuation', icon: <Package className="h-4 w-4 text-primary" />, content: 'Inventory is valued using the First-In, First-Out (FIFO) method. When devices are sold, the cost of the oldest inventory is recognized as Cost of Goods Sold first. Each import batch creates a "cost layer" — when a device from that batch is sold, its original purchase cost (plus any allocated shipping/charges) becomes COGS.' },
   { title: 'Multi-Entity Structure (VES & TGW)', icon: <Building2 className="h-4 w-4 text-primary" />, content: 'The business operates as two separate legal entities: Virtual eShop (VES) and Tech Genius Warehouse (TGW). Each entity has its own set of books — separate bank accounts, AR/AP, inventory, and tax obligations. VES primarily sells on Amazon; TGW sells on Best Buy and Shopify. Shared expenses are allocated between entities using configurable percentages.' },
-  { title: 'Canadian Tax Obligations (GST/HST)', icon: <Receipt className="h-4 w-4 text-primary" />, content: 'As Ontario-based businesses, both entities collect HST at 13% on taxable sales. Tax collected is held as a liability (GST/HST Payable) until remitted to the CRA. Input Tax Credits (ITCs) are claimed on GST/HST paid on business purchases, reducing the net tax owing.' },
+  { title: 'Canadian Tax Obligations (GST/HST)', icon: <Receipt className="h-4 w-4 text-primary" />, content: 'As Ontario-based businesses, both entities collect and remit HST at 13% on taxable sales (seller-remitted model). Tax collected is held as a liability (GST/HST Payable) until remitted to the CRA on an annual basis. The fiscal year follows the calendar year (January–December). Input Tax Credits (ITCs) are claimed on GST/HST paid on business purchases, reducing the net tax owing.' },
   { title: 'Accounts Receivable (AR) Lifecycle', icon: <TrendingUp className="h-4 w-4 text-primary" />, content: 'AR represents money owed to the business. When a sale occurs or an invoice is issued, an AR entry is created with the full amount due. As payments are received, the AR balance decreases. The aging report categorizes outstanding AR by how long it has been unpaid.' },
   { title: 'Accounts Payable (AP) Lifecycle', icon: <DollarSign className="h-4 w-4 text-primary" />, content: 'AP represents money the business owes to suppliers. When goods are received (via GRN) or when an expense uses a non-immediate payment method, an AP entry is created. Payments against AP are recorded individually, and partial payments are supported.' },
   { title: 'Inter-Company Transactions', icon: <GitBranch className="h-4 w-4 text-primary" />, content: 'When inventory moves between VES and TGW, the system creates matching inter-company entries. The selling entity records revenue and an inter-company receivable; the buying entity records inventory and an inter-company payable. These balances must net to zero in consolidated reporting.' },
@@ -364,9 +364,9 @@ const ACCOUNTING_FLOWS = [
     steps: [
       'Tax collected on sales accumulates in GST/HST Payable',
       'ITCs from purchases offset payable amount',
-      'Net tax liability calculated for filing period',
+      'Net tax liability calculated for annual filing period (calendar year)',
       'Payment recorded → DR GST/HST Payable / CR Cash',
-      'Filing period marked as submitted/paid',
+      'Annual filing submitted to CRA and period marked as paid',
     ],
   },
 ];
