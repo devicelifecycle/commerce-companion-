@@ -81,6 +81,66 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [linkType, setLinkType] = useState<'device' | 'product'>('device');
   const [linking, setLinking] = useState(false);
+  const [savingProvince, setSavingProvince] = useState(false);
+
+  const handleProvinceChange = async (provinceCode: string) => {
+    setSavingProvince(true);
+    try {
+      // Fetch tax rates for the selected province
+      const { data: taxRate, error: taxError } = await supabase
+        .from('provincial_tax_rates')
+        .select('*')
+        .eq('province_code', provinceCode)
+        .single();
+
+      if (taxError) throw taxError;
+
+      // Recalculate tax based on sale price
+      let newTaxAmount = 0;
+      let calculatedGst = 0, calculatedHst = 0, calculatedPst = 0, calculatedQst = 0;
+
+      if (taxRate.is_hst_province && taxRate.hst_rate) {
+        calculatedHst = parseFloat((sale.sale_price * taxRate.hst_rate / 100).toFixed(2));
+        newTaxAmount = calculatedHst;
+      } else {
+        if (taxRate.gst_rate) calculatedGst = parseFloat((sale.sale_price * taxRate.gst_rate / 100).toFixed(2));
+        if (taxRate.pst_rate) calculatedPst = parseFloat((sale.sale_price * taxRate.pst_rate / 100).toFixed(2));
+        if (taxRate.qst_rate) calculatedQst = parseFloat((sale.sale_price * taxRate.qst_rate / 100).toFixed(2));
+        newTaxAmount = calculatedGst + calculatedPst + calculatedQst;
+      }
+
+      // Update the sale with new province and recalculated tax
+      const { error: updateError } = await supabase
+        .from('sales')
+        .update({
+          shipping_province: provinceCode,
+          tax_amount: parseFloat(newTaxAmount.toFixed(2)),
+        })
+        .eq('id', sale.id);
+
+      if (updateError) throw updateError;
+
+      // Update sales_tax_details
+      await supabase
+        .from('sales_tax_details')
+        .update({
+          customer_province: provinceCode,
+          gst_amount: calculatedGst,
+          hst_amount: calculatedHst,
+          pst_amount: calculatedPst,
+          qst_amount: calculatedQst,
+          total_tax: parseFloat(newTaxAmount.toFixed(2)),
+        })
+        .eq('sale_id', sale.id);
+
+      toast.success(`Province updated to ${provinceCode} — tax recalculated to ${new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(newTaxAmount)}`);
+      onSaleUpdated?.();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update province');
+    } finally {
+      setSavingProvince(false);
+    }
+  };
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
