@@ -199,7 +199,7 @@ export function ChartOfAccounts() {
     }
   };
 
-
+  const initializeDefaultAccounts = async () => {
     if (!selectedCompany) {
       toast.error('Please select a company first');
       return;
