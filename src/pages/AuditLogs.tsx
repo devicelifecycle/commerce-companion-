@@ -21,7 +21,9 @@ import {
   FileText, Search, AlertCircle, Download, ChevronLeft, ChevronRight,
   Eye, History, Shield, Monitor, Globe, Clock, User, Database,
   Link2, Activity, BookOpen, LogIn, Layers, ArrowRight,
+  PackageSearch,
 } from 'lucide-react';
+import { UnaccountedMarketplaceData } from '@/components/audit/UnaccountedMarketplaceData';
 
 interface AuditLog {
   id: string;
