@@ -128,6 +128,17 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
         if (companyFilter) salesQuery = salesQuery.or(companyFilter);
         const { data: sales } = await salesQuery;
 
+        // Fetch invoices (non-cancelled) for invoice revenue
+        let invoicesQuery = supabase
+          .from('invoices')
+          .select('subtotal, tax_amount, total, status, company_id')
+          .gte('issue_date', startDate.toISOString().split('T')[0])
+          .lte('issue_date', endDate.toISOString().split('T')[0])
+          .neq('status', 'cancelled');
+        
+        if (companyFilter) invoicesQuery = invoicesQuery.or(companyFilter);
+        const { data: invoices } = await invoicesQuery;
+
         // Fetch expenses
         let expensesQuery = supabase
           .from('expenses')
@@ -164,6 +175,12 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
         sales?.forEach(s => {
           grossSalesByMarketplace[s.marketplace] = (grossSalesByMarketplace[s.marketplace] || 0) + Number(s.sale_price);
         });
+
+        // Add invoice revenue as a separate line
+        const invoiceRevenue = invoices?.reduce((sum, inv) => sum + Number(inv.subtotal || 0), 0) || 0;
+        if (invoiceRevenue > 0) {
+          grossSalesByMarketplace['invoices'] = invoiceRevenue;
+        }
 
         const grossSales = Object.values(grossSalesByMarketplace).reduce((sum, v) => sum + v, 0);
         const returns = 0; // Would need returns tracking
