@@ -161,30 +161,25 @@ export default function Home() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="bg-[hsl(var(--warning)/.1)] p-4 rounded-lg border border-[hsl(var(--warning)/.3)]">
-              <p className="text-sm font-medium text-[hsl(var(--warning))]">
-                ⚠️ Amazon, BestBuy, and Shopify collect and remit tax to CRA on your behalf.
-              </p>
-            </div>
             <div className="grid md:grid-cols-3 gap-4">
               <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
-                <h4 className="font-semibold text-sm mb-1">Marketplace Tax</h4>
+                <h4 className="font-semibold text-sm mb-1">Seller-Remitted Tax</h4>
                 <p className="text-xs text-muted-foreground">
-                  Tax collected by marketplaces is NOT your revenue. It flows through with zero net effect on profit.
+                  As the seller, you collect and remit GST/HST to the CRA. Tax collected is tracked in GST/HST Payable and remitted on your annual filing.
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
                 <h4 className="font-semibold text-sm mb-1">Input Tax Credits (ITC)</h4>
                 <p className="text-xs text-muted-foreground">
-                  GST/HST paid on purchases IS recoverable. Tracked in accounts 8000/8001 and claimed on CRA filing.
+                  GST/HST paid on purchases IS recoverable. Tracked in accounts 8000/8001 and claimed on CRA filing to offset tax collected.
                 </p>
               </div>
               <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
-                <h4 className="font-semibold text-sm mb-1">Net Tax Formula</h4>
+                <h4 className="font-semibold text-sm mb-1">Annual Filing</h4>
                 <p className="text-xs text-muted-foreground font-mono">
                   Net Tax = Tax Collected − ITC Claimed
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">CRA Lines 101–109 formatted reports available.</p>
+                <p className="text-xs text-muted-foreground mt-1">Calendar year (Jan–Dec). Annual filing and remittance to CRA.</p>
               </div>
             </div>
           </CardContent>
