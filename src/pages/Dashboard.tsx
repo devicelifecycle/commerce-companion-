@@ -100,10 +100,11 @@ export default function Dashboard() {
       const last24h = subHours(now, 24);
       const companyFilter = getCompanyFilter();
 
-      // Sales
+      // Sales — explicit limit to avoid the 1000-row default cap
       let salesQ = supabase.from('sales')
         .select('id, sale_price, profit, marketplace, sale_date, marketplace_fees, shipping_cost, company_id, devices(brand, model, category, cost_price, created_at)')
-        .gte('sale_date', startDate.toISOString());
+        .gte('sale_date', startDate.toISOString())
+        .limit(5000);
       if (companyFilter) salesQ = salesQ.eq('company_id', companyFilter);
       const { data: sales } = await salesQ;
 
