@@ -573,6 +573,7 @@ serve(async (req) => {
             customer_name: customerName,
             customer_email: customerEmail,
             shipping_address: shippingAddress,
+            shipping_province: provinceCode || null,
             notes: notes,
             device_id: deviceId,
             company_id: companyId,
