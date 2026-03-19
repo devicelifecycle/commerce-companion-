@@ -71,7 +71,8 @@ const SECTIONS = [
     label: 'Reconciliation',
     icon: CheckSquare,
     views: [
-      { value: 'reconciliation' as SubView, label: 'Reconciliation', icon: CheckSquare },
+      { value: 'reconciliation' as SubView, label: 'Marketplace', icon: CheckSquare },
+      { value: 'payouts' as SubView, label: 'Payouts', icon: Banknote },
     ],
   },
   {
