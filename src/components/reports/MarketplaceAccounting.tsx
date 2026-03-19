@@ -30,7 +30,7 @@ interface MarketplaceAccountingProps {
 export function MarketplaceAccounting({ companyView = 'consolidated' }: MarketplaceAccountingProps) {
   const { companies } = useCompany();
   const [loading, setLoading] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState(format(new Date(), 'yyyy-MM'));
+  const [dateRange, setDateRange] = useState('3');
   const [metrics, setMetrics] = useState<MarketplaceMetrics[]>([]);
 
   useEffect(() => {
