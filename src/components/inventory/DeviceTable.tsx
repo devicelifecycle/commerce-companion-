@@ -18,7 +18,7 @@ import {
 import { toast } from 'sonner';
 import {
   MoreHorizontal, Edit2, QrCode, FileText, Clock, ArrowRightLeft,
-  Send, Trash2, Smartphone,
+  Send, Trash2, Smartphone, Wrench,
 } from 'lucide-react';
 import { useState } from 'react';
 
