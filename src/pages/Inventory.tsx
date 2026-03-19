@@ -14,6 +14,8 @@ import { InventoryGuide } from '@/components/guides/InventoryGuide';
 
 import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker';
 import { ProductsManagement } from '@/components/inventory/ProductsManagement';
+import { RepairPartsManagement } from '@/components/inventory/RepairPartsManagement';
+import { DeviceRepairDialog } from '@/components/inventory/DeviceRepairDialog';
 
 import { DeviceProcurementDialog } from '@/components/inventory/DeviceProcurementDialog';
 import { DeviceTimelineDialog } from '@/components/inventory/DeviceTimelineDialog';
