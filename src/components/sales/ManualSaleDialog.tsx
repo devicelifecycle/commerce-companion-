@@ -44,6 +44,15 @@ interface LineItem {
   item_type: 'device' | 'product' | 'custom';
 }
 
+const PROVINCES = [
+  { code: 'AB', name: 'Alberta' }, { code: 'BC', name: 'British Columbia' },
+  { code: 'MB', name: 'Manitoba' }, { code: 'NB', name: 'New Brunswick' },
+  { code: 'NL', name: 'Newfoundland and Labrador' }, { code: 'NS', name: 'Nova Scotia' },
+  { code: 'NT', name: 'Northwest Territories' }, { code: 'NU', name: 'Nunavut' },
+  { code: 'ON', name: 'Ontario' }, { code: 'PE', name: 'Prince Edward Island' },
+  { code: 'QC', name: 'Quebec' }, { code: 'SK', name: 'Saskatchewan' }, { code: 'YT', name: 'Yukon' },
+];
+
 const orderSchema = z.object({
   order_number: z.string().min(1, 'Order number is required'),
   marketplace: z.enum(['shopify', 'amazon', 'bestbuy', 'other']),
@@ -52,6 +61,7 @@ const orderSchema = z.object({
   customer_name: z.string().optional(),
   customer_email: z.string().email().optional().or(z.literal('')),
   shipping_address: z.string().optional(),
+  shipping_province: z.string().optional(),
   notes: z.string().optional(),
 });
 
