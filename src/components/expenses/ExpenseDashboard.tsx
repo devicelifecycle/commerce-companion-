@@ -109,9 +109,11 @@ export function ExpenseDashboard() {
     const lastMonthStart = startOfMonth(subMonths(now, 1));
     const lastMonthEnd = endOfMonth(subMonths(now, 1));
 
-    // Calculate effective amount for company
+    // Calculate effective amount for company (net of refunds)
     const getEffectiveAmount = (expense: Expense) => {
-      const total = (expense.amount || 0) + (expense.gst_hst_amount || 0) + (expense.pst_amount || 0);
+      const gross = (expense.amount || 0) + (expense.gst_hst_amount || 0) + (expense.pst_amount || 0);
+      const refunded = refundMap[expense.id] || 0;
+      const total = gross - refunded;
       if (!expense.is_shared) return total;
       
       if (selectedCompany) {
