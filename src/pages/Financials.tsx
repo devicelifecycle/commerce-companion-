@@ -9,11 +9,8 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { ProfitLossReport } from '@/components/accounting/ProfitLossReport';
 import { BalanceSheetReport } from '@/components/accounting/BalanceSheetReport';
 
-// Reports
-import { ExecutiveDashboard } from '@/components/reports/ExecutiveDashboard';
-import { MarketplaceAccounting } from '@/components/reports/MarketplaceAccounting';
+// Reconciliation
 import { MarketplaceReconciliation } from '@/components/reports/MarketplaceReconciliation';
-import { MarketplaceFeeAnalytics } from '@/components/reports/MarketplaceFeeAnalytics';
 
 // AP & AR
 import { AccountsPayable } from '@/components/accounting/AccountsPayable';
@@ -29,17 +26,17 @@ import { TaxFilingReport } from '@/components/taxes/TaxFilingReport';
 import { CostLedgerPanel } from '@/components/financials/CostLedgerPanel';
 
 import {
-  TrendingUp, BarChart3, ArrowLeftRight, Receipt, Building2,
-  Scale, Store, CheckSquare, Calculator, FileText, LayoutDashboard,
-  Warehouse, Package, Users,
+  TrendingUp, ArrowLeftRight, Receipt, Building2,
+  Scale, CheckSquare, Calculator, FileText, LayoutDashboard,
+  Warehouse,
 } from 'lucide-react';
 
 type SubView =
   | 'pl' | 'balance-sheet'
-  | 'executive' | 'marketplace' | 'fees' | 'reconciliation'
+  | 'reconciliation'
   | 'ap' | 'ar'
   | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing'
-  | 'cost-devices' | 'cost-batches' | 'cost-suppliers';
+  | 'cost-devices';
 
 const SECTIONS = [
   {
@@ -69,13 +66,10 @@ const SECTIONS = [
     ],
   },
   {
-    key: 'reports',
-    label: 'Reports',
-    icon: BarChart3,
+    key: 'reconciliation',
+    label: 'Reconciliation',
+    icon: CheckSquare,
     views: [
-      { value: 'executive' as SubView, label: 'Executive', icon: LayoutDashboard },
-      { value: 'marketplace' as SubView, label: 'Marketplace', icon: Store },
-      { value: 'fees' as SubView, label: 'Fees', icon: Receipt },
       { value: 'reconciliation' as SubView, label: 'Reconciliation', icon: CheckSquare },
     ],
   },
@@ -116,7 +110,7 @@ export default function Financials() {
             <div>
               <h1 className="text-2xl font-display font-bold gradient-text">Financials</h1>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Statements · Cost Ledger · AP/AR · Reports · Taxes
+                Statements · Cost Ledger · AP/AR · Reconciliation · Taxes
               </p>
             </div>
 
@@ -181,9 +175,6 @@ export default function Financials() {
 
             {subView === 'cost-devices' && <CostLedgerPanel companyView={companyView} />}
 
-            {subView === 'executive' && <ExecutiveDashboard companyView={companyView} />}
-            {subView === 'marketplace' && <MarketplaceAccounting companyView={companyView} />}
-            {subView === 'fees' && <MarketplaceFeeAnalytics companyView={companyView} />}
             {subView === 'reconciliation' && <MarketplaceReconciliation companyView={companyView} />}
 
             {subView === 'ap' && <AccountsPayable companyFilter={companyView} />}

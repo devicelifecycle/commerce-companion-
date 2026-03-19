@@ -62,8 +62,8 @@ const expenseNav = [
 ];
 
 const analyticsNav = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
-  { title: 'Financials', url: '/financials', icon: BarChart3 },
+  { title: 'Reports', url: '/dashboard', icon: BarChart3 },
+  { title: 'Financials', url: '/financials', icon: Wallet },
   { title: 'Forecasting', url: '/forecasting', icon: Brain },
 ];
 
