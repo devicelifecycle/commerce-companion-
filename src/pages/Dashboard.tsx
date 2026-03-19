@@ -340,14 +340,14 @@ export default function Dashboard() {
             {/* Row 1: Core profitability ratios */}
             <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
               {[
-                { icon: Percent, label: 'Gross Margin', value: fmtPct(metrics.grossMargin), sub: fmt(metrics.grossProfit), color: metrics.grossMargin >= 20 ? 'text-success' : 'text-warning', ic: 'text-primary' },
-                { icon: Percent, label: 'Net Margin', value: fmtPct(metrics.netMargin), sub: fmt(metrics.netProfit), color: metrics.netMargin >= 10 ? 'text-success' : metrics.netMargin >= 0 ? 'text-warning' : 'text-destructive', ic: 'text-secondary' },
-                { icon: RefreshCw, label: 'Inv Turnover', value: `${metrics.inventoryTurnover.toFixed(1)}x`, sub: `${metrics.avgDaysToSell}d avg`, color: '', ic: 'text-info' },
-                { icon: Target, label: 'ROI on Inv', value: fmtPct(metrics.returnOnInventory), sub: fmt(metrics.inventoryValue), color: metrics.returnOnInventory > 0 ? 'text-success' : 'text-destructive', ic: 'text-accent' },
-                { icon: TrendingDown, label: 'Exp/Rev Ratio', value: fmtPct(metrics.expenseToRevenueRatio), sub: fmt(metrics.totalExpenses), color: metrics.expenseToRevenueRatio < 15 ? 'text-success' : 'text-warning', ic: 'text-warning' },
-                { icon: DollarSign, label: 'Profit/Unit', value: fmt(metrics.avgProfitPerUnit), sub: `${metrics.totalOrders} sold`, color: metrics.avgProfitPerUnit > 0 ? 'text-success' : 'text-destructive', ic: 'text-success' },
+                { icon: Percent, label: 'Gross Margin', value: fmtPct(metrics.grossMargin), sub: fmt(metrics.grossProfit), color: metrics.grossMargin >= 20 ? 'text-success' : 'text-warning', ic: 'text-primary', href: '/financials' },
+                { icon: Percent, label: 'Net Margin', value: fmtPct(metrics.netMargin), sub: fmt(metrics.netProfit), color: metrics.netMargin >= 10 ? 'text-success' : metrics.netMargin >= 0 ? 'text-warning' : 'text-destructive', ic: 'text-secondary', href: '/financials' },
+                { icon: RefreshCw, label: 'Inv Turnover', value: `${metrics.inventoryTurnover.toFixed(1)}x`, sub: `${metrics.avgDaysToSell}d avg`, color: '', ic: 'text-info', href: '/inventory' },
+                { icon: Target, label: 'ROI on Inv', value: fmtPct(metrics.returnOnInventory), sub: fmt(metrics.inventoryValue), color: metrics.returnOnInventory > 0 ? 'text-success' : 'text-destructive', ic: 'text-accent', href: '/inventory' },
+                { icon: TrendingDown, label: 'Exp/Rev Ratio', value: fmtPct(metrics.expenseToRevenueRatio), sub: fmt(metrics.totalExpenses), color: metrics.expenseToRevenueRatio < 15 ? 'text-success' : 'text-warning', ic: 'text-warning', href: '/expenses' },
+                { icon: DollarSign, label: 'Profit/Unit', value: fmt(metrics.avgProfitPerUnit), sub: `${metrics.totalOrders} sold`, color: metrics.avgProfitPerUnit > 0 ? 'text-success' : 'text-destructive', ic: 'text-success', href: '/orders' },
               ].map(kpi => (
-                <div key={kpi.label} className="bg-card border border-border/60 rounded-lg p-2.5 hover:border-primary/40 transition-colors">
+                <div key={kpi.label} className="bg-card border border-border/60 rounded-lg p-2.5 hover:border-primary/40 transition-colors cursor-pointer" onClick={() => navigate(kpi.href)}>
                   <div className="flex items-center gap-1.5 mb-1">
                     <kpi.icon className={`h-3 w-3 ${kpi.ic}`} />
                     <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider truncate">{kpi.label}</span>
@@ -361,16 +361,16 @@ export default function Dashboard() {
             {/* Row 2: Financial snapshot tiles */}
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2">
               {[
-                { label: 'Revenue', value: fmt(metrics.totalRevenue), icon: TrendingUp, ic: 'text-primary' },
-                { label: 'COGS', value: fmt(metrics.totalCOGS), icon: Package, ic: 'text-secondary' },
-                { label: 'Expenses', value: fmt(metrics.totalExpenses), icon: Wallet, ic: 'text-warning' },
-                { label: 'Net Profit', value: fmt(metrics.netProfit), icon: DollarSign, ic: metrics.netProfit >= 0 ? 'text-success' : 'text-destructive' },
-                { label: 'Cash', value: fmt(metrics.cashPosition), icon: Wallet, ic: 'text-primary' },
-                { label: 'Inv Value', value: fmt(metrics.inventoryValue), icon: Package, ic: 'text-secondary' },
-                { label: 'AR Owed', value: fmt(metrics.outstandingAR), icon: ArrowUpRight, ic: 'text-success' },
-                { label: 'AP Owed', value: fmt(metrics.outstandingAP), icon: ArrowDownRight, ic: 'text-destructive' },
+                { label: 'Revenue', value: fmt(metrics.totalRevenue), icon: TrendingUp, ic: 'text-primary', href: '/financials' },
+                { label: 'COGS', value: fmt(metrics.totalCOGS), icon: Package, ic: 'text-secondary', href: '/financials' },
+                { label: 'Expenses', value: fmt(metrics.totalExpenses), icon: Wallet, ic: 'text-warning', href: '/expenses' },
+                { label: 'Net Profit', value: fmt(metrics.netProfit), icon: DollarSign, ic: metrics.netProfit >= 0 ? 'text-success' : 'text-destructive', href: '/financials' },
+                { label: 'Cash', value: fmt(metrics.cashPosition), icon: Wallet, ic: 'text-primary', href: '/financials' },
+                { label: 'Inv Value', value: fmt(metrics.inventoryValue), icon: Package, ic: 'text-secondary', href: '/inventory' },
+                { label: 'AR Owed', value: fmt(metrics.outstandingAR), icon: ArrowUpRight, ic: 'text-success', href: '/financials' },
+                { label: 'AP Owed', value: fmt(metrics.outstandingAP), icon: ArrowDownRight, ic: 'text-destructive', href: '/financials' },
               ].map(tile => (
-                <div key={tile.label} className="bg-card border border-border/60 rounded-lg p-2.5">
+                <div key={tile.label} className="bg-card border border-border/60 rounded-lg p-2.5 cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate(tile.href)}>
                   <div className="flex items-center gap-1 mb-1">
                     <tile.icon className={`h-3 w-3 ${tile.ic}`} />
                     <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">{tile.label}</span>
