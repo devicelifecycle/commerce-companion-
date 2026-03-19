@@ -555,10 +555,6 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="marketplace" className="space-y-4">
-            <MarketplaceAccounting companyView={companyView} />
-            <MarketplaceFeeAnalytics companyView={companyView} />
-          </TabsContent>
 
         </Tabs>
       </div>

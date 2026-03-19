@@ -144,5 +144,5 @@ export function getAccountsByCompany(company: 'VES' | 'TGW' | 'shared'): Account
 
 // Helper to get accounts by type
 export function getAccountsByType(type: AccountDefinition['type']): AccountDefinition[] {
-  return CASH_BASIS_CHART_OF_ACCOUNTS.filter(acc => acc.type === type);
+  return ACCRUAL_CHART_OF_ACCOUNTS.filter(acc => acc.type === type);
 }
