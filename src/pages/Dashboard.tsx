@@ -43,6 +43,7 @@ interface RecentActivity {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { selectedCompany, companies, isSuperAdmin, assignments } = useCompany();
   const isAdmin = isSuperAdmin || assignments.some(a => a.role === 'admin');
