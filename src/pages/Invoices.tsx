@@ -16,8 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { Plus, FileText, Clock, CheckCircle, AlertCircle, Download, Search, X, Trash2, Copy, CreditCard, DollarSign, Pencil, Save, TriangleAlert } from 'lucide-react';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { Plus, FileText, Clock, CheckCircle, AlertCircle, Download, Search, X, Trash2, Copy, CreditCard, DollarSign, Pencil, Save } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
