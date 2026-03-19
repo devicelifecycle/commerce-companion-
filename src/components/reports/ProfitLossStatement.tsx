@@ -38,6 +38,9 @@ interface PLData {
   netProfitBeforeTax: number;
   incomeTax: number;
   netProfitAfterTax: number;
+  // Repair costing data
+  capitalizedRepairLabor: number;
+  repairPartsCost: number;
 }
 
 interface ComparisonData {
