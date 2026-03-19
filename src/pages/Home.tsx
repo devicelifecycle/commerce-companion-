@@ -23,6 +23,9 @@ export default function Home() {
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in max-w-6xl mx-auto">
+        {/* System Alerts — shown prominently at top */}
+        <SystemAlertsBanner />
+
         {/* Hero */}
         <div className="text-center py-6">
           <h1 className="text-3xl font-display font-bold gradient-text">Warehouse Management System</h1>
