@@ -301,7 +301,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                 <p className="text-muted-foreground text-xs flex items-center gap-1 mb-1">
                   <MapPin className="h-3 w-3" /> Shipping Province (for tax)
                   {!sale.shipping_province && (
-                    <span className="inline-flex items-center gap-0.5 text-amber-500 ml-1">
+                    <span className="inline-flex items-center gap-0.5 text-destructive ml-1">
                       <AlertTriangle className="h-3 w-3" /> Not set
                     </span>
                   )}
