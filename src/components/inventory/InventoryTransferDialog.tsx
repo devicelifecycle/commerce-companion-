@@ -45,7 +45,6 @@ export function InventoryTransferDialog({
   onSuccess,
   preselectedDevice 
 }: InventoryTransferDialogProps) {
-  const { user } = useAuth();
   const { companies, selectedCompany } = useCompany();
   const [loading, setLoading] = useState(false);
   const [devices, setDevices] = useState<Device[]>([]);
