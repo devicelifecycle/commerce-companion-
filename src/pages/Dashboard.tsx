@@ -498,6 +498,63 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Row 4b: Fees & Commissions by Marketplace */}
+            {feeMetrics.length > 0 && (
+              <div className="bg-card border border-border/60 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Receipt className="h-3.5 w-3.5 text-destructive" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fees & Commissions by Channel</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 mb-3">
+                  {(() => {
+                    const totalFees = feeMetrics.reduce((s, m) => s + m.fees, 0);
+                    const totalShipping = feeMetrics.reduce((s, m) => s + m.shipping, 0);
+                    const totalRev = feeMetrics.reduce((s, m) => s + m.revenue, 0);
+                    const totalAfter = feeMetrics.reduce((s, m) => s + m.revenueAfterFees, 0);
+                    const totalOrders = feeMetrics.reduce((s, m) => s + m.orders, 0);
+                    return [
+                      { label: 'Total Fees', value: fmt(totalFees), color: 'text-destructive' },
+                      { label: 'Total Shipping', value: fmt(totalShipping), color: 'text-warning' },
+                      { label: 'Avg Fee Rate', value: fmtPct(totalRev > 0 ? (totalFees / totalRev) * 100 : 0), color: 'text-destructive' },
+                      { label: 'Revenue After Fees', value: fmt(totalAfter), color: 'text-success' },
+                      { label: 'Avg Fee/Order', value: fmt(totalOrders > 0 ? totalFees / totalOrders : 0), color: 'text-muted-foreground' },
+                    ].map(t => (
+                      <div key={t.label} className="p-2 rounded-md bg-muted/30 border border-border/30">
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">{t.label}</p>
+                        <p className={`text-sm font-bold font-display tabular-nums ${t.color}`}>{t.value}</p>
+                      </div>
+                    ));
+                  })()}
+                </div>
+                <div className="space-y-1.5">
+                  {feeMetrics.map(m => {
+                    const barWidth = feeMetrics[0]?.fees > 0 ? (m.fees / feeMetrics[0].fees) * 100 : 0;
+                    return (
+                      <div key={m.marketplace} className="space-y-0.5">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MARKETPLACE_COLORS[m.marketplace] || MARKETPLACE_COLORS.other }} />
+                            <span className="font-medium capitalize">{m.marketplace}</span>
+                            <span className="text-muted-foreground">{m.orders} orders</span>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-destructive font-medium tabular-nums">{fmt(m.fees)}</span>
+                            <Badge variant={m.feeRate > 15 ? 'destructive' : 'secondary'} className="text-[9px] px-1 py-0 h-4">
+                              {m.feeRate.toFixed(1)}%
+                            </Badge>
+                            <span className="text-success text-[10px] tabular-nums">{fmt(m.revenueAfterFees)} net</span>
+                          </div>
+                        </div>
+                        <div className="h-1 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full bg-destructive/60 transition-all" style={{ width: `${barWidth}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Row 5: Top products + Expenses + Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
               {/* Top products by profit */}
