@@ -351,9 +351,14 @@ export default function Dashboard() {
             <Select value={dateRange} onValueChange={setDateRange}>
               <SelectTrigger className="w-[110px] h-7 text-[11px]"><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="mtd">Month to Date</SelectItem>
+                <SelectItem value="qtd">Quarter to Date</SelectItem>
+                <SelectItem value="ytd">Year to Date</SelectItem>
+                <SelectItem value="1">30 days</SelectItem>
                 <SelectItem value="3">3 months</SelectItem>
                 <SelectItem value="6">6 months</SelectItem>
                 <SelectItem value="12">12 months</SelectItem>
+                <SelectItem value="24">24 months</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-success/10 border border-success/30">
