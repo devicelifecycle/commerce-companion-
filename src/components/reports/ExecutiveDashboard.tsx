@@ -67,9 +67,7 @@ export function ExecutiveDashboard({ companyView = 'consolidated' }: ExecutiveDa
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [expenseData, setExpenseData] = useState<any[]>([]);
 
-  useEffect(() => {
-    fetchData();
-  }, [dateRange, companyView]);
+  useEffect(() => { fetchData(); }, [dateRange, companyView]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -92,7 +90,8 @@ export function ExecutiveDashboard({ companyView = 'consolidated' }: ExecutiveDa
       let salesQuery = supabase
         .from('sales')
         .select('id, sale_price, profit, marketplace, sale_date, company_id, devices(brand, model, category)')
-        .gte('sale_date', startDate.toISOString());
+        .gte('sale_date', startDate.toISOString())
+        .limit(5000);
       
       if (companyFilter) salesQuery = salesQuery.or(companyFilter);
       const { data: sales } = await salesQuery;
@@ -101,7 +100,8 @@ export function ExecutiveDashboard({ companyView = 'consolidated' }: ExecutiveDa
       let expensesQuery = supabase
         .from('expenses')
         .select('id, amount, gst_hst_amount, pst_amount, category, expense_date, company_id, is_shared, allocation_ves, allocation_tgw')
-        .gte('expense_date', startDate.toISOString().split('T')[0]);
+        .gte('expense_date', startDate.toISOString().split('T')[0])
+        .limit(5000);
       
       if (companyFilter) expensesQuery = expensesQuery.or(`${companyFilter},is_shared.eq.true`);
       const { data: expenses } = await expensesQuery;
@@ -110,7 +110,8 @@ export function ExecutiveDashboard({ companyView = 'consolidated' }: ExecutiveDa
       let devicesQuery = supabase
         .from('devices')
         .select('cost_price, status, company_id')
-        .eq('status', 'in_stock');
+        .eq('status', 'in_stock')
+        .limit(5000);
       
       if (companyFilter) devicesQuery = devicesQuery.or(companyFilter);
       const { data: devices } = await devicesQuery;

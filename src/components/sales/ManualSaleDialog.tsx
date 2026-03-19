@@ -44,6 +44,15 @@ interface LineItem {
   item_type: 'device' | 'product' | 'custom';
 }
 
+const PROVINCES = [
+  { code: 'AB', name: 'Alberta' }, { code: 'BC', name: 'British Columbia' },
+  { code: 'MB', name: 'Manitoba' }, { code: 'NB', name: 'New Brunswick' },
+  { code: 'NL', name: 'Newfoundland and Labrador' }, { code: 'NS', name: 'Nova Scotia' },
+  { code: 'NT', name: 'Northwest Territories' }, { code: 'NU', name: 'Nunavut' },
+  { code: 'ON', name: 'Ontario' }, { code: 'PE', name: 'Prince Edward Island' },
+  { code: 'QC', name: 'Quebec' }, { code: 'SK', name: 'Saskatchewan' }, { code: 'YT', name: 'Yukon' },
+];
+
 const orderSchema = z.object({
   order_number: z.string().min(1, 'Order number is required'),
   marketplace: z.enum(['shopify', 'amazon', 'bestbuy', 'other']),
@@ -52,6 +61,7 @@ const orderSchema = z.object({
   customer_name: z.string().optional(),
   customer_email: z.string().email().optional().or(z.literal('')),
   shipping_address: z.string().optional(),
+  shipping_province: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -91,6 +101,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
       customer_name: '',
       customer_email: '',
       shipping_address: '',
+      shipping_province: 'ON',
       notes: '',
     },
   });
@@ -198,6 +209,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
         customer_name: data.customer_name || null,
         customer_email: data.customer_email || null,
         shipping_address: data.shipping_address || null,
+        shipping_province: data.shipping_province || null,
         notes: data.notes || null,
         device_id: validItems.length === 1 ? validItems[0].device_id : null,
         company_id: selectedCompany.id,
@@ -528,6 +540,30 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                   <FormControl>
                     <Textarea placeholder="123 Main St, City, Province, Postal Code" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="shipping_province"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Province</FormLabel>
+                  <FormDescription className="text-[11px]">Used for tax calculation</FormDescription>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select province" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {PROVINCES.map(p => (
+                        <SelectItem key={p.code} value={p.code}>{p.name} ({p.code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

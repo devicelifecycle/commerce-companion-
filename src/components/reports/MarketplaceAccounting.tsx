@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Download, TrendingUp, DollarSign, Percent, ShoppingCart, Calendar } from 'lucide-react';
-import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { format, subMonths, startOfMonth, endOfMonth, startOfQuarter, startOfYear } from 'date-fns';
 
 interface MarketplaceMetrics {
   marketplace: string;
@@ -30,26 +30,38 @@ interface MarketplaceAccountingProps {
 export function MarketplaceAccounting({ companyView = 'consolidated' }: MarketplaceAccountingProps) {
   const { companies } = useCompany();
   const [loading, setLoading] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState(format(new Date(), 'yyyy-MM'));
+  const [dateRange, setDateRange] = useState('3');
   const [metrics, setMetrics] = useState<MarketplaceMetrics[]>([]);
 
   useEffect(() => {
     fetchData();
-  }, [companyView, selectedPeriod]);
+  }, [companyView, dateRange]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [year, month] = selectedPeriod.split('-');
-      const start = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
-      const end = endOfMonth(start);
+      const now = new Date();
+      let start: Date;
+      let end: Date = now;
+
+      if (dateRange === 'mtd') {
+        start = startOfMonth(now);
+      } else if (dateRange === 'qtd') {
+        start = startOfQuarter(now);
+      } else if (dateRange === 'ytd') {
+        start = startOfYear(now);
+      } else {
+        const months = parseInt(dateRange);
+        start = startOfMonth(subMonths(now, months - 1));
+      }
 
       // Fetch sales with device cost
       let salesQuery = supabase
         .from('sales')
         .select('marketplace, sale_price, shipping_cost, marketplace_fees, profit, device_id, company_id')
         .gte('sale_date', start.toISOString())
-        .lte('sale_date', end.toISOString());
+        .lte('sale_date', end.toISOString())
+        .limit(5000);
 
       if (companyView !== 'consolidated') {
         salesQuery = salesQuery.eq('company_id', companyView);
@@ -143,11 +155,6 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
     'Gross Profit': m.grossProfit,
   }));
 
-  const periodOptions = Array.from({ length: 12 }, (_, i) => {
-    const date = subMonths(new Date(), i);
-    return { value: format(date, 'yyyy-MM'), label: format(date, 'MMMM yyyy') };
-  });
-
   const handleExport = () => {
     const header = 'Marketplace,Revenue,COGS,Fees,Shipping,Gross Profit,Margin %,Orders,Avg Order';
     const rows = metrics.map(m =>
@@ -158,7 +165,7 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `marketplace-accounting-${selectedPeriod}.csv`;
+    a.download = `marketplace-accounting-${dateRange}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -177,15 +184,19 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
     <div className="space-y-6">
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-4">
-        <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+        <Select value={dateRange} onValueChange={setDateRange}>
           <SelectTrigger className="w-[200px]">
             <Calendar className="h-4 w-4 mr-2" />
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {periodOptions.map(opt => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-            ))}
+            <SelectItem value="mtd">Month to Date</SelectItem>
+            <SelectItem value="qtd">Quarter to Date</SelectItem>
+            <SelectItem value="ytd">Year to Date</SelectItem>
+            <SelectItem value="1">Last Month</SelectItem>
+            <SelectItem value="3">Last 3 Months</SelectItem>
+            <SelectItem value="6">Last 6 Months</SelectItem>
+            <SelectItem value="12">Last 12 Months</SelectItem>
           </SelectContent>
         </Select>
         <div className="ml-auto">

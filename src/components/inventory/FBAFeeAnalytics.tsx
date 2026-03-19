@@ -57,7 +57,8 @@ export function FBAFeeAnalytics() {
         .eq('company_id', vesCompany.id)
         .eq('marketplace', 'amazon')
         .gte('sale_date', startDate.toISOString())
-        .order('sale_date', { ascending: false });
+        .order('sale_date', { ascending: false })
+        .limit(5000);
 
       if (error) throw error;
       setSales((data || []) as AmazonSale[]);
