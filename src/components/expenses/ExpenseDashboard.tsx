@@ -228,7 +228,7 @@ export function ExpenseDashboard() {
       vesAllocation,
       tgwAllocation,
     };
-  }, [expenses, selectedCompany, companies]);
+  }, [expenses, selectedCompany, companies, refundMap]);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
