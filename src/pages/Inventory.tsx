@@ -236,6 +236,7 @@ export default function Inventory() {
                     onProcurement={(d) => setProcurementDevice(d)}
                     onTimeline={setTimelineDevice}
                     onTransfer={(d) => { setTransferDevice(d); setShowTransferDialog(true); }}
+                    onRepair={setRepairDevice}
                     onRefresh={refetch}
                   />
                 )}
