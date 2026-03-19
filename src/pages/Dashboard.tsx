@@ -111,7 +111,8 @@ export default function Dashboard() {
       // Expenses
       let expQ = supabase.from('expenses')
         .select('id, amount, gst_hst_amount, pst_amount, category, expense_date, description, company_id, is_shared, allocation_ves, allocation_tgw')
-        .gte('expense_date', startDate.toISOString().split('T')[0]);
+        .gte('expense_date', startDate.toISOString().split('T')[0])
+        .limit(5000);
       if (companyFilter) expQ = expQ.eq('company_id', companyFilter);
       const { data: expenses } = await expQ;
 
