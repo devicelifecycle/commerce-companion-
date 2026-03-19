@@ -273,6 +273,16 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
       return;
     }
 
+    if (!formData.category || formData.category === '') {
+      toast.error('Please select a category');
+      return;
+    }
+
+    if (!formData.vendor || formData.vendor.trim() === '') {
+      toast.error('Please enter a vendor');
+      return;
+    }
+
     if (!formData.is_shared && !formData.company_id && !isSuperAdmin) {
       toast.error('Please select a company');
       return;
