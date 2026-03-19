@@ -61,7 +61,7 @@ export function InventoryReports({ companyView = 'consolidated' }: InventoryRepo
   const fetchData = async () => {
     setLoading(true);
     try {
-      let query = supabase.from('devices').select('*');
+      let query = supabase.from('devices').select('*').limit(5000);
       
       if (companyView !== 'consolidated') {
         query = query.eq('company_id', companyView);
