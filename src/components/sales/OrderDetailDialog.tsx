@@ -604,9 +604,14 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                 <span className="text-muted-foreground">Net Revenue</span>
                 <span className="font-medium">{formatCurrency(netRevenue)}</span>
               </div>
-              {sale.devices && (
+              {hasCost && (
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Cost of Goods (COGS)</span>
+                  <span className="text-muted-foreground">
+                    {sale.devices ? 'Cost of Goods (COGS)' : 'Direct Cost'}
+                    {sale.manual_cost && !sale.devices && (
+                      <span className="text-xs ml-1">({sale.manual_cost_description || 'manual'})</span>
+                    )}
+                  </span>
                   <span className="text-destructive">-{formatCurrency(costPrice)}</span>
                 </div>
               )}
