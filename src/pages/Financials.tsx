@@ -29,7 +29,7 @@ import { CostLedgerPanel } from '@/components/financials/CostLedgerPanel';
 import {
   TrendingUp, ArrowLeftRight, Receipt, Building2,
   Scale, CheckSquare, Calculator, FileText, LayoutDashboard,
-  Warehouse,
+  Warehouse, Banknote,
 } from 'lucide-react';
 
 type SubView =
