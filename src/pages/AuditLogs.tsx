@@ -21,7 +21,9 @@ import {
   FileText, Search, AlertCircle, Download, ChevronLeft, ChevronRight,
   Eye, History, Shield, Monitor, Globe, Clock, User, Database,
   Link2, Activity, BookOpen, LogIn, Layers, ArrowRight,
+  PackageSearch,
 } from 'lucide-react';
+import { UnaccountedMarketplaceData } from '@/components/audit/UnaccountedMarketplaceData';
 
 interface AuditLog {
   id: string;
@@ -418,10 +420,14 @@ export default function AuditLogs() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="relationships" className="flex items-center gap-1.5 text-xs">
               <Link2 className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Relationships</span>
+            </TabsTrigger>
+            <TabsTrigger value="unaccounted" className="flex items-center gap-1.5 text-xs">
+              <PackageSearch className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Unaccounted</span>
             </TabsTrigger>
             <TabsTrigger value="sessions" className="flex items-center gap-1.5 text-xs">
               <LogIn className="h-3.5 w-3.5" />
@@ -618,6 +624,11 @@ export default function AuditLogs() {
             </div>
           </TabsContent>
 
+
+          {/* ========== TAB: UNACCOUNTED MARKETPLACE DATA ========== */}
+          <TabsContent value="unaccounted">
+            <UnaccountedMarketplaceData companyFilter={selectedCompany?.id || null} />
+          </TabsContent>
           {/* ========== TAB 2: USER SESSIONS ========== */}
           <TabsContent value="sessions">
             <Card>
