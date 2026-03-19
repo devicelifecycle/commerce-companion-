@@ -98,34 +98,28 @@ export function InventoryTransferDialog({
 
     setLoading(true);
     try {
-      // Create transfer record
-      const { error: transferError } = await supabase
-        .from('inventory_transfers')
-        .insert({
+      const price = transferPrice ? parseFloat(transferPrice) : selectedDevice.cost_price;
+
+      // Call the intercompany accounting edge function which:
+      // 1. Creates the inventory_transfers record
+      // 2. Updates the device company_id
+      // 3. Creates journal entries for both sides (seller AR/Revenue, buyer Inventory/AP)
+      // 4. Creates AR for seller and AP for buyer
+      const { data, error } = await supabase.functions.invoke('process-intercompany-accounting', {
+        body: {
           device_id: selectedDevice.id,
           from_company_id: selectedDevice.company_id,
           to_company_id: toCompanyId,
-          transfer_price: transferPrice ? parseFloat(transferPrice) : selectedDevice.cost_price,
-          reason,
-          notes,
-          created_by: user?.id,
-        });
+          transfer_price: price,
+          reason: reason || notes || 'Manual inventory transfer',
+        },
+      });
 
-      if (transferError) throw transferError;
-
-      // Update device company_id
-      const { error: updateError } = await supabase
-        .from('devices')
-        .update({ 
-          company_id: toCompanyId,
-          cost_price: transferPrice ? parseFloat(transferPrice) : selectedDevice.cost_price,
-        })
-        .eq('id', selectedDevice.id);
-
-      if (updateError) throw updateError;
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Transfer failed');
 
       const toCompany = companies.find(c => c.id === toCompanyId);
-      toast.success(`Device transferred to ${toCompany?.code || 'new company'}`);
+      toast.success(`Device transferred to ${toCompany?.code || 'new company'} — accounting entries created`);
       
       resetForm();
       onSuccess();
