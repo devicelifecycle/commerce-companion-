@@ -26,7 +26,7 @@ export default function Home() {
         <div className="text-center py-6">
           <h1 className="text-3xl font-display font-bold gradient-text">Warehouse Management System</h1>
           <p className="text-muted-foreground mt-2 text-sm max-w-2xl mx-auto">
-            Accrual-Basis Accounting • IFRS Compliant • FIFO Inventory • Multi-Company (VES & TGW)
+            Accrual-Basis Accounting • IFRS Compliant • FIFO Inventory • Multi-Company (Virtual eShop & Tech Genius Warehouse)
           </p>
           <div className="flex items-center justify-center gap-2 mt-3">
             <Badge variant="outline" className="text-xs border-primary/40 text-primary">Automated Bookkeeping</Badge>
