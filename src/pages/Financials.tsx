@@ -159,10 +159,10 @@ export default function Financials() {
               type="single"
               value={subView}
               onValueChange={(v) => { if (v) setSubView(v as SubView); }}
-              className="bg-muted/50 rounded-lg p-0.5 border border-border/40 w-fit"
+              className="bg-muted/50 rounded-lg p-0.5 border border-border/50 w-fit"
             >
               {currentSection.views.map(v => (
-                <ToggleGroupItem key={v.value} value={v.value} className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                <ToggleGroupItem key={v.value} value={v.value} className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm data-[state=on]:border data-[state=on]:border-primary/30">
                   <v.icon className="h-3 w-3" />
                   {v.label}
                 </ToggleGroupItem>
