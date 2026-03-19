@@ -311,9 +311,9 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 flex-wrap">
             {companies.length > 1 && (
               <ToggleGroup type="single" value={companyView} onValueChange={(v) => { if (v) setCompanyView(v); }} className="bg-muted rounded-lg p-0.5">
-                <ToggleGroupItem value="consolidated" className="text-[10px] px-2 py-1 h-7 data-[state=on]:bg-background data-[state=on]:shadow-sm">All</ToggleGroupItem>
+                <ToggleGroupItem value="consolidated" className="text-[10px] px-2 py-1 h-7 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm">All</ToggleGroupItem>
                 {companies.map(c => (
-                  <ToggleGroupItem key={c.id} value={c.id} className="text-[10px] px-2 py-1 h-7 data-[state=on]:bg-background data-[state=on]:shadow-sm">{c.code}</ToggleGroupItem>
+                  <ToggleGroupItem key={c.id} value={c.id} className="text-[10px] px-2 py-1 h-7 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm">{c.code}</ToggleGroupItem>
                 ))}
               </ToggleGroup>
             )}

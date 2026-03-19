@@ -124,11 +124,11 @@ export default function Financials() {
                 onValueChange={(v) => { if (v) setCompanyView(v); }}
                 className="bg-muted rounded-lg p-0.5"
               >
-                <ToggleGroupItem value="consolidated" className="text-xs px-2.5 py-1 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+               <ToggleGroupItem value="consolidated" className="text-xs px-2.5 py-1 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm">
                   All
                 </ToggleGroupItem>
                 {companies.map(c => (
-                  <ToggleGroupItem key={c.id} value={c.id} className="text-xs px-2.5 py-1 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                  <ToggleGroupItem key={c.id} value={c.id} className="text-xs px-2.5 py-1 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm">
                     {c.code}
                   </ToggleGroupItem>
                 ))}
@@ -146,7 +146,7 @@ export default function Financials() {
             className="bg-muted rounded-lg p-0.5 w-fit"
           >
             {SECTIONS.map(s => (
-              <ToggleGroupItem key={s.key} value={s.key} className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+              <ToggleGroupItem key={s.key} value={s.key} className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm data-[state=on]:border data-[state=on]:border-primary/30">
                 <s.icon className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{s.label}</span>
               </ToggleGroupItem>
@@ -159,10 +159,10 @@ export default function Financials() {
               type="single"
               value={subView}
               onValueChange={(v) => { if (v) setSubView(v as SubView); }}
-              className="bg-muted/50 rounded-lg p-0.5 border border-border/40 w-fit"
+              className="bg-muted/50 rounded-lg p-0.5 border border-border/50 w-fit"
             >
               {currentSection.views.map(v => (
-                <ToggleGroupItem key={v.value} value={v.value} className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+                <ToggleGroupItem key={v.value} value={v.value} className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm data-[state=on]:border data-[state=on]:border-primary/30">
                   <v.icon className="h-3 w-3" />
                   {v.label}
                 </ToggleGroupItem>
