@@ -605,7 +605,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
               />
             </div>
             <div className="space-y-2">
-              <Label>Vendor</Label>
+              <Label>Vendor *</Label>
               <Input
                 value={formData.vendor}
                 onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
