@@ -783,13 +783,6 @@ export default function Invoices() {
 
         <InvoicesGuide />
 
-        <Alert variant="destructive" className="border-destructive bg-destructive/10">
-          <TriangleAlert className="h-4 w-4" />
-          <AlertTitle>Partial Payments Not Supported</AlertTitle>
-          <AlertDescription>
-            This invoice section does not currently support partial payment tracking. Outstanding balances will not update when partial payments are recorded. Please refer to the <strong>Invoice Payment History</strong> when making adjustments for such transactions.
-          </AlertDescription>
-        </Alert>
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
