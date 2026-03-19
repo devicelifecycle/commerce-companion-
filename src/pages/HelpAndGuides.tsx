@@ -364,9 +364,9 @@ const ACCOUNTING_FLOWS = [
     steps: [
       'Tax collected on sales accumulates in GST/HST Payable',
       'ITCs from purchases offset payable amount',
-      'Net tax liability calculated for filing period',
+      'Net tax liability calculated for annual filing period (calendar year)',
       'Payment recorded → DR GST/HST Payable / CR Cash',
-      'Filing period marked as submitted/paid',
+      'Annual filing submitted to CRA and period marked as paid',
     ],
   },
 ];
