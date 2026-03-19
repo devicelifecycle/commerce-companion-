@@ -155,11 +155,6 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
     'Gross Profit': m.grossProfit,
   }));
 
-  const periodOptions = Array.from({ length: 12 }, (_, i) => {
-    const date = subMonths(new Date(), i);
-    return { value: format(date, 'yyyy-MM'), label: format(date, 'MMMM yyyy') };
-  });
-
   const handleExport = () => {
     const header = 'Marketplace,Revenue,COGS,Fees,Shipping,Gross Profit,Margin %,Orders,Avg Order';
     const rows = metrics.map(m =>
@@ -170,7 +165,7 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `marketplace-accounting-${selectedPeriod}.csv`;
+    a.download = `marketplace-accounting-${dateRange}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -189,15 +184,19 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
     <div className="space-y-6">
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-4">
-        <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+        <Select value={dateRange} onValueChange={setDateRange}>
           <SelectTrigger className="w-[200px]">
             <Calendar className="h-4 w-4 mr-2" />
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {periodOptions.map(opt => (
-              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-            ))}
+            <SelectItem value="mtd">Month to Date</SelectItem>
+            <SelectItem value="qtd">Quarter to Date</SelectItem>
+            <SelectItem value="ytd">Year to Date</SelectItem>
+            <SelectItem value="1">Last Month</SelectItem>
+            <SelectItem value="3">Last 3 Months</SelectItem>
+            <SelectItem value="6">Last 6 Months</SelectItem>
+            <SelectItem value="12">Last 12 Months</SelectItem>
           </SelectContent>
         </Select>
         <div className="ml-auto">
