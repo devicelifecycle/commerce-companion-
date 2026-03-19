@@ -146,7 +146,7 @@ export default function Financials() {
             className="bg-muted rounded-lg p-0.5 w-fit"
           >
             {SECTIONS.map(s => (
-              <ToggleGroupItem key={s.key} value={s.key} className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-background data-[state=on]:shadow-sm">
+              <ToggleGroupItem key={s.key} value={s.key} className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm data-[state=on]:border data-[state=on]:border-primary/30">
                 <s.icon className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{s.label}</span>
               </ToggleGroupItem>
