@@ -11,7 +11,7 @@ import {
   BookOpen, DollarSign, Calculator, TrendingUp,
   ArrowRight, CheckCircle, FileText, Package,
   Receipt, Building2, Coins, AlertTriangle,
-  Zap, ShoppingCart, Upload, Users, Shield,
+  Zap, ShoppingCart, Upload, Users,
   BarChart3, Layers, RefreshCw, Globe, Truck
 } from 'lucide-react';
 
