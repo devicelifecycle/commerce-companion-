@@ -453,7 +453,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
           {/* Device / Item */}
           <div>
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5" /> Item
+              <Package className="h-3.5 w-3.5" /> Item & Cost
             </h4>
             {sale.devices ? (
               <div className="bg-muted/30 border border-border/40 rounded-lg p-3">
@@ -474,63 +474,34 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                   </div>
                 </div>
               </div>
-            ) : sale.product_title ? (
+            ) : sale.manual_cost ? (
               <div className="bg-muted/30 border border-border/40 rounded-lg p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-semibold">{sale.product_title}</p>
-                    <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                      {sale.marketplace_sku && <span className="font-mono">SKU: {sale.marketplace_sku}</span>}
-                      <span>From marketplace listing</span>
-                    </div>
+                    <p className="font-semibold flex items-center gap-1.5">
+                      <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                      Manual Cost Entry
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">{sale.manual_cost_description || 'Direct cost (labour, services, etc.)'}</p>
                   </div>
-                  {!showLinkDevice && (
-                    <Button variant="outline" size="sm" onClick={() => setShowLinkDevice(true)}>
-                      <Link className="h-3.5 w-3.5 mr-1.5" />
-                      Link Item
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-muted-foreground">Cost: {formatCurrency(sale.manual_cost)}</p>
+                    <Button variant="ghost" size="sm" onClick={handleClearManualCost} disabled={savingManualCost} className="text-destructive hover:text-destructive">
+                      <Unlink className="h-3.5 w-3.5" />
                     </Button>
-                  )}
-                </div>
-                {showLinkDevice && (
-                  <div className="mt-3 pt-3 border-t border-border/40 space-y-2">
-                    <Tabs value={linkType} onValueChange={(v) => { setLinkType(v as any); setSelectedDeviceId(null); setSelectedProductId(null); }}>
-                      <TabsList className="w-full">
-                        <TabsTrigger value="device" className="flex-1">Device</TabsTrigger>
-                        <TabsTrigger value="product" className="flex-1">Product</TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="device" className="mt-2">
-                        <DeviceSearchCombobox
-                          value={selectedDeviceId}
-                          onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
-                          companyId={sale.company_id || undefined}
-                        />
-                      </TabsContent>
-                      <TabsContent value="product" className="mt-2">
-                        <ProductSearchCombobox
-                          value={selectedProductId}
-                          onSelect={(product) => setSelectedProductId(product?.id ?? null)}
-                          companyId={sale.company_id || undefined}
-                        />
-                      </TabsContent>
-                    </Tabs>
-                    <div className="flex gap-2 justify-end">
-                      <Button variant="ghost" size="sm" onClick={() => { setShowLinkDevice(false); setSelectedDeviceId(null); setSelectedProductId(null); }}>Cancel</Button>
-                      <Button size="sm" onClick={handleLinkDevice} disabled={(!selectedDeviceId && !selectedProductId) || linking}>
-                        {linking ? 'Linking...' : 'Confirm Link'}
-                      </Button>
-                    </div>
                   </div>
-                )}
+                </div>
               </div>
             ) : (
               <div className="bg-muted/20 border border-border/40 rounded-lg p-3">
                 {showLinkDevice ? (
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Link a device or product to this order</p>
+                    <p className="text-sm font-medium">Link an item or enter a manual cost</p>
                     <Tabs value={linkType} onValueChange={(v) => { setLinkType(v as any); setSelectedDeviceId(null); setSelectedProductId(null); }}>
                       <TabsList className="w-full">
                         <TabsTrigger value="device" className="flex-1">Device</TabsTrigger>
                         <TabsTrigger value="product" className="flex-1">Product</TabsTrigger>
+                        <TabsTrigger value="manual" className="flex-1">Manual Cost</TabsTrigger>
                       </TabsList>
                       <TabsContent value="device" className="mt-2">
                         <DeviceSearchCombobox
@@ -546,20 +517,55 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                           companyId={sale.company_id || undefined}
                         />
                       </TabsContent>
+                      <TabsContent value="manual" className="mt-2 space-y-3">
+                        <div>
+                          <Label className="text-xs">Cost Amount</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            placeholder="e.g. 50.00"
+                            value={manualCostAmount}
+                            onChange={(e) => setManualCostAmount(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Description</Label>
+                          <Textarea
+                            placeholder="e.g. 2 hours labour @ $25/hr, service fee, parts..."
+                            value={manualCostDesc}
+                            onChange={(e) => setManualCostDesc(e.target.value)}
+                            rows={2}
+                          />
+                        </div>
+                      </TabsContent>
                     </Tabs>
                     <div className="flex gap-2 justify-end">
                       <Button variant="ghost" size="sm" onClick={() => { setShowLinkDevice(false); setSelectedDeviceId(null); setSelectedProductId(null); }}>Cancel</Button>
-                      <Button size="sm" onClick={handleLinkDevice} disabled={(!selectedDeviceId && !selectedProductId) || linking}>
-                        {linking ? 'Linking...' : 'Confirm Link'}
-                      </Button>
+                      {linkType === 'manual' ? (
+                        <Button size="sm" onClick={handleSaveManualCost} disabled={!manualCostAmount || savingManualCost}>
+                          {savingManualCost ? 'Saving...' : 'Save Cost'}
+                        </Button>
+                      ) : (
+                        <Button size="sm" onClick={handleLinkDevice} disabled={(!selectedDeviceId && !selectedProductId) || linking}>
+                          {linking ? 'Linking...' : 'Confirm Link'}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">No item linked to this order</p>
+                    <div>
+                      <p className="text-sm text-muted-foreground">No item linked to this order</p>
+                      {sale.product_title && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Marketplace listing: {sale.product_title}
+                          {sale.marketplace_sku && <span className="font-mono ml-1">({sale.marketplace_sku})</span>}
+                        </p>
+                      )}
+                    </div>
                     <Button variant="outline" size="sm" onClick={() => setShowLinkDevice(true)}>
                       <Link className="h-3.5 w-3.5 mr-1.5" />
-                      Link Item
+                      Link / Add Cost
                     </Button>
                   </div>
                 )}
