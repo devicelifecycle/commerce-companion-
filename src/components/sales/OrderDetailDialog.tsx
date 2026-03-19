@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
@@ -75,6 +75,47 @@ interface OrderDetailDialogProps {
   onSaleUpdated?: () => void;
 }
 
+// Extract province code from a Canadian address string
+function extractProvinceFromAddress(address: string | null): string | null {
+  if (!address) return null;
+  const upper = address.toUpperCase().trim();
+  
+  // Province code map including common full names and abbreviations
+  const PROVINCE_MAP: Record<string, string> = {
+    'ONTARIO': 'ON', 'QUEBEC': 'QC', 'BRITISH COLUMBIA': 'BC', 'ALBERTA': 'AB',
+    'MANITOBA': 'MB', 'SASKATCHEWAN': 'SK', 'NOVA SCOTIA': 'NS', 'NEW BRUNSWICK': 'NB',
+    'NEWFOUNDLAND': 'NL', 'NEWFOUNDLAND AND LABRADOR': 'NL', 'PRINCE EDWARD ISLAND': 'PE',
+    'NORTHWEST TERRITORIES': 'NT', 'NUNAVUT': 'NU', 'YUKON': 'YT',
+    'PQ': 'QC', 'NFLD': 'NL', 'PEI': 'PE', 'NWT': 'NT',
+  };
+  
+  const validCodes = new Set(['ON', 'QC', 'BC', 'AB', 'MB', 'SK', 'NS', 'NB', 'NL', 'PE', 'NT', 'NU', 'YT']);
+
+  // Try to find province code before a Canadian postal code pattern (e.g., "ON K1A 0B1")
+  const postalMatch = upper.match(/\b([A-Z]{2})\s+[A-Z]\d[A-Z]\s*\d[A-Z]\d/);
+  if (postalMatch && validCodes.has(postalMatch[1])) return postalMatch[1];
+
+  // Try comma-separated segments: "City, ON K1A 0B1" or "City, Ontario"
+  const parts = upper.split(',').map(p => p.trim());
+  for (const part of parts) {
+    // Check if part starts with a valid code
+    const firstWord = part.split(/\s+/)[0];
+    if (validCodes.has(firstWord)) return firstWord;
+    // Check full province name
+    for (const [name, code] of Object.entries(PROVINCE_MAP)) {
+      if (part.includes(name)) return code;
+    }
+  }
+
+  // Last resort: scan for any standalone 2-letter province code
+  for (const code of validCodes) {
+    const regex = new RegExp(`\\b${code}\\b`);
+    if (regex.test(upper)) return code;
+  }
+
+  return null;
+}
+
 export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, hasReturn, onSaleUpdated }: OrderDetailDialogProps) {
   const [showLinkDevice, setShowLinkDevice] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
@@ -82,8 +123,28 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const [linkType, setLinkType] = useState<'device' | 'product'>('device');
   const [linking, setLinking] = useState(false);
   const [savingProvince, setSavingProvince] = useState(false);
+  const [localProvince, setLocalProvince] = useState<string | null>(sale.shipping_province || null);
+
+  // Sync local province when sale changes
+  useEffect(() => {
+    setLocalProvince(sale.shipping_province || null);
+  }, [sale.shipping_province, sale.id]);
+
+  // Auto-extract province from address if not set
+  const suggestedProvince = useMemo(() => {
+    if (localProvince) return null; // Already set
+    return extractProvinceFromAddress(sale.shipping_address);
+  }, [sale.shipping_address, localProvince]);
+
+  // Auto-apply suggested province on dialog open for Best Buy orders
+  useEffect(() => {
+    if (open && !localProvince && suggestedProvince && sale.marketplace === 'bestbuy') {
+      handleProvinceChange(suggestedProvince);
+    }
+  }, [open, sale.id]);
 
   const handleProvinceChange = async (provinceCode: string) => {
+    setLocalProvince(provinceCode); // Immediately update UI
     setSavingProvince(true);
     try {
       // Fetch tax rates for the selected province
@@ -300,14 +361,26 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
               <div className="col-span-2">
                 <p className="text-muted-foreground text-xs flex items-center gap-1 mb-1">
                   <MapPin className="h-3 w-3" /> Shipping Province (for tax)
-                  {!sale.shipping_province && (
+                  {!localProvince && !suggestedProvince && (
                     <span className="inline-flex items-center gap-0.5 text-destructive ml-1">
                       <AlertTriangle className="h-3 w-3" /> Not set
                     </span>
                   )}
+                  {!localProvince && suggestedProvince && (
+                    <span className="inline-flex items-center gap-0.5 text-amber-500 ml-1 text-[10px]">
+                      Detected: {suggestedProvince} —
+                      <button
+                        className="underline font-medium hover:text-foreground"
+                        onClick={() => handleProvinceChange(suggestedProvince)}
+                        disabled={savingProvince}
+                      >
+                        Apply
+                      </button>
+                    </span>
+                  )}
                 </p>
                 <Select
-                  value={sale.shipping_province || 'none'}
+                  value={localProvince || 'none'}
                   onValueChange={(v) => { if (v !== 'none') handleProvinceChange(v); }}
                   disabled={savingProvince}
                 >

@@ -22,6 +22,7 @@ export interface SaleRecord {
   customer_name: string | null;
   customer_email: string | null;
   shipping_address: string | null;
+  shipping_province: string | null;
   notes: string | null;
   company_id: string | null;
   fulfillment_status: string | null;
