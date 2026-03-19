@@ -102,7 +102,8 @@ export function ExecutiveDashboard({ companyView = 'consolidated' }: ExecutiveDa
       let expensesQuery = supabase
         .from('expenses')
         .select('id, amount, gst_hst_amount, pst_amount, category, expense_date, company_id, is_shared, allocation_ves, allocation_tgw')
-        .gte('expense_date', startDate.toISOString().split('T')[0]);
+        .gte('expense_date', startDate.toISOString().split('T')[0])
+        .limit(5000);
       
       if (companyFilter) expensesQuery = expensesQuery.or(`${companyFilter},is_shared.eq.true`);
       const { data: expenses } = await expensesQuery;
