@@ -144,6 +144,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   }, [open, sale.id]);
 
   const handleProvinceChange = async (provinceCode: string) => {
+    setLocalProvince(provinceCode); // Immediately update UI
     setSavingProvince(true);
     try {
       // Fetch tax rates for the selected province
