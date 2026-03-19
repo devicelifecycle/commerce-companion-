@@ -40,9 +40,20 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [year, month] = selectedPeriod.split('-');
-      const start = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
-      const end = endOfMonth(start);
+      const now = new Date();
+      let start: Date;
+      let end: Date = now;
+
+      if (dateRange === 'mtd') {
+        start = startOfMonth(now);
+      } else if (dateRange === 'qtd') {
+        start = startOfQuarter(now);
+      } else if (dateRange === 'ytd') {
+        start = startOfYear(now);
+      } else {
+        const months = parseInt(dateRange);
+        start = startOfMonth(subMonths(now, months - 1));
+      }
 
       // Fetch sales with device cost
       let salesQuery = supabase
