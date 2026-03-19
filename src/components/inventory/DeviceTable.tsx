@@ -208,6 +208,11 @@ export function DeviceTable({
                           <DropdownMenuItem onClick={() => onTimeline(device)}>
                             <Clock className="h-4 w-4 mr-2" /> View Timeline
                           </DropdownMenuItem>
+                          {onRepair && (device.status === 'in_stock' || device.status === 'hold_for_refurbishment') && (
+                            <DropdownMenuItem onClick={() => onRepair(device)}>
+                              <Wrench className="h-4 w-4 mr-2" /> Repair
+                            </DropdownMenuItem>
+                          )}
                           {device.status === 'in_stock' && (
                             <>
                               {isSuperAdmin && (
