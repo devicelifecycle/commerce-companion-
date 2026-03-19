@@ -58,6 +58,8 @@ interface Sale {
   product_title?: string | null;
   marketplace_sku?: string | null;
   shipping_province?: string | null;
+  manual_cost?: number | null;
+  manual_cost_description?: string | null;
   devices?: {
     brand: string;
     model: string;
