@@ -304,6 +304,14 @@ export default function Inventory() {
           device={timelineDevice}
         />
 
+        {/* Repair Dialog */}
+        <DeviceRepairDialog
+          open={!!repairDevice}
+          onOpenChange={(open) => !open && setRepairDevice(null)}
+          device={repairDevice}
+          onSuccess={refetch}
+        />
+
         {/* Batch Action Bar */}
         <BatchActionBar
           count={selection.count}
