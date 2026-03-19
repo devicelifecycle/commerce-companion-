@@ -24,8 +24,6 @@ import {
   format, subMonths, startOfMonth, startOfYear, startOfQuarter, subHours,
   differenceInDays, differenceInMinutes
 } from 'date-fns';
-import { MarketplaceAccounting } from '@/components/reports/MarketplaceAccounting';
-import { MarketplaceFeeAnalytics } from '@/components/reports/MarketplaceFeeAnalytics';
 
 const MARKETPLACE_COLORS: Record<string, string> = {
   shopify: '#6EE7B7', amazon: '#FB923C', bestbuy: '#3B82F6', other: '#94A3B8',
