@@ -348,10 +348,15 @@ export default function Sales() {
           <div className="flex gap-2">
             {canManageSales && (
               <>
+                <Button variant="default" onClick={handleSyncAll} disabled={importingFrom !== null}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${importingFrom === 'all' ? 'animate-spin' : ''}`} />
+                  {importingFrom === 'all' ? 'Syncing All...' : 'Sync All'}
+                </Button>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      <RefreshCw className={`h-4 w-4 mr-2 ${importingFrom ? 'animate-spin' : ''}`} />
+                    <Button variant="outline" disabled={importingFrom !== null}>
+                      <RefreshCw className={`h-4 w-4 mr-2 ${importingFrom && importingFrom !== 'all' ? 'animate-spin' : ''}`} />
                       Import
                     </Button>
                   </DropdownMenuTrigger>
