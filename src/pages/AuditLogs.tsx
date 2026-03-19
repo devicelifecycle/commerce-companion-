@@ -420,10 +420,14 @@ export default function AuditLogs() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="relationships" className="flex items-center gap-1.5 text-xs">
               <Link2 className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Relationships</span>
+            </TabsTrigger>
+            <TabsTrigger value="unaccounted" className="flex items-center gap-1.5 text-xs">
+              <PackageSearch className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Unaccounted</span>
             </TabsTrigger>
             <TabsTrigger value="sessions" className="flex items-center gap-1.5 text-xs">
               <LogIn className="h-3.5 w-3.5" />
