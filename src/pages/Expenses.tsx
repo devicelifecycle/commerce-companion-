@@ -93,6 +93,7 @@ export default function Expenses() {
   const { selectedCompany, isSuperAdmin, companies } = useCompany();
   const { logEvent } = useAuditLog();
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [refundMap, setRefundMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
@@ -124,9 +125,19 @@ export default function Expenses() {
         query = query.or(`company_id.eq.${selectedCompany.id},is_shared.eq.true`);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
-      setExpenses((data || []) as Expense[]);
+      const [expResult, refundResult] = await Promise.all([
+        query,
+        supabase.from('expense_refunds').select('expense_id, refund_amount'),
+      ]);
+
+      if (expResult.error) throw expResult.error;
+      setExpenses((expResult.data || []) as Expense[]);
+
+      const map: Record<string, number> = {};
+      (refundResult.data || []).forEach((r: any) => {
+        map[r.expense_id] = (map[r.expense_id] || 0) + Number(r.refund_amount || 0);
+      });
+      setRefundMap(map);
     } catch (error) {
       console.error('Error fetching expenses:', error);
       toast.error('Failed to load expenses');
@@ -359,6 +370,12 @@ export default function Expenses() {
                                         {expense.recurring_frequency}
                                       </Badge>
                                     )}
+                                    {(refundMap[expense.id] || 0) > 0 && (
+                                      <Badge variant="outline" className="text-xs border-[hsl(var(--success))] text-[hsl(var(--success))]">
+                                        <Undo2 className="h-3 w-3 mr-1" />
+                                        {refundMap[expense.id] >= (expense.total_amount || expense.amount) ? 'Fully Refunded' : 'Partial Refund'}
+                                      </Badge>
+                                    )}
                                   </div>
                                 </div>
                               </div>
@@ -377,8 +394,15 @@ export default function Expenses() {
                                 </p>
                               )}
                             </TableCell>
-                            <TableCell className="text-right font-medium text-destructive">
-                              -{formatCurrency(expense.total_amount || expense.amount)}
+                            <TableCell className="text-right font-medium">
+                              <span className={`${(refundMap[expense.id] || 0) > 0 ? 'line-through text-muted-foreground' : 'text-destructive'}`}>
+                                -{formatCurrency(expense.total_amount || expense.amount)}
+                              </span>
+                              {(refundMap[expense.id] || 0) > 0 && (
+                                <p className="text-xs font-medium text-destructive">
+                                  Net: -{formatCurrency((expense.total_amount || expense.amount) - refundMap[expense.id])}
+                                </p>
+                              )}
                             </TableCell>
                             <TableCell>
                               <DropdownMenu>
