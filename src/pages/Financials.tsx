@@ -9,6 +9,11 @@ import { useCompany } from '@/contexts/CompanyContext';
 import { ProfitLossReport } from '@/components/accounting/ProfitLossReport';
 import { BalanceSheetReport } from '@/components/accounting/BalanceSheetReport';
 
+// Ledger & Accounts
+import { ChartOfAccounts } from '@/components/accounting/ChartOfAccounts';
+import { JournalEntries } from '@/components/accounting/JournalEntries';
+import { TrialBalance } from '@/components/accounting/TrialBalance';
+
 // Reconciliation
 import { MarketplaceReconciliation } from '@/components/reports/MarketplaceReconciliation';
 import { PayoutReconciliation } from '@/components/reports/PayoutReconciliation';
@@ -26,18 +31,23 @@ import { TaxFilingReport } from '@/components/taxes/TaxFilingReport';
 // Cost Ledger
 import { CostLedgerPanel } from '@/components/financials/CostLedgerPanel';
 
+// Accounting Audit Trail
+import { AccountingAuditTrail } from '@/components/financials/AccountingAuditTrail';
+
 import {
   TrendingUp, ArrowLeftRight, Receipt, Building2,
   Scale, CheckSquare, Calculator, FileText, LayoutDashboard,
-  Warehouse, Banknote,
+  Warehouse, Banknote, Wallet, BookOpen, ClipboardCheck,
 } from 'lucide-react';
 
 type SubView =
   | 'pl' | 'balance-sheet'
+  | 'chart-of-accounts' | 'journal-entries' | 'trial-balance'
   | 'reconciliation' | 'payouts'
   | 'ap' | 'ar'
   | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing'
-  | 'cost-devices';
+  | 'cost-devices'
+  | 'accounting-trail';
 
 const SECTIONS = [
   {
@@ -47,6 +57,16 @@ const SECTIONS = [
     views: [
       { value: 'pl' as SubView, label: 'Profit & Loss', icon: TrendingUp },
       { value: 'balance-sheet' as SubView, label: 'Balance Sheet', icon: Scale },
+    ],
+  },
+  {
+    key: 'ledger',
+    label: 'Ledger',
+    icon: Wallet,
+    views: [
+      { value: 'chart-of-accounts' as SubView, label: 'Chart of Accounts', icon: Wallet },
+      { value: 'journal-entries' as SubView, label: 'Journal Entries', icon: BookOpen },
+      { value: 'trial-balance' as SubView, label: 'Trial Balance', icon: Scale },
     ],
   },
   {
@@ -86,6 +106,14 @@ const SECTIONS = [
       { value: 'tax-filing' as SubView, label: 'Filing', icon: FileText },
     ],
   },
+  {
+    key: 'audit-trail',
+    label: 'Audit Trail',
+    icon: ClipboardCheck,
+    views: [
+      { value: 'accounting-trail' as SubView, label: 'Accounting Trail', icon: ClipboardCheck },
+    ],
+  },
 ];
 
 export default function Financials() {
@@ -112,7 +140,7 @@ export default function Financials() {
             <div>
               <h1 className="text-2xl font-display font-bold gradient-text">Financials</h1>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Statements · Cost Ledger · AP/AR · Reconciliation · Taxes
+                Statements · Ledger · Cost Ledger · AP/AR · Reconciliation · Taxes · Audit Trail
               </p>
             </div>
 
@@ -124,11 +152,11 @@ export default function Financials() {
                 onValueChange={(v) => { if (v) setCompanyView(v); }}
                 className="bg-muted rounded-lg p-0.5"
               >
-               <ToggleGroupItem value="consolidated" className="text-xs px-2.5 py-1 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm">
+               <ToggleGroupItem value="consolidated" className="text-xs px-2.5 py-1">
                   All
                 </ToggleGroupItem>
                 {companies.map(c => (
-                  <ToggleGroupItem key={c.id} value={c.id} className="text-xs px-2.5 py-1 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm">
+                  <ToggleGroupItem key={c.id} value={c.id} className="text-xs px-2.5 py-1">
                     {c.code}
                   </ToggleGroupItem>
                 ))}
@@ -143,10 +171,10 @@ export default function Financials() {
             type="single"
             value={activeSection}
             onValueChange={handleSectionChange}
-            className="bg-muted rounded-lg p-0.5 w-fit"
+            className="bg-muted rounded-lg p-0.5 w-fit flex-wrap"
           >
             {SECTIONS.map(s => (
-              <ToggleGroupItem key={s.key} value={s.key} className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm data-[state=on]:border data-[state=on]:border-primary/30">
+              <ToggleGroupItem key={s.key} value={s.key} className="text-xs px-3 py-1.5 gap-1.5">
                 <s.icon className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{s.label}</span>
               </ToggleGroupItem>
@@ -162,7 +190,7 @@ export default function Financials() {
               className="bg-muted/50 rounded-lg p-0.5 border border-border/50 w-fit"
             >
               {currentSection.views.map(v => (
-                <ToggleGroupItem key={v.value} value={v.value} className="text-xs px-3 py-1.5 gap-1.5 data-[state=on]:bg-primary/15 data-[state=on]:text-primary data-[state=on]:shadow-sm data-[state=on]:border data-[state=on]:border-primary/30">
+                <ToggleGroupItem key={v.value} value={v.value} className="text-xs px-3 py-1.5 gap-1.5">
                   <v.icon className="h-3 w-3" />
                   {v.label}
                 </ToggleGroupItem>
@@ -174,6 +202,10 @@ export default function Financials() {
           <div className="min-h-[400px]">
             {subView === 'pl' && <ProfitLossReport />}
             {subView === 'balance-sheet' && <BalanceSheetReport />}
+
+            {subView === 'chart-of-accounts' && <ChartOfAccounts />}
+            {subView === 'journal-entries' && <JournalEntries />}
+            {subView === 'trial-balance' && <TrialBalance />}
 
             {subView === 'cost-devices' && <CostLedgerPanel companyView={companyView} />}
 
@@ -187,6 +219,8 @@ export default function Financials() {
             {subView === 'tax-collected' && <TaxCollectedReport />}
             {subView === 'tax-itc' && <InputTaxCredits />}
             {subView === 'tax-filing' && <TaxFilingReport />}
+
+            {subView === 'accounting-trail' && <AccountingAuditTrail companyView={companyView} />}
           </div>
         </div>
       </DashboardLayout>
