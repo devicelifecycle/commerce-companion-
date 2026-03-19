@@ -119,7 +119,7 @@ export const TAX_PAID_ACCOUNTS: AccountDefinition[] = [
 ];
 
 // Combined Chart of Accounts
-export const CASH_BASIS_CHART_OF_ACCOUNTS: AccountDefinition[] = [
+export const ACCRUAL_CHART_OF_ACCOUNTS: AccountDefinition[] = [
   ...ASSET_ACCOUNTS,
   ...LIABILITY_ACCOUNTS,
   ...EQUITY_ACCOUNTS,
@@ -130,7 +130,7 @@ export const CASH_BASIS_CHART_OF_ACCOUNTS: AccountDefinition[] = [
 ];
 
 // Alias for backward compatibility
-export const ACCRUAL_CHART_OF_ACCOUNTS = CASH_BASIS_CHART_OF_ACCOUNTS;
+export const CASH_BASIS_CHART_OF_ACCOUNTS = ACCRUAL_CHART_OF_ACCOUNTS;
 
 // Helper to get account by code
 export function getAccountByCode(code: string): AccountDefinition | undefined {
