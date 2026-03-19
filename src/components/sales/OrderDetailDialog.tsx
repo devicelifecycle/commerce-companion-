@@ -125,10 +125,13 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const [showLinkDevice, setShowLinkDevice] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [linkType, setLinkType] = useState<'device' | 'product'>('device');
+  const [linkType, setLinkType] = useState<'device' | 'product' | 'manual'>('device');
   const [linking, setLinking] = useState(false);
   const [savingProvince, setSavingProvince] = useState(false);
   const [localProvince, setLocalProvince] = useState<string | null>(sale.shipping_province || null);
+  const [manualCostAmount, setManualCostAmount] = useState<string>(sale.manual_cost?.toString() || '');
+  const [manualCostDesc, setManualCostDesc] = useState<string>(sale.manual_cost_description || '');
+  const [savingManualCost, setSavingManualCost] = useState(false);
 
   // Sync local province when sale changes
   useEffect(() => {
