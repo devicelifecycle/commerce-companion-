@@ -22,6 +22,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // If sessionStorage marker is missing, the browser was closed — sign out any stale session
+    const wasActive = sessionStorage.getItem(SESSION_STORAGE_KEY);
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
@@ -29,9 +32,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         setLoading(false);
 
-        // Track login/logout events in audit_logs
         if (event === 'SIGNED_IN' && session?.user) {
-          // Use setTimeout to avoid Supabase deadlock on auth state change
+          // Mark session as active in sessionStorage (cleared when browser closes)
+          sessionStorage.setItem(SESSION_STORAGE_KEY, 'true');
           setTimeout(() => {
             supabase.from('audit_logs').insert({
               action: 'LOGIN',
@@ -44,13 +47,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }, 0);
         }
         if (event === 'SIGNED_OUT') {
-          // Can't log after sign out since user is gone, handled in signOut below
+          sessionStorage.removeItem(SESSION_STORAGE_KEY);
         }
       }
     );
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && !wasActive) {
+        // Browser was closed and reopened — clear stale session
+        supabase.auth.signOut();
+        return;
+      }
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
