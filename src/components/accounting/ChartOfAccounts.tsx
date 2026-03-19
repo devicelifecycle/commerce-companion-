@@ -179,7 +179,27 @@ export function ChartOfAccounts() {
     }
   };
 
-  const initializeDefaultAccounts = async () => {
+  const openSubLedger = async (account: Account) => {
+    setSubLedgerAccount(account);
+    setSubLedgerLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('journal_entry_lines')
+        .select('*, journal_entries!inner(entry_number, entry_date, description, status)')
+        .eq('account_id', account.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      setSubLedgerLines(data || []);
+    } catch (err) {
+      console.error('Sub-ledger fetch error:', err);
+      setSubLedgerLines([]);
+    } finally {
+      setSubLedgerLoading(false);
+    }
+  };
+
+
     if (!selectedCompany) {
       toast.error('Please select a company first');
       return;
