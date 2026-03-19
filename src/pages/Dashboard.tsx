@@ -20,7 +20,7 @@ import {
 import {
   TrendingUp, TrendingDown, DollarSign, Percent, ShoppingCart, Package,
   Wallet, Activity, ArrowUpRight, ArrowDownRight, RefreshCw, Building2,
-  Download, BarChart3, Store, Clock, Target
+  Download, BarChart3, Store, Clock, Target, Receipt
 } from 'lucide-react';
 import {
   format, subMonths, startOfMonth, startOfYear, startOfQuarter, subHours,
