@@ -20,7 +20,7 @@ import {
 import {
   TrendingUp, TrendingDown, DollarSign, Percent, ShoppingCart, Package,
   Wallet, Activity, ArrowUpRight, ArrowDownRight, RefreshCw, Building2,
-  Download, BarChart3, Store, Clock, Target
+  Download, BarChart3, Store, Clock, Target, Receipt
 } from 'lucide-react';
 import {
   format, subMonths, startOfMonth, startOfYear, startOfQuarter, subHours,
@@ -50,6 +50,7 @@ export default function Dashboard() {
   const isAdmin = isSuperAdmin || assignments.some(a => a.role === 'admin');
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('6');
+  const [feeMetrics, setFeeMetrics] = useState<{ marketplace: string; revenue: number; fees: number; feeRate: number; shipping: number; revenueAfterFees: number; orders: number }[]>([]);
   const [companyView, setCompanyView] = useState<'consolidated' | string>('consolidated');
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
 
@@ -79,9 +80,20 @@ export default function Dashboard() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const months = parseInt(dateRange);
       const now = new Date();
-      const startDate = startOfMonth(subMonths(now, months - 1));
+      let startDate: Date;
+      const months = parseInt(dateRange);
+      if (dateRange === 'mtd') {
+        startDate = startOfMonth(now);
+      } else if (dateRange === 'qtd') {
+        startDate = startOfQuarter(now);
+      } else if (dateRange === 'ytd') {
+        startDate = startOfYear(now);
+      } else if (!isNaN(months)) {
+        startDate = startOfMonth(subMonths(now, months - 1));
+      } else {
+        startDate = startOfMonth(subMonths(now, 5));
+      }
       const mtdStart = startOfMonth(now);
       const qtdStart = startOfQuarter(now);
       const ytdStart = startOfYear(now);
@@ -183,10 +195,11 @@ export default function Dashboard() {
         expenseToRevenueRatio, returnOnInventory,
       });
 
-      // Monthly trend
+      // Monthly trend — compute buckets dynamically
+      const bucketMonths = !isNaN(months) ? months : Math.max(1, Math.ceil(differenceInDays(now, startDate) / 30));
       const monthlyData: Record<string, { revenue: number; profit: number; expenses: number; cogs: number }> = {};
-      for (let i = 0; i < months; i++) {
-        const date = subMonths(now, months - 1 - i);
+      for (let i = 0; i < bucketMonths; i++) {
+        const date = subMonths(now, bucketMonths - 1 - i);
         monthlyData[format(date, 'MMM')] = { revenue: 0, profit: 0, expenses: 0, cogs: 0 };
       }
       sales?.forEach(s => {
@@ -206,6 +219,22 @@ export default function Dashboard() {
         month, ...d, netProfit: d.profit - d.expenses,
         margin: d.revenue > 0 ? ((d.revenue - d.cogs) / d.revenue * 100) : 0,
       })));
+
+      // Fees & commissions per marketplace
+      const feeTotals: Record<string, { marketplace: string; revenue: number; fees: number; shipping: number; orders: number }> = {};
+      sales?.forEach(s => {
+        const mp = s.marketplace;
+        if (!feeTotals[mp]) feeTotals[mp] = { marketplace: mp, revenue: 0, fees: 0, shipping: 0, orders: 0 };
+        feeTotals[mp].revenue += Number(s.sale_price);
+        feeTotals[mp].fees += Number(s.marketplace_fees || 0);
+        feeTotals[mp].shipping += Number(s.shipping_cost || 0);
+        feeTotals[mp].orders += 1;
+      });
+      setFeeMetrics(Object.values(feeTotals).map(m => ({
+        ...m,
+        feeRate: m.revenue > 0 ? (m.fees / m.revenue) * 100 : 0,
+        revenueAfterFees: m.revenue - m.fees - m.shipping,
+      })).sort((a, b) => b.fees - a.fees));
 
       // Marketplace
       const mpTotals: Record<string, { revenue: number; profit: number; orders: number }> = {};
@@ -322,9 +351,14 @@ export default function Dashboard() {
             <Select value={dateRange} onValueChange={setDateRange}>
               <SelectTrigger className="w-[110px] h-7 text-[11px]"><SelectValue /></SelectTrigger>
               <SelectContent>
+                <SelectItem value="mtd">Month to Date</SelectItem>
+                <SelectItem value="qtd">Quarter to Date</SelectItem>
+                <SelectItem value="ytd">Year to Date</SelectItem>
+                <SelectItem value="1">30 days</SelectItem>
                 <SelectItem value="3">3 months</SelectItem>
                 <SelectItem value="6">6 months</SelectItem>
                 <SelectItem value="12">12 months</SelectItem>
+                <SelectItem value="24">24 months</SelectItem>
               </SelectContent>
             </Select>
             <div className="flex items-center gap-1 px-2 py-1 rounded-md bg-success/10 border border-success/30">
@@ -463,6 +497,63 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Row 4b: Fees & Commissions by Marketplace */}
+            {feeMetrics.length > 0 && (
+              <div className="bg-card border border-border/60 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <Receipt className="h-3.5 w-3.5 text-destructive" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Fees & Commissions by Channel</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 mb-3">
+                  {(() => {
+                    const totalFees = feeMetrics.reduce((s, m) => s + m.fees, 0);
+                    const totalShipping = feeMetrics.reduce((s, m) => s + m.shipping, 0);
+                    const totalRev = feeMetrics.reduce((s, m) => s + m.revenue, 0);
+                    const totalAfter = feeMetrics.reduce((s, m) => s + m.revenueAfterFees, 0);
+                    const totalOrders = feeMetrics.reduce((s, m) => s + m.orders, 0);
+                    return [
+                      { label: 'Total Fees', value: fmt(totalFees), color: 'text-destructive' },
+                      { label: 'Total Shipping', value: fmt(totalShipping), color: 'text-warning' },
+                      { label: 'Avg Fee Rate', value: fmtPct(totalRev > 0 ? (totalFees / totalRev) * 100 : 0), color: 'text-destructive' },
+                      { label: 'Revenue After Fees', value: fmt(totalAfter), color: 'text-success' },
+                      { label: 'Avg Fee/Order', value: fmt(totalOrders > 0 ? totalFees / totalOrders : 0), color: 'text-muted-foreground' },
+                    ].map(t => (
+                      <div key={t.label} className="p-2 rounded-md bg-muted/30 border border-border/30">
+                        <p className="text-[9px] text-muted-foreground uppercase tracking-wider mb-0.5">{t.label}</p>
+                        <p className={`text-sm font-bold font-display tabular-nums ${t.color}`}>{t.value}</p>
+                      </div>
+                    ));
+                  })()}
+                </div>
+                <div className="space-y-1.5">
+                  {feeMetrics.map(m => {
+                    const barWidth = feeMetrics[0]?.fees > 0 ? (m.fees / feeMetrics[0].fees) * 100 : 0;
+                    return (
+                      <div key={m.marketplace} className="space-y-0.5">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: MARKETPLACE_COLORS[m.marketplace] || MARKETPLACE_COLORS.other }} />
+                            <span className="font-medium capitalize">{m.marketplace}</span>
+                            <span className="text-muted-foreground">{m.orders} orders</span>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <span className="text-destructive font-medium tabular-nums">{fmt(m.fees)}</span>
+                            <Badge variant={m.feeRate > 15 ? 'destructive' : 'secondary'} className="text-[9px] px-1 py-0 h-4">
+                              {m.feeRate.toFixed(1)}%
+                            </Badge>
+                            <span className="text-success text-[10px] tabular-nums">{fmt(m.revenueAfterFees)} net</span>
+                          </div>
+                        </div>
+                        <div className="h-1 rounded-full bg-muted overflow-hidden">
+                          <div className="h-full rounded-full bg-destructive/60 transition-all" style={{ width: `${barWidth}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Row 5: Top products + Expenses + Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
