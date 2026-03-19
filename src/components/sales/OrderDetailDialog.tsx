@@ -361,14 +361,26 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
               <div className="col-span-2">
                 <p className="text-muted-foreground text-xs flex items-center gap-1 mb-1">
                   <MapPin className="h-3 w-3" /> Shipping Province (for tax)
-                  {!sale.shipping_province && (
+                  {!localProvince && !suggestedProvince && (
                     <span className="inline-flex items-center gap-0.5 text-destructive ml-1">
                       <AlertTriangle className="h-3 w-3" /> Not set
                     </span>
                   )}
+                  {!localProvince && suggestedProvince && (
+                    <span className="inline-flex items-center gap-0.5 text-amber-500 ml-1 text-[10px]">
+                      Detected: {suggestedProvince} —
+                      <button
+                        className="underline font-medium hover:text-foreground"
+                        onClick={() => handleProvinceChange(suggestedProvince)}
+                        disabled={savingProvince}
+                      >
+                        Apply
+                      </button>
+                    </span>
+                  )}
                 </p>
                 <Select
-                  value={sale.shipping_province || 'none'}
+                  value={localProvince || 'none'}
                   onValueChange={(v) => { if (v !== 'none') handleProvinceChange(v); }}
                   disabled={savingProvince}
                 >
