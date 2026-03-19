@@ -835,6 +835,66 @@ export type Database = {
           },
         ]
       }
+      device_repairs: {
+        Row: {
+          company_id: string | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          device_id: string
+          id: string
+          notes: string | null
+          started_at: string | null
+          status: string
+          total_labor_cost: number | null
+          total_parts_cost: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          device_id: string
+          id?: string
+          notes?: string | null
+          started_at?: string | null
+          status?: string
+          total_labor_cost?: number | null
+          total_parts_cost?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          device_id?: string
+          id?: string
+          notes?: string | null
+          started_at?: string | null
+          status?: string
+          total_labor_cost?: number | null
+          total_parts_cost?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_repairs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_repairs_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       devices: {
         Row: {
           brand: string
@@ -2486,6 +2546,129 @@ export type Database = {
           },
           {
             foreignKeyName: "purchase_orders_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repair_items: {
+        Row: {
+          created_at: string | null
+          description: string
+          id: string
+          item_type: string
+          labor_hours: number | null
+          labor_rate: number | null
+          quantity: number
+          repair_id: string
+          repair_part_id: string | null
+          total_cost: number
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          id?: string
+          item_type?: string
+          labor_hours?: number | null
+          labor_rate?: number | null
+          quantity?: number
+          repair_id: string
+          repair_part_id?: string | null
+          total_cost?: number
+          unit_cost?: number
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          id?: string
+          item_type?: string
+          labor_hours?: number | null
+          labor_rate?: number | null
+          quantity?: number
+          repair_id?: string
+          repair_part_id?: string | null
+          total_cost?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repair_items_repair_id_fkey"
+            columns: ["repair_id"]
+            isOneToOne: false
+            referencedRelation: "device_repairs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repair_items_repair_part_id_fkey"
+            columns: ["repair_part_id"]
+            isOneToOne: false
+            referencedRelation: "repair_parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repair_parts: {
+        Row: {
+          category: string | null
+          company_id: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          quantity_on_hand: number
+          reorder_point: number | null
+          sku: string | null
+          supplier_id: string | null
+          unit_cost: number
+          updated_at: string | null
+        }
+        Insert: {
+          category?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          quantity_on_hand?: number
+          reorder_point?: number | null
+          sku?: string | null
+          supplier_id?: string | null
+          unit_cost?: number
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string | null
+          company_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          quantity_on_hand?: number
+          reorder_point?: number | null
+          sku?: string | null
+          supplier_id?: string | null
+          unit_cost?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repair_parts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repair_parts_supplier_id_fkey"
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
