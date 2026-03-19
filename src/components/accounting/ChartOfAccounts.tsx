@@ -561,6 +561,56 @@ export function ChartOfAccounts() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Sub-Ledger Dialog */}
+      <Dialog open={!!subLedgerAccount} onOpenChange={(open) => { if (!open) setSubLedgerAccount(null); }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-primary" />
+              Sub-Ledger: {subLedgerAccount?.account_code} — {subLedgerAccount?.account_name}
+            </DialogTitle>
+          </DialogHeader>
+          {subLedgerLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-8 h-8 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+            </div>
+          ) : subLedgerLines.length === 0 ? (
+            <p className="text-center py-8 text-muted-foreground">No journal entry lines found for this account.</p>
+          ) : (
+            <ScrollArea className="max-h-[400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Entry #</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="text-right">Debit</TableHead>
+                    <TableHead className="text-right">Credit</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {subLedgerLines.map((line: any) => (
+                    <TableRow key={line.id}>
+                      <TableCell className="text-xs">{line.journal_entries?.entry_date}</TableCell>
+                      <TableCell className="font-mono text-xs">{line.journal_entries?.entry_number}</TableCell>
+                      <TableCell className="text-xs max-w-[200px] truncate">{line.description || line.journal_entries?.description}</TableCell>
+                      <TableCell className="text-right text-xs tabular-nums">{Number(line.debit_amount) > 0 ? formatCurrency(line.debit_amount) : '-'}</TableCell>
+                      <TableCell className="text-right text-xs tabular-nums">{Number(line.credit_amount) > 0 ? formatCurrency(line.credit_amount) : '-'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          )}
+          <DialogFooter>
+            <div className="flex justify-between w-full items-center">
+              <p className="text-xs text-muted-foreground">{subLedgerLines.length} entries (most recent 50)</p>
+              <Button variant="outline" onClick={() => setSubLedgerAccount(null)}>Close</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
