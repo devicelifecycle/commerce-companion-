@@ -102,6 +102,8 @@ const DEFAULT_ACCOUNTS = [
   { code: '4200', name: 'Tax Collected on Sales - VES', type: 'revenue', subtype: 'Tax Revenue', normal: 'credit' },
   { code: '4201', name: 'Tax Collected on Sales - TGW', type: 'revenue', subtype: 'Tax Revenue', normal: 'credit' },
   { code: '4300', name: 'Inter-company Revenue', type: 'revenue', subtype: 'Other Income', normal: 'credit' },
+  { code: '4400', name: 'Direct Sales Revenue - VES', type: 'revenue', subtype: 'Sales Revenue', normal: 'credit' },
+  { code: '4401', name: 'Direct Sales Revenue - TGW', type: 'revenue', subtype: 'Sales Revenue', normal: 'credit' },
   
   // COGS (5xxx)
   { code: '5000', name: 'COGS - VES', type: 'expense', subtype: 'COGS', normal: 'debit' },

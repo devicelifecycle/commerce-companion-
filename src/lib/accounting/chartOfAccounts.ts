@@ -72,6 +72,10 @@ export const REVENUE_ACCOUNTS: AccountDefinition[] = [
   
   // Inter-company Revenue
   { code: '4300', name: 'Inter-company Revenue', type: 'revenue', subtype: 'Other Income', normalBalance: 'credit', company: 'shared', description: 'Revenue from inter-company sales' },
+
+  // Direct / Invoice Sales Revenue
+  { code: '4400', name: 'Direct Sales Revenue - VES', type: 'revenue', subtype: 'Sales Revenue', normalBalance: 'credit', company: 'VES', description: 'VES direct / invoice sales' },
+  { code: '4401', name: 'Direct Sales Revenue - TGW', type: 'revenue', subtype: 'Sales Revenue', normalBalance: 'credit', company: 'TGW', description: 'TGW direct / invoice sales' },
 ];
 
 // COST OF GOODS SOLD (5xxx)
