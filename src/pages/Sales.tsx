@@ -239,6 +239,40 @@ export default function Sales() {
     }
   };
 
+  const handleSyncAll = async () => {
+    setImportingFrom('all');
+    const sources: Array<'shopify' | 'amazon' | 'bestbuy'> = ['shopify', 'amazon', 'bestbuy'];
+    const results: { source: string; imported: number; error?: string }[] = [];
+
+    for (const source of sources) {
+      try {
+        const { data, error } = await supabase.functions.invoke(`import-${source}-orders`);
+        if (error) throw error;
+        if (data?.success) {
+          results.push({ source, imported: data.imported || 0 });
+        } else {
+          results.push({ source, imported: 0, error: data?.error || 'Failed' });
+        }
+      } catch (err: any) {
+        results.push({ source, imported: 0, error: err.message });
+      }
+    }
+
+    const totalImported = results.reduce((sum, r) => sum + r.imported, 0);
+    const errors = results.filter(r => r.error);
+
+    if (errors.length === 0) {
+      toast.success(`Sync complete: ${totalImported} orders imported across all marketplaces`);
+    } else if (errors.length < sources.length) {
+      toast.warning(`Partial sync: ${totalImported} imported. Errors from: ${errors.map(e => e.source).join(', ')}`);
+    } else {
+      toast.error('All marketplace syncs failed');
+    }
+
+    fetchSales();
+    setImportingFrom(null);
+  };
+
   const handleExport = () => {
     const headers = ['Order Number', 'Marketplace', 'Date', 'Sale Price', 'Fees', 'Shipping', 'Tax', 'Profit', 'Customer', 'Device', 'IMEI', 'Status'];
     const rows = sales.map(sale => [
@@ -314,10 +348,15 @@ export default function Sales() {
           <div className="flex gap-2">
             {canManageSales && (
               <>
+                <Button variant="default" onClick={handleSyncAll} disabled={importingFrom !== null}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${importingFrom === 'all' ? 'animate-spin' : ''}`} />
+                  {importingFrom === 'all' ? 'Syncing All...' : 'Sync All'}
+                </Button>
+
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                      <RefreshCw className={`h-4 w-4 mr-2 ${importingFrom ? 'animate-spin' : ''}`} />
+                    <Button variant="outline" disabled={importingFrom !== null}>
+                      <RefreshCw className={`h-4 w-4 mr-2 ${importingFrom && importingFrom !== 'all' ? 'animate-spin' : ''}`} />
                       Import
                     </Button>
                   </DropdownMenuTrigger>
