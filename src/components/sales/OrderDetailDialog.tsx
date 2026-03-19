@@ -297,6 +297,31 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                   <p className="font-medium">{sale.shipping_address}</p>
                 </div>
               )}
+              <div className="col-span-2">
+                <p className="text-muted-foreground text-xs flex items-center gap-1 mb-1">
+                  <MapPin className="h-3 w-3" /> Shipping Province (for tax)
+                  {!sale.shipping_province && (
+                    <span className="inline-flex items-center gap-0.5 text-amber-500 ml-1">
+                      <AlertTriangle className="h-3 w-3" /> Not set
+                    </span>
+                  )}
+                </p>
+                <Select
+                  value={sale.shipping_province || 'none'}
+                  onValueChange={(v) => { if (v !== 'none') handleProvinceChange(v); }}
+                  disabled={savingProvince}
+                >
+                  <SelectTrigger className="h-8 text-sm w-[220px]">
+                    <SelectValue placeholder="Select province" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Select province…</SelectItem>
+                    {PROVINCES.map(p => (
+                      <SelectItem key={p.code} value={p.code}>{p.code} — {p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
