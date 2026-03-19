@@ -19,7 +19,6 @@ import {
   ClipboardCheck,
   RotateCcw,
   Activity,
-  BookOpen,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth';
@@ -75,8 +74,6 @@ const adminNav = [
 
 const helpNav = [
   { title: 'Help & Guides', url: '/help', icon: HelpCircle },
-  { title: 'Module Guides', url: '/guides', icon: BookOpen },
-  { title: 'Accounting Guides', url: '/accounting-guides', icon: BookOpen },
 ];
 
 export function AppSidebar() {
