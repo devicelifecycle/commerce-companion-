@@ -1108,35 +1108,9 @@ export default function Invoices() {
                   <Plus className="h-3.5 w-3.5 mr-1.5" /> Save Customer
                 </Button>
                 {getDisplayStatus(viewInvoice) !== 'paid' && getDisplayStatus(viewInvoice) !== 'cancelled' && (
-                  <>
-                    <Button size="sm" onClick={() => openPaymentDialog(viewInvoice)}>
-                      <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Record Payment
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button size="sm" variant="destructive">
-                          Cancel Invoice
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Cancel Invoice {viewInvoice.invoice_number}?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will cancel the invoice, reverse all accounting entries (AR, journal entries), and mark it as cancelled. This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Keep Invoice</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => { cancelInvoice(viewInvoice.id); setViewInvoice(null); }}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Yes, Cancel Invoice
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </>
+                  <Button size="sm" onClick={() => openPaymentDialog(viewInvoice)}>
+                    <CreditCard className="h-3.5 w-3.5 mr-1.5" /> Record Payment
+                  </Button>
                 )}
               </div>
             </div>
