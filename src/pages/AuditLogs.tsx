@@ -420,7 +420,7 @@ export default function AuditLogs() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="relationships" className="flex items-center gap-1.5 text-xs">
               <Link2 className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Relationships</span>
@@ -432,10 +432,6 @@ export default function AuditLogs() {
             <TabsTrigger value="changes" className="flex items-center gap-1.5 text-xs">
               <Activity className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Data Changes</span>
-            </TabsTrigger>
-            <TabsTrigger value="accounting" className="flex items-center gap-1.5 text-xs">
-              <BookOpen className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Accounting Trail</span>
             </TabsTrigger>
             <TabsTrigger value="all" className="flex items-center gap-1.5 text-xs">
               <Layers className="h-3.5 w-3.5" />
@@ -708,77 +704,6 @@ export default function AuditLogs() {
             </Card>
           </TabsContent>
 
-          {/* ========== TAB 4: ACCOUNTING TRAIL ========== */}
-          <TabsContent value="accounting">
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2"><BookOpen className="h-5 w-5" />Accounting Audit Trail</CardTitle>
-                  <CardDescription>Journal entries, AP/AR changes, and transaction-to-account mappings</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {loading ? (
-                    <div className="flex items-center justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
-                  ) : accountingLogs.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>No accounting events in this period</p>
-                    </div>
-                  ) : (
-                    <LogTable data={accountingLogs} />
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Journal entry detail */}
-              {relJournals.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Recent Journal Entries</CardTitle>
-                    <CardDescription>All posted and draft journal entries with source references</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="border rounded-lg overflow-auto max-h-[400px]">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead>Entry #</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Description</TableHead>
-                            <TableHead>Source</TableHead>
-                            <TableHead className="text-right">Debit</TableHead>
-                            <TableHead className="text-right">Credit</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Auto?</TableHead>
-                            <TableHead>Company</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {relJournals.slice(0, 100).map(je => (
-                            <TableRow key={je.id}>
-                              <TableCell className="font-mono text-xs font-medium">{je.entry_number}</TableCell>
-                              <TableCell className="text-xs">{format(new Date(je.entry_date), 'MMM d, yyyy')}</TableCell>
-                              <TableCell className="text-sm max-w-[200px] truncate">{je.description}</TableCell>
-                              <TableCell>
-                                {je.reference_type ? (
-                                  <Badge variant="outline" className="text-[10px] capitalize">{je.reference_type.replace('_', ' ')}</Badge>
-                                ) : '—'}
-                              </TableCell>
-                              <TableCell className="text-right font-mono text-sm">{formatCurrency(je.total_debit || 0)}</TableCell>
-                              <TableCell className="text-right font-mono text-sm">{formatCurrency(je.total_credit || 0)}</TableCell>
-                              <TableCell><Badge variant="outline" className="text-[10px]">{formatStatus(je.status)}</Badge></TableCell>
-                              <TableCell className="text-xs">{je.is_auto_generated ? '✓ Auto' : 'Manual'}</TableCell>
-                              <TableCell className="text-xs">{companyName(je.company_id)}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </TabsContent>
 
           {/* ========== TAB 5: ALL EVENTS ========== */}
           <TabsContent value="all">
