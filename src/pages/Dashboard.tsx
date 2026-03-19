@@ -18,16 +18,14 @@ import {
 import {
   TrendingUp, TrendingDown, DollarSign, Percent, ShoppingCart, Package,
   Wallet, Activity, ArrowUpRight, ArrowDownRight, RefreshCw, Building2,
-  Download, BarChart3, Store, Receipt, Clock, Target, Banknote
+  Download, BarChart3, Store, Clock, Target
 } from 'lucide-react';
 import {
   format, subMonths, startOfMonth, startOfYear, startOfQuarter, subHours,
   differenceInDays, differenceInMinutes
 } from 'date-fns';
 import { MarketplaceAccounting } from '@/components/reports/MarketplaceAccounting';
-import { MarketplaceReconciliation } from '@/components/reports/MarketplaceReconciliation';
 import { MarketplaceFeeAnalytics } from '@/components/reports/MarketplaceFeeAnalytics';
-import { PayoutReconciliation } from '@/components/reports/PayoutReconciliation';
 
 const MARKETPLACE_COLORS: Record<string, string> = {
   shopify: '#6EE7B7', amazon: '#FB923C', bestbuy: '#3B82F6', other: '#94A3B8',
@@ -338,8 +336,6 @@ export default function Dashboard() {
           <TabsList className="h-8">
             <TabsTrigger value="profitability" className="text-xs gap-1.5 h-7"><BarChart3 className="h-3.5 w-3.5" />Profitability</TabsTrigger>
             <TabsTrigger value="marketplace" className="text-xs gap-1.5 h-7"><Store className="h-3.5 w-3.5" />Marketplace</TabsTrigger>
-            <TabsTrigger value="reconciliation" className="text-xs gap-1.5 h-7"><Receipt className="h-3.5 w-3.5" />Reconciliation</TabsTrigger>
-            <TabsTrigger value="payouts" className="text-xs gap-1.5 h-7"><Banknote className="h-3.5 w-3.5" />Payouts</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profitability" className="space-y-3">
@@ -566,13 +562,6 @@ export default function Dashboard() {
             <MarketplaceFeeAnalytics companyView={companyView} />
           </TabsContent>
 
-          <TabsContent value="reconciliation" className="space-y-4">
-            <MarketplaceReconciliation companyView={companyView} />
-          </TabsContent>
-
-          <TabsContent value="payouts" className="space-y-4">
-            <PayoutReconciliation companyView={companyView} />
-          </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
