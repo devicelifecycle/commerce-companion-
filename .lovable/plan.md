@@ -1,60 +1,132 @@
 
 
-## Financials Section Overhaul
+## Sitewide Comprehensive Audit Report
 
-### Issues Identified
+### 1. Features & Information Duplication
 
-1. **Gross Profit / Net Profit banners unreadable** — Lines 400 and 466 in `ProfitLossReport.tsx` use `bg-blue-50 dark:bg-blue-950/30` and `bg-emerald-50 dark:bg-emerald-950/30` with no explicit text color. In the dark theme, the text inherits `foreground` but the low-contrast tinted background makes it invisible until highlighted. Same issue exists in the Balance Sheet balanced/unbalanced banner (line 315-325).
+**Critical duplications found:**
 
-2. **Invoice revenue not separated** — `CreateInvoiceDialog.tsx` posts invoice revenue to `4000` (Amazon/VES) or `4100` (BestBuy/TGW). Invoices are direct sales, not marketplace sales. They should post to dedicated "Invoice/Direct Sales Revenue" accounts (`4400`/`4401`). The P&L report must also display this line. The Balance Sheet is also missing AR (accounts `1050`/`1051`) from its assets section — a significant omission.
+| Duplication | Location A | Location B | Recommendation |
+|---|---|---|---|
+| **Marketplace Reconciliation** | Financials → Reconciliation tab | Dashboard.tsx → "Marketplace" tab (uses same `MarketplaceAccounting` + `MarketplaceFeeAnalytics`) | Remove Reconciliation/Payouts/Marketplace tabs from Dashboard. Dashboard should be KPIs + charts only. Financials is the canonical location. |
+| **MarketplaceAccounting component** | Used in Dashboard.tsx (line 561) | Used in Reports.tsx (line 84) — but Reports route redirects to /dashboard anyway | Reports.tsx is dead code (route `/reports` → `/dashboard`). Delete it entirely. |
+| **PayoutReconciliation** | Financials.tsx | Reports.tsx (dead page) | Already dead — delete Reports.tsx |
+| **Accounting Audit Trail** | AuditLogs.tsx still computes `accountingLogs` (line 228) and has accounting-related relationship views | Financials.tsx → Accounting Trail tab (`AccountingAuditTrail` component) | The `accountingLogs` variable in AuditLogs is computed but never rendered in a tab (it was removed). However, the Relationships tab in AuditLogs still shows JE/AP/AR data that overlaps with the Financials audit trail. Consider clarifying scope: AuditLogs = user actions only, Financials = ledger integrity. |
+| **Executive Dashboard metrics** | Dashboard.tsx computes revenue, COGS, margins, AP, AR, inventory from scratch | ExecutiveDashboard.tsx (in Reports.tsx, dead) does the same | Delete Reports.tsx + ExecutiveDashboard.tsx or repurpose. |
 
-3. **"Cash Basis" badge on P&L** — Line 355 shows `<Badge>Cash Basis</Badge>`. The system uses accrual accounting. Must change to "Accrual Basis".
+**Orphaned / dead pages (imported nowhere or only via redirects):**
+- `src/pages/Reports.tsx` — imported in App.tsx but `/reports` redirects to `/dashboard`; the component is never rendered
+- `src/pages/Accounting.tsx` — not imported in App.tsx
+- `src/pages/AccountingKnowledge.tsx` — not imported in App.tsx (content merged into HelpAndGuides)
+- `src/pages/AccountsPayablePage.tsx` — not imported
+- `src/pages/AccountsReceivablePage.tsx` — not imported
+- `src/pages/BalanceSheet.tsx` — not imported (merged into Financials)
+- `src/pages/CashFlow.tsx` — not imported (no Cash Flow view exists in Financials either — **gap**)
+- `src/pages/CostLedger.tsx` — imported but route redirects to `/financials`
+- `src/pages/GoodsReceived.tsx` — route redirects to `/purchase-orders`
+- `src/pages/Guides.tsx` — not imported
+- `src/pages/Help.tsx` — imported but never routed (HelpAndGuides used instead)
+- `src/pages/ProfitLoss.tsx` — not imported
+- `src/pages/Taxes.tsx` — route redirects to `/financials`
+- `src/pages/Team.tsx` — imported but route redirects to `/settings`
 
-4. **Company filter not prominent** — The VES/TGW/All toggle is a tiny `text-xs` ToggleGroup tucked in the top-right corner. Needs to be larger, more visible, and use full company names.
+**Recommendation:** Delete all 14 orphaned files. They add confusion and bundle size.
 
-### Plan
+---
 
-#### A. Fix P&L Banner Readability (`ProfitLossReport.tsx`)
-- Replace `bg-blue-50 dark:bg-blue-950/30` on Gross Profit banner with `bg-primary/10 border border-primary/30` and add explicit `text-foreground` on the text.
-- Replace `bg-emerald-50 dark:bg-emerald-950/30` / `bg-red-50 dark:bg-red-950/30` on Net Profit banner similarly with high-contrast border-based styling.
-- Fix the tax note at the bottom (line 499): remove "Marketplace remits tax to CRA" — seller remits.
+### 2. Outdated Information
 
-#### B. Fix Balance Sheet Banner Readability (`BalanceSheetReport.tsx`)
-- Same pattern: replace `dark:bg-emerald-950/30` and `dark:bg-red-950/30` with bordered, high-contrast variants.
-- Add **Accounts Receivable** (`1050`/`1051`) to the assets section — currently missing entirely.
-- Add **Accounts Payable** (`2010`/`2011`) to the liabilities section — currently missing.
+| Location | Issue | Fix |
+|---|---|---|
+| **Home.tsx line 288** | "Cash Flow" report link points to `/financials` but there is **no Cash Flow view** in Financials. | Either add a Cash Flow Statement to Financials, or remove the link. |
+| **Home.tsx line 290** | "Inventory Valuation" links to `/reports` which redirects to `/dashboard`. | Change to `/inventory` or `/dashboard`. |
+| **Home.tsx line 29** | Shows `VES & TGW` abbreviations instead of full names. | Use full display names per project convention. |
+| **HelpAndGuides.tsx line 19** | Imports `CASH_BASIS_CHART_OF_ACCOUNTS` — misleading name since system is accrual. | The export alias exists (`ACCRUAL_CHART_OF_ACCOUNTS`), use it for clarity. |
+| **Dashboard.tsx line 308** | Title says "Reports" — this is the Dashboard/Reports page, but sidebar says "Reports" pointing to `/dashboard`. Naming is confusing. | Rename to "Dashboard" or "Reports & Dashboard" for consistency. |
+| **AuditLogs.tsx line 228** | Still computes `accountingLogs` but doesn't render them (tab was removed). | Remove dead variable. |
 
-#### C. Add Invoice/Direct Sales Revenue Accounts
-- Add accounts `4400` (Direct Sales Revenue - VES) and `4401` (Direct Sales Revenue - TGW) to `chartOfAccounts.ts`.
-- Update `CreateInvoiceDialog.tsx` to post to `4400`/`4401` instead of reusing marketplace accounts.
-- Update `Invoices.tsx` sale-adjustment journal entries to use `4400`/`4401`.
-- Update `ProfitLossReport.tsx` to:
-  - Add `invoiceSales` field to `PLData.revenue`
-  - Map account codes `4400`/`4401` to this field
-  - Display "Direct / Invoice Sales" as a revenue line
-  - Include it in total revenue calculation
+---
 
-#### D. Change "Cash Basis" to "Accrual Basis" (`ProfitLossReport.tsx`)
-- Line 355: change `Cash Basis` to `Accrual Basis`.
+### 3. Data Accountability & Gap Detection
 
-#### E. Make Company Filter Prominent (`Financials.tsx`)
-- Move the company selector from the header corner to a dedicated row below the title.
-- Increase size: use `text-sm` instead of `text-xs`, larger padding.
-- Display full company names via `getCompanyDisplayName()` (e.g., "Virtual eShop" instead of "VES").
-- Add a visual indicator (colored left border or background tint) when a specific company is selected.
-- Pass `companyView` to `ProfitLossReport` and `BalanceSheetReport` so they respect the Financials-level filter instead of only using `selectedCompany` from context.
+**What's currently monitored (via `run-data-validation` edge function):**
+- ✅ Missing tax on non-Amazon sales
+- ✅ Unlinked inventory (`revenue_only` > 48h)
+- ✅ Fee anomalies (outside expected ranges)
+- ✅ Zero/negative sale prices
+- ✅ Order number gaps (Shopify, BestBuy)
+- ✅ Missing shipping province
 
-#### F. Catch-all Account Coverage in P&L
-- Add a catch-all for any revenue account code starting with `4` that isn't explicitly mapped — display as "Other Revenue".
-- Add a catch-all for any expense account code starting with `6` or `7` that isn't explicitly mapped — roll into "Other Expenses".
-- This ensures future accounts are never silently excluded.
+**Gaps NOT currently detected:**
+| Gap | Impact | Recommendation |
+|---|---|---|
+| **Unmapped chart of accounts** | If a `chart_of_accounts` row has no matching code in `chartOfAccounts.ts`, it's silently excluded from P&L/BS | Add validation: compare DB `chart_of_accounts` codes against known codes; flag unknowns |
+| **Journal entries that don't balance** | `total_debit ≠ total_credit` | Add check in validation function |
+| **Orphan journal entries** | JE with `reference_id` pointing to deleted sales/expenses | Add referential integrity check |
+| **AP/AR without journal entries** | AP/AR records created manually without corresponding JE | Flag AP/AR with no linked JE |
+| **Expenses without journal entries** | Expenses that were created but never had JE posted | Add check for expenses missing JE reference |
+| **Cash Flow statement** | No Cash Flow Statement exists anywhere in the app | Add as a Financials sub-view |
+| **Invoice AR tracking** | Invoices create AR, but no check that AR status matches invoice payment status | Add reconciliation check |
 
-### Files to Edit
-- `src/lib/accounting/chartOfAccounts.ts` — add `4400`/`4401`
-- `src/components/accounting/ProfitLossReport.tsx` — readability, accrual basis, invoice revenue line, catch-all accounts, accept `companyView` prop
-- `src/components/accounting/BalanceSheetReport.tsx` — readability, add AR and AP lines, accept `companyView` prop
-- `src/components/invoices/CreateInvoiceDialog.tsx` — use `4400`/`4401`
-- `src/pages/Invoices.tsx` — use `4400`/`4401` for adjustments
-- `src/pages/Financials.tsx` — prominent company selector, pass `companyView` to statements
-- `src/components/accounting/ChartOfAccounts.tsx` — add `4400`/`4401` to seed list
+---
+
+### 4. Missing Interactive Features
+
+| Feature | Where | Description |
+|---|---|---|
+| **Clickable KPI drill-down** | Dashboard.tsx | KPI cards (Revenue, COGS, etc.) are static. Clicking should navigate to filtered views (e.g., click "AR Owed" → Financials AP/AR tab). |
+| **Clickable chart segments** | Dashboard.tsx | Pie chart segments and bar chart bars should filter or navigate. |
+| **Row actions on Audit Trail relationships** | AuditLogs.tsx | Sales in the Relationships tab show linked JE/AR counts but aren't clickable. Should open detail dialogs. |
+| **Bulk actions on Journal Entries** | JournalEntries.tsx | No batch post/approve. Should support multi-select and batch status changes. |
+| **AP/AR aging buckets clickable** | AccountsPayable/Receivable | Aging summary cards should filter the table when clicked. |
+| **Cost Ledger device click-through** | CostLedgerPanel.tsx | Clicking a device in cost ledger should show its full lifecycle (purchase → storage → sale → JE). |
+| **Chart of Accounts click-to-filter** | ChartOfAccounts.tsx | Clicking an account should show its journal entry history (sub-ledger view). |
+| **Validation issue click-to-fix** | IntegrationHealth.tsx | Issues show descriptions but "Resolve" only marks as resolved. Should offer actionable fix (e.g., link to the sale to add missing device). |
+
+---
+
+### 5. Data Relationships & Population
+
+**Relationships that are correct:**
+- ✅ Sales → Devices (via `device_id`)
+- ✅ Sales → Journal Entries (via `reference_id` on JE)
+- ✅ Sales → AR (via `source_reference`)
+- ✅ Expenses → Journal Entries (via `reference_id`)
+- ✅ Import Batches → Devices (via `import_batch_id`)
+- ✅ PO → GRN → GRN Items → Devices
+- ✅ Invoices → Invoice Items → Devices
+- ✅ Invoices → AR
+- ✅ AP → AP Payments / AR → AR Payments
+
+**Relationship issues found:**
+| Issue | Detail |
+|---|---|
+| **`accounts_payable` has no FK to `vendors` table** | `vendor_id` column exists but no foreign key constraint in DB. Orphan risk. |
+| **`expense_refunds.expense_id` has no FK** | No foreign key constraint visible. |
+| **`grn_items` FKs not shown** | `grn_id`, `device_id`, `product_id`, `purchase_order_item_id` all lack explicit FKs. |
+| **`invoice_items.invoice_id` no FK** | Same pattern — columns exist but no constraints enforced. |
+| **`ap_payments.accounts_payable_id` no FK** | RLS references the join but no DB-level constraint. |
+
+These missing FKs mean the database won't prevent orphaned records if a parent is deleted outside of the application.
+
+---
+
+### Implementation Plan
+
+**Phase 1 — Cleanup (low risk)**
+1. Delete 14 orphaned page files
+2. Remove dead `Reports` import from App.tsx (keep redirect)
+3. Remove dead `accountingLogs` computation from AuditLogs.tsx
+4. Fix outdated links on Home.tsx
+5. Rename Dashboard title from "Reports" to "Dashboard"
+
+**Phase 2 — Data integrity**
+6. Add Cash Flow Statement to Financials hub
+7. Extend `run-data-validation` with 5 new checks (unbalanced JE, orphan JE, AP/AR without JE, expenses without JE, unmapped accounts)
+8. Add foreign key constraints via migration for critical relationships
+
+**Phase 3 — Interactive enhancements**
+9. Add clickable KPI drill-downs on Dashboard
+10. Add sub-ledger view (click account → see its JEs) in Chart of Accounts
+11. Add actionable fix links on Integration Health validation issues
 
