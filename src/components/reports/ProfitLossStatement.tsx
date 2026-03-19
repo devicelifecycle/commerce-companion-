@@ -64,6 +64,7 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
   const [periodType, setPeriodType] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
   const [selectedPeriod, setSelectedPeriod] = useState(format(new Date(), 'yyyy-MM'));
   const [showComparison, setShowComparison] = useState(false);
+  const [costingView, setCostingView] = useState<'accounting' | 'management'>('accounting');
   const [data, setData] = useState<ComparisonData | null>(null);
 
   useEffect(() => {
