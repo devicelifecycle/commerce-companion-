@@ -139,7 +139,7 @@ export function getAccountByCode(code: string): AccountDefinition | undefined {
 
 // Helper to get accounts by company
 export function getAccountsByCompany(company: 'VES' | 'TGW' | 'shared'): AccountDefinition[] {
-  return CASH_BASIS_CHART_OF_ACCOUNTS.filter(acc => acc.company === company || acc.company === 'shared');
+  return ACCRUAL_CHART_OF_ACCOUNTS.filter(acc => acc.company === company || acc.company === 'shared');
 }
 
 // Helper to get accounts by type
