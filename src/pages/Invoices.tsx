@@ -600,12 +600,11 @@ export default function Invoices() {
         throw payErr;
       }
 
-      // Update AR paid amount, balance_due, and status
+      // Update AR paid amount and status
       const { error: arUpdateErr } = await supabase
         .from('accounts_receivable')
         .update({
           paid_amount: newTotalPaid,
-          balance_due: newBalance,
           status: isFullyPaid ? 'paid' : 'partially_paid',
         })
         .eq('id', arRecord.id);
@@ -622,6 +621,40 @@ export default function Invoices() {
       if (invUpdateErr) {
         console.error('Invoice update error:', invUpdateErr);
         throw invUpdateErr;
+      }
+
+      // Optimistically sync local state so list/detail balances update immediately
+      setArRecords(prev => {
+        const updatedAr: ARRecord = {
+          id: arRecord.id,
+          invoice_id: paymentInvoice.id,
+          original_amount: originalAmount,
+          paid_amount: newTotalPaid,
+          balance_due: newBalance,
+          status: isFullyPaid ? 'paid' : 'partially_paid',
+        };
+
+        const exists = prev.some(ar => ar.id === arRecord.id);
+        if (!exists) return [updatedAr, ...prev];
+        return prev.map(ar => (ar.id === arRecord.id ? { ...ar, ...updatedAr } : ar));
+      });
+
+      setInvoices(prev => prev.map(inv =>
+        inv.id === paymentInvoice.id
+          ? { ...inv, status: isFullyPaid ? 'paid' : 'partially_paid', paid_date: isFullyPaid ? paymentDate : null }
+          : inv
+      ));
+
+      if (viewAR?.id === arRecord.id) {
+        setViewAR(prev => prev
+          ? {
+              ...prev,
+              paid_amount: newTotalPaid,
+              balance_due: newBalance,
+              status: isFullyPaid ? 'paid' : 'partially_paid',
+            }
+          : prev
+        );
       }
 
       // Journal entry: Dr. Cash / Cr. AR
