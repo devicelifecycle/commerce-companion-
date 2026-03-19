@@ -553,11 +553,31 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
               prevValue={data.previous.purchases}
               indent
             />
+            {costingView === 'management' && (data.current.capitalizedRepairLabor > 0 || data.current.repairPartsCost > 0) && (
+              <>
+                <LineItem
+                  label="Repair Parts (capitalized)"
+                  value={data.current.repairPartsCost}
+                  prevValue={data.previous.repairPartsCost}
+                  indent
+                />
+                <LineItem
+                  label="Repair Labor (capitalized)"
+                  value={data.current.capitalizedRepairLabor}
+                  prevValue={data.previous.capitalizedRepairLabor}
+                  indent
+                />
+              </>
+            )}
             <Separator className="my-2" />
             <LineItem
               label="TOTAL COGS"
-              value={data.current.totalCOGS}
-              prevValue={data.previous.totalCOGS}
+              value={costingView === 'management'
+                ? data.current.totalCOGS + data.current.capitalizedRepairLabor + data.current.repairPartsCost
+                : data.current.totalCOGS}
+              prevValue={costingView === 'management'
+                ? data.previous.totalCOGS + data.previous.capitalizedRepairLabor + data.previous.repairPartsCost
+                : data.previous.totalCOGS}
               bold
               negative
             />
@@ -567,8 +587,12 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
           <div className="bg-muted/30 p-4 rounded-lg">
             <LineItem
               label="GROSS PROFIT"
-              value={data.current.grossProfit}
-              prevValue={data.previous.grossProfit}
+              value={costingView === 'management'
+                ? data.current.grossProfit - data.current.capitalizedRepairLabor - data.current.repairPartsCost
+                : data.current.grossProfit}
+              prevValue={costingView === 'management'
+                ? data.previous.grossProfit - data.previous.capitalizedRepairLabor - data.previous.repairPartsCost
+                : data.previous.grossProfit}
               bold
             />
           </div>
@@ -593,11 +617,24 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
                 />
               );
             })}
+            {costingView === 'management' && data.current.capitalizedRepairLabor > 0 && (
+              <LineItem
+                label="Less: Capitalized Repair Labor"
+                value={data.current.capitalizedRepairLabor}
+                prevValue={data.previous.capitalizedRepairLabor}
+                indent
+                negative
+              />
+            )}
             <Separator className="my-2" />
             <LineItem
               label="TOTAL OPERATING EXPENSES"
-              value={data.current.totalOperatingExpenses}
-              prevValue={data.previous.totalOperatingExpenses}
+              value={costingView === 'management'
+                ? data.current.totalOperatingExpenses - data.current.capitalizedRepairLabor
+                : data.current.totalOperatingExpenses}
+              prevValue={costingView === 'management'
+                ? data.previous.totalOperatingExpenses - data.previous.capitalizedRepairLabor
+                : data.previous.totalOperatingExpenses}
               bold
               negative
             />
