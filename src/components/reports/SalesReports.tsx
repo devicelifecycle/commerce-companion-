@@ -68,7 +68,8 @@ export function SalesReports({ companyView = 'consolidated' }: SalesReportsProps
       let query = supabase
         .from('sales')
         .select('id, sale_price, profit, marketplace, sale_date, shipping_address, devices(brand, model, category)')
-        .gte('sale_date', startDate.toISOString());
+        .gte('sale_date', startDate.toISOString())
+        .limit(5000);
 
       if (companyView !== 'consolidated') {
         query = query.eq('company_id', companyView);

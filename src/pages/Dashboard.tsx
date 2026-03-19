@@ -117,7 +117,7 @@ export default function Dashboard() {
       const { data: expenses } = await expQ;
 
       // Inventory
-      let invQ = supabase.from('devices').select('id, cost_price, created_at, brand, model').eq('status', 'in_stock');
+      let invQ = supabase.from('devices').select('id, cost_price, created_at, brand, model').eq('status', 'in_stock').limit(5000);
       if (companyFilter) invQ = invQ.eq('company_id', companyFilter);
       const { data: inventory } = await invQ;
 

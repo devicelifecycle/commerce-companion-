@@ -67,7 +67,8 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
         .from('sales')
         .select('id, order_number, marketplace, sale_price, shipping_cost, marketplace_fees, tax_amount, profit, sale_date, company_id, is_marketplace_remitted')
         .gte('sale_date', startDate.toISOString())
-        .order('sale_date', { ascending: false });
+        .order('sale_date', { ascending: false })
+        .limit(5000);
 
       if (companyView !== 'consolidated') {
         query = query.eq('company_id', companyView);

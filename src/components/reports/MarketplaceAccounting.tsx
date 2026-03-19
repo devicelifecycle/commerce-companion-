@@ -49,7 +49,8 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
         .from('sales')
         .select('marketplace, sale_price, shipping_cost, marketplace_fees, profit, device_id, company_id')
         .gte('sale_date', start.toISOString())
-        .lte('sale_date', end.toISOString());
+        .lte('sale_date', end.toISOString())
+        .limit(5000);
 
       if (companyView !== 'consolidated') {
         salesQuery = salesQuery.eq('company_id', companyView);

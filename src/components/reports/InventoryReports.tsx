@@ -73,7 +73,8 @@ export function InventoryReports({ companyView = 'consolidated' }: InventoryRepo
       // Fetch sales for turnover calculation
       const { data: salesDataResult } = await supabase
         .from('sales')
-        .select('device_id, sale_date');
+        .select('device_id, sale_date')
+        .limit(5000);
       setSalesData(salesDataResult || []);
 
     } catch (error) {

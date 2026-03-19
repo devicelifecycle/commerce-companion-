@@ -112,7 +112,8 @@ export function ExecutiveDashboard({ companyView = 'consolidated' }: ExecutiveDa
       let devicesQuery = supabase
         .from('devices')
         .select('cost_price, status, company_id')
-        .eq('status', 'in_stock');
+        .eq('status', 'in_stock')
+        .limit(5000);
       
       if (companyFilter) devicesQuery = devicesQuery.or(companyFilter);
       const { data: devices } = await devicesQuery;
