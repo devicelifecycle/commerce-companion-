@@ -1249,6 +1249,9 @@ export default function Invoices() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-display">Record Payment</DialogTitle>
+            <DialogDescription className="sr-only">
+              Enter payment amount, method, and date to apply payment to this invoice.
+            </DialogDescription>
           </DialogHeader>
           {paymentInvoice && (() => {
             const balance = getBalanceRemaining(paymentInvoice);
