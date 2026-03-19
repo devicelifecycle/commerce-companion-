@@ -258,6 +258,11 @@ export default function Inventory() {
               <FBAInventoryTracker />
             </TabsContent>
           )}
+
+          <TabsContent value="repairs">
+            <RepairPartsManagement canManage={canManage} />
+          </TabsContent>
+        </Tabs>
         </Tabs>
 
         <ActivityLog tableName="devices" title="Inventory Activity" limit={10} />
