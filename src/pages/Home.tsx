@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
+import { SystemAlertsBanner } from '@/components/alerts/SystemAlertsBanner';
 import {
   BookOpen, DollarSign, Calculator, TrendingUp,
   ArrowRight, CheckCircle, FileText, Package,
