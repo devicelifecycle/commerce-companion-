@@ -92,7 +92,8 @@ export function ExecutiveDashboard({ companyView = 'consolidated' }: ExecutiveDa
       let salesQuery = supabase
         .from('sales')
         .select('id, sale_price, profit, marketplace, sale_date, company_id, devices(brand, model, category)')
-        .gte('sale_date', startDate.toISOString());
+        .gte('sale_date', startDate.toISOString())
+        .limit(5000);
       
       if (companyFilter) salesQuery = salesQuery.or(companyFilter);
       const { data: sales } = await salesQuery;
