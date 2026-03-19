@@ -506,7 +506,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
           {/* Category & Subcategory */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Category</Label>
+              <Label>Category *</Label>
               <Select value={formData.category} onValueChange={handleCategoryChange}>
                 <SelectTrigger>
                   <SelectValue />
