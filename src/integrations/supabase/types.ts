@@ -2757,6 +2757,7 @@ export type Database = {
           sale_price: number
           shipping_address: string | null
           shipping_cost: number | null
+          shipping_province: string | null
           subtotal: number | null
           tax_amount: number | null
           updated_at: string
@@ -2787,6 +2788,7 @@ export type Database = {
           sale_price: number
           shipping_address?: string | null
           shipping_cost?: number | null
+          shipping_province?: string | null
           subtotal?: number | null
           tax_amount?: number | null
           updated_at?: string
@@ -2817,6 +2819,7 @@ export type Database = {
           sale_price?: number
           shipping_address?: string | null
           shipping_cost?: number | null
+          shipping_province?: string | null
           subtotal?: number | null
           tax_amount?: number | null
           updated_at?: string
