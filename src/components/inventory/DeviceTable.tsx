@@ -18,7 +18,7 @@ import {
 import { toast } from 'sonner';
 import {
   MoreHorizontal, Edit2, QrCode, FileText, Clock, ArrowRightLeft,
-  Send, Trash2, Smartphone,
+  Send, Trash2, Smartphone, Wrench,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -70,6 +70,7 @@ interface DeviceTableProps {
   onProcurement: (device: { id: string; label: string }) => void;
   onTimeline: (device: Device) => void;
   onTransfer: (device: Device) => void;
+  onRepair?: (device: Device) => void;
   onRefresh: () => void;
 }
 
@@ -78,7 +79,7 @@ const formatCurrency = (value: number) =>
 
 export function DeviceTable({
   devices, companies, selectedCompany, canManage, isSuperAdmin,
-  selection, onEdit, onLabel, onProcurement, onTimeline, onTransfer, onRefresh,
+  selection, onEdit, onLabel, onProcurement, onTimeline, onTransfer, onRepair, onRefresh,
 }: DeviceTableProps) {
   const { logEvent } = useAuditLog();
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; label: string } | null>(null);
@@ -207,6 +208,11 @@ export function DeviceTable({
                           <DropdownMenuItem onClick={() => onTimeline(device)}>
                             <Clock className="h-4 w-4 mr-2" /> View Timeline
                           </DropdownMenuItem>
+                          {onRepair && (device.status === 'in_stock' || device.status === 'hold_for_refurbishment') && (
+                            <DropdownMenuItem onClick={() => onRepair(device)}>
+                              <Wrench className="h-4 w-4 mr-2" /> Repair
+                            </DropdownMenuItem>
+                          )}
                           {device.status === 'in_stock' && (
                             <>
                               {isSuperAdmin && (

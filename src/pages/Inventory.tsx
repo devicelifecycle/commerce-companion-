@@ -14,6 +14,8 @@ import { InventoryGuide } from '@/components/guides/InventoryGuide';
 
 import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker';
 import { ProductsManagement } from '@/components/inventory/ProductsManagement';
+import { RepairPartsManagement } from '@/components/inventory/RepairPartsManagement';
+import { DeviceRepairDialog } from '@/components/inventory/DeviceRepairDialog';
 
 import { DeviceProcurementDialog } from '@/components/inventory/DeviceProcurementDialog';
 import { DeviceTimelineDialog } from '@/components/inventory/DeviceTimelineDialog';
@@ -33,7 +35,7 @@ import {
 import { toast } from 'sonner';
 import {
   Upload, ArrowRightLeft, Smartphone, Boxes, List,
-  Download, Send, Trash2,
+  Download, Send, Trash2, Wrench,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -81,6 +83,7 @@ export default function Inventory() {
   const [procurementDevice, setProcurementDevice] = useState<{ id: string; label: string } | null>(null);
   const [timelineDevice, setTimelineDevice] = useState<any>(null);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [repairDevice, setRepairDevice] = useState<any>(null);
 
   const selection = useTableSelection(devices);
 
@@ -193,10 +196,13 @@ export default function Inventory() {
               <Boxes className="h-4 w-4" /> Products
             </TabsTrigger>
             {isSuperAdmin && (
-              <TabsTrigger value="fba" className="flex items-center gap-2">
+            <TabsTrigger value="fba" className="flex items-center gap-2">
                 <List className="h-4 w-4" /> FBA Management
               </TabsTrigger>
             )}
+            <TabsTrigger value="repairs" className="flex items-center gap-2">
+              <Wrench className="h-4 w-4" /> Repair Parts
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="list">
@@ -230,6 +236,7 @@ export default function Inventory() {
                     onProcurement={(d) => setProcurementDevice(d)}
                     onTimeline={setTimelineDevice}
                     onTransfer={(d) => { setTransferDevice(d); setShowTransferDialog(true); }}
+                    onRepair={setRepairDevice}
                     onRefresh={refetch}
                   />
                 )}
@@ -251,6 +258,10 @@ export default function Inventory() {
               <FBAInventoryTracker />
             </TabsContent>
           )}
+
+          <TabsContent value="repairs">
+            <RepairPartsManagement canManage={canManage} />
+          </TabsContent>
         </Tabs>
 
         <ActivityLog tableName="devices" title="Inventory Activity" limit={10} />
@@ -291,6 +302,14 @@ export default function Inventory() {
           open={!!timelineDevice}
           onOpenChange={(open) => !open && setTimelineDevice(null)}
           device={timelineDevice}
+        />
+
+        {/* Repair Dialog */}
+        <DeviceRepairDialog
+          open={!!repairDevice}
+          onOpenChange={(open) => !open && setRepairDevice(null)}
+          device={repairDevice}
+          onSuccess={refetch}
         />
 
         {/* Batch Action Bar */}
