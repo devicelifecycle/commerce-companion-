@@ -93,6 +93,7 @@ export default function Expenses() {
   const { selectedCompany, isSuperAdmin, companies } = useCompany();
   const { logEvent } = useAuditLog();
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [refundMap, setRefundMap] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
