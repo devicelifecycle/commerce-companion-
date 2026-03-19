@@ -12,7 +12,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Download, FileText, Printer, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
+import { Download, FileText, Printer, TrendingUp, TrendingDown, Calendar, Info, ToggleLeft } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear, startOfQuarter, endOfQuarter, endOfYear } from 'date-fns';
 
 interface PLData {
