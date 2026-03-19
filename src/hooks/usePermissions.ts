@@ -51,6 +51,16 @@ export function usePermissions() {
     }
   }, [user]);
 
+  // Auto-select first accessible company for non-admin users
+  useEffect(() => {
+    if (!loading && !selectedCompanyId && assignments.length > 0) {
+      const isAdminUser = assignments.some(a => a.role === 'admin');
+      if (!isAdminUser) {
+        setSelectedCompanyId(assignments[0].company_id);
+      }
+    }
+  }, [loading, assignments, selectedCompanyId]);
+
   const loadUserPermissions = async () => {
     if (!user) return;
     
