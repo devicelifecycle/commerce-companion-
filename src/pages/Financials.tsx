@@ -11,6 +11,7 @@ import { BalanceSheetReport } from '@/components/accounting/BalanceSheetReport';
 
 // Reconciliation
 import { MarketplaceReconciliation } from '@/components/reports/MarketplaceReconciliation';
+import { PayoutReconciliation } from '@/components/reports/PayoutReconciliation';
 
 // AP & AR
 import { AccountsPayable } from '@/components/accounting/AccountsPayable';
