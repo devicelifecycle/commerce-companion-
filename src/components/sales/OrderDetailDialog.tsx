@@ -213,13 +213,53 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
     }
   };
 
+  const handleSaveManualCost = async () => {
+    setSavingManualCost(true);
+    try {
+      const costValue = manualCostAmount ? parseFloat(manualCostAmount) : null;
+      const { error } = await supabase.from('sales').update({
+        manual_cost: costValue,
+        manual_cost_description: manualCostDesc || null,
+        accounting_status: costValue ? 'fully_processed' : 'revenue_only',
+      } as any).eq('id', sale.id);
+      if (error) throw error;
+      toast.success(costValue ? 'Manual cost saved — profit updated' : 'Manual cost cleared');
+      onSaleUpdated?.();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save manual cost');
+    } finally {
+      setSavingManualCost(false);
+    }
+  };
+
+  const handleClearManualCost = async () => {
+    setSavingManualCost(true);
+    try {
+      const { error } = await supabase.from('sales').update({
+        manual_cost: null,
+        manual_cost_description: null,
+        accounting_status: 'revenue_only',
+      } as any).eq('id', sale.id);
+      if (error) throw error;
+      setManualCostAmount('');
+      setManualCostDesc('');
+      toast.success('Manual cost cleared');
+      onSaleUpdated?.();
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to clear manual cost');
+    } finally {
+      setSavingManualCost(false);
+    }
+  };
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
 
-  const costPrice = sale.devices?.cost_price ?? 0;
+  const costPrice = sale.devices?.cost_price ?? sale.manual_cost ?? 0;
+  const hasCost = !!(sale.devices?.cost_price || sale.manual_cost);
   const grossRevenue = sale.sale_price;
   const totalDeductions = sale.shipping_cost + sale.marketplace_fees + sale.tax_amount;
   const netRevenue = grossRevenue - totalDeductions;
