@@ -557,6 +557,13 @@ export default function Sales() {
                           <MarketplaceBadge marketplace={sale.marketplace} />
                         </TableCell>
                         <TableCell>
+                          {sale.shipping_province ? (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">{sale.shipping_province}</Badge>
+                          ) : (
+                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
+                              <AlertCircle className="h-2.5 w-2.5" />N/A
+                            </Badge>
+                          )}
                           <MarketplaceStatusBadge 
                             marketplace={sale.marketplace} 
                             marketplaceStatus={sale.marketplace_status} 
