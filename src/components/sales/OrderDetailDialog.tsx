@@ -136,7 +136,9 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   // Sync local province when sale changes
   useEffect(() => {
     setLocalProvince(sale.shipping_province || null);
-  }, [sale.shipping_province, sale.id]);
+    setManualCostAmount(sale.manual_cost?.toString() || '');
+    setManualCostDesc(sale.manual_cost_description || '');
+  }, [sale.shipping_province, sale.id, sale.manual_cost]);
 
   // Auto-extract province from address if not set
   const suggestedProvince = useMemo(() => {
