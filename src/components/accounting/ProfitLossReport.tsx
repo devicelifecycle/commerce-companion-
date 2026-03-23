@@ -340,7 +340,18 @@ export function ProfitLossReport({ companyView }: Props) {
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* View Mode Alert */}
+      {costingView === 'management' && (
+        <Alert className="border-primary/30 bg-primary/5">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Management View Active</AlertTitle>
+          <AlertDescription className="text-xs">
+            Estimated device labor ({formatCurrency(plData?.managementLaborCost || 0)}) is moved into COGS. 
+            Payroll ({formatCurrency(plData?.payrollExpenses || 0)}) is excluded from OpEx to avoid double-counting.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
