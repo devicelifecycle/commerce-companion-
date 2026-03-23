@@ -8,7 +8,7 @@ const shortcuts = [
     { keys: ['Alt', 'E'], desc: 'Add Expense' },
     { keys: ['Alt', 'I'], desc: 'Import Devices' },
     { keys: ['Alt', 'N'], desc: 'Create Invoice' },
-    { keys: ['Alt', 'P'], desc: 'Create Purchase Order' },
+    { keys: ['Alt', 'P'], desc: 'Create PO' },
   ]},
   { category: 'Navigation', items: [
     { keys: ['⌘', 'K'], desc: 'Open Command Palette' },
