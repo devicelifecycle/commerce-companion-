@@ -264,6 +264,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
     });
     setLineItems([newPOLine()]);
     setSelectedCompanyId('');
+    setPoType('inventory');
   };
 
   return (
