@@ -61,7 +61,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/mfa-verify" replace />;
   }
 
-  return <>{children}</>;
+  return <ErrorBoundary fallbackTitle="This page encountered an error">{children}</ErrorBoundary>;
 }
 
 const App = () => (

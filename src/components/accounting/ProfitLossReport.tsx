@@ -81,8 +81,12 @@ export function ProfitLossReport({ companyView }: Props) {
     return selectedCompany;
   })();
 
+  const queryClient = useQueryClient();
+
   const fetchPLDataCallback = useCallback(() => {
     fetchPLData();
+    // Also invalidate any cached report queries so other components pick up changes
+    queryClient.invalidateQueries({ queryKey: ['report', 'profit-loss'] });
   }, [effectiveCompany?.id, startDate, endDate]);
 
   useEffect(() => {

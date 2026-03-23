@@ -70,8 +70,11 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
   const [costingView, setCostingView] = useState<'accounting' | 'management'>('accounting');
   const [data, setData] = useState<ComparisonData | null>(null);
 
+  const queryClient = useQueryClient();
+
   const fetchPLDataCallback = useCallback(() => {
     fetchPLData();
+    queryClient.invalidateQueries({ queryKey: ['report', 'profit-loss'] });
   }, [viewMode, periodType, selectedPeriod, selectedCompany]);
 
   useEffect(() => {
