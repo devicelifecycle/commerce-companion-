@@ -1,0 +1,2 @@
+ALTER TABLE public.purchase_order_items ADD COLUMN item_type text NOT NULL DEFAULT 'inventory';
+COMMENT ON COLUMN public.purchase_order_items.item_type IS 'Type of line item: inventory (products), repair_parts, or expense (tools/supplies not for inventory)';

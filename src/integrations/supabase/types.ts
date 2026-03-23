@@ -2418,6 +2418,7 @@ export type Database = {
           device_id: string | null
           gst_hst_amount: number | null
           id: string
+          item_type: string
           product_id: string | null
           pst_qst_amount: number | null
           purchase_order_id: string
@@ -2431,6 +2432,7 @@ export type Database = {
           device_id?: string | null
           gst_hst_amount?: number | null
           id?: string
+          item_type?: string
           product_id?: string | null
           pst_qst_amount?: number | null
           purchase_order_id: string
@@ -2444,6 +2446,7 @@ export type Database = {
           device_id?: string | null
           gst_hst_amount?: number | null
           id?: string
+          item_type?: string
           product_id?: string | null
           pst_qst_amount?: number | null
           purchase_order_id?: string
