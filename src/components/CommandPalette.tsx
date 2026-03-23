@@ -38,7 +38,7 @@ const routes = [
   { title: 'Customers', url: '/customers', icon: Users, group: 'Operations' },
   { title: 'Invoices', url: '/invoices', icon: FileText, group: 'Operations' },
   { title: 'Expenses', url: '/expenses', icon: Wallet, group: 'Expenses' },
-  { title: 'Purchase Orders', url: '/purchase-orders', icon: ClipboardCheck, group: 'Procurement' },
+  { title: 'PO & GRN', url: '/purchase-orders', icon: ClipboardCheck, group: 'Procurement' },
   { title: 'Goods Received', url: '/goods-received', icon: PackageCheck, group: 'Procurement' },
   { title: 'Returns / RMA', url: '/returns', icon: RotateCcw, group: 'Procurement' },
   { title: 'Integration Health', url: '/integration-health', icon: Activity, group: 'Admin' },

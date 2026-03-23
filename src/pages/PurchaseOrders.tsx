@@ -236,8 +236,8 @@ export default function PurchaseOrders() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Purchase Orders</h1>
-            <p className="text-sm text-muted-foreground">Manage procurement for inventory, parts & supplies</p>
+            <h1 className="text-2xl font-bold text-foreground">PO & GRN</h1>
+            <p className="text-sm text-muted-foreground">Purchase Orders & Goods Received — manage procurement for inventory, parts & supplies</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={exportCsv}>
