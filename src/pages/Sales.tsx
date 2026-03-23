@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useDataRefetch } from '@/hooks/useDataRefetch';
+import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupBeforeSaleDelete } from '@/lib/accounting/reversalUtils';
 import { OrdersGuide } from '@/components/guides/OrdersGuide';
