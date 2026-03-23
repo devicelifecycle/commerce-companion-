@@ -1,5 +1,5 @@
 import { PageGuide } from './PageGuide';
-import { Smartphone, ArrowRightLeft, Boxes, QrCode, FileText } from 'lucide-react';
+import { Smartphone, ArrowRightLeft, Boxes, FileText } from 'lucide-react';
 
 export function InventoryGuide() {
   return (
@@ -18,7 +18,7 @@ export function InventoryGuide() {
         },
         {
           icon: <Boxes className="h-4 w-4 text-[hsl(var(--success))]" />,
-          title: 'Device Statuses',
+          title: 'Device Statuses & Labor',
           content: (
             <>
               <ul className="list-disc list-inside space-y-1">
@@ -27,7 +27,7 @@ export function InventoryGuide() {
                 <li><strong>Sold</strong> — Linked to a completed sale</li>
                 <li><strong>Returned</strong> — Came back via RMA</li>
               </ul>
-              <p className="mt-1">Status updates automatically when orders are linked or returns processed.</p>
+              <p className="mt-1">Devices can also have optional <strong>Management Labor Cost/Hours</strong> fields for performance reporting (does not affect accounting books).</p>
             </>
           ),
         },

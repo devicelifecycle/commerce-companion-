@@ -18,12 +18,15 @@ export function OrdersGuide() {
         },
         {
           icon: <Link className="h-4 w-4 text-[hsl(var(--success))]" />,
-          title: 'Linking Devices to Orders',
+          title: 'Linking Devices & Dual Profit',
           content: (
             <>
-              <p>Each order can be <strong>linked to an inventory device</strong> to calculate profit accurately (Sale Price − Cost − Fees − Shipping).</p>
-              <p>The system auto-matches using: (1) IMEI match, (2) SKU match, (3) Fuzzy model name match. You can also link/unlink manually.</p>
-              <p className="text-xs mt-1">Once linked, the device status changes to <strong>"sold"</strong> and journal entries for revenue, COGS, and AR are created automatically.</p>
+              <p>Each order can be <strong>linked to an inventory device</strong>. The system auto-matches using IMEI, SKU, or fuzzy model name. You can also link/unlink manually.</p>
+              <p>Once linked, the table shows two profit columns:</p>
+              <ul className="list-disc list-inside space-y-0.5 text-xs mt-1">
+                <li><strong>Acct $</strong> — Accounting profit (sale − cost_price − fees − shipping − tax)</li>
+                <li><strong>Mgmt $</strong> — Management profit (sale − original_cost − mgmt_labor − fees − shipping − tax)</li>
+              </ul>
             </>
           ),
         },

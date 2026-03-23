@@ -1288,7 +1288,7 @@ export default function Import() {
                         <h4 className="font-semibold text-primary">Devices Only</h4>
                         <ul className="space-y-1 text-muted-foreground">
                           <li>• This import is for <strong>phones, tablets, and laptops</strong> tracked by IMEI or unique serial number</li>
-                          <li>• For bulk items (accessories, cables, etc.), use <strong>Purchase Orders</strong> instead</li>
+                          <li>• For bulk items (accessories, cables, etc.), use <strong>PO & GRN</strong> instead</li>
                           <li>• Brand names must use exact casing (e.g., <strong>"Apple"</strong> not "apple")</li>
                           <li>• Company must be exactly <strong>"VES"</strong> or <strong>"TGW"</strong></li>
                         </ul>

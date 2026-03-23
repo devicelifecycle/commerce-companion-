@@ -12,7 +12,7 @@ export function ImportGuide() {
           content: (
             <>
               <p>This import is exclusively for <strong>electronic devices</strong> — phones, tablets, and laptops — that are tracked individually by IMEI or unique serial number.</p>
-              <p>For <strong>bulk items</strong> (accessories, cables, cases, etc.) that don't need individual tracking, use the <strong>Purchase Orders</strong> section instead.</p>
+              <p>For <strong>bulk items</strong> (accessories, cables, cases, repair parts, tools) use <strong>PO & GRN</strong> instead — set each line item's type to Inventory, Repair Parts, or Expense as needed.</p>
             </>
           ),
         },
