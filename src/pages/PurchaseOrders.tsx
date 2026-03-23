@@ -146,6 +146,7 @@ export default function PurchaseOrders() {
       const details = [journalCount > 0 && `${journalCount} JEs`, grnCount > 0 && `${grnCount} GRNs`].filter(Boolean).join(', ');
       toast.success(`PO deleted${details ? ` — reversed: ${details}` : ''}`);
       loadOrders();
+      emitRefetch('financials');
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete PO');
     }
