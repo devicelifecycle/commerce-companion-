@@ -177,6 +177,8 @@ export default function Invoices() {
     }
   };
 
+  useDataRefetch('invoices', fetchInvoices);
+
   const getDisplayStatus = useCallback((invoice: Invoice): DisplayStatus => {
     if (invoice.status === 'cancelled') return 'cancelled';
 

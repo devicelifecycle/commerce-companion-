@@ -142,6 +142,8 @@ export default function Customers() {
     setLoading(false);
   };
 
+  useDataRefetch('customers', fetchCustomers);
+
   const filtered = useMemo(() => {
     return customers.filter(c => {
       const matchSearch = !search.trim() ||
