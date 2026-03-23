@@ -38,6 +38,7 @@ interface PODetail {
   pst_qst_amount: number | null;
   subtotal: number;
   status: string;
+  po_type?: string;
 }
 
 interface POItem {
