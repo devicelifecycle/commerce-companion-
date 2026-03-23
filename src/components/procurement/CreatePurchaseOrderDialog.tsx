@@ -26,6 +26,7 @@ import { ClipboardList, Plus, Trash2, ChevronsUpDown, Check, Package, Wrench, Re
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ProductSearchCombobox, type ProductOption } from '@/components/inventory/ProductSearchCombobox';
+import { RepairPartSearchCombobox, type RepairPartCatalogOption } from '@/components/inventory/RepairPartSearchCombobox';
 
 interface CreatePurchaseOrderDialogProps {
   open: boolean;
