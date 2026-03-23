@@ -638,11 +638,11 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
                 />
               );
             })}
-            {costingView === 'management' && data.current.capitalizedRepairLabor > 0 && (
+            {costingView === 'management' && data.current.payrollExpenses > 0 && (
               <LineItem
-                label="Less: Capitalized Repair Labor"
-                value={data.current.capitalizedRepairLabor}
-                prevValue={data.previous.capitalizedRepairLabor}
+                label="Less: Payroll (excluded in mgmt view)"
+                value={data.current.payrollExpenses}
+                prevValue={data.previous.payrollExpenses}
                 indent
                 negative
               />
@@ -651,10 +651,10 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
             <LineItem
               label="TOTAL OPERATING EXPENSES"
               value={costingView === 'management'
-                ? data.current.totalOperatingExpenses - data.current.capitalizedRepairLabor
+                ? data.current.totalOperatingExpenses - data.current.payrollExpenses
                 : data.current.totalOperatingExpenses}
               prevValue={costingView === 'management'
-                ? data.previous.totalOperatingExpenses - data.previous.capitalizedRepairLabor
+                ? data.previous.totalOperatingExpenses - data.previous.payrollExpenses
                 : data.previous.totalOperatingExpenses}
               bold
               negative
