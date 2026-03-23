@@ -132,7 +132,6 @@ serve(async (req) => {
     const taxRefunded = Number(rma.tax_refunded || 0);
 
     if (rma.return_type === "sales_return" && rma.sale_id) {
-      // === CUSTOMER RETURN: Reverse the sale's accounting ===
       // Fetch the original sale
       const { data: sale } = await supabase
         .from("sales")
@@ -143,91 +142,108 @@ serve(async (req) => {
       if (!sale) throw new Error("Original sale not found");
 
       const codes = ACCOUNT_MAP[sale.marketplace] || ACCOUNT_MAP["other"];
-      const [arId, revenueId, taxId, cogsId, inventoryId] = await Promise.all([
-        getAccountId(supabase, companyId, codes.ar),
-        getAccountId(supabase, companyId, codes.revenue),
-        getAccountId(supabase, companyId, codes.taxCollected),
-        getAccountId(supabase, companyId, codes.cogs),
-        getAccountId(supabase, companyId, codes.inventory),
-      ]);
 
-      if (!arId || !revenueId) throw new Error("Missing accounts for return reversal");
+      // === ADJUSTMENT TYPE: Partial credit, no item return ===
+      if (rma.resolution_type === "adjustment") {
+        const [arId, revenueId] = await Promise.all([
+          getAccountId(supabase, companyId, codes.ar),
+          getAccountId(supabase, companyId, codes.revenue),
+        ]);
+        if (!arId || !revenueId) throw new Error("Missing accounts for adjustment");
 
-      // Entry 1: Reverse revenue
-      // Dr. Revenue (return the revenue)
-      // Cr. AR (reduce receivable / create refund liability)
-      // Dr. Tax Collected reversal (if applicable)
-      const revenueLines: JournalLine[] = [];
-      const salePrice = Number(sale.sale_price);
-      const fees = Number(sale.marketplace_fees || 0);
-      const shipping = Number(sale.shipping_cost || 0);
-      const tax = Number(sale.tax_amount || 0);
-      const settlementAmount = salePrice - fees + tax - shipping;
+        // Dr. Revenue (reduce revenue by adjustment amount)
+        // Cr. AR (reduce receivable / issue credit)
+        await createJournalEntry(
+          supabase, companyId, returnDate,
+          `Courtesy adjustment/credit - ${rma.rma_number}`,
+          rma.id,
+          [
+            { account_id: revenueId, description: `Revenue adjustment - ${rma.rma_number}`, debit_amount: refundAmount, credit_amount: 0 },
+            { account_id: arId, description: `AR credit - ${rma.rma_number}`, debit_amount: 0, credit_amount: refundAmount },
+          ]
+        );
+      } else {
+        // === FULL RETURN (refund, exchange, repair): Reverse the sale's accounting ===
+        const [arId, revenueId, taxId, cogsId, inventoryId] = await Promise.all([
+          getAccountId(supabase, companyId, codes.ar),
+          getAccountId(supabase, companyId, codes.revenue),
+          getAccountId(supabase, companyId, codes.taxCollected),
+          getAccountId(supabase, companyId, codes.cogs),
+          getAccountId(supabase, companyId, codes.inventory),
+        ]);
 
-      revenueLines.push({
-        account_id: revenueId,
-        description: `Revenue reversal - Return ${rma.rma_number}`,
-        debit_amount: salePrice,
-        credit_amount: 0,
-      });
+        if (!arId || !revenueId) throw new Error("Missing accounts for return reversal");
 
-      if (taxRefunded > 0 && taxId) {
+        // Entry 1: Reverse revenue
+        const revenueLines: JournalLine[] = [];
+        const salePrice = Number(sale.sale_price);
+
         revenueLines.push({
-          account_id: taxId,
-          description: `Tax reversal - Return ${rma.rma_number}`,
-          debit_amount: taxRefunded,
+          account_id: revenueId,
+          description: `Revenue reversal - Return ${rma.rma_number}`,
+          debit_amount: refundAmount > 0 ? refundAmount : salePrice,
           credit_amount: 0,
         });
-      }
 
-      revenueLines.push({
-        account_id: arId,
-        description: `AR reversal/refund - Return ${rma.rma_number}`,
-        debit_amount: 0,
-        credit_amount: salePrice + taxRefunded,
-      });
-
-      await createJournalEntry(
-        supabase, companyId, returnDate,
-        `Sales return reversal - RMA#${rma.rma_number}`,
-        rma.id, revenueLines
-      );
-
-      // Entry 2: Reverse COGS (if device was linked)
-      if (sale.device_id && cogsId && inventoryId) {
-        const device = rma.device as any;
-        const deviceCost = device?.cost_price ? Number(device.cost_price) : 0;
-        if (deviceCost > 0) {
-          await createJournalEntry(
-            supabase, companyId, returnDate,
-            `COGS reversal - RMA#${rma.rma_number}`,
-            rma.id,
-            [
-              { account_id: inventoryId, description: `Inventory restored - ${rma.rma_number}`, debit_amount: deviceCost, credit_amount: 0 },
-              { account_id: cogsId, description: `COGS reversed - ${rma.rma_number}`, debit_amount: 0, credit_amount: deviceCost },
-            ]
-          );
+        if (taxRefunded > 0 && taxId) {
+          revenueLines.push({
+            account_id: taxId,
+            description: `Tax reversal - Return ${rma.rma_number}`,
+            debit_amount: taxRefunded,
+            credit_amount: 0,
+          });
         }
-      }
 
-      // Update the AR record if one exists
-      const { data: arRecord } = await supabase
-        .from("accounts_receivable")
-        .select("id, balance_due, paid_amount")
-        .eq("source_reference", rma.sale_id)
-        .maybeSingle();
+        const totalDebitForAR = (refundAmount > 0 ? refundAmount : salePrice) + taxRefunded;
+        revenueLines.push({
+          account_id: arId,
+          description: `AR reversal/refund - Return ${rma.rma_number}`,
+          debit_amount: 0,
+          credit_amount: totalDebitForAR,
+        });
 
-      if (arRecord) {
-        await supabase.from("accounts_receivable").update({
-          status: "cancelled",
-          notes: `Cancelled due to return RMA#${rma.rma_number}`,
-          balance_due: 0,
-        }).eq("id", arRecord.id);
+        await createJournalEntry(
+          supabase, companyId, returnDate,
+          `Sales return reversal - RMA#${rma.rma_number}`,
+          rma.id, revenueLines
+        );
+
+        // Entry 2: Reverse COGS (if device was linked and it's a refund/exchange — not repair since item stays)
+        if (sale.device_id && cogsId && inventoryId && rma.resolution_type !== "repair") {
+          const device = rma.device as any;
+          const deviceCost = device?.cost_price ? Number(device.cost_price) : 0;
+          if (deviceCost > 0) {
+            await createJournalEntry(
+              supabase, companyId, returnDate,
+              `COGS reversal - RMA#${rma.rma_number}`,
+              rma.id,
+              [
+                { account_id: inventoryId, description: `Inventory restored - ${rma.rma_number}`, debit_amount: deviceCost, credit_amount: 0 },
+                { account_id: cogsId, description: `COGS reversed - ${rma.rma_number}`, debit_amount: 0, credit_amount: deviceCost },
+              ]
+            );
+          }
+        }
+
+        // Update the AR record if one exists
+        const { data: arRecord } = await supabase
+          .from("accounts_receivable")
+          .select("id, balance_due, paid_amount")
+          .eq("source_reference", rma.sale_id)
+          .maybeSingle();
+
+        if (arRecord) {
+          await supabase.from("accounts_receivable").update({
+            status: "cancelled",
+            notes: `Cancelled due to return RMA#${rma.rma_number}`,
+            balance_due: 0,
+          }).eq("id", arRecord.id);
+        }
       }
 
     } else if (rma.return_type === "purchase_return") {
       // === SUPPLIER RETURN: Reverse the purchase ===
-      const codes = ACCOUNT_MAP["other"]; // Use default codes
+      const codes = ACCOUNT_MAP["other"];
       const [inventoryId, apId] = await Promise.all([
         getAccountId(supabase, companyId, codes.inventory),
         getAccountId(supabase, companyId, codes.ap),
