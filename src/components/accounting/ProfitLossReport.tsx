@@ -529,9 +529,15 @@ export function ProfitLossReport({ companyView }: Props) {
                       <span>{formatCurrency(plData.expenses.rent)}</span>
                     </div>
                   )}
-                  {plData.expenses.salaries > 0 && (
+                  {plData.expenses.salaries > 0 && !isMgmt && (
                     <div className="flex justify-between">
                       <span>Salaries and Wages</span>
+                      <span>{formatCurrency(plData.expenses.salaries)}</span>
+                    </div>
+                  )}
+                  {isMgmt && plData.expenses.salaries > 0 && (
+                    <div className="flex justify-between text-muted-foreground line-through italic">
+                      <span>Salaries and Wages (excluded in mgmt view)</span>
                       <span>{formatCurrency(plData.expenses.salaries)}</span>
                     </div>
                   )}
