@@ -276,7 +276,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
             Create Purchase Order
           </DialogTitle>
           <DialogDescription>
-            Create a manual purchase order for bulk items, supplies, and non-device inventory.
+            Create a purchase order for {poType === 'repair_parts' ? 'repair parts' : 'bulk items, supplies, and non-device inventory'}.
           </DialogDescription>
         </DialogHeader>
 
