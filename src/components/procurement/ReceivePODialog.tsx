@@ -49,6 +49,7 @@ interface POItem {
   gst_hst_amount: number | null;
   pst_qst_amount: number | null;
   total_cost: number;
+  item_type: string;
 }
 
 /** Each PO line item can have multiple split rows with different conditions */
