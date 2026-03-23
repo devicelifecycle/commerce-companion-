@@ -694,8 +694,6 @@ export default function Sales() {
           </CardContent>
         </Card>
 
-        {/* Activity Log */}
-        <ActivityLog tableName="sales" title="Orders Activity" limit={10} />
       </div>
 
 

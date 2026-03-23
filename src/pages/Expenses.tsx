@@ -585,8 +585,6 @@ export default function Expenses() {
           </TabsContent>
         </Tabs>
 
-        {/* Activity Log */}
-        <ActivityLog tableName="expenses" title="Expense Activity" limit={10} />
 
         <AddExpenseDialog
           open={dialogOpen}

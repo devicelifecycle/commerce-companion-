@@ -282,7 +282,7 @@ export default function Inventory() {
           </TabsContent>
         </Tabs>
 
-        <ActivityLog tableName="devices" title="Inventory Activity" limit={10} />
+        
 
         {/* Edit Dialog */}
         <DeviceEditDialog
