@@ -479,8 +479,8 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
               </Button>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
-              <p><strong>Accounting View:</strong> Shows actual payroll expenses and original device costs (GAAP-compliant).</p>
-              <p className="mt-1"><strong>Management View:</strong> Shows fully-loaded device costs (including repair labor) with payroll reduced by the capitalized amount. Net profit is the same in both views.</p>
+              <p><strong>Accounting View:</strong> Standard P&L using actual costs. Device COGS includes purchase price + capitalized repair parts. Labor appears as payroll in Operating Expenses.</p>
+              <p className="mt-1"><strong>Management View:</strong> Performance P&L. Device COGS includes purchase price + repair parts + estimated labor per device. Payroll expenses are excluded to avoid double-counting.</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>

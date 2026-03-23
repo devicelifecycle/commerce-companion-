@@ -588,6 +588,19 @@ export default function Sales() {
                             <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
+                        <TableCell className="text-right text-xs font-medium tabular-nums">
+                          {(() => {
+                            if (!sale.devices) return <span className="text-muted-foreground">—</span>;
+                            const originalCost = sale.devices.original_cost_price ?? sale.devices.cost_price;
+                            const mgmtLabor = sale.devices.management_labor_cost ?? 0;
+                            const mgmtProfit = sale.sale_price - originalCost - mgmtLabor - sale.marketplace_fees - sale.shipping_cost - sale.tax_amount;
+                            return (
+                              <span className={mgmtProfit >= 0 ? 'text-[hsl(var(--success))]' : 'text-destructive'}>
+                                {formatCurrency(mgmtProfit)}
+                              </span>
+                            );
+                          })()}
+                        </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
