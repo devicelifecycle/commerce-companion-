@@ -219,17 +219,35 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
         const totalOperatingExpenses = Object.values(operatingExpensesByCategory).reduce((sum, v) => sum + v, 0);
         const operatingProfit = grossProfit - totalOperatingExpenses;
 
-        // Fetch capitalized repair labor for the period (from completed device_repairs)
+        // Fetch management labor cost from sold devices in the period
+        let soldDevicesQuery = supabase
+          .from('sales')
+          .select('devices!inner(management_labor_cost)')
+          .gte('sale_date', startDate.toISOString())
+          .lte('sale_date', endDate.toISOString())
+          .not('device_id', 'is', null);
+        if (companyFilter) soldDevicesQuery = soldDevicesQuery.or(companyFilter);
+        const { data: soldDevicesData } = await soldDevicesQuery;
+
+        const managementLaborCost = soldDevicesData?.reduce((sum: number, s: any) => 
+          sum + Number(s.devices?.management_labor_cost || 0), 0) || 0;
+
+        // Calculate payroll/labor expenses (categories that represent actual labor payments)
+        const payrollCategories = ['payroll', 'salaries'];
+        const payrollExpenses = expenses?.filter(e => 
+          payrollCategories.includes(e.category)
+        ).reduce((sum, e) => sum + getEffectiveExpense(e), 0) || 0;
+
+        // Fetch repair parts cost for reference
         let repairsQuery = supabase
           .from('device_repairs')
-          .select('total_labor_cost, total_parts_cost')
+          .select('total_parts_cost')
           .eq('status', 'completed')
           .gte('completed_at', startDate.toISOString())
           .lte('completed_at', endDate.toISOString());
         if (companyFilter) repairsQuery = repairsQuery.or(companyFilter);
         const { data: repairs } = await repairsQuery;
 
-        const capitalizedRepairLabor = repairs?.reduce((sum, r) => sum + Number(r.total_labor_cost || 0), 0) || 0;
         const repairPartsCost = repairs?.reduce((sum, r) => sum + Number(r.total_parts_cost || 0), 0) || 0;
 
         // Other income/expenses
@@ -256,7 +274,8 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
           netProfitBeforeTax,
           incomeTax,
           netProfitAfterTax,
-          capitalizedRepairLabor,
+          managementLaborCost,
+          payrollExpenses,
           repairPartsCost,
         };
       };
