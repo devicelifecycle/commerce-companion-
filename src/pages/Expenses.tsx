@@ -7,7 +7,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { useQuickActionListener } from '@/hooks/useGlobalShortcuts';
 import { useAuditLog } from '@/hooks/useAuditLog';
-import { ActivityLog } from '@/components/audit/ActivityLog';
+
 import { ExpenseDashboard } from '@/components/expenses/ExpenseDashboard';
 import { AddExpenseDialog } from '@/components/expenses/AddExpenseDialog';
 import { ExpenseRefundDialog } from '@/components/expenses/ExpenseRefundDialog';
@@ -585,8 +585,6 @@ export default function Expenses() {
           </TabsContent>
         </Tabs>
 
-        {/* Activity Log */}
-        <ActivityLog tableName="expenses" title="Expense Activity" limit={10} />
 
         <AddExpenseDialog
           open={dialogOpen}
