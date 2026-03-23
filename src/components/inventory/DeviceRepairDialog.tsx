@@ -233,7 +233,7 @@ export function DeviceRepairDialog({ open, onOpenChange, device, onSuccess }: De
           notes: `Repair completed: parts cost $${totalPartsCost.toFixed(2)} added to device cost. Labor $${totalLaborCost.toFixed(2)} tracked for management reporting. Original cost: $${Number(originalCost).toFixed(2)}, new cost: $${newCostPrice.toFixed(2)}.`,
         });
 
-        toast.success(`Repair completed — $${totalRepairCost.toFixed(2)} added to device cost`);
+        toast.success(`Repair completed — parts cost $${totalPartsCost.toFixed(2)} added to device cost`);
       } else {
         toast.success('Repair saved as in progress');
       }
