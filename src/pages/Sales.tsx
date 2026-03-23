@@ -168,6 +168,7 @@ export default function Sales() {
       toast.success(`${selectedIds.size} sale(s) deleted${totalJE > 0 ? ` — ${totalJE} journal entries reversed` : ''}`);
       setSelectedIds(new Set());
       fetchSales();
+      emitRefetch('financials');
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete sales');
     }
