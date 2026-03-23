@@ -474,20 +474,34 @@ export function ProfitLossReport({ companyView }: Props) {
               {/* COGS Section */}
               <div>
                 <h3 className="font-semibold text-lg text-blue-500 mb-3">COST OF GOODS SOLD</h3>
-                <div className="flex justify-between ml-4">
-                  <span>COGS (FIFO Calculation)</span>
-                  <span className="text-destructive">({formatCurrency(plData.cogs)})</span>
+                <div className="space-y-2 ml-4">
+                  <div className="flex justify-between">
+                    <span>COGS (FIFO Calculation)</span>
+                    <span className="text-destructive">({formatCurrency(plData.cogs)})</span>
+                  </div>
+                  {isMgmt && plData.managementLaborCost > 0 && (
+                    <div className="flex justify-between text-muted-foreground italic">
+                      <span>Management Labor (estimated)</span>
+                      <span className="text-destructive">({formatCurrency(plData.managementLaborCost)})</span>
+                    </div>
+                  )}
                 </div>
+                {isMgmt && plData.managementLaborCost > 0 && (
+                  <div className="flex justify-between font-semibold mt-2 pt-2 border-t ml-4">
+                    <span>Total COGS</span>
+                    <span className="text-destructive">({formatCurrency(adjCogs)})</span>
+                  </div>
+                )}
               </div>
 
               <div className="border border-primary/30 bg-primary/10 p-4 rounded-lg">
                 <div className="flex justify-between font-bold text-lg text-foreground">
                   <span>GROSS PROFIT</span>
-                  <span>{formatCurrency(plData.grossProfit)}</span>
+                  <span>{formatCurrency(adjGrossProfit)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>Gross Margin</span>
-                  <span>{formatPercent(plData.grossMargin)}</span>
+                  <span>{formatPercent(adjGrossMargin)}</span>
                 </div>
               </div>
 
