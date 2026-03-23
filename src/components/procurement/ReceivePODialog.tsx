@@ -160,7 +160,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
   };
 
   // Flatten all splits for summary
-  const allSplits = groups.flatMap(g => g.splits.map(s => ({ ...s, po_item_id: g.po_item_id, description: g.description, ordered_qty: g.ordered_qty })));
+  const allSplits = groups.flatMap(g => g.splits.map(s => ({ ...s, po_item_id: g.po_item_id, description: g.description, ordered_qty: g.ordered_qty, item_type: g.item_type })));
   const totalReceived = allSplits.reduce((sum, s) => sum + s.qty, 0);
   const totalOrdered = groups.reduce((sum, g) => sum + g.ordered_qty, 0);
   const isPartial = totalReceived < totalOrdered && totalReceived > 0;
