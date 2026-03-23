@@ -14,7 +14,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type DeviceCondition = 'new' | 'refurbished' | 'used' | 'damaged';
 type DeviceStatus = 'in_stock' | 'reserved' | 'sold' | 'returned' | 'hold_for_refurbishment';
@@ -57,6 +58,7 @@ export function DeviceEditDialog({ open, onOpenChange, device, onSuccess }: Devi
     imei: '', sku: '', category: 'phone', model: '', brand: '', storage: '', color: '',
     condition: 'new' as DeviceCondition, status: 'in_stock' as DeviceStatus,
     cost_price: '', sale_price: '', supplier_id: '', purchase_date: '', warehouse_location: '', notes: '',
+    management_labor_cost: '', management_labor_hours: '',
   });
 
   useEffect(() => {
@@ -68,6 +70,8 @@ export function DeviceEditDialog({ open, onOpenChange, device, onSuccess }: Devi
         cost_price: device.cost_price.toString(), sale_price: device.sale_price?.toString() || '',
         supplier_id: device.supplier_id || '', purchase_date: device.purchase_date || '',
         warehouse_location: device.warehouse_location || '', notes: device.notes || '',
+        management_labor_cost: (device as any).management_labor_cost?.toString() || '',
+        management_labor_hours: (device as any).management_labor_hours?.toString() || '',
       });
     }
   }, [device, open]);
@@ -109,7 +113,9 @@ export function DeviceEditDialog({ open, onOpenChange, device, onSuccess }: Devi
         cost_price: parseFloat(form.cost_price), sale_price: form.sale_price ? parseFloat(form.sale_price) : null,
         supplier_id: form.supplier_id || null, purchase_date: form.purchase_date || null,
         warehouse_location: form.warehouse_location || null, notes: form.notes || null,
-      }).eq('id', device.id);
+        management_labor_cost: form.management_labor_cost ? parseFloat(form.management_labor_cost) : null,
+        management_labor_hours: form.management_labor_hours ? parseFloat(form.management_labor_hours) : null,
+      } as any).eq('id', device.id);
       if (error) throw error;
       logEvent({ action: 'UPDATE' as any, tableName: 'devices', recordId: device.id, module: 'Inventory', notes: `Updated ${form.brand} ${form.model}` });
       toast.success('Device updated');
@@ -251,6 +257,33 @@ export function DeviceEditDialog({ open, onOpenChange, device, onSuccess }: Devi
           <div className="space-y-2">
             <Label>Notes</Label>
             <Textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Additional notes..." />
+          </div>
+
+          {/* Management Labor Section */}
+          <div className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-semibold">Management Labor Estimate</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>Used for management profit calculations only. Does not affect accounting books or device cost.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Labor Hours</Label>
+                <Input type="number" step="0.25" value={form.management_labor_hours} onChange={(e) => set('management_labor_hours', e.target.value)} placeholder="e.g. 1.5" />
+              </div>
+              <div className="space-y-2">
+                <Label>Labor Cost ($)</Label>
+                <Input type="number" step="0.01" value={form.management_labor_cost} onChange={(e) => set('management_labor_cost', e.target.value)} placeholder="e.g. 25.00" />
+              </div>
+            </div>
           </div>
         </div>
 

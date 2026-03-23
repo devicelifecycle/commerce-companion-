@@ -217,82 +217,23 @@ export function DeviceRepairDialog({ open, onOpenChange, device, onSuccess }: De
           }
         }
 
-        // Preserve original cost if not already set, then add repair cost
+        // Preserve original cost if not already set, then add PARTS cost only (not labor)
         const originalCost = device.original_cost_price ?? device.cost_price;
-        const newCostPrice = Number(device.cost_price) + totalRepairCost;
+        const newCostPrice = Number(device.cost_price) + totalPartsCost;
         await supabase.from('devices').update({
           cost_price: newCostPrice,
           original_cost_price: originalCost,
         }).eq('id', device.id);
-
-        // Create contra-expense journal entry for labor portion
-        // Dr. Inventory (1100/1101) — increases inventory asset
-        // Cr. Capitalized Repair Labor (6950/6951) — contra-expense offsets payroll
-        if (totalLaborCost > 0 && device.company_id) {
-          const { data: companyData } = await supabase
-            .from('companies').select('code').eq('id', device.company_id).single();
-          const code = companyData?.code;
-          const inventoryAcct = code === 'VES' ? '1100' : '1101';
-          const contraAcct = code === 'VES' ? '6950' : '6951';
-
-          // Find chart of accounts IDs
-          const { data: accounts } = await supabase
-            .from('chart_of_accounts')
-            .select('id, account_code')
-            .in('account_code', [inventoryAcct, contraAcct])
-            .eq('company_id', device.company_id);
-
-          const invAccount = accounts?.find(a => a.account_code === inventoryAcct);
-          const contraAccount = accounts?.find(a => a.account_code === contraAcct);
-
-          if (invAccount && contraAccount) {
-            const entryNumber = `RPR-${Date.now().toString(36).toUpperCase()}`;
-            const { data: je, error: jeErr } = await supabase.from('journal_entries').insert({
-              entry_number: entryNumber,
-              entry_date: new Date().toISOString().split('T')[0],
-              description: `Capitalize repair labor — ${device.brand} ${device.model} (${device.imei || device.sku || device.id.slice(0, 8)})`,
-              company_id: device.company_id,
-              reference_type: 'device_repair',
-              reference_id: repairId,
-              is_auto_generated: true,
-              status: 'posted',
-              total_debit: totalLaborCost,
-              total_credit: totalLaborCost,
-              created_by: user?.id,
-              posted_at: new Date().toISOString(),
-              posted_by: user?.id,
-            }).select().single();
-
-            if (!jeErr && je) {
-              await supabase.from('journal_entry_lines').insert([
-                {
-                  journal_entry_id: je.id,
-                  account_id: invAccount.id,
-                  debit_amount: totalLaborCost,
-                  credit_amount: 0,
-                  description: `Repair labor capitalized into inventory — ${device.brand} ${device.model}`,
-                },
-                {
-                  journal_entry_id: je.id,
-                  account_id: contraAccount.id,
-                  debit_amount: 0,
-                  credit_amount: totalLaborCost,
-                  description: `Capitalized repair labor (contra-expense) — ${device.brand} ${device.model}`,
-                },
-              ]);
-            }
-          }
-        }
 
         logEvent({
           action: 'UPDATE' as any,
           tableName: 'devices',
           module: 'Inventory',
           recordId: device.id,
-          notes: `Repair completed: $${totalRepairCost.toFixed(2)} added to cost (parts: $${totalPartsCost.toFixed(2)}, labor: $${totalLaborCost.toFixed(2)}). Original cost: $${Number(originalCost).toFixed(2)}, new cost: $${newCostPrice.toFixed(2)}. Contra JE created for $${totalLaborCost.toFixed(2)} labor capitalization.`,
+          notes: `Repair completed: parts cost $${totalPartsCost.toFixed(2)} added to device cost. Labor $${totalLaborCost.toFixed(2)} tracked for management reporting. Original cost: $${Number(originalCost).toFixed(2)}, new cost: $${newCostPrice.toFixed(2)}.`,
         });
 
-        toast.success(`Repair completed — $${totalRepairCost.toFixed(2)} added to device cost`);
+        toast.success(`Repair completed — parts cost $${totalPartsCost.toFixed(2)} added to device cost`);
       } else {
         toast.success('Repair saved as in progress');
       }

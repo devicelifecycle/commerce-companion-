@@ -38,6 +38,7 @@ interface PODetail {
   pst_qst_amount: number | null;
   subtotal: number;
   status: string;
+  po_type?: string;
 }
 
 interface POItem {
@@ -221,7 +222,8 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
       const newStatus = isPartial ? 'partially_received' : 'received';
       await supabase.from('purchase_orders').update({ status: newStatus }).eq('id', po.id);
 
-      // 5. Add accepted items to products inventory (aggregate by po_item)
+      // 5. Add accepted items to inventory — route based on po_type
+      const isRepairPartsPO = po.po_type === 'repair_parts';
       const acceptedByItem = new Map<string, { qty: number; description: string; po_item_id: string }>();
       for (const split of validSplits) {
         if (split.condition === 'passed' || split.action === 'accept') {
@@ -234,32 +236,66 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
         }
       }
 
-      for (const [, item] of acceptedByItem) {
-        const poItem = poItems.find(p => p.id === item.po_item_id);
-        if (!poItem) continue;
+      if (isRepairPartsPO) {
+        // Route to repair_parts table
+        for (const [, item] of acceptedByItem) {
+          const poItem = poItems.find(p => p.id === item.po_item_id);
+          if (!poItem) continue;
 
-        const { data: existingProduct } = await supabase
-          .from('products')
-          .select('id, quantity_on_hand')
-          .eq('company_id', po.company_id!)
-          .ilike('name', item.description)
-          .maybeSingle();
+          const { data: existingPart } = await supabase
+            .from('repair_parts')
+            .select('id, quantity_on_hand')
+            .eq('company_id', po.company_id!)
+            .ilike('name', item.description)
+            .maybeSingle();
 
-        if (existingProduct) {
-          await supabase.from('products').update({
-            quantity_on_hand: existingProduct.quantity_on_hand + item.qty,
-            cost_price: poItem.unit_cost,
-          }).eq('id', existingProduct.id);
-        } else {
-          await supabase.from('products').insert({
-            name: item.description,
-            company_id: po.company_id,
-            supplier_id: po.supplier_id,
-            cost_price: poItem.unit_cost,
-            quantity_on_hand: item.qty,
-            status: 'active',
-            created_by: user.id,
-          });
+          if (existingPart) {
+            await supabase.from('repair_parts').update({
+              quantity_on_hand: existingPart.quantity_on_hand + item.qty,
+              unit_cost: poItem.unit_cost,
+            }).eq('id', existingPart.id);
+          } else {
+            await supabase.from('repair_parts').insert({
+              name: item.description,
+              company_id: po.company_id,
+              supplier_id: po.supplier_id,
+              unit_cost: poItem.unit_cost,
+              quantity_on_hand: item.qty,
+              category: 'general',
+              is_active: true,
+              created_by: user.id,
+            });
+          }
+        }
+      } else {
+        // Route to products table (existing logic)
+        for (const [, item] of acceptedByItem) {
+          const poItem = poItems.find(p => p.id === item.po_item_id);
+          if (!poItem) continue;
+
+          const { data: existingProduct } = await supabase
+            .from('products')
+            .select('id, quantity_on_hand')
+            .eq('company_id', po.company_id!)
+            .ilike('name', item.description)
+            .maybeSingle();
+
+          if (existingProduct) {
+            await supabase.from('products').update({
+              quantity_on_hand: existingProduct.quantity_on_hand + item.qty,
+              cost_price: poItem.unit_cost,
+            }).eq('id', existingProduct.id);
+          } else {
+            await supabase.from('products').insert({
+              name: item.description,
+              company_id: po.company_id,
+              supplier_id: po.supplier_id,
+              cost_price: poItem.unit_cost,
+              quantity_on_hand: item.qty,
+              status: 'active',
+              created_by: user.id,
+            });
+          }
         }
       }
 

@@ -42,6 +42,8 @@ export interface SaleRecord {
     storage?: string | null;
     color?: string | null;
     condition?: string | null;
+    original_cost_price?: number | null;
+    management_labor_cost?: number | null;
   } | null;
 }
 
@@ -64,7 +66,7 @@ export function useSalesQuery({ companyFilter, marketplaceFilter, statusFilter, 
     queryFn: async () => {
       let query = supabase
         .from('sales')
-        .select(`*, devices (brand, model, cost_price, imei, storage, color, condition)`, { count: 'exact' })
+        .select(`*, devices (brand, model, cost_price, imei, storage, color, condition, original_cost_price, management_labor_cost)`, { count: 'exact' })
         .order(pq.sort.column, { ascending: pq.sort.direction === 'asc' })
         .range(pq.range.from, pq.range.to);
 

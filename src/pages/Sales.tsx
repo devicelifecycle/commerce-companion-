@@ -274,16 +274,22 @@ export default function Sales() {
   };
 
   const handleExport = () => {
-    const headers = ['Order Number', 'Marketplace', 'Date', 'Sale Price', 'Fees', 'Shipping', 'Tax', 'Profit', 'Customer', 'Device', 'IMEI', 'Status'];
-    const rows = sales.map(sale => [
-      sale.order_number, sale.marketplace,
-      new Date(sale.sale_date).toLocaleDateString(),
-      sale.sale_price.toFixed(2), sale.marketplace_fees.toFixed(2),
-      sale.shipping_cost.toFixed(2), sale.tax_amount.toFixed(2),
-      (sale.profit || 0).toFixed(2), sale.customer_name || '',
-      sale.devices ? `${sale.devices.brand} ${sale.devices.model}` : '',
-      sale.devices?.imei || '', sale.marketplace_status || sale.fulfillment_status || 'received',
-    ]);
+    const headers = ['Order Number', 'Marketplace', 'Date', 'Sale Price', 'Fees', 'Shipping', 'Tax', 'Acct Profit', 'Mgmt Profit', 'Customer', 'Device', 'IMEI', 'Status'];
+    const rows = sales.map(sale => {
+      const originalCost = sale.devices?.original_cost_price ?? sale.devices?.cost_price ?? 0;
+      const mgmtLabor = sale.devices?.management_labor_cost ?? 0;
+      const mgmtProfit = sale.devices ? sale.sale_price - originalCost - mgmtLabor - sale.marketplace_fees - sale.shipping_cost - sale.tax_amount : '';
+      return [
+        sale.order_number, sale.marketplace,
+        new Date(sale.sale_date).toLocaleDateString(),
+        sale.sale_price.toFixed(2), sale.marketplace_fees.toFixed(2),
+        sale.shipping_cost.toFixed(2), sale.tax_amount.toFixed(2),
+        (sale.profit || 0).toFixed(2), typeof mgmtProfit === 'number' ? mgmtProfit.toFixed(2) : '',
+        sale.customer_name || '',
+        sale.devices ? `${sale.devices.brand} ${sale.devices.model}` : '',
+        sale.devices?.imei || '', sale.marketplace_status || sale.fulfillment_status || 'received',
+      ];
+    });
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -494,7 +500,8 @@ export default function Sales() {
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Revenue</TableHead>
                       <TableHead className="text-right">Fees</TableHead>
-                      <TableHead className="text-right">Profit</TableHead>
+                      <TableHead className="text-right">Acct Profit</TableHead>
+                      <TableHead className="text-right">Mgmt Profit</TableHead>
                       <TableHead className="w-[50px]" />
                     </TableRow>
                   </TableHeader>
@@ -586,6 +593,19 @@ export default function Sales() {
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
+                        </TableCell>
+                        <TableCell className="text-right text-xs font-medium tabular-nums">
+                          {(() => {
+                            if (!sale.devices) return <span className="text-muted-foreground">—</span>;
+                            const originalCost = sale.devices.original_cost_price ?? sale.devices.cost_price;
+                            const mgmtLabor = sale.devices.management_labor_cost ?? 0;
+                            const mgmtProfit = sale.sale_price - originalCost - mgmtLabor - sale.marketplace_fees - sale.shipping_cost - sale.tax_amount;
+                            return (
+                              <span className={mgmtProfit >= 0 ? 'text-[hsl(var(--success))]' : 'text-destructive'}>
+                                {formatCurrency(mgmtProfit)}
+                              </span>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>

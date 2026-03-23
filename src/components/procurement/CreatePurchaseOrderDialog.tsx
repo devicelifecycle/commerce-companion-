@@ -100,6 +100,8 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
   const [supplierOpen, setSupplierOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState('');
 
+  const [poType, setPoType] = useState<'inventory' | 'repair_parts'>('inventory');
+
   const [formData, setFormData] = useState({
     po_number: '',
     supplier_id: '',
@@ -219,7 +221,8 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
         notes: formData.notes || null,
         company_id: selectedCompanyId,
         created_by: user?.id,
-      }).select('id').single();
+        po_type: poType,
+      } as any).select('id').single();
 
       if (poError) throw poError;
 
@@ -261,6 +264,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
     });
     setLineItems([newPOLine()]);
     setSelectedCompanyId('');
+    setPoType('inventory');
   };
 
   return (
@@ -272,11 +276,25 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
             Create Purchase Order
           </DialogTitle>
           <DialogDescription>
-            Create a manual purchase order for bulk items, supplies, and non-device inventory.
+            Create a purchase order for {poType === 'repair_parts' ? 'repair parts' : 'bulk items, supplies, and non-device inventory'}.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* PO Type Selector */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">PO Type *</Label>
+            <Select value={poType} onValueChange={(v) => setPoType(v as 'inventory' | 'repair_parts')}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="inventory">Device Inventory</SelectItem>
+                <SelectItem value="repair_parts">Repair Parts</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Company + PO Header */}
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">

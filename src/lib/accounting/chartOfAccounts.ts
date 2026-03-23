@@ -104,9 +104,8 @@ export const EXPENSE_ACCOUNTS: AccountDefinition[] = [
   { code: '6800', name: 'Bank Fees', type: 'expense', subtype: 'Operating Expenses', normalBalance: 'debit', company: 'shared', description: 'Banking and transaction fees' },
   { code: '6900', name: 'Software and Subscriptions', type: 'expense', subtype: 'Operating Expenses', normalBalance: 'debit', company: 'shared', description: 'Software licenses and SaaS fees' },
   
-  // Capitalized Repair Labor (contra-expense — offsets payroll for labor capitalized into inventory)
-  { code: '6950', name: 'Capitalized Repair Labor - VES', type: 'expense', subtype: 'Operating Expenses', normalBalance: 'credit', company: 'VES', description: 'VES repair labor capitalized into device cost (contra-expense, reduces payroll double-count)' },
-  { code: '6951', name: 'Capitalized Repair Labor - TGW', type: 'expense', subtype: 'Operating Expenses', normalBalance: 'credit', company: 'TGW', description: 'TGW repair labor capitalized into device cost (contra-expense, reduces payroll double-count)' },
+  // Note: Accounts 6950/6951 (Capitalized Repair Labor) have been retired.
+  // Management vs Accounting profit separation is now handled via the P&L toggle without ledger entries.
 
   { code: '7000', name: 'Telecommunications', type: 'expense', subtype: 'Operating Expenses', normalBalance: 'debit', company: 'shared', description: 'Phone, internet, communication' },
   { code: '7100', name: 'Other Operating Expenses', type: 'expense', subtype: 'Operating Expenses', normalBalance: 'debit', company: 'shared', description: 'Miscellaneous operating costs' },

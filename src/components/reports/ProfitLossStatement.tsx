@@ -38,8 +38,9 @@ interface PLData {
   netProfitBeforeTax: number;
   incomeTax: number;
   netProfitAfterTax: number;
-  // Repair costing data
-  capitalizedRepairLabor: number;
+  // Management costing data
+  managementLaborCost: number; // sum of management_labor_cost from sold devices
+  payrollExpenses: number; // labor-category expenses to exclude in management view
   repairPartsCost: number;
 }
 
@@ -218,17 +219,35 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
         const totalOperatingExpenses = Object.values(operatingExpensesByCategory).reduce((sum, v) => sum + v, 0);
         const operatingProfit = grossProfit - totalOperatingExpenses;
 
-        // Fetch capitalized repair labor for the period (from completed device_repairs)
+        // Fetch management labor cost from sold devices in the period
+        let soldDevicesQuery = supabase
+          .from('sales')
+          .select('devices!inner(management_labor_cost)')
+          .gte('sale_date', startDate.toISOString())
+          .lte('sale_date', endDate.toISOString())
+          .not('device_id', 'is', null);
+        if (companyFilter) soldDevicesQuery = soldDevicesQuery.or(companyFilter);
+        const { data: soldDevicesData } = await soldDevicesQuery;
+
+        const managementLaborCost = soldDevicesData?.reduce((sum: number, s: any) => 
+          sum + Number(s.devices?.management_labor_cost || 0), 0) || 0;
+
+        // Calculate payroll/labor expenses (categories that represent actual labor payments)
+        const payrollCategories = ['payroll', 'salaries'];
+        const payrollExpenses = expenses?.filter(e => 
+          payrollCategories.includes(e.category)
+        ).reduce((sum, e) => sum + getEffectiveExpense(e), 0) || 0;
+
+        // Fetch repair parts cost for reference
         let repairsQuery = supabase
           .from('device_repairs')
-          .select('total_labor_cost, total_parts_cost')
+          .select('total_parts_cost')
           .eq('status', 'completed')
           .gte('completed_at', startDate.toISOString())
           .lte('completed_at', endDate.toISOString());
         if (companyFilter) repairsQuery = repairsQuery.or(companyFilter);
         const { data: repairs } = await repairsQuery;
 
-        const capitalizedRepairLabor = repairs?.reduce((sum, r) => sum + Number(r.total_labor_cost || 0), 0) || 0;
         const repairPartsCost = repairs?.reduce((sum, r) => sum + Number(r.total_parts_cost || 0), 0) || 0;
 
         // Other income/expenses
@@ -255,7 +274,8 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
           netProfitBeforeTax,
           incomeTax,
           netProfitAfterTax,
-          capitalizedRepairLabor,
+          managementLaborCost,
+          payrollExpenses,
           repairPartsCost,
         };
       };
@@ -459,8 +479,8 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
               </Button>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs">
-              <p><strong>Accounting View:</strong> Shows actual payroll expenses and original device costs (GAAP-compliant).</p>
-              <p className="mt-1"><strong>Management View:</strong> Shows fully-loaded device costs (including repair labor) with payroll reduced by the capitalized amount. Net profit is the same in both views.</p>
+              <p><strong>Accounting View:</strong> Standard P&L using actual costs. Device COGS includes purchase price + capitalized repair parts. Labor appears as payroll in Operating Expenses.</p>
+              <p className="mt-1"><strong>Management View:</strong> Performance P&L. Device COGS includes purchase price + repair parts + estimated labor per device. Payroll expenses are excluded to avoid double-counting.</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
@@ -478,14 +498,23 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
       </div>
 
       {/* Costing View Explanation */}
+      {costingView === 'accounting' && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>Accounting View</AlertTitle>
+          <AlertDescription>
+            Standard P&L using actual costs. Device COGS includes purchase price + capitalized repair parts.
+            Labor appears as payroll in Operating Expenses. This is the GAAP-compliant view.
+          </AlertDescription>
+        </Alert>
+      )}
       {costingView === 'management' && (
         <Alert>
           <Info className="h-4 w-4" />
-          <AlertTitle>Management Costing View</AlertTitle>
+          <AlertTitle>Management View</AlertTitle>
           <AlertDescription>
-            Device COGS includes capitalized repair costs (parts + labor). Payroll is reduced by{' '}
-            <strong>{formatCurrency(data.current.capitalizedRepairLabor)}</strong> in capitalized repair labor to avoid double-counting.
-            This view shows the true per-unit cost of bringing devices to sale condition. Net profit is identical to the Accounting View.
+            Performance P&L. Device COGS includes purchase price + repair parts + estimated labor per device
+            ({formatCurrency(data.current.managementLaborCost)}). Payroll expenses ({formatCurrency(data.current.payrollExpenses)}) are excluded to avoid double-counting.
           </AlertDescription>
         </Alert>
       )}
@@ -553,30 +582,22 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
               prevValue={data.previous.purchases}
               indent
             />
-            {costingView === 'management' && (data.current.capitalizedRepairLabor > 0 || data.current.repairPartsCost > 0) && (
-              <>
-                <LineItem
-                  label="Repair Parts (capitalized)"
-                  value={data.current.repairPartsCost}
-                  prevValue={data.previous.repairPartsCost}
-                  indent
-                />
-                <LineItem
-                  label="Repair Labor (capitalized)"
-                  value={data.current.capitalizedRepairLabor}
-                  prevValue={data.previous.capitalizedRepairLabor}
-                  indent
-                />
-              </>
+            {costingView === 'management' && data.current.managementLaborCost > 0 && (
+              <LineItem
+                label="Management Labor (estimated)"
+                value={data.current.managementLaborCost}
+                prevValue={data.previous.managementLaborCost}
+                indent
+              />
             )}
             <Separator className="my-2" />
             <LineItem
               label="TOTAL COGS"
               value={costingView === 'management'
-                ? data.current.totalCOGS + data.current.capitalizedRepairLabor + data.current.repairPartsCost
+                ? data.current.totalCOGS + data.current.managementLaborCost
                 : data.current.totalCOGS}
               prevValue={costingView === 'management'
-                ? data.previous.totalCOGS + data.previous.capitalizedRepairLabor + data.previous.repairPartsCost
+                ? data.previous.totalCOGS + data.previous.managementLaborCost
                 : data.previous.totalCOGS}
               bold
               negative
@@ -588,10 +609,10 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
             <LineItem
               label="GROSS PROFIT"
               value={costingView === 'management'
-                ? data.current.grossProfit - data.current.capitalizedRepairLabor - data.current.repairPartsCost
+                ? data.current.grossProfit - data.current.managementLaborCost
                 : data.current.grossProfit}
               prevValue={costingView === 'management'
-                ? data.previous.grossProfit - data.previous.capitalizedRepairLabor - data.previous.repairPartsCost
+                ? data.previous.grossProfit - data.previous.managementLaborCost
                 : data.previous.grossProfit}
               bold
             />
@@ -617,11 +638,11 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
                 />
               );
             })}
-            {costingView === 'management' && data.current.capitalizedRepairLabor > 0 && (
+            {costingView === 'management' && data.current.payrollExpenses > 0 && (
               <LineItem
-                label="Less: Capitalized Repair Labor"
-                value={data.current.capitalizedRepairLabor}
-                prevValue={data.previous.capitalizedRepairLabor}
+                label="Less: Payroll (excluded in mgmt view)"
+                value={data.current.payrollExpenses}
+                prevValue={data.previous.payrollExpenses}
                 indent
                 negative
               />
@@ -630,10 +651,10 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
             <LineItem
               label="TOTAL OPERATING EXPENSES"
               value={costingView === 'management'
-                ? data.current.totalOperatingExpenses - data.current.capitalizedRepairLabor
+                ? data.current.totalOperatingExpenses - data.current.payrollExpenses
                 : data.current.totalOperatingExpenses}
               prevValue={costingView === 'management'
-                ? data.previous.totalOperatingExpenses - data.previous.capitalizedRepairLabor
+                ? data.previous.totalOperatingExpenses - data.previous.payrollExpenses
                 : data.previous.totalOperatingExpenses}
               bold
               negative
