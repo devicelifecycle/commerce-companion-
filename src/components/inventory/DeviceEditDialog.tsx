@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { normalizeBrand, normalizeModel, modelFuzzyKey } from '@/lib/modelNormalization';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useCompany } from '@/contexts/CompanyContext';
