@@ -88,6 +88,8 @@ export default function Inventory() {
   const [timelineDevice, setTimelineDevice] = useState<any>(null);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   const [repairDevice, setRepairDevice] = useState<any>(null);
+  const [bulkRmaOpen, setBulkRmaOpen] = useState(false);
+  const [bulkRmaItems, setBulkRmaItems] = useState<any[]>([]);
 
   const selection = useTableSelection(devices);
 
