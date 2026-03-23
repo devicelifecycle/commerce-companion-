@@ -166,8 +166,9 @@ const MODULE_GUIDES: ModuleGuide[] = [
     module: 'Financials', icon: Wallet, category: 'analytics',
     description: 'Statements, cost ledger, AP/AR, reconciliation, payouts, and taxes.',
     sections: [
-      { title: 'Overview', content: 'The Financials hub consolidates all accounting and transactional finance. It includes five sections: Statements, Cost Ledger, AP/AR, Reconciliation, and Taxes.' },
-      { title: 'Statements', content: 'Profit & Loss and Balance Sheet reports. Filter by date range and company entity. Revenue, COGS, gross profit, operating expenses, net income, assets, liabilities, and equity.' },
+      { title: 'Overview', content: 'The Financials hub consolidates all accounting and transactional finance. It includes seven sections: Statements, Ledger, Cost Ledger, AP/AR, Reconciliation, Taxes, and Audit Trail.' },
+      { title: 'Statements (P&L toggle)', content: 'Profit & Loss supports two views: Accounting View (standard GAAP — labor in OpEx) and Management View (labor moved to COGS using per-device management_labor_cost, payroll excluded from OpEx to avoid double-counting). Balance Sheet includes AR and AP lines.' },
+      { title: 'Ledger', content: 'Chart of Accounts, Journal Entries, and Trial Balance for full general ledger access.' },
       { title: 'Cost Ledger', content: 'FIFO cost tracking with KPI tiles (Total Cost, Avg Unit Cost, Logistics, Sold Margin %), import batch history, and supplier cost summaries.' },
       { title: 'AP & AR', content: 'Manage Accounts Payable (bills owed to suppliers) and Accounts Receivable (money owed to you). Record payments, track aging, and view balances by company.' },
       { title: 'Reconciliation', content: 'Marketplace Reconciliation compares marketplace-reported data against internal records — variances over $1 are flagged. Payout Reconciliation tracks payout accuracy with metrics for Accuracy Rate, Net/Absolute Variance, and Fee Delta.' },
