@@ -549,7 +549,12 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
                       )}
                       {group.item_type === 'inventory' && (
                         <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-[hsl(var(--info))] bg-[hsl(var(--info)/.1)] border-[hsl(var(--info)/.25)]">
-                          <Package className="h-2.5 w-2.5" /> Inventory
+                          <Package className="h-2.5 w-2.5" /> Device
+                        </Badge>
+                      )}
+                      {group.item_type === 'product' && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-[hsl(var(--success))] bg-[hsl(var(--success)/.1)] border-[hsl(var(--success)/.25)]">
+                          <Package className="h-2.5 w-2.5" /> Product
                         </Badge>
                       )}
                       <Badge variant="outline" className="text-xs font-mono">
