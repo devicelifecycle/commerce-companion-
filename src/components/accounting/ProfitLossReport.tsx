@@ -314,6 +314,23 @@ export function ProfitLossReport({ companyView }: Props) {
           <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-[160px]" />
         </div>
         <div className="ml-auto flex gap-2">
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={costingView === 'management' ? 'default' : 'outline'}
+                  onClick={() => setCostingView(v => v === 'accounting' ? 'management' : 'accounting')}
+                >
+                  <ToggleLeft className="h-4 w-4 mr-2" />
+                  {costingView === 'accounting' ? 'Accounting View' : 'Management View'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-xs">
+                <p><strong>Accounting:</strong> Standard GAAP — payroll in OpEx, COGS from journal entries only.</p>
+                <p className="mt-1"><strong>Management:</strong> Shifts estimated device labor into COGS and excludes payroll from OpEx to show true per-unit profitability.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />Export
           </Button>
