@@ -103,6 +103,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
         po_item_id: item.id,
         description: item.description,
         ordered_qty: item.quantity,
+        item_type: item.item_type || 'inventory',
         splits: [{
           id: newSplitId(),
           qty: item.quantity,
