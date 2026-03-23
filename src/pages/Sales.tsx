@@ -93,6 +93,8 @@ export default function Sales() {
     toggleSort,
   } = useSalesQuery({ companyFilter, marketplaceFilter, statusFilter, searchTerm });
 
+  useDataRefetch('sales', fetchSales);
+
   // Determine which company code is selected
   const selectedCompanyCode = useMemo(() => {
     if (companyFilter === 'all') return null;
