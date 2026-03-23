@@ -22,8 +22,9 @@ export function PurchaseOrdersGuide() {
           content: (
             <>
               <ul className="list-disc list-inside space-y-1">
-                <li><strong>Inventory</strong> — Added to product stock on receive (phones, tablets, accessories)</li>
-                <li><strong>Repair Parts</strong> — Added to repair parts inventory (screens, batteries, etc.)</li>
+                <li><strong>Device</strong> — Serialized items added to device inventory on receive (phones, tablets, laptops)</li>
+                <li><strong>Product</strong> — Bulk/generic items added to product stock (cases, cables, accessories). Auto-creates the product if new.</li>
+                <li><strong>Repair Parts</strong> — Added to repair parts inventory. Must be selected from the <em>Repair Parts Catalog</em> (Settings → Parts) to prevent naming duplicates.</li>
                 <li><strong>Expense</strong> — Tools & supplies recorded as an expense, <em>not</em> added to inventory</li>
               </ul>
               <p className="mt-1 text-xs">Each line item has its own type selector — no need for separate POs.</p>
