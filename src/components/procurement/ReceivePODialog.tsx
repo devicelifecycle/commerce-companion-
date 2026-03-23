@@ -511,6 +511,21 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{group.description}</span>
+                      {group.item_type === 'expense' && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-[hsl(var(--accent))] bg-[hsl(var(--accent)/.1)] border-[hsl(var(--accent)/.25)]">
+                          <Receipt className="h-2.5 w-2.5" /> Expense
+                        </Badge>
+                      )}
+                      {group.item_type === 'repair_parts' && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-[hsl(var(--warning))] bg-[hsl(var(--warning)/.1)] border-[hsl(var(--warning)/.25)]">
+                          <Wrench className="h-2.5 w-2.5" /> Repair
+                        </Badge>
+                      )}
+                      {group.item_type === 'inventory' && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-[hsl(var(--info))] bg-[hsl(var(--info)/.1)] border-[hsl(var(--info)/.25)]">
+                          <Package className="h-2.5 w-2.5" /> Inventory
+                        </Badge>
+                      )}
                       <Badge variant="outline" className="text-xs font-mono">
                         Ordered: {group.ordered_qty}
                       </Badge>
