@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDataRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
+import { cleanupBeforeExpenseDelete } from '@/lib/accounting/reversalUtils';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
@@ -150,12 +151,13 @@ export default function Expenses() {
   useDataRefetch('expenses', fetchExpenses);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this expense?')) return;
+    if (!confirm('Delete this expense? Associated journal entries, ITCs, and refunds will also be reversed.')) return;
     try {
+      const { journalCount } = await cleanupBeforeExpenseDelete(id);
       const { error } = await supabase.from('expenses').delete().eq('id', id);
       if (error) throw error;
-      logEvent({ action: 'DELETE' as any, tableName: 'expenses', recordId: id, module: 'Expenses', notes: 'Expense deleted' });
-      toast.success('Expense deleted');
+      logEvent({ action: 'DELETE' as any, tableName: 'expenses', recordId: id, module: 'Expenses', notes: `Expense deleted. ${journalCount} journal entries reversed.` });
+      toast.success(`Expense deleted${journalCount > 0 ? ` — ${journalCount} journal entries reversed` : ''}`);
       fetchExpenses();
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete expense');
@@ -205,11 +207,17 @@ export default function Expenses() {
   const selection = useTableSelection(filteredExpenses);
 
   const handleBulkDelete = async () => {
-    if (!confirm(`Delete ${selection.count} selected expense(s)?`)) return;
+    if (!confirm(`Delete ${selection.count} selected expense(s)? All associated journal entries and ITCs will be reversed.`)) return;
     try {
-      const { error } = await supabase.from('expenses').delete().in('id', Array.from(selection.selectedIds));
+      const ids = Array.from(selection.selectedIds);
+      let totalJE = 0;
+      for (const id of ids) {
+        const { journalCount } = await cleanupBeforeExpenseDelete(id);
+        totalJE += journalCount;
+      }
+      const { error } = await supabase.from('expenses').delete().in('id', ids);
       if (error) throw error;
-      toast.success(`${selection.count} expense(s) deleted`);
+      toast.success(`${selection.count} expense(s) deleted${totalJE > 0 ? ` — ${totalJE} journal entries reversed` : ''}`);
       selection.clear();
       fetchExpenses();
     } catch (error: any) {

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDataRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
+import { cleanupBeforePODelete } from '@/lib/accounting/reversalUtils';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
@@ -135,11 +136,15 @@ export default function PurchaseOrders() {
   };
 
   const deletePO = async (id: string) => {
+    const po = orders.find(o => o.id === id);
+    if (!po) return;
+    if (!confirm(`Delete PO ${po.po_number}? AP entries, GRNs, RMAs, and journal entries will also be removed.`)) return;
     try {
-      await supabase.from('purchase_order_items').delete().eq('purchase_order_id', id);
+      const { journalCount, grnCount } = await cleanupBeforePODelete(id, po.po_number, po.company_id || '');
       const { error } = await supabase.from('purchase_orders').delete().eq('id', id);
       if (error) throw error;
-      toast.success('Purchase order deleted');
+      const details = [journalCount > 0 && `${journalCount} JEs`, grnCount > 0 && `${grnCount} GRNs`].filter(Boolean).join(', ');
+      toast.success(`PO deleted${details ? ` — reversed: ${details}` : ''}`);
       loadOrders();
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete PO');
