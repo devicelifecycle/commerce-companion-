@@ -87,9 +87,25 @@ export function DeviceTable({
 
   const handleDeleteDevice = async (id: string) => {
     try {
+      const { canDelete, reason } = await checkDeviceDeletable(id);
+      if (!canDelete) {
+        toast.error(reason);
+        return;
+      }
+      // Clean up any linked journal entries (e.g. from repairs)
+      await reverseJournalEntries(id);
+      // Clean up repair records
+      const { data: repairs } = await supabase.from('device_repairs').select('id').eq('device_id', id);
+      if (repairs && repairs.length > 0) {
+        const repairIds = repairs.map(r => r.id);
+        await supabase.from('repair_items').delete().in('repair_id', repairIds);
+        await supabase.from('device_repairs').delete().in('id', repairIds);
+      }
+      // Clean up transfers
+      await supabase.from('inventory_transfers').delete().eq('device_id', id);
       const { error } = await supabase.from('devices').delete().eq('id', id);
       if (error) throw error;
-      logEvent({ action: 'DELETE' as any, tableName: 'devices', recordId: id, module: 'Inventory', notes: 'Device deleted' });
+      logEvent({ action: 'DELETE' as any, tableName: 'devices', recordId: id, module: 'Inventory', notes: 'Device deleted with full cleanup' });
       toast.success('Device deleted');
       onRefresh();
     } catch (error: any) {

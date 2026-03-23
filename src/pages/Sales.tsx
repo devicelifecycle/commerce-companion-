@@ -137,12 +137,14 @@ export default function Sales() {
   }, [sales, pagination.totalCount]);
 
   const handleDeleteSale = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this sale record?')) return;
+    if (!confirm('Delete this sale? Revenue, AR, and COGS journal entries will be reversed.')) return;
     try {
+      const sale = sales.find(s => s.id === id);
+      const { journalCount } = await cleanupBeforeSaleDelete(id, sale?.device_id || null);
       const { error } = await supabase.from('sales').delete().eq('id', id);
       if (error) throw error;
-      logEvent({ action: 'DELETE' as any, tableName: 'sales', recordId: id, module: 'Sales', notes: 'Sale record deleted' });
-      toast.success('Sale deleted');
+      logEvent({ action: 'DELETE' as any, tableName: 'sales', recordId: id, module: 'Sales', notes: `Sale deleted. ${journalCount} journal entries reversed.` });
+      toast.success(`Sale deleted${journalCount > 0 ? ` — ${journalCount} journal entries reversed` : ''}`);
       setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
       fetchSales();
     } catch (error: any) {
@@ -152,11 +154,17 @@ export default function Sales() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Delete ${selectedIds.size} selected sale(s)?`)) return;
+    if (!confirm(`Delete ${selectedIds.size} selected sale(s)? All associated accounting entries will be reversed.`)) return;
     try {
+      let totalJE = 0;
+      for (const id of selectedIds) {
+        const sale = sales.find(s => s.id === id);
+        const { journalCount } = await cleanupBeforeSaleDelete(id, sale?.device_id || null);
+        totalJE += journalCount;
+      }
       const { error } = await supabase.from('sales').delete().in('id', Array.from(selectedIds));
       if (error) throw error;
-      toast.success(`${selectedIds.size} sale(s) deleted`);
+      toast.success(`${selectedIds.size} sale(s) deleted${totalJE > 0 ? ` — ${totalJE} journal entries reversed` : ''}`);
       setSelectedIds(new Set());
       fetchSales();
     } catch (error: any) {
