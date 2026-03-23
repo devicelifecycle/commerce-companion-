@@ -580,7 +580,7 @@ export default function Sales() {
                         <TableCell className="px-2 text-right text-[11px] text-muted-foreground tabular-nums">
                           {formatCurrency(sale.marketplace_fees + sale.shipping_cost)}
                         </TableCell>
-                        <TableCell className="text-right text-xs font-medium tabular-nums">
+                        <TableCell className="px-2 text-right text-xs font-medium tabular-nums">
                           {sale.profit != null ? (
                             <span className={sale.profit >= 0 ? 'text-[hsl(var(--success))]' : 'text-destructive'}>
                               {formatCurrency(sale.profit)}
@@ -589,7 +589,7 @@ export default function Sales() {
                             <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right text-xs font-medium tabular-nums">
+                        <TableCell className="px-2 text-right text-xs font-medium tabular-nums">
                           {(() => {
                             if (!sale.devices) return <span className="text-muted-foreground">—</span>;
                             const originalCost = sale.devices.original_cost_price ?? sale.devices.cost_price;
@@ -602,7 +602,7 @@ export default function Sales() {
                             );
                           })()}
                         </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="px-1" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
