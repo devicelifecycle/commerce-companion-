@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useDataRefetch } from '@/hooks/useDataRefetch';
+import { SupplierReturnDialog } from '@/components/inventory/SupplierReturnDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/lib/auth';
