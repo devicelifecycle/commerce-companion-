@@ -199,7 +199,11 @@ export function AppSidebar() {
         {!collapsed && user && (
           <div className="mb-2 px-2 py-1.5 rounded-md bg-muted/30">
             <p className="text-xs font-medium truncate">{user.email}</p>
-            <p className="text-[10px] text-muted-foreground">Team Member</p>
+            <p className="text-[10px] text-muted-foreground">
+              {isSuperAdmin ? 'Super Admin' : assignments.length > 0 
+                ? assignments[0].role.charAt(0).toUpperCase() + assignments[0].role.slice(1)
+                : 'Team Member'}
+            </p>
           </div>
         )}
         <Button
