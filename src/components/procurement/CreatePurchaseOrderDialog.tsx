@@ -221,7 +221,8 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
         notes: formData.notes || null,
         company_id: selectedCompanyId,
         created_by: user?.id,
-      }).select('id').single();
+        po_type: poType,
+      } as any).select('id').single();
 
       if (poError) throw poError;
 
