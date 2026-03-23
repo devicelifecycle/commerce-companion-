@@ -198,6 +198,11 @@ export default function Settings() {
             <ProductCatalog />
           </TabsContent>
 
+          {/* Repair Parts Catalog Tab */}
+          <TabsContent value="parts-catalog">
+            <RepairPartsCatalog />
+          </TabsContent>
+
           {/* App Settings Tab */}
           <TabsContent value="app">
             {selectedCompany ? (
