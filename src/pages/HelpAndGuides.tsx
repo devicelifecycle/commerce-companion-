@@ -315,11 +315,12 @@ const ACCOUNTING_FLOWS = [
   {
     title: 'Procurement Lifecycle', icon: <Package className="h-4 w-4 text-primary" />,
     steps: [
-      'Purchase Order created for supplier',
-      'PO approved by admin',
-      'Goods arrive → GRN created against PO',
-      'GRN finalized → Devices created in inventory (DR Inventory)',
-      'AP bill auto-generated (CR Accounts Payable)',
+      'Purchase Order created with per-line item types (inventory, repair parts, or expense/tools)',
+      'Goods arrive → GRN created via "Receive Items" with split-line quality assessment',
+      'Inventory items → products table (DR Inventory / CR AP)',
+      'Repair parts → repair_parts table (DR Repair Parts / CR AP)',
+      'Expense/tools items → expenses table (DR Expense / CR AP) — not added to inventory',
+      'AP bill auto-generated for all line types',
       'Payment recorded → AP cleared (DR AP / CR Cash)',
     ],
   },
