@@ -149,6 +149,18 @@ export default function Inventory() {
     toast.success(`${items.length} device(s) exported`);
   };
 
+  const handleBulkCreateRMA = () => {
+    const items = selection.selectedItems.map((d: any) => ({
+      id: d.id,
+      type: 'device' as const,
+      name: `${d.brand} ${d.model}${d.imei ? ` (${d.imei})` : ''}`,
+      cost: d.cost_price,
+      supplierId: d.supplier_id || null,
+    }));
+    setBulkRmaItems(items);
+    setBulkRmaOpen(true);
+  };
+
   if (!canView) {
     return (
       <DashboardLayout>
