@@ -909,6 +909,8 @@ export type Database = {
           id: string
           imei: string | null
           import_batch_id: string | null
+          management_labor_cost: number | null
+          management_labor_hours: number | null
           model: string
           notes: string | null
           original_cost_price: number | null
@@ -936,6 +938,8 @@ export type Database = {
           id?: string
           imei?: string | null
           import_batch_id?: string | null
+          management_labor_cost?: number | null
+          management_labor_hours?: number | null
           model: string
           notes?: string | null
           original_cost_price?: number | null
@@ -963,6 +967,8 @@ export type Database = {
           id?: string
           imei?: string | null
           import_batch_id?: string | null
+          management_labor_cost?: number | null
+          management_labor_hours?: number | null
           model?: string
           notes?: string | null
           original_cost_price?: number | null
@@ -2485,6 +2491,7 @@ export type Database = {
           payment_status: string | null
           po_date: string
           po_number: string
+          po_type: string
           pst_qst_amount: number | null
           status: string | null
           subtotal: number
@@ -2508,6 +2515,7 @@ export type Database = {
           payment_status?: string | null
           po_date?: string
           po_number: string
+          po_type?: string
           pst_qst_amount?: number | null
           status?: string | null
           subtotal?: number
@@ -2531,6 +2539,7 @@ export type Database = {
           payment_status?: string | null
           po_date?: string
           po_number?: string
+          po_type?: string
           pst_qst_amount?: number | null
           status?: string | null
           subtotal?: number
