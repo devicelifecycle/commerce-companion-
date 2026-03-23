@@ -72,6 +72,7 @@ const POTypeBadge = ({ type }: { type: string }) => {
 
 export default function PurchaseOrders() {
   const { selectedCompany, hasPermission, isSuperAdmin } = useCompany();
+  const { logDelete } = useAuditLog();
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
