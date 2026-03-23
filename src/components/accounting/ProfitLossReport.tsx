@@ -592,7 +592,7 @@ export function ProfitLossReport({ companyView }: Props) {
                 </div>
                 <div className="flex justify-between font-bold mt-2 pt-2 border-t">
                   <span>Total Operating Expenses</span>
-                  <span className="text-destructive">({formatCurrency(plData.expenses.total)})</span>
+                  <span className="text-destructive">({formatCurrency(adjOpex)})</span>
                 </div>
               </div>
 
