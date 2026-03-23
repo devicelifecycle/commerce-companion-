@@ -439,7 +439,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
 
       // 9. Create product lot records for accepted inventory items only
       for (const [, item] of acceptedByItem) {
-        if (item.item_type !== 'inventory') continue; // skip expense & repair_parts
+        if (item.item_type !== 'inventory' && item.item_type !== 'product') continue; // skip expense & repair_parts
         const poItem = poItems.find(p => p.id === item.po_item_id);
         if (!poItem) continue;
 
