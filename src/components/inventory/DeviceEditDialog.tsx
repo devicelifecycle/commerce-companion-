@@ -69,6 +69,8 @@ export function DeviceEditDialog({ open, onOpenChange, device, onSuccess }: Devi
         cost_price: device.cost_price.toString(), sale_price: device.sale_price?.toString() || '',
         supplier_id: device.supplier_id || '', purchase_date: device.purchase_date || '',
         warehouse_location: device.warehouse_location || '', notes: device.notes || '',
+        management_labor_cost: (device as any).management_labor_cost?.toString() || '',
+        management_labor_hours: (device as any).management_labor_hours?.toString() || '',
       });
     }
   }, [device, open]);
