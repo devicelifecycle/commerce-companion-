@@ -220,6 +220,7 @@ export default function Expenses() {
       toast.success(`${selection.count} expense(s) deleted${totalJE > 0 ? ` — ${totalJE} journal entries reversed` : ''}`);
       selection.clear();
       fetchExpenses();
+      emitRefetch('financials');
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete expenses');
     }
