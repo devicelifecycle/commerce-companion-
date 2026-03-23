@@ -521,40 +521,33 @@ export default function Sales() {
                             />
                           </TableCell>
                         )}
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="min-w-0">
-                              <p className="text-xs font-semibold truncate">{sale.order_number}</p>
+                        <TableCell className="px-2">
+                          <div className="flex items-center gap-1 min-w-0">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold truncate max-w-[110px]" title={sale.order_number}>{sale.order_number}</p>
                               {sale.customer_name && (
-                                <p className="text-[11px] text-muted-foreground truncate max-w-[140px]">{sale.customer_name}</p>
+                                <p className="text-[10px] text-muted-foreground truncate max-w-[110px]">{sale.customer_name}</p>
                               )}
                             </div>
                             {returnSaleIds.has(sale.id) && (
-                              <Badge variant="outline" className="text-destructive border-destructive/40 text-[10px] px-1 py-0 shrink-0">
-                                <RotateCcw className="h-2.5 w-2.5 mr-0.5" />
+                              <Badge variant="outline" className="text-destructive border-destructive/40 text-[9px] px-1 py-0 shrink-0">
                                 RMA
                               </Badge>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-2">
                           {sale.devices ? (
                             <div className="min-w-0">
-                              <p className="text-xs font-medium truncate">{sale.devices.brand} {sale.devices.model}</p>
-                              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                              <p className="text-xs font-medium truncate max-w-[140px]">{sale.devices.brand} {sale.devices.model}</p>
+                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                                 {sale.devices.storage && <span>{sale.devices.storage}</span>}
                                 {sale.devices.condition && <span className="capitalize">· {sale.devices.condition}</span>}
-                                {sale.devices.imei && (
-                                  <span className="font-mono truncate max-w-[90px]" title={sale.devices.imei}>· {sale.devices.imei}</span>
-                                )}
                               </div>
                             </div>
                           ) : sale.product_title ? (
                             <div className="min-w-0">
-                              <p className="text-xs font-medium truncate max-w-[180px]" title={sale.product_title}>{sale.product_title}</p>
-                              {sale.marketplace_sku && (
-                                <p className="text-[10px] text-muted-foreground font-mono">SKU: {sale.marketplace_sku}</p>
-                              )}
+                              <p className="text-xs font-medium truncate max-w-[140px]" title={sale.product_title}>{sale.product_title}</p>
                             </div>
                           ) : (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0">Unlinked</Badge>
