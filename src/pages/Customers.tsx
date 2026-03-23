@@ -389,7 +389,7 @@ export default function Customers() {
                               className="font-medium text-sm text-primary hover:underline text-left"
                               onClick={() => openDetail(c)}
                             >
-                              {c.name}
+                              {toTitleCase(c.name)}
                             </button>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">{c.email || '—'}</TableCell>
