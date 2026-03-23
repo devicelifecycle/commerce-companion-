@@ -38,8 +38,9 @@ interface PLData {
   netProfitBeforeTax: number;
   incomeTax: number;
   netProfitAfterTax: number;
-  // Repair costing data
-  capitalizedRepairLabor: number;
+  // Management costing data
+  managementLaborCost: number; // sum of management_labor_cost from sold devices
+  payrollExpenses: number; // labor-category expenses to exclude in management view
   repairPartsCost: number;
 }
 
