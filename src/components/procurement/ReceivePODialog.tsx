@@ -65,6 +65,7 @@ interface ReceiveGroup {
   po_item_id: string;
   description: string;
   ordered_qty: number;
+  item_type: string;
   splits: SplitRow[];
 }
 
