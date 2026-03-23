@@ -112,7 +112,9 @@ export function DeviceEditDialog({ open, onOpenChange, device, onSuccess }: Devi
         cost_price: parseFloat(form.cost_price), sale_price: form.sale_price ? parseFloat(form.sale_price) : null,
         supplier_id: form.supplier_id || null, purchase_date: form.purchase_date || null,
         warehouse_location: form.warehouse_location || null, notes: form.notes || null,
-      }).eq('id', device.id);
+        management_labor_cost: form.management_labor_cost ? parseFloat(form.management_labor_cost) : null,
+        management_labor_hours: form.management_labor_hours ? parseFloat(form.management_labor_hours) : null,
+      } as any).eq('id', device.id);
       if (error) throw error;
       logEvent({ action: 'UPDATE' as any, tableName: 'devices', recordId: device.id, module: 'Inventory', notes: `Updated ${form.brand} ${form.model}` });
       toast.success('Device updated');
