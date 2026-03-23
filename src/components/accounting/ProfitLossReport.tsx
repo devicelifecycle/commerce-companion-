@@ -186,6 +186,25 @@ export function ProfitLossReport({ companyView }: Props) {
         else if (code.startsWith('80') || code.startsWith('81')) pl.taxPaid += debit - credit;
       });
 
+      // Fetch management labor cost from sold devices in this period
+      let salesQuery = supabase
+        .from('sales')
+        .select('device_id, devices(management_labor_cost)')
+        .gte('sale_date', startDate)
+        .lte('sale_date', endDate);
+      if (effectiveCompany) {
+        salesQuery = salesQuery.eq('company_id', effectiveCompany.id);
+      }
+      const { data: salesData } = await salesQuery;
+      if (salesData) {
+        pl.managementLaborCost = (salesData as any[]).reduce((sum, s) => {
+          return sum + Number(s.devices?.management_labor_cost || 0);
+        }, 0);
+      }
+
+      // Track payroll expenses (salaries line = account 6300)
+      pl.payrollExpenses = pl.expenses.salaries;
+
       // Calculate totals
       pl.revenue.total = pl.revenue.amazon + pl.revenue.bestbuy + pl.revenue.shopify
         + pl.revenue.intercompany + pl.revenue.invoiceSales + pl.revenue.otherRevenue;
