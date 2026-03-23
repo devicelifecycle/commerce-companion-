@@ -494,7 +494,8 @@ export default function Sales() {
                       <TableHead>Date</TableHead>
                       <TableHead className="text-right">Revenue</TableHead>
                       <TableHead className="text-right">Fees</TableHead>
-                      <TableHead className="text-right">Profit</TableHead>
+                      <TableHead className="text-right">Acct Profit</TableHead>
+                      <TableHead className="text-right">Mgmt Profit</TableHead>
                       <TableHead className="w-[50px]" />
                     </TableRow>
                   </TableHeader>
