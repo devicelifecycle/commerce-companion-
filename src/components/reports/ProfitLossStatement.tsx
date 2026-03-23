@@ -609,10 +609,10 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
             <LineItem
               label="GROSS PROFIT"
               value={costingView === 'management'
-                ? data.current.grossProfit - data.current.capitalizedRepairLabor - data.current.repairPartsCost
+                ? data.current.grossProfit - data.current.managementLaborCost
                 : data.current.grossProfit}
               prevValue={costingView === 'management'
-                ? data.previous.grossProfit - data.previous.capitalizedRepairLabor - data.previous.repairPartsCost
+                ? data.previous.grossProfit - data.previous.managementLaborCost
                 : data.previous.grossProfit}
               bold
             />
