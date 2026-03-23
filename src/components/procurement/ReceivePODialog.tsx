@@ -225,26 +225,45 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
       const newStatus = isPartial ? 'partially_received' : 'received';
       await supabase.from('purchase_orders').update({ status: newStatus }).eq('id', po.id);
 
-      // 5. Add accepted items to inventory — route based on po_type
-      const isRepairPartsPO = po.po_type === 'repair_parts';
-      const acceptedByItem = new Map<string, { qty: number; description: string; po_item_id: string }>();
+      // 5. Add accepted items to inventory — route based on item_type per line
+      const acceptedByItem = new Map<string, { qty: number; description: string; po_item_id: string; item_type: string }>();
       for (const split of validSplits) {
         if (split.condition === 'passed' || split.action === 'accept') {
           const existing = acceptedByItem.get(split.po_item_id);
           if (existing) {
             existing.qty += split.qty;
           } else {
-            acceptedByItem.set(split.po_item_id, { qty: split.qty, description: split.description, po_item_id: split.po_item_id });
+            acceptedByItem.set(split.po_item_id, { qty: split.qty, description: split.description, po_item_id: split.po_item_id, item_type: split.item_type });
           }
         }
       }
 
-      if (isRepairPartsPO) {
-        // Route to repair_parts table
-        for (const [, item] of acceptedByItem) {
-          const poItem = poItems.find(p => p.id === item.po_item_id);
-          if (!poItem) continue;
+      for (const [, item] of acceptedByItem) {
+        const poItem = poItems.find(p => p.id === item.po_item_id);
+        if (!poItem) continue;
 
+        if (item.item_type === 'expense') {
+          // Route to expenses table — tools/supplies not for inventory
+          const totalCost = poItem.unit_cost * item.qty;
+          const gst = (poItem.gst_hst_amount || 0) * (item.qty / poItem.quantity);
+          const pst = (poItem.pst_qst_amount || 0) * (item.qty / poItem.quantity);
+          await supabase.from('expenses').insert({
+            description: `${item.description} (PO ${po.po_number})`,
+            amount: totalCost,
+            gst_hst_amount: parseFloat(gst.toFixed(2)),
+            pst_amount: parseFloat(pst.toFixed(2)),
+            category: 'supplies' as any,
+            subcategory: 'Tools & Equipment',
+            vendor: po.supplier_name,
+            expense_date: receivedDate,
+            company_id: po.company_id,
+            created_by: user.id,
+            payment_method: 'credit',
+            notes: `Auto-created from PO ${po.po_number}`,
+          });
+          toast.info(`Expense recorded for ${item.description}`);
+        } else if (item.item_type === 'repair_parts') {
+          // Route to repair_parts table
           const { data: existingPart } = await supabase
             .from('repair_parts')
             .select('id, quantity_on_hand')
@@ -269,13 +288,8 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
               created_by: user.id,
             });
           }
-        }
-      } else {
-        // Route to products table (existing logic)
-        for (const [, item] of acceptedByItem) {
-          const poItem = poItems.find(p => p.id === item.po_item_id);
-          if (!poItem) continue;
-
+        } else {
+          // Route to products table (inventory)
           const { data: existingProduct } = await supabase
             .from('products')
             .select('id, quantity_on_hand')
