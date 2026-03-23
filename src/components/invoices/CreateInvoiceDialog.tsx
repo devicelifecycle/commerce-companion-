@@ -341,37 +341,62 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-display text-lg">Create Invoice</DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-4xl max-h-[92vh] overflow-y-auto p-0">
+        {/* Header */}
+        <div className="sticky top-0 z-10 bg-card border-b border-border px-6 py-4">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl tracking-tight flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                <PenLine className="h-4 w-4 text-primary" />
+              </div>
+              New Invoice
+            </DialogTitle>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-5">
-          {/* Company Selection */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5" /> Invoicing Company *
-            </h3>
-            <Select value={invoiceCompanyId} onValueChange={(v) => { setInvoiceCompanyId(v); setDevices([]); }}>
-              <SelectTrigger className="h-9 text-xs">
-                <SelectValue placeholder="Select company (VES or TGW)" />
-              </SelectTrigger>
-              <SelectContent>
-                {accessibleCompanies.map(c => (
-                  <SelectItem key={c.id} value={c.id} className="text-xs">{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="px-6 pb-6 space-y-6">
+          {/* Top Row: Company + Payment Terms */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company *</Label>
+              <Select value={invoiceCompanyId} onValueChange={(v) => { setInvoiceCompanyId(v); setDevices([]); }}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Select company" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accessibleCompanies.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Payment Terms</Label>
+              <Select value={dueDays} onValueChange={setDueDays}>
+                <SelectTrigger className="h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Due on Receipt</SelectItem>
+                  <SelectItem value="7">Net 7</SelectItem>
+                  <SelectItem value="15">Net 15</SelectItem>
+                  <SelectItem value="30">Net 30</SelectItem>
+                  <SelectItem value="60">Net 60</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Issue Date</Label>
+              <Input value={format(new Date(), 'MMM d, yyyy')} readOnly className="h-10 bg-muted/30 cursor-default" />
+            </div>
           </div>
 
-          <Separator />
-
-          {/* Customer Details */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Customer Details</h3>
-            <div className="grid grid-cols-2 gap-3">
+          {/* Customer Section */}
+          <div className="rounded-xl border border-border bg-muted/10 p-4 space-y-4">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Bill To</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">Customer Name *</Label>
+                <Label className="text-xs">Name *</Label>
                 <CustomerAutoComplete
                   companyId={invoiceCompanyId || null}
                   value={customerName}
@@ -386,201 +411,204 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Email</Label>
-                <Input type="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="customer@example.com" />
+                <Input type="email" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="customer@example.com" className="h-10" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Phone</Label>
-                <Input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="+1 (555) 000-0000" />
+                <Input value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="+1 (555) 000-0000" className="h-10" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">GST/HST Number</Label>
-                <Input value={customerGstHst} onChange={e => setCustomerGstHst(e.target.value)} placeholder="123456789 RT0001" />
+                <Label className="text-xs">GST/HST #</Label>
+                <Input value={customerGstHst} onChange={e => setCustomerGstHst(e.target.value)} placeholder="123456789 RT0001" className="h-10" />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Address</Label>
-              <Input value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder="Full billing address" />
+              <Input value={customerAddress} onChange={e => setCustomerAddress(e.target.value)} placeholder="Full billing address" className="h-10" />
             </div>
           </div>
 
-          <Separator />
-
-          {/* Line Items */}
+          {/* Line Items Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Line Items</h3>
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Items</h3>
               <div className="flex gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={() => addLineItem('inventory')}>
-                  <Package className="h-3.5 w-3.5 mr-1.5" /> From Inventory
+                <Button type="button" variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => addLineItem('inventory')}>
+                  <Package className="h-3.5 w-3.5" /> Inventory
                 </Button>
-                <Button type="button" variant="outline" size="sm" onClick={() => addLineItem('manual')}>
-                  <PenLine className="h-3.5 w-3.5 mr-1.5" /> Manual Item
+                <Button type="button" variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => addLineItem('manual')}>
+                  <Plus className="h-3.5 w-3.5" /> Custom
                 </Button>
               </div>
             </div>
 
-            <div className="space-y-2">
-              {/* Header */}
-              <div className="grid grid-cols-[1fr_70px_100px_130px_32px] gap-2 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold px-1">
-                <span>Description</span>
-                <span>Qty</span>
-                <span>Unit Price</span>
-                <span>Tax</span>
-                <span />
+            {/* Table-style line items */}
+            <div className="rounded-xl border border-border overflow-hidden">
+              {/* Table header */}
+              <div className="grid grid-cols-[1fr_64px_100px_120px_80px_36px] gap-0 bg-muted/40 border-b border-border">
+                <div className="px-3 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Description</div>
+                <div className="px-2 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Qty</div>
+                <div className="px-2 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Price</div>
+                <div className="px-2 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Tax</div>
+                <div className="px-2 py-2 text-[10px] uppercase tracking-wider text-muted-foreground font-bold text-right">Amount</div>
+                <div />
               </div>
 
-              {lineItems.map((li) => (
-                <div key={li.id} className="space-y-1">
-                  <div className="grid grid-cols-[1fr_70px_100px_130px_32px] gap-2 items-center">
-                    {li.type === 'inventory' && !li.device_id ? (
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+              {/* Line item rows */}
+              {lineItems.map((li, idx) => {
+                const lineAmount = li.quantity * li.unit_price;
+                const taxInfo = TAX_RATES[li.tax_treatment];
+                const lineTax = li.tax_treatment === 'tax_inclusive'
+                  ? lineAmount - (lineAmount / (1 + taxInfo.rate))
+                  : lineAmount * taxInfo.rate;
+                const lineTotal = li.tax_treatment === 'tax_inclusive' ? lineAmount : lineAmount + lineTax;
+
+                return (
+                  <div
+                    key={li.id}
+                    className={`grid grid-cols-[1fr_64px_100px_120px_80px_36px] gap-0 items-center border-b border-border/50 last:border-b-0 ${idx % 2 === 0 ? 'bg-card' : 'bg-card/60'}`}
+                  >
+                    {/* Description */}
+                    <div className="px-2 py-1.5">
+                      {li.type === 'inventory' && !li.device_id ? (
+                        <div className="relative">
+                          <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+                          <Input
+                            className="pl-7 h-8 text-xs border-dashed"
+                            value={searchQuery}
+                            onChange={e => { setSearchQuery(e.target.value); setSearchingLineId(li.id); }}
+                            onFocus={() => setSearchingLineId(li.id)}
+                            placeholder="Search inventory..."
+                            autoFocus
+                          />
+                          {searchingLineId === li.id && (
+                            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-2xl max-h-48 overflow-y-auto">
+                              {filteredDevices.length === 0 ? (
+                                <div className="p-3 text-xs text-muted-foreground text-center">No matching devices</div>
+                              ) : (
+                                filteredDevices.map(d => (
+                                  <button
+                                    key={d.id}
+                                    type="button"
+                                    className="w-full text-left px-3 py-2 text-xs hover:bg-muted/50 flex justify-between items-center transition-colors"
+                                    onClick={() => selectDevice(li.id, d)}
+                                  >
+                                    <span className="font-medium">{d.brand} {d.model} {d.storage || ''}</span>
+                                    <span className="text-muted-foreground">{formatCurrency(Number(d.sale_price || d.cost_price))}</span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
                         <Input
-                          className="pl-8 text-xs"
-                          value={searchQuery}
-                          onChange={e => { setSearchQuery(e.target.value); setSearchingLineId(li.id); }}
-                          onFocus={() => setSearchingLineId(li.id)}
-                          placeholder="Search inventory..."
-                          autoFocus
+                          className="h-8 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1"
+                          value={li.description}
+                          onChange={e => updateLine(li.id, { description: e.target.value })}
+                          placeholder="Item description"
+                          readOnly={li.type === 'inventory' && !!li.device_id}
                         />
-                        {searchingLineId === li.id && (
-                          <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                            {filteredDevices.length === 0 ? (
-                              <div className="p-3 text-xs text-muted-foreground text-center">No matching devices</div>
-                            ) : (
-                              filteredDevices.map(d => (
-                                <button
-                                  key={d.id}
-                                  type="button"
-                                  className="w-full text-left px-3 py-2 text-xs hover:bg-muted/50 flex justify-between items-center transition-colors"
-                                  onClick={() => selectDevice(li.id, d)}
-                                >
-                                  <span className="font-medium">{d.brand} {d.model} {d.storage || ''}</span>
-                                  <span className="text-muted-foreground">{formatCurrency(Number(d.sale_price || d.cost_price))}</span>
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
+                      )}
+                    </div>
+                    {/* Qty */}
+                    <div className="px-1 py-1.5">
                       <Input
-                        className="text-xs"
-                        value={li.description}
-                        onChange={e => updateLine(li.id, { description: e.target.value })}
-                        placeholder={li.type === 'inventory' ? li.description : 'Item description'}
-                        readOnly={li.type === 'inventory' && !!li.device_id}
+                        type="number"
+                        min="1"
+                        className="h-8 text-xs text-center border-0 bg-transparent shadow-none focus-visible:ring-1 px-1"
+                        value={li.quantity}
+                        onChange={e => updateLine(li.id, { quantity: parseInt(e.target.value) || 1 })}
                       />
-                    )}
-                    <Input
-                      type="number"
-                      min="1"
-                      className="text-xs"
-                      value={li.quantity}
-                      onChange={e => updateLine(li.id, { quantity: parseInt(e.target.value) || 1 })}
-                    />
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      className="text-xs"
-                      value={li.unit_price || ''}
-                      onChange={e => updateLine(li.id, { unit_price: parseFloat(e.target.value) || 0 })}
-                      placeholder="0.00"
-                    />
-                    <Select value={li.tax_treatment} onValueChange={v => updateLine(li.id, { tax_treatment: v as TaxTreatment })}>
-                      <SelectTrigger className="h-9 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(TAX_RATES).map(([key, val]) => (
-                          <SelectItem key={key} value={key} className="text-xs">
-                            {val.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                      onClick={() => removeLine(li.id)}
-                      disabled={lineItems.length <= 1}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    </div>
+                    {/* Price */}
+                    <div className="px-1 py-1.5">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="h-8 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1"
+                        value={li.unit_price || ''}
+                        onChange={e => updateLine(li.id, { unit_price: parseFloat(e.target.value) || 0 })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    {/* Tax */}
+                    <div className="px-1 py-1.5">
+                      <Select value={li.tax_treatment} onValueChange={v => updateLine(li.id, { tax_treatment: v as TaxTreatment })}>
+                        <SelectTrigger className="h-8 text-[11px] border-0 bg-transparent shadow-none focus:ring-1 px-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(TAX_RATES).map(([key, val]) => (
+                            <SelectItem key={key} value={key} className="text-xs">
+                              {val.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {/* Amount */}
+                    <div className="px-2 py-1.5 text-right">
+                      <span className="text-xs font-semibold tabular-nums">{formatCurrency(lineTotal)}</span>
+                    </div>
+                    {/* Delete */}
+                    <div className="px-1 py-1.5 flex justify-center">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => removeLine(li.id)}
+                        disabled={lineItems.length <= 1}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
-                  {/* Line subtotal */}
-                  <div className="text-right text-[10px] text-muted-foreground pr-10">
-                    Line: {formatCurrency(li.quantity * li.unit_price)}
-                    {li.tax_treatment !== 'zero_rated' && li.tax_treatment !== 'tax_inclusive' && (
-                      <> + {TAX_RATES[li.tax_treatment].label}</>
-                    )}
-                    {li.tax_treatment === 'tax_inclusive' && <> (tax included)</>}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          <Separator />
-
-          {/* Payment Terms & Notes */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Payment Terms</Label>
-              <Select value={dueDays} onValueChange={setDueDays}>
-                <SelectTrigger className="h-9 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">Due on Receipt</SelectItem>
-                  <SelectItem value="7">Net 7</SelectItem>
-                  <SelectItem value="15">Net 15</SelectItem>
-                  <SelectItem value="30">Net 30</SelectItem>
-                  <SelectItem value="60">Net 60</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Notes</Label>
-              <Textarea
-                className="text-xs min-h-[36px] h-9 resize-none"
-                value={notes}
-                onChange={e => setNotes(e.target.value)}
-                placeholder="Optional notes..."
-              />
-            </div>
+          {/* Notes */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Notes</Label>
+            <Textarea
+              className="text-xs min-h-[60px] resize-none"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Payment instructions, thank you message, etc."
+            />
           </div>
 
-          <Separator />
+          {/* Totals & Submit */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_280px] gap-4 items-end">
+            {/* Accounting note */}
+            <div className="text-[10px] text-muted-foreground bg-muted/20 rounded-lg p-3 border border-border/40 leading-relaxed">
+              <strong className="text-foreground/80">Auto-accounting:</strong> Revenue posted to Sales Revenue, tax to GST/HST Payable, AR entry created. Inventory items marked sold.
+            </div>
 
-          {/* Totals */}
-          <div className="space-y-2 bg-muted/30 rounded-lg p-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span className="font-medium">{formatCurrency(calculations.subtotal)}</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Tax</span>
-              <span className="font-medium">{formatCurrency(calculations.totalTax)}</span>
-            </div>
-            <Separator />
-            <div className="flex justify-between text-lg font-bold">
-              <span>Total</span>
-              <span className="text-primary">{formatCurrency(calculations.grandTotal)}</span>
+            {/* Totals card */}
+            <div className="rounded-xl border border-border bg-muted/20 p-4 space-y-2.5">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span className="font-medium tabular-nums">{formatCurrency(calculations.subtotal)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Tax</span>
+                <span className="font-medium tabular-nums">{formatCurrency(calculations.totalTax)}</span>
+              </div>
+              <Separator className="my-1" />
+              <div className="flex justify-between text-lg font-bold">
+                <span>Total</span>
+                <span className="text-primary tabular-nums">{formatCurrency(calculations.grandTotal)}</span>
+              </div>
+              <Button onClick={handleSubmit} disabled={submitting} className="w-full mt-2 h-10 gradient-primary font-semibold">
+                {submitting ? 'Creating...' : 'Create & Send Invoice'}
+              </Button>
             </div>
           </div>
-
-          {/* Accounting note */}
-          <div className="text-[10px] text-muted-foreground bg-muted/20 rounded-md p-2.5 border border-border/40">
-            <strong>Accounting Treatment:</strong> Revenue → Sales Revenue account, Tax collected → GST/HST Payable, AR entry created automatically. Inventory items marked as sold.
-          </div>
-
-          <Button onClick={handleSubmit} disabled={submitting} className="w-full gradient-primary">
-            {submitting ? 'Creating...' : 'Create Invoice'}
-          </Button>
         </div>
       </DialogContent>
     </Dialog>
