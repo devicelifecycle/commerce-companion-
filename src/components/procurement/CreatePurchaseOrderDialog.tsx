@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { ClipboardList, Plus, Trash2, ChevronsUpDown, Check, Package, Wrench, Receipt, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { ProductSearchCombobox, type ProductOption } from '@/components/inventory/ProductSearchCombobox';
 
 interface CreatePurchaseOrderDialogProps {
   open: boolean;
