@@ -1,52 +1,57 @@
 import { PageGuide } from './PageGuide';
-import { ClipboardCheck, Truck, DollarSign, FileText } from 'lucide-react';
+import { ClipboardCheck, Truck, DollarSign, FileText, Package, Wrench, Receipt } from 'lucide-react';
 
 export function PurchaseOrdersGuide() {
   return (
     <PageGuide
-      title="Purchase Orders Guide — Tracking procurement"
+      title="PO & GRN Guide — Procurement, receiving & expense routing"
       sections={[
         {
           icon: <ClipboardCheck className="h-4 w-4 text-primary" />,
-          title: 'What Are Purchase Orders?',
+          title: 'What Are POs?',
           content: (
             <>
-              <p>Purchase Orders (POs) are <strong>records of device purchases</strong> from your suppliers. They are automatically created when you finalize an import batch, capturing line items, costs, and tax amounts.</p>
-              <p>POs provide an audit trail linking supplier invoices to received inventory.</p>
+              <p>Purchase Orders (POs) formalize <strong>procurement from suppliers</strong>. Each PO contains line items with a description, quantity, unit cost, tax status, and an <strong>item type</strong> that controls what happens on receive.</p>
+              <p>A single PO can mix inventory, repair parts, and expense items — e.g. ordering phones plus tools from the same supplier.</p>
+            </>
+          ),
+        },
+        {
+          icon: <Package className="h-4 w-4 text-[hsl(var(--info))]" />,
+          title: 'Item Types',
+          content: (
+            <>
+              <ul className="list-disc list-inside space-y-1">
+                <li><strong>Inventory</strong> — Added to product stock on receive (phones, tablets, accessories)</li>
+                <li><strong>Repair Parts</strong> — Added to repair parts inventory (screens, batteries, etc.)</li>
+                <li><strong>Expense</strong> — Tools & supplies recorded as an expense, <em>not</em> added to inventory</li>
+              </ul>
+              <p className="mt-1 text-xs">Each line item has its own type selector — no need for separate POs.</p>
             </>
           ),
         },
         {
           icon: <Truck className="h-4 w-4 text-[hsl(var(--success))]" />,
-          title: 'PO Status',
+          title: 'Receiving (GRN)',
           content: (
             <>
-              <ul className="list-disc list-inside space-y-1">
-                <li><strong>Pending</strong> — Order placed, awaiting delivery</li>
-                <li><strong>Received</strong> — Goods arrived and confirmed via GRN</li>
-                <li><strong>Partial</strong> — Some items received, others pending</li>
-                <li><strong>Cancelled</strong> — Order voided</li>
+              <p>When goods arrive, use <strong>"Receive Items"</strong> to create a GRN. Each line can be split by condition (passed, defective, damaged).</p>
+              <ul className="list-disc list-inside space-y-1 mt-1">
+                <li>Inventory items → product stock</li>
+                <li>Repair parts → repair parts table</li>
+                <li>Expense items → expense records (auto-categorized as Supplies)</li>
               </ul>
+              <p className="mt-1">AP entries and GRNs are created for all item types.</p>
             </>
           ),
         },
         {
           icon: <DollarSign className="h-4 w-4 text-[hsl(var(--warning))]" />,
-          title: 'Payment Tracking',
+          title: 'Payment & Audit Trail',
           content: (
             <>
-              <p>Each PO tracks <strong>payment status</strong> (unpaid/paid) and payment method. When a PO is marked as paid, it updates the corresponding Accounts Payable record.</p>
-              <p>You can view the full cost breakdown: subtotal, GST/HST, PST/QST, and total amount.</p>
-            </>
-          ),
-        },
-        {
-          icon: <FileText className="h-4 w-4 text-[hsl(var(--info))]" />,
-          title: 'How POs Are Created',
-          content: (
-            <>
-              <p>POs are <strong>auto-generated</strong> during the import finalization process. Each finalized batch creates one PO with line items matching the imported devices.</p>
-              <p>The PO number follows the format <code>PO-{'{YYYY}'}-{'{SEQ}'}</code> and links back to the import batch and supplier for full traceability.</p>
+              <p>Each PO tracks <strong>payment status</strong> (unpaid/partial/paid) and payment method. Payments sync with Accounts Payable records.</p>
+              <p>The PO number format is <code>{'{CO}'}-{'{YYYYMMDD}'}-{'{SEQ}'}</code>. Clone POs for recurring supplier orders.</p>
             </>
           ),
         },
