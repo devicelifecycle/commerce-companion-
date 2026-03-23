@@ -2691,6 +2691,45 @@ export type Database = {
           },
         ]
       }
+      repair_parts_catalog: {
+        Row: {
+          category: string | null
+          compatible_devices: string | null
+          created_at: string | null
+          default_cost: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          normalized_key: string
+          notes: string | null
+          sku_prefix: string | null
+        }
+        Insert: {
+          category?: string | null
+          compatible_devices?: string | null
+          created_at?: string | null
+          default_cost?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          normalized_key: string
+          notes?: string | null
+          sku_prefix?: string | null
+        }
+        Update: {
+          category?: string | null
+          compatible_devices?: string | null
+          created_at?: string | null
+          default_cost?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          normalized_key?: string
+          notes?: string | null
+          sku_prefix?: string | null
+        }
+        Relationships: []
+      }
       return_authorizations: {
         Row: {
           accounting_status: string | null
