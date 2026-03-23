@@ -26,6 +26,7 @@ import { ClipboardList, Plus, Trash2, ChevronsUpDown, Check, Package, Wrench, Re
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ProductSearchCombobox, type ProductOption } from '@/components/inventory/ProductSearchCombobox';
+import { RepairPartSearchCombobox, type RepairPartCatalogOption } from '@/components/inventory/RepairPartSearchCombobox';
 
 interface CreatePurchaseOrderDialogProps {
   open: boolean;
@@ -46,7 +47,7 @@ interface Company {
 }
 
 type TaxStatus = 'zero_rated' | 'gst_paid' | 'hst_paid' | 'tax_inclusive' | 'gst_pst';
-type ItemType = 'inventory' | 'repair_parts' | 'expense';
+type ItemType = 'inventory' | 'product' | 'repair_parts' | 'expense';
 
 const TAX_OPTIONS: { value: TaxStatus; label: string }[] = [
   { value: 'zero_rated', label: 'Zero-Rated' },
@@ -57,7 +58,8 @@ const TAX_OPTIONS: { value: TaxStatus; label: string }[] = [
 ];
 
 const ITEM_TYPE_CONFIG: { value: ItemType; label: string; icon: typeof Package; color: string; description: string }[] = [
-  { value: 'inventory', label: 'Inventory', icon: Package, color: 'text-[hsl(var(--info))]', description: 'Added to product inventory on receive' },
+  { value: 'inventory', label: 'Device', icon: Package, color: 'text-[hsl(var(--info))]', description: 'Serialized items (phones, laptops, tablets)' },
+  { value: 'product', label: 'Product', icon: Package, color: 'text-[hsl(var(--success))]', description: 'Bulk/generic items added to product stock' },
   { value: 'repair_parts', label: 'Repair Parts', icon: Wrench, color: 'text-[hsl(var(--warning))]', description: 'Added to repair parts inventory' },
   { value: 'expense', label: 'Expense', icon: Receipt, color: 'text-[hsl(var(--accent))]', description: 'Recorded as expense, not inventory' },
 ];
@@ -423,13 +425,13 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
                 <div key={item.id} className="rounded-lg border border-border/60 p-3 bg-muted/20 hover:bg-muted/30 transition-colors">
                   <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,70px,90px,100px,80px,36px] gap-2 items-center">
                     {/* Description / Product selector */}
-                    {item.item_type === 'inventory' ? (
+                    {item.item_type === 'inventory' || item.item_type === 'product' ? (
                       <div className="space-y-1">
                         <ProductSearchCombobox
                           value={item.product_id}
                           companyId={selectedCompanyId}
                           disabled={!selectedCompanyId}
-                          placeholder="Select product..."
+                          placeholder={item.item_type === 'product' ? 'Select product...' : 'Select device product...'}
                           className="h-8 text-xs"
                           onSelect={(product: ProductOption | null) => {
                             if (product) {
@@ -437,6 +439,26 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
                                 product_id: product.id,
                                 description: product.name + (product.sku ? ` (${product.sku})` : ''),
                                 unit_cost: product.cost_price || item.unit_cost,
+                              });
+                            } else {
+                              updateLine(item.id, { product_id: null, description: '' });
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : item.item_type === 'repair_parts' ? (
+                      <div className="space-y-1">
+                        <RepairPartSearchCombobox
+                          value={item.product_id}
+                          disabled={!selectedCompanyId}
+                          placeholder="Select from parts catalog..."
+                          className="h-8 text-xs"
+                          onSelect={(part: RepairPartCatalogOption | null) => {
+                            if (part) {
+                              updateLine(item.id, {
+                                product_id: part.id,
+                                description: part.name + (part.sku_prefix ? ` (${part.sku_prefix})` : ''),
+                                unit_cost: part.default_cost || item.unit_cost,
                               });
                             } else {
                               updateLine(item.id, { product_id: null, description: '' });
