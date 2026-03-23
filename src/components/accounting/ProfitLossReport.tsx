@@ -331,6 +331,9 @@ export function ProfitLossReport({ companyView }: Props) {
           <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-[160px]" />
         </div>
         <div className="ml-auto flex gap-2">
+          <Button variant="outline" size="icon" onClick={fetchPLData} title="Refresh">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
