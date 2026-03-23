@@ -376,10 +376,10 @@ export function ProfitLossReport({ companyView }: Props) {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Gross Profit</p>
-                <p className="text-2xl font-bold">{formatCurrency(plData?.grossProfit || 0)}</p>
+                <p className="text-sm text-muted-foreground">Gross Profit {isMgmt && <span className="text-[10px]">(Mgmt)</span>}</p>
+                <p className="text-2xl font-bold">{formatCurrency(adjGrossProfit)}</p>
                 <Badge variant="outline" className="mt-1">
-                  {formatPercent(plData?.grossMargin || 0)} margin
+                  {formatPercent(adjGrossMargin)} margin
                 </Badge>
               </div>
               <TrendingUp className="h-8 w-8 text-blue-500" />
