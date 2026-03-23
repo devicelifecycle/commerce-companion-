@@ -75,6 +75,8 @@ export default function Inventory() {
     searchTerm: debouncedSearch,
   });
 
+  useDataRefetch('inventory', refetch);
+
   // Dialog states
   const [editDevice, setEditDevice] = useState<any>(null);
   const [showTransferDialog, setShowTransferDialog] = useState(false);
