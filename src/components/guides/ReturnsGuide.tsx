@@ -1,10 +1,10 @@
 import { PageGuide } from './PageGuide';
-import { RotateCcw, FileText, DollarSign, AlertCircle } from 'lucide-react';
+import { RotateCcw, FileText, DollarSign, AlertCircle, Tag, Wrench } from 'lucide-react';
 
 export function ReturnsGuide() {
   return (
     <PageGuide
-      title="Returns Guide — Managing RMAs and refunds"
+      title="Returns Guide — Managing RMAs, Refunds & Adjustments"
       sections={[
         {
           icon: <RotateCcw className="h-4 w-4 text-primary" />,
@@ -12,20 +12,22 @@ export function ReturnsGuide() {
           content: (
             <>
               <p>Return Material Authorizations (RMAs) track <strong>products returned by customers or to suppliers</strong>. They record the reason, refund amount, and accounting impact of each return.</p>
-              <p>RMAs can be initiated from the Orders page (customer returns) or created here for supplier returns.</p>
+              <p>Customer returns are initiated from <strong>Orders → Order Details → Initiate Return</strong>. Supplier returns can be created here or via bulk selection in Inventory.</p>
             </>
           ),
         },
         {
           icon: <FileText className="h-4 w-4 text-[hsl(var(--success))]" />,
-          title: 'Return Types',
+          title: 'Resolution Types',
           content: (
             <>
               <ul className="list-disc list-inside space-y-1">
-                <li><strong>Customer Return</strong> — Product returned by the buyer (refund to customer)</li>
-                <li><strong>Supplier Return</strong> — Defective/wrong item returned to vendor (refund from supplier)</li>
+                <li><strong>Refund</strong> — Full or partial refund with item returned</li>
+                <li><strong>Adjustment/Credit</strong> — Courtesy credit (e.g., late delivery discount) — no item return expected</li>
+                <li><strong>Exchange</strong> — Replace with another device; original returned</li>
+                <li><strong>Repair & Return</strong> — Fix the item and send it back; links to the Device Repairs module</li>
               </ul>
-              <p className="mt-1">Each type triggers different accounting entries — customer returns reverse revenue; supplier returns reverse AP.</p>
+              <p className="mt-1">Each type triggers different accounting entries.</p>
             </>
           ),
         },
@@ -34,26 +36,37 @@ export function ReturnsGuide() {
           title: 'Accounting Impact',
           content: (
             <>
-              <p>When a return is processed, the system automatically creates <strong>reversal journal entries</strong> for:</p>
+              <p>When a return is processed, the system automatically creates <strong>reversal journal entries</strong>:</p>
               <ul className="list-disc list-inside space-y-1">
-                <li>Revenue reversal (credit Sales, debit AR)</li>
-                <li>COGS reversal (credit Inventory, debit COGS)</li>
-                <li>Tax adjustments</li>
+                <li><strong>Refund/Exchange</strong>: Revenue reversal + COGS reversal + AR cancellation</li>
+                <li><strong>Adjustment</strong>: Partial revenue reversal + AR credit (no COGS change)</li>
+                <li><strong>Repair</strong>: Revenue reversal + AR cancellation (no COGS reversal — item stays in repair)</li>
+                <li><strong>Supplier Return</strong>: AP reduction + Inventory removal</li>
               </ul>
-              <p className="mt-1">The linked device status changes back to <strong>"returned"</strong> or <strong>"in_stock"</strong> depending on condition.</p>
             </>
           ),
         },
         {
-          icon: <AlertCircle className="h-4 w-4 text-[hsl(var(--info))]" />,
-          title: 'RMA Status',
+          icon: <AlertCircle className="h-4 w-4 text-destructive" />,
+          title: 'Marketplace Flags',
           content: (
             <>
+              <p>Returns marked as <strong>"Marketplace-Initiated"</strong> (A-to-Z claims, chargebacks) display a <span className="text-destructive font-bold">⚠</span> red flag in the table for associate review.</p>
+              <p className="mt-1">Use the <strong>Flagged</strong> tab to quickly find all marketplace-forced refunds that need attention.</p>
+            </>
+          ),
+        },
+        {
+          icon: <Tag className="h-4 w-4 text-[hsl(var(--info))]" />,
+          title: 'Supplier Returns',
+          content: (
+            <>
+              <p>Supplier returns go through an <strong>approval pipeline</strong>: Pending → Approved → Shipped → Refunded/Completed.</p>
+              <p className="mt-1">Create them from:</p>
               <ul className="list-disc list-inside space-y-1">
-                <li><strong>Pending</strong> — Return initiated, awaiting processing</li>
-                <li><strong>Approved</strong> — Return accepted</li>
-                <li><strong>Completed</strong> — Refund issued, inventory updated</li>
-                <li><strong>Rejected</strong> — Return denied</li>
+                <li>The <strong>"Supplier Return"</strong> button on this page</li>
+                <li><strong>Bulk select</strong> items in Inventory and choose "Create RMA"</li>
+                <li>Select a <strong>Supplier or PO</strong> first, then pick items</li>
               </ul>
             </>
           ),

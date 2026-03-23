@@ -6,18 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
@@ -25,11 +20,12 @@ import { toast } from 'sonner';
 import { MetricCard } from '@/components/ui/metric-card';
 import { 
   RotateCcw, Plus, Package, ShoppingCart, DollarSign, 
-  Clock, CheckCircle, XCircle, Truck, Search, Wrench, RefreshCw, ArrowRightLeft,
-  AlertTriangle, Timer, Eye
+  Clock, CheckCircle, XCircle, Truck, Search, Wrench, ArrowRightLeft,
+  AlertTriangle, Timer, AlertCircle
 } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
-import { DeviceSearchCombobox } from '@/components/inventory/DeviceSearchCombobox';
+import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
+import { SupplierReturnDialog } from './SupplierReturnDialog';
 
 interface ReturnAuthorization {
   id: string;
@@ -55,6 +51,8 @@ interface ReturnAuthorization {
   repair_notes: string | null;
   purchase_order_id: string | null;
   company_id: string | null;
+  marketplace_initiated?: boolean;
+  refund_reason_detail?: string | null;
   device?: { brand: string; model: string; imei: string | null };
   supplier?: { name: string };
 }
@@ -64,36 +62,18 @@ export function ReturnsManagement() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [returns, setReturns] = useState<ReturnAuthorization[]>([]);
-  const [devices, setDevices] = useState<any[]>([]);
-  const [suppliers, setSuppliers] = useState<any[]>([]);
-  const [sales, setSales] = useState<any[]>([]);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewingRma, setViewingRma] = useState<ReturnAuthorization | null>(null);
-  
-  const [formData, setFormData] = useState({
-    return_type: 'purchase_return' as 'purchase_return' | 'sales_return',
-    device_id: '',
-    supplier_id: '',
-    sale_id: '',
-    customer_name: '',
-    reason: '',
-    original_cost: '',
-    refund_amount: '',
-    notes: '',
-    resolution_type: 'refund' as 'refund' | 'exchange' | 'repair',
-    device_condition_on_return: '',
-    outbound_tracking_number: '',
-    repair_notes: '',
-    replacement_device_id: '',
-  });
+  const [supplierReturnOpen, setSupplierReturnOpen] = useState(false);
 
   useEffect(() => {
     fetchData();
   }, [selectedCompany]);
 
-  const fetchData = async () => {
+  useDataRefetch('returns', fetchData);
+
+  async function fetchData() {
     setLoading(true);
     try {
       let rmaQuery = supabase
@@ -111,111 +91,12 @@ export function ReturnsManagement() {
 
       const { data: rmaData } = await rmaQuery;
       setReturns((rmaData as any[]) || []);
-
-      let devicesQuery = supabase
-        .from('devices')
-        .select('id, brand, model, imei, cost_price, supplier_id')
-        .eq('status', 'in_stock');
-
-      if (selectedCompany) {
-        devicesQuery = devicesQuery.eq('company_id', selectedCompany.id);
-      }
-
-      const { data: devicesData } = await devicesQuery;
-      setDevices(devicesData || []);
-
-      let suppliersQuery = supabase.from('suppliers').select('id, name');
-      if (selectedCompany) {
-        suppliersQuery = suppliersQuery.eq('company_id', selectedCompany.id);
-      }
-      const { data: suppliersData } = await suppliersQuery;
-      setSuppliers(suppliersData || []);
-
-      let salesQuery = supabase
-        .from('sales')
-        .select('id, order_number, customer_name, sale_price, device_id, devices(brand, model)')
-        .order('sale_date', { ascending: false })
-        .limit(100);
-
-      if (selectedCompany) {
-        salesQuery = salesQuery.eq('company_id', selectedCompany.id);
-      }
-
-      const { data: salesData } = await salesQuery;
-      setSales(salesData || []);
-
     } catch (error) {
       console.error('Error fetching returns data:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateRMANumber = () => {
-    const prefix = formData.return_type === 'purchase_return' ? 'RMA-P' : 'RMA-S';
-    const companyCode = selectedCompany?.code || 'XX';
-    const year = new Date().getFullYear();
-    const seq = String(Math.floor(Math.random() * 10000)).padStart(5, '0');
-    return `${prefix}-${companyCode}-${year}-${seq}`;
-  };
-
-  const handleSubmit = async () => {
-    if (!formData.reason) {
-      toast.error('Please provide a reason for the return');
-      return;
-    }
-    if (!formData.device_condition_on_return) {
-      toast.error('Please assess the device condition');
-      return;
-    }
-    if (formData.return_type === 'purchase_return' && !formData.device_id) {
-      toast.error('Please select a device to return');
-      return;
-    }
-    if (formData.return_type === 'sales_return' && !formData.sale_id) {
-      toast.error('Please select a sale to process the return');
-      return;
-    }
-
-    try {
-      const rmaNumber = generateRMANumber();
-      
-      const returnData = {
-        company_id: selectedCompany?.id,
-        rma_number: rmaNumber,
-        return_type: formData.return_type,
-        device_id: formData.device_id || null,
-        supplier_id: formData.supplier_id || null,
-        sale_id: formData.sale_id || null,
-        customer_name: formData.customer_name || null,
-        reason: formData.reason,
-        original_cost: formData.original_cost ? parseFloat(formData.original_cost) : null,
-        refund_amount: formData.resolution_type === 'refund' && formData.refund_amount ? parseFloat(formData.refund_amount) : 0,
-        notes: formData.notes || null,
-        status: 'pending',
-        created_by: user?.id,
-        resolution_type: formData.resolution_type,
-        device_condition_on_return: formData.device_condition_on_return,
-        outbound_tracking_number: formData.outbound_tracking_number || null,
-        repair_notes: formData.resolution_type === 'repair' ? formData.repair_notes : null,
-        replacement_device_id: formData.resolution_type === 'exchange' && formData.replacement_device_id ? formData.replacement_device_id : null,
-      };
-
-      const { error } = await supabase
-        .from('return_authorizations')
-        .insert(returnData as any);
-
-      if (error) throw error;
-
-      toast.success(`RMA ${rmaNumber} created — ${formData.resolution_type}`);
-      setIsDialogOpen(false);
-      resetForm();
-      fetchData();
-    } catch (error: any) {
-      console.error('Error creating return:', error);
-      toast.error(error.message || 'Failed to create return');
-    }
-  };
+  }
 
   const updateStatus = async (id: string, newStatus: string) => {
     try {
@@ -234,7 +115,6 @@ export function ReturnsManagement() {
 
         // For purchase returns, reduce the linked AP balance
         if (rma?.return_type === 'purchase_return' && rma?.purchase_order_id && rma?.company_id) {
-          // Find linked PO to get the bill_number
           const { data: linkedPO } = await supabase
             .from('purchase_orders')
             .select('po_number')
@@ -298,30 +178,11 @@ export function ReturnsManagement() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      return_type: 'purchase_return',
-      device_id: '',
-      supplier_id: '',
-      sale_id: '',
-      customer_name: '',
-      reason: '',
-      original_cost: '',
-      refund_amount: '',
-      notes: '',
-      resolution_type: 'refund',
-      device_condition_on_return: '',
-      outbound_tracking_number: '',
-      repair_notes: '',
-      replacement_device_id: '',
-    });
-  };
-
   // KPI calculations
   const kpis = useMemo(() => {
     const open = returns.filter(r => ['pending', 'approved', 'shipped'].includes(r.status));
     const pendingRefunds = open
-      .filter(r => r.resolution_type === 'refund')
+      .filter(r => r.resolution_type === 'refund' || r.resolution_type === 'adjustment')
       .reduce((sum, r) => sum + (r.refund_amount || r.original_cost || 0), 0);
     const resolved = returns.filter(r => ['refunded', 'completed', 'cancelled'].includes(r.status));
     const avgDays = resolved.length > 0
@@ -332,33 +193,32 @@ export function ReturnsManagement() {
         }, 0) / resolved.length
       : 0;
     const overdue = open.filter(r => differenceInDays(new Date(), new Date(r.created_at)) > 7);
-    return { openCount: open.length, pendingRefunds, avgDays: Math.round(avgDays), overdueCount: overdue.length };
+    const marketplaceFlags = returns.filter(r => r.marketplace_initiated && !['refunded', 'completed', 'cancelled'].includes(r.status));
+    return { openCount: open.length, pendingRefunds, avgDays: Math.round(avgDays), overdueCount: overdue.length, marketplaceFlags: marketplaceFlags.length };
   }, [returns]);
 
   const formatCurrencyValue = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
 
   const getRmaTimeline = (rma: ReturnAuthorization) => {
-    // Customer returns skip approval — they go straight to resolved
     if (rma.return_type === 'sales_return') {
       return [
-        { label: 'Created', status: 'done', date: rma.created_at, icon: Plus },
+        { label: 'Created', status: 'done' as const, date: rma.created_at, icon: Plus },
         { 
-          label: rma.resolution_type === 'refund' ? 'Refunded' : rma.resolution_type === 'repair' ? 'In Repair' : 'Exchanged',
-          status: ['refunded', 'completed'].includes(rma.status) ? 'done' : 'current',
+          label: rma.resolution_type === 'refund' ? 'Refunded' : rma.resolution_type === 'adjustment' ? 'Credited' : rma.resolution_type === 'repair' ? 'In Repair' : 'Exchanged',
+          status: (['refunded', 'completed'].includes(rma.status) ? 'done' : 'current') as 'done' | 'current',
           date: rma.refund_date || undefined,
-          icon: rma.resolution_type === 'refund' ? DollarSign : rma.resolution_type === 'repair' ? Wrench : ArrowRightLeft,
+          icon: rma.resolution_type === 'refund' || rma.resolution_type === 'adjustment' ? DollarSign : rma.resolution_type === 'repair' ? Wrench : ArrowRightLeft,
         },
       ];
     }
-    // Supplier returns go through approval pipeline
     const steps = [
-      { label: 'Created', status: 'done', date: rma.created_at, icon: Plus },
-      { label: 'Approved', status: ['approved', 'shipped', 'received', 'refunded', 'completed'].includes(rma.status) ? 'done' : rma.status === 'pending' ? 'current' : 'upcoming', icon: CheckCircle },
-      { label: 'Shipped', status: ['shipped', 'received', 'refunded', 'completed'].includes(rma.status) ? 'done' : rma.status === 'approved' ? 'current' : 'upcoming', icon: Truck },
+      { label: 'Created', status: 'done' as const, date: rma.created_at, icon: Plus },
+      { label: 'Approved', status: (['approved', 'shipped', 'received', 'refunded', 'completed'].includes(rma.status) ? 'done' : rma.status === 'pending' ? 'current' : 'upcoming') as any, icon: CheckCircle },
+      { label: 'Shipped', status: (['shipped', 'received', 'refunded', 'completed'].includes(rma.status) ? 'done' : rma.status === 'approved' ? 'current' : 'upcoming') as any, icon: Truck },
       { 
         label: rma.resolution_type === 'refund' ? 'Refunded' : rma.resolution_type === 'repair' ? 'Repaired' : 'Exchanged',
-        status: ['refunded', 'completed'].includes(rma.status) ? 'done' : ['shipped', 'received'].includes(rma.status) ? 'current' : 'upcoming',
+        status: (['refunded', 'completed'].includes(rma.status) ? 'done' : ['shipped', 'received'].includes(rma.status) ? 'current' : 'upcoming') as any,
         date: rma.refund_date || undefined,
         icon: rma.resolution_type === 'refund' ? DollarSign : rma.resolution_type === 'repair' ? Wrench : ArrowRightLeft,
       },
@@ -373,6 +233,7 @@ export function ReturnsManagement() {
       shipped: 'bg-purple-500/10 text-purple-500',
       received: 'bg-cyan-500/10 text-cyan-500',
       refunded: 'bg-emerald-500/10 text-emerald-500',
+      completed: 'bg-emerald-500/10 text-emerald-500',
       cancelled: 'bg-red-500/10 text-red-500',
     };
     return <Badge className={styles[status] || 'bg-muted'}>{status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</Badge>;
@@ -382,16 +243,12 @@ export function ReturnsManagement() {
     if (!resolution) return null;
     const config: Record<string, { icon: React.ReactNode; className: string; label: string }> = {
       refund: { icon: <DollarSign className="h-3 w-3" />, className: 'bg-emerald-500/10 text-emerald-600', label: 'Refund' },
+      adjustment: { icon: <DollarSign className="h-3 w-3" />, className: 'bg-orange-500/10 text-orange-600', label: 'Adjustment' },
       exchange: { icon: <ArrowRightLeft className="h-3 w-3" />, className: 'bg-blue-500/10 text-blue-600', label: 'Exchange' },
       repair: { icon: <Wrench className="h-3 w-3" />, className: 'bg-amber-500/10 text-amber-600', label: 'Repair' },
     };
     const c = config[resolution] || config.refund;
-    return (
-      <Badge className={`${c.className} gap-1`}>
-        {c.icon}
-        {c.label}
-      </Badge>
-    );
+    return <Badge className={`${c.className} gap-1`}>{c.icon}{c.label}</Badge>;
   };
 
   const getConditionBadge = (condition: string | null) => {
@@ -401,8 +258,9 @@ export function ReturnsManagement() {
       defective: 'bg-amber-500/10 text-amber-600',
       damaged: 'bg-orange-500/10 text-orange-600',
       unrepairable: 'bg-red-500/10 text-red-600',
+      wrong_item: 'bg-purple-500/10 text-purple-600',
     };
-    return <Badge className={config[condition] || 'bg-muted'}>{condition.charAt(0).toUpperCase() + condition.slice(1)}</Badge>;
+    return <Badge className={config[condition] || 'bg-muted'}>{condition.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</Badge>;
   };
 
   const filteredReturns = returns.filter(r => {
@@ -410,8 +268,10 @@ export function ReturnsManagement() {
       : activeTab === 'purchase' ? r.return_type === 'purchase_return'
       : activeTab === 'sales' ? r.return_type === 'sales_return'
       : activeTab === 'pending' ? ['pending', 'approved'].includes(r.status)
+      : activeTab === 'adjustments' ? r.resolution_type === 'adjustment'
       : activeTab === 'exchanges' ? r.resolution_type === 'exchange'
       : activeTab === 'repairs' ? r.resolution_type === 'repair'
+      : activeTab === 'flagged' ? r.marketplace_initiated === true
       : true;
     if (!matchTab) return false;
     if (!searchTerm.trim()) return true;
@@ -438,7 +298,7 @@ export function ReturnsManagement() {
   return (
     <>
     {/* KPI Summary Cards */}
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
       <MetricCard
         title="Open RMAs"
         value={kpis.openCount}
@@ -466,6 +326,14 @@ export function ReturnsManagement() {
         changeType={kpis.overdueCount > 0 ? 'negative' : 'positive'}
         change={kpis.overdueCount > 0 ? 'Needs attention' : 'All clear'}
       />
+      <MetricCard
+        title="Marketplace Flags"
+        value={kpis.marketplaceFlags}
+        icon={AlertCircle}
+        iconClassName={kpis.marketplaceFlags > 0 ? 'bg-destructive/10' : undefined}
+        changeType={kpis.marketplaceFlags > 0 ? 'negative' : 'positive'}
+        change={kpis.marketplaceFlags > 0 ? 'Review needed' : 'None'}
+      />
     </div>
 
     <Card>
@@ -474,286 +342,15 @@ export function ReturnsManagement() {
           <RotateCcw className="h-5 w-5" />
           Returns Management
         </CardTitle>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Return
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Create Return Authorization</DialogTitle>
-              <DialogDescription>
-                Process a return to supplier or from customer
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-              <div className="space-y-2">
-                <Label>Return Type</Label>
-                <Select
-                  value={formData.return_type}
-                  onValueChange={(v) => setFormData({ ...formData, return_type: v as any, device_id: '', sale_id: '' })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="purchase_return">
-                      <div className="flex items-center gap-2">
-                        <Package className="h-4 w-4" />
-                        Return to Supplier
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="sales_return">
-                      <div className="flex items-center gap-2">
-                        <ShoppingCart className="h-4 w-4" />
-                        Customer Return
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Resolution Type */}
-              <div className="space-y-2">
-                <Label>Resolution *</Label>
-                <Select
-                  value={formData.resolution_type}
-                  onValueChange={(v) => setFormData({ ...formData, resolution_type: v as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="refund">💰 Refund</SelectItem>
-                    <SelectItem value="exchange">🔄 Exchange — Send replacement</SelectItem>
-                    <SelectItem value="repair">🔧 Repair — Fix and return</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Device Condition */}
-              <div className="space-y-2">
-                <Label>Device Condition on Return *</Label>
-                <Select
-                  value={formData.device_condition_on_return || 'none'}
-                  onValueChange={(v) => setFormData({ ...formData, device_condition_on_return: v === 'none' ? '' : v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Assess condition" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Select condition</SelectItem>
-                    <SelectItem value="working">✅ Working</SelectItem>
-                    <SelectItem value="defective">⚠️ Defective</SelectItem>
-                    <SelectItem value="damaged">🔨 Damaged</SelectItem>
-                    <SelectItem value="unrepairable">❌ Unrepairable</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {formData.return_type === 'purchase_return' ? (
-                <>
-                  <div className="space-y-2">
-                    <Label>Device to Return *</Label>
-                    <Select
-                      value={formData.device_id}
-                      onValueChange={(v) => {
-                        const device = devices.find(d => d.id === v);
-                        setFormData({
-                          ...formData,
-                          device_id: v,
-                          supplier_id: device?.supplier_id || '',
-                          original_cost: device?.cost_price?.toString() || '',
-                          refund_amount: device?.cost_price?.toString() || '',
-                        });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select device" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {devices.map(d => (
-                          <SelectItem key={d.id} value={d.id}>
-                            {d.brand} {d.model} {d.imei ? `(${d.imei})` : ''}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Supplier</Label>
-                    <Select
-                      value={formData.supplier_id || 'none'}
-                      onValueChange={(v) => setFormData({ ...formData, supplier_id: v === 'none' ? '' : v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select supplier" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No supplier</SelectItem>
-                        {suppliers.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="space-y-2">
-                    <Label>Original Sale *</Label>
-                    <Select
-                      value={formData.sale_id}
-                      onValueChange={(v) => {
-                        const sale = sales.find(s => s.id === v);
-                        setFormData({
-                          ...formData,
-                          sale_id: v,
-                          device_id: sale?.device_id || '',
-                          customer_name: sale?.customer_name || '',
-                          original_cost: sale?.sale_price?.toString() || '',
-                          refund_amount: sale?.sale_price?.toString() || '',
-                        });
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select sale" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sales.map(s => {
-                          const device = s.devices as any;
-                          return (
-                            <SelectItem key={s.id} value={s.id}>
-                              #{s.order_number} - {device?.brand} {device?.model}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Customer Name</Label>
-                    <Input
-                      value={formData.customer_name}
-                      onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })}
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="space-y-2">
-                <Label>Reason for Return *</Label>
-                <Select
-                  value={formData.reason || 'none'}
-                  onValueChange={(v) => setFormData({ ...formData, reason: v === 'none' ? '' : v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select reason" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Select a reason</SelectItem>
-                    <SelectItem value="Defective">Defective</SelectItem>
-                    <SelectItem value="Wrong Item">Wrong Item</SelectItem>
-                    <SelectItem value="Changed Mind">Changed Mind</SelectItem>
-                    <SelectItem value="Not as Described">Not as Described</SelectItem>
-                    <SelectItem value="Damaged in Transit">Damaged in Transit</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Original Amount</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.original_cost}
-                    onChange={(e) => setFormData({ ...formData, original_cost: e.target.value })}
-                  />
-                </div>
-                {formData.resolution_type === 'refund' && (
-                  <div className="space-y-2">
-                    <Label>Refund Amount</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.refund_amount}
-                      onChange={(e) => setFormData({ ...formData, refund_amount: e.target.value })}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Exchange / Repair specific fields */}
-              {formData.resolution_type === 'exchange' && (
-                <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-3 space-y-3">
-                  <p className="text-sm font-medium text-blue-600 dark:text-blue-400">Exchange Details</p>
-                  <div className="space-y-2">
-                    <Label>Replacement Device</Label>
-                    <DeviceSearchCombobox
-                      value={formData.replacement_device_id || null}
-                      onSelect={(device) => setFormData({ ...formData, replacement_device_id: device?.id || '' })}
-                      companyId={selectedCompany?.id}
-                      placeholder="Search replacement device by IMEI, SKU..."
-                    />
-                    <p className="text-xs text-muted-foreground">Select the device being sent as replacement</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Outbound Tracking #</Label>
-                    <Input
-                      value={formData.outbound_tracking_number}
-                      onChange={(e) => setFormData({ ...formData, outbound_tracking_number: e.target.value })}
-                      placeholder="Tracking for replacement shipment"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {formData.resolution_type === 'repair' && (
-                <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 space-y-2">
-                  <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Repair Details</p>
-                  <div className="space-y-2">
-                    <Label>Repair Notes</Label>
-                    <Textarea
-                      value={formData.repair_notes}
-                      onChange={(e) => setFormData({ ...formData, repair_notes: e.target.value })}
-                      placeholder="Describe the repair..."
-                      rows={2}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Outbound Tracking #</Label>
-                    <Input
-                      value={formData.outbound_tracking_number}
-                      onChange={(e) => setFormData({ ...formData, outbound_tracking_number: e.target.value })}
-                      placeholder="Tracking when sending back"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label>Notes</Label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  placeholder="Additional notes..."
-                />
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleSubmit}>Create RMA</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <p className="text-xs text-muted-foreground hidden md:block">
+            Customer returns: use Orders → Initiate Return
+          </p>
+          <Button onClick={() => setSupplierReturnOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Supplier Return
+          </Button>
+        </div>
       </CardHeader>
 
       <CardContent>
@@ -772,10 +369,13 @@ export function ReturnsManagement() {
           <TabsList className="flex-wrap">
             <TabsTrigger value="all">All ({returns.length})</TabsTrigger>
             <TabsTrigger value="purchase">
-              To Supplier ({returns.filter(r => r.return_type === 'purchase_return').length})
+              Supplier ({returns.filter(r => r.return_type === 'purchase_return').length})
             </TabsTrigger>
             <TabsTrigger value="sales">
-              From Customer ({returns.filter(r => r.return_type === 'sales_return').length})
+              Customer ({returns.filter(r => r.return_type === 'sales_return').length})
+            </TabsTrigger>
+            <TabsTrigger value="adjustments">
+              Adjustments ({returns.filter(r => r.resolution_type === 'adjustment').length})
             </TabsTrigger>
             <TabsTrigger value="exchanges">
               Exchanges ({returns.filter(r => r.resolution_type === 'exchange').length})
@@ -786,20 +386,25 @@ export function ReturnsManagement() {
             <TabsTrigger value="pending">
               Pending ({returns.filter(r => ['pending', 'approved'].includes(r.status)).length})
             </TabsTrigger>
+            {kpis.marketplaceFlags > 0 && (
+              <TabsTrigger value="flagged" className="text-destructive">
+                ⚠ Flagged ({kpis.marketplaceFlags})
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[20px]"></TableHead>
                 <TableHead>RMA #</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead>Resolution</TableHead>
-                <TableHead>Device</TableHead>
+                <TableHead>Item</TableHead>
                 <TableHead>Condition</TableHead>
                 <TableHead>Reason</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Tracking</TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -814,10 +419,22 @@ export function ReturnsManagement() {
               ) : (
                 filteredReturns.map((rma) => (
                   <TableRow key={rma.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setViewingRma(rma)}>
+                    <TableCell>
+                      {rma.marketplace_initiated && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <AlertCircle className="h-4 w-4 text-destructive" />
+                            </TooltipTrigger>
+                            <TooltipContent>Marketplace-initiated — needs review</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                    </TableCell>
                     <TableCell className="font-mono text-sm">{rma.rma_number}</TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        {rma.return_type === 'purchase_return' ? 'To Supplier' : 'From Customer'}
+                        {rma.return_type === 'purchase_return' ? 'Supplier' : 'Customer'}
                       </Badge>
                     </TableCell>
                     <TableCell>{getResolutionBadge(rma.resolution_type)}</TableCell>
@@ -829,6 +446,8 @@ export function ReturnsManagement() {
                             <p className="text-xs text-muted-foreground">{rma.device.imei}</p>
                           )}
                         </div>
+                      ) : rma.customer_name ? (
+                        <p className="text-sm text-muted-foreground">{rma.customer_name}</p>
                       ) : '-'}
                     </TableCell>
                     <TableCell>{getConditionBadge(rma.device_condition_on_return)}</TableCell>
@@ -840,6 +459,7 @@ export function ReturnsManagement() {
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>{rma.reason}</p>
+                            {(rma as any).refund_reason_detail && <p className="mt-1 text-xs">{(rma as any).refund_reason_detail}</p>}
                             {rma.repair_notes && <p className="mt-1 text-xs">🔧 {rma.repair_notes}</p>}
                           </TooltipContent>
                         </Tooltip>
@@ -847,15 +467,10 @@ export function ReturnsManagement() {
                     </TableCell>
                     <TableCell>{formatCurrency(rma.refund_amount)}</TableCell>
                     <TableCell>{getStatusBadge(rma.status)}</TableCell>
-                    <TableCell>
-                      {rma.outbound_tracking_number ? (
-                        <span className="font-mono text-xs">{rma.outbound_tracking_number}</span>
-                      ) : '-'}
-                    </TableCell>
                     <TableCell>{format(new Date(rma.return_date), 'MMM d, yyyy')}</TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
-                        {/* Customer returns are auto-resolved — show completed badge */}
+                        {/* Customer returns are auto-resolved */}
                         {rma.return_type === 'sales_return' && ['refunded', 'completed'].includes(rma.status) && (
                           <Badge variant="outline" className="text-xs text-muted-foreground">
                             <CheckCircle className="h-3 w-3 mr-1" /> Resolved
@@ -865,9 +480,14 @@ export function ReturnsManagement() {
                         {rma.return_type === 'purchase_return' && (
                           <>
                             {rma.status === 'pending' && (
-                              <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'approved')}>
-                                Approve
-                              </Button>
+                              <>
+                                <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'approved')}>
+                                  Approve
+                                </Button>
+                                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => updateStatus(rma.id, 'cancelled')}>
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              </>
                             )}
                             {rma.status === 'approved' && (
                               <Button size="sm" variant="outline" onClick={() => updateStatus(rma.id, 'shipped')}>
@@ -902,6 +522,13 @@ export function ReturnsManagement() {
       </CardContent>
     </Card>
 
+    {/* Supplier Return Dialog */}
+    <SupplierReturnDialog
+      open={supplierReturnOpen}
+      onOpenChange={setSupplierReturnOpen}
+      onSuccess={fetchData}
+    />
+
     {/* RMA Detail Dialog with Timeline */}
     <Dialog open={!!viewingRma} onOpenChange={(open) => !open && setViewingRma(null)}>
       <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
@@ -909,7 +536,12 @@ export function ReturnsManagement() {
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center justify-between">
-                <span className="font-mono">{viewingRma.rma_number}</span>
+                <span className="font-mono flex items-center gap-2">
+                  {viewingRma.marketplace_initiated && (
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                  )}
+                  {viewingRma.rma_number}
+                </span>
                 <div className="flex gap-2">
                   {getResolutionBadge(viewingRma.resolution_type)}
                   {getStatusBadge(viewingRma.status)}
@@ -917,6 +549,16 @@ export function ReturnsManagement() {
               </DialogTitle>
               <DialogDescription className="sr-only">Details for {viewingRma.rma_number}</DialogDescription>
             </DialogHeader>
+
+            {viewingRma.marketplace_initiated && (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-destructive">Marketplace-Initiated</p>
+                  <p className="text-xs text-muted-foreground">This refund was initiated by the marketplace (A-to-Z claim, chargeback, etc.). Please review and verify.</p>
+                </div>
+              </div>
+            )}
 
             {/* Timeline */}
             <div className="py-4">
@@ -949,7 +591,6 @@ export function ReturnsManagement() {
             </div>
 
             <div className="space-y-4 text-sm">
-              {/* Type & Details */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="text-muted-foreground text-xs">Type</p>
@@ -973,7 +614,6 @@ export function ReturnsManagement() {
                 )}
               </div>
 
-              {/* Device */}
               {viewingRma.device && (
                 <div className="bg-muted/30 border border-border/40 rounded-lg p-3">
                   <p className="font-semibold">{viewingRma.device.brand} {viewingRma.device.model}</p>
@@ -984,19 +624,27 @@ export function ReturnsManagement() {
                 </div>
               )}
 
-              {/* Financials */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-muted-foreground text-xs">Original Cost</p>
+                  <p className="text-muted-foreground text-xs">Original Amount</p>
                   <p className="font-medium">{formatCurrency(viewingRma.original_cost)}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs">Refund Amount</p>
+                  <p className="text-muted-foreground text-xs">
+                    {viewingRma.resolution_type === 'adjustment' ? 'Credit Amount' : 'Refund Amount'}
+                  </p>
                   <p className="font-medium">{formatCurrency(viewingRma.refund_amount)}</p>
                 </div>
               </div>
 
-              {/* Tracking */}
+              <div>
+                <p className="text-muted-foreground text-xs">Reason</p>
+                <p className="font-medium">{viewingRma.reason}</p>
+                {(viewingRma as any).refund_reason_detail && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{(viewingRma as any).refund_reason_detail}</p>
+                )}
+              </div>
+
               {viewingRma.outbound_tracking_number && (
                 <div>
                   <p className="text-muted-foreground text-xs">Tracking Number</p>
@@ -1004,7 +652,6 @@ export function ReturnsManagement() {
                 </div>
               )}
 
-              {/* Notes */}
               {(viewingRma.notes || viewingRma.repair_notes) && (
                 <div>
                   <p className="text-muted-foreground text-xs">Notes</p>
@@ -1013,7 +660,6 @@ export function ReturnsManagement() {
                 </div>
               )}
 
-              {/* Days open indicator */}
               {!['refunded', 'completed', 'cancelled'].includes(viewingRma.status) && (
                 <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
                   differenceInDays(new Date(), new Date(viewingRma.created_at)) > 7

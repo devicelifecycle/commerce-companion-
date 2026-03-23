@@ -27,9 +27,25 @@ interface ReturnFromOrderDialogProps {
     sale_price: number;
     device_id: string | null;
     company_id: string | null;
+    marketplace?: string;
   };
   onSuccess: () => void;
 }
+
+type ResolutionType = 'refund' | 'exchange' | 'repair' | 'adjustment';
+
+const RETURN_REASONS = [
+  { value: 'Defective', label: 'Defective' },
+  { value: 'Wrong Item', label: 'Wrong Item Sent' },
+  { value: 'Changed Mind', label: 'Changed Mind / Buyer Remorse' },
+  { value: 'Not as Described', label: 'Not as Described' },
+  { value: 'Damaged in Transit', label: 'Damaged in Transit' },
+  { value: 'Late Delivery', label: 'Late Delivery' },
+  { value: 'Missing Parts', label: 'Missing Parts / Accessories' },
+  { value: 'Marketplace Claim', label: 'Marketplace Claim (A-to-Z / Chargeback)' },
+  { value: 'Warranty', label: 'Warranty Claim' },
+  { value: 'Other', label: 'Other' },
+];
 
 export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: ReturnFromOrderDialogProps) {
   const { user } = useAuth();
@@ -37,31 +53,45 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
   const [loading, setLoading] = useState(false);
   const [refundAmount, setRefundAmount] = useState(sale.sale_price.toString());
   const [reason, setReason] = useState('');
+  const [reasonDetail, setReasonDetail] = useState('');
   const [restockDevice, setRestockDevice] = useState(true);
   const [notes, setNotes] = useState('');
-  const [resolutionType, setResolutionType] = useState<'refund' | 'exchange' | 'repair'>('refund');
+  const [resolutionType, setResolutionType] = useState<ResolutionType>('refund');
   const [deviceCondition, setDeviceCondition] = useState('');
   const [outboundTracking, setOutboundTracking] = useState('');
   const [repairNotes, setRepairNotes] = useState('');
   const [replacementDeviceId, setReplacementDeviceId] = useState<string | null>(null);
+  const [marketplaceInitiated, setMarketplaceInitiated] = useState(false);
+
+  // Adjustment type doesn't require device condition
+  const needsDeviceCondition = resolutionType !== 'adjustment';
+  // Adjustment doesn't return the physical item
+  const showRestockToggle = sale.device_id && resolutionType !== 'adjustment';
 
   const handleSubmit = async () => {
     if (!reason) {
       toast.error('Please select a reason');
       return;
     }
-    if (!deviceCondition) {
+    if (needsDeviceCondition && !deviceCondition) {
       toast.error('Please assess the device condition');
+      return;
+    }
+    if ((resolutionType === 'refund' || resolutionType === 'adjustment') && (!refundAmount || parseFloat(refundAmount) <= 0)) {
+      toast.error('Please enter a valid refund amount');
       return;
     }
 
     setLoading(true);
     try {
       const companyCode = selectedCompany?.code || 'XX';
-      const rmaNumber = `RMA-S-${companyCode}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(5, '0')}`;
+      const prefix = resolutionType === 'adjustment' ? 'ADJ' : 'RMA-S';
+      const rmaNumber = `${prefix}-${companyCode}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 10000)).padStart(5, '0')}`;
 
       // Customer returns are auto-resolved — no approval needed
-      const finalStatus = resolutionType === 'refund' ? 'refunded' : 'completed';
+      const finalStatus = resolutionType === 'refund' || resolutionType === 'adjustment' 
+        ? 'refunded' 
+        : 'completed';
 
       const { data: rmaData, error: rmaError } = await supabase
         .from('return_authorizations')
@@ -70,61 +100,77 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
           rma_number: rmaNumber,
           return_type: 'sales_return',
           sale_id: sale.id,
-          device_id: sale.device_id,
+          device_id: resolutionType === 'adjustment' ? null : sale.device_id,
           customer_name: sale.customer_name,
           reason,
           original_cost: sale.sale_price,
-          refund_amount: resolutionType === 'refund' ? parseFloat(refundAmount) : 0,
+          refund_amount: (resolutionType === 'refund' || resolutionType === 'adjustment') ? parseFloat(refundAmount) : 0,
           notes,
           status: finalStatus,
           created_by: user?.id,
           resolution_type: resolutionType,
-          device_condition_on_return: deviceCondition,
+          device_condition_on_return: needsDeviceCondition ? deviceCondition : null,
           outbound_tracking_number: outboundTracking || null,
           repair_notes: resolutionType === 'repair' ? repairNotes : null,
           replacement_device_id: resolutionType === 'exchange' && replacementDeviceId ? replacementDeviceId : null,
-          refund_date: resolutionType === 'refund' ? new Date().toISOString().split('T')[0] : null,
+          refund_date: (resolutionType === 'refund' || resolutionType === 'adjustment') ? new Date().toISOString().split('T')[0] : null,
+          marketplace_initiated: marketplaceInitiated,
+          refund_reason_detail: reasonDetail || null,
         } as any)
         .select('id')
         .single();
 
       if (rmaError) throw rmaError;
 
-      // If restock, update device back to in_stock
-      if (restockDevice && sale.device_id) {
-        await supabase
-          .from('devices')
-          .update({ status: 'in_stock' as any, sale_price: null })
-          .eq('id', sale.device_id);
-
-        await supabase
-          .from('sales')
-          .update({ device_id: null, accounting_status: 'revenue_only' })
-          .eq('id', sale.id);
-      }
-
-      // For exchange, mark original device returned and replacement as sold
-      if (resolutionType === 'exchange') {
-        if (sale.device_id && !restockDevice) {
+      // Adjustment: no device status changes, just accounting
+      if (resolutionType !== 'adjustment') {
+        // If restock, update device back to in_stock
+        if (restockDevice && sale.device_id) {
           await supabase
             .from('devices')
-            .update({ status: 'in_stock' as any })
+            .update({ status: 'in_stock' as any, sale_price: null })
             .eq('id', sale.device_id);
+
+          await supabase
+            .from('sales')
+            .update({ device_id: null, accounting_status: 'revenue_only' })
+            .eq('id', sale.id);
         }
-        if (replacementDeviceId) {
+
+        // For exchange, mark original device returned and replacement as sold
+        if (resolutionType === 'exchange') {
+          if (sale.device_id && !restockDevice) {
+            await supabase
+              .from('devices')
+              .update({ status: 'in_stock' as any })
+              .eq('id', sale.device_id);
+          }
+          if (replacementDeviceId) {
+            await supabase
+              .from('devices')
+              .update({ status: 'sold' as any, sale_price: sale.sale_price })
+              .eq('id', replacementDeviceId);
+          }
+        }
+
+        // For repair, mark device as in_repair and create a device_repairs record
+        if (resolutionType === 'repair' && sale.device_id) {
           await supabase
             .from('devices')
-            .update({ status: 'sold' as any, sale_price: sale.sale_price })
-            .eq('id', replacementDeviceId);
-        }
-      }
+            .update({ status: 'in_repair' as any })
+            .eq('id', sale.device_id);
 
-      // For repair, mark device as in_repair
-      if (resolutionType === 'repair' && sale.device_id) {
-        await supabase
-          .from('devices')
-          .update({ status: 'in_repair' as any })
-          .eq('id', sale.device_id);
+          // Create linked repair record in the device_repairs module
+          await supabase
+            .from('device_repairs')
+            .insert({
+              device_id: sale.device_id,
+              company_id: sale.company_id,
+              status: 'pending',
+              notes: `Linked to RMA ${rmaNumber}. ${repairNotes || ''}`.trim(),
+              created_by: user?.id,
+            });
+        }
       }
 
       // Trigger accounting reversal entries automatically
@@ -138,8 +184,13 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
         }
       }
 
-      const resLabel = resolutionType === 'refund' ? 'Refund processed' : resolutionType === 'exchange' ? 'Exchange completed' : 'Repair initiated';
-      toast.success(`${rmaNumber} — ${resLabel}`);
+      const resLabels: Record<ResolutionType, string> = {
+        refund: 'Refund processed',
+        exchange: 'Exchange completed',
+        repair: 'Repair initiated',
+        adjustment: 'Adjustment/credit issued',
+      };
+      toast.success(`${rmaNumber} — ${resLabels[resolutionType]}`);
       emitRefetch('sales');
       emitRefetch('returns');
       onOpenChange(false);
@@ -155,9 +206,9 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Initiate Return</DialogTitle>
+          <DialogTitle>Initiate Return / Adjustment</DialogTitle>
           <DialogDescription>
-            Process a return for order {sale.order_number}
+            Process a return, exchange, repair, or credit for order {sale.order_number}
           </DialogDescription>
         </DialogHeader>
 
@@ -182,34 +233,46 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
           {/* Resolution Type */}
           <div className="space-y-2">
             <Label>Resolution *</Label>
-            <Select value={resolutionType} onValueChange={(v) => setResolutionType(v as any)}>
+            <Select value={resolutionType} onValueChange={(v) => setResolutionType(v as ResolutionType)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="refund">💰 Refund — Return money to customer</SelectItem>
+                <SelectItem value="refund">💰 Full/Partial Refund — Return money & item</SelectItem>
+                <SelectItem value="adjustment">🏷️ Adjustment/Credit — Partial credit, no item return</SelectItem>
                 <SelectItem value="exchange">🔄 Exchange — Send replacement device</SelectItem>
-                <SelectItem value="repair">🔧 Repair — Fix and send back</SelectItem>
+                <SelectItem value="repair">🔧 Repair & Return — Fix and send back</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Device Condition Assessment */}
-          <div className="space-y-2">
-            <Label>Device Condition on Return *</Label>
-            <Select value={deviceCondition || 'none'} onValueChange={(v) => setDeviceCondition(v === 'none' ? '' : v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Assess condition" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Select condition</SelectItem>
-                <SelectItem value="working">✅ Working — Fully functional</SelectItem>
-                <SelectItem value="defective">⚠️ Defective — Has issues but repairable</SelectItem>
-                <SelectItem value="damaged">🔨 Damaged — Physical damage</SelectItem>
-                <SelectItem value="unrepairable">❌ Unrepairable — Beyond repair</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Marketplace initiated flag */}
+          <div className="flex items-center justify-between bg-muted/20 border border-border/40 rounded-lg p-3">
+            <div>
+              <p className="text-sm font-medium">Marketplace-initiated</p>
+              <p className="text-xs text-muted-foreground">Flag if the marketplace forced this refund (A-to-Z, chargeback)</p>
+            </div>
+            <Switch checked={marketplaceInitiated} onCheckedChange={setMarketplaceInitiated} />
           </div>
+
+          {/* Device Condition Assessment — not needed for adjustments */}
+          {needsDeviceCondition && (
+            <div className="space-y-2">
+              <Label>Device Condition on Return *</Label>
+              <Select value={deviceCondition || 'none'} onValueChange={(v) => setDeviceCondition(v === 'none' ? '' : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Assess condition" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Select condition</SelectItem>
+                  <SelectItem value="working">✅ Working — Fully functional</SelectItem>
+                  <SelectItem value="defective">⚠️ Defective — Has issues but repairable</SelectItem>
+                  <SelectItem value="damaged">🔨 Damaged — Physical damage</SelectItem>
+                  <SelectItem value="unrepairable">❌ Unrepairable — Beyond repair</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label>Reason for Return *</Label>
@@ -219,27 +282,42 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Select a reason</SelectItem>
-                <SelectItem value="Defective">Defective</SelectItem>
-                <SelectItem value="Wrong Item">Wrong Item</SelectItem>
-                <SelectItem value="Changed Mind">Changed Mind</SelectItem>
-                <SelectItem value="Not as Described">Not as Described</SelectItem>
-                <SelectItem value="Damaged in Transit">Damaged in Transit</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
+                {RETURN_REASONS.map(r => (
+                  <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Refund amount — only for refund resolution */}
-          {resolutionType === 'refund' && (
+          {/* Optional detail for the reason */}
+          <div className="space-y-2">
+            <Label>Reason Details (optional)</Label>
+            <Textarea
+              value={reasonDetail}
+              onChange={(e) => setReasonDetail(e.target.value)}
+              placeholder="Additional context about why this return/adjustment is being made..."
+              rows={2}
+            />
+          </div>
+
+          {/* Refund amount — for refund and adjustment */}
+          {(resolutionType === 'refund' || resolutionType === 'adjustment') && (
             <div className="space-y-2">
-              <Label>Refund Amount</Label>
+              <Label>
+                {resolutionType === 'adjustment' ? 'Credit/Adjustment Amount' : 'Refund Amount'}
+              </Label>
               <Input
                 type="number"
                 step="0.01"
                 value={refundAmount}
                 onChange={(e) => setRefundAmount(e.target.value)}
               />
-              <p className="text-xs text-muted-foreground">Adjust if partial refund</p>
+              <p className="text-xs text-muted-foreground">
+                {resolutionType === 'adjustment' 
+                  ? 'Courtesy credit — item stays with customer, no physical return'
+                  : 'Adjust for partial refund if needed'
+                }
+              </p>
             </div>
           )}
 
@@ -268,12 +346,15 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
             </div>
           )}
 
-          {/* Repair info */}
+          {/* Repair info — links to Device Repairs module */}
           {resolutionType === 'repair' && (
             <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-3 space-y-3">
-              <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Repair Details</p>
+              <p className="text-sm font-medium text-amber-600 dark:text-amber-400">Repair & Return</p>
+              <p className="text-xs text-muted-foreground">
+                A repair record will be created in the Device Repairs module and linked to this RMA.
+              </p>
               <div className="space-y-2">
-                <Label>Repair Notes</Label>
+                <Label>Issue Description / Repair Notes</Label>
                 <Textarea
                   value={repairNotes}
                   onChange={(e) => setRepairNotes(e.target.value)}
@@ -282,7 +363,7 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
                 />
               </div>
               <div className="space-y-2">
-                <Label>Outbound Tracking Number</Label>
+                <Label>Return Tracking Number</Label>
                 <Input
                   value={outboundTracking}
                   onChange={(e) => setOutboundTracking(e.target.value)}
@@ -292,8 +373,8 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
             </div>
           )}
 
-          {/* Restock toggle — available for all resolution types when device is linked */}
-          {sale.device_id && (
+          {/* Restock toggle — not for adjustments */}
+          {showRestockToggle && (
             <div className="flex items-center justify-between bg-muted/20 border border-border/40 rounded-lg p-3">
               <div>
                 <p className="text-sm font-medium">Add device back to inventory</p>
@@ -317,7 +398,11 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={loading} variant="destructive">
-            {loading ? 'Processing...' : resolutionType === 'refund' ? 'Create Return' : resolutionType === 'exchange' ? 'Create Exchange' : 'Create Repair'}
+            {loading ? 'Processing...' : 
+              resolutionType === 'refund' ? 'Process Refund' : 
+              resolutionType === 'adjustment' ? 'Issue Credit' :
+              resolutionType === 'exchange' ? 'Create Exchange' : 
+              'Create Repair'}
           </Button>
         </DialogFooter>
       </DialogContent>

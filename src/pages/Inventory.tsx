@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useDataRefetch } from '@/hooks/useDataRefetch';
+import { SupplierReturnDialog } from '@/components/inventory/SupplierReturnDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/lib/auth';
@@ -36,7 +37,7 @@ import {
 import { toast } from 'sonner';
 import {
   Upload, ArrowRightLeft, Smartphone, Boxes, List,
-  Download, Send, Trash2, Wrench,
+  Download, Send, Trash2, Wrench, RotateCcw,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -87,6 +88,8 @@ export default function Inventory() {
   const [timelineDevice, setTimelineDevice] = useState<any>(null);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   const [repairDevice, setRepairDevice] = useState<any>(null);
+  const [bulkRmaOpen, setBulkRmaOpen] = useState(false);
+  const [bulkRmaItems, setBulkRmaItems] = useState<any[]>([]);
 
   const selection = useTableSelection(devices);
 
@@ -144,6 +147,18 @@ export default function Inventory() {
     ]);
     exportToCsv(headers, rows, `inventory-${new Date().toISOString().split('T')[0]}.csv`);
     toast.success(`${items.length} device(s) exported`);
+  };
+
+  const handleBulkCreateRMA = () => {
+    const items = selection.selectedItems.map((d: any) => ({
+      id: d.id,
+      type: 'device' as const,
+      name: `${d.brand} ${d.model}${d.imei ? ` (${d.imei})` : ''}`,
+      cost: d.cost_price,
+      supplierId: d.supplier_id || null,
+    }));
+    setBulkRmaItems(items);
+    setBulkRmaOpen(true);
   };
 
   if (!canView) {
@@ -322,6 +337,7 @@ export default function Inventory() {
           actions={[
             { label: 'Export', icon: <Download className="h-4 w-4 mr-1" />, onClick: handleExportDevices },
             ...(canManage ? [
+              { label: 'Create RMA', icon: <RotateCcw className="h-4 w-4 mr-1" />, onClick: handleBulkCreateRMA },
               { label: 'Mark In Stock', onClick: () => handleBulkStatusChange('in_stock') },
               { label: 'Mark Sold', onClick: () => handleBulkStatusChange('sold') },
               { label: 'Send to FBA', icon: <Send className="h-4 w-4 mr-1" />, onClick: handleBulkSendToFBA },
@@ -350,6 +366,14 @@ export default function Inventory() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Bulk RMA Dialog */}
+        <SupplierReturnDialog
+          open={bulkRmaOpen}
+          onOpenChange={setBulkRmaOpen}
+          preselectedItems={bulkRmaItems}
+          onSuccess={() => { selection.clear(); refetch(); }}
+        />
       </div>
     </DashboardLayout>
   );

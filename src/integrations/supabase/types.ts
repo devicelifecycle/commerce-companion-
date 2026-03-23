@@ -2701,6 +2701,7 @@ export type Database = {
           device_condition_on_return: string | null
           device_id: string | null
           id: string
+          marketplace_initiated: boolean | null
           notes: string | null
           original_cost: number | null
           outbound_tracking_number: string | null
@@ -2709,6 +2710,7 @@ export type Database = {
           refund_amount: number | null
           refund_date: string | null
           refund_method: string | null
+          refund_reason_detail: string | null
           repair_notes: string | null
           replacement_device_id: string | null
           resolution_type: string | null
@@ -2730,6 +2732,7 @@ export type Database = {
           device_condition_on_return?: string | null
           device_id?: string | null
           id?: string
+          marketplace_initiated?: boolean | null
           notes?: string | null
           original_cost?: number | null
           outbound_tracking_number?: string | null
@@ -2738,6 +2741,7 @@ export type Database = {
           refund_amount?: number | null
           refund_date?: string | null
           refund_method?: string | null
+          refund_reason_detail?: string | null
           repair_notes?: string | null
           replacement_device_id?: string | null
           resolution_type?: string | null
@@ -2759,6 +2763,7 @@ export type Database = {
           device_condition_on_return?: string | null
           device_id?: string | null
           id?: string
+          marketplace_initiated?: boolean | null
           notes?: string | null
           original_cost?: number | null
           outbound_tracking_number?: string | null
@@ -2767,6 +2772,7 @@ export type Database = {
           refund_amount?: number | null
           refund_date?: string | null
           refund_method?: string | null
+          refund_reason_detail?: string | null
           repair_notes?: string | null
           replacement_device_id?: string | null
           resolution_type?: string | null
