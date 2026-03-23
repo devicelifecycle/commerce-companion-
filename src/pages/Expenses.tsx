@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useDataRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -145,6 +146,8 @@ export default function Expenses() {
       setLoading(false);
     }
   };
+
+  useDataRefetch('expenses', fetchExpenses);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this expense?')) return;

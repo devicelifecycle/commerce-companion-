@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { useSaleAccounting } from '@/hooks/useSaleAccounting';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -101,6 +102,7 @@ export function EditSaleDialog({
           : 'Device unlinked from sale.',
       });
 
+      emitRefetch('sales');
       onOpenChange(false);
       onSaved();
     } catch (error: any) {

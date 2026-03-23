@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import {
@@ -120,6 +121,7 @@ export function InventoryTransferDialog({
       toast.success(`Device transferred to ${toCompany?.code || 'new company'} — accounting entries created`);
       
       resetForm();
+      emitRefetch('inventory');
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {

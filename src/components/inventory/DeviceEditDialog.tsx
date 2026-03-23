@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { normalizeBrand, normalizeModel, modelFuzzyKey } from '@/lib/modelNormalization';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -119,6 +120,7 @@ export function DeviceEditDialog({ open, onOpenChange, device, onSuccess }: Devi
       if (error) throw error;
       logEvent({ action: 'UPDATE' as any, tableName: 'devices', recordId: device.id, module: 'Inventory', notes: `Updated ${form.brand} ${form.model}` });
       toast.success('Device updated');
+      emitRefetch('inventory');
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {

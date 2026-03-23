@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -139,6 +140,8 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
 
       const resLabel = resolutionType === 'refund' ? 'Refund processed' : resolutionType === 'exchange' ? 'Exchange completed' : 'Repair initiated';
       toast.success(`${rmaNumber} — ${resLabel}`);
+      emitRefetch('sales');
+      emitRefetch('returns');
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {

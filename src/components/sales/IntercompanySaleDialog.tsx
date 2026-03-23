@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -129,6 +130,8 @@ export function IntercompanySaleDialog({ open, onOpenChange, onSuccess }: Interc
       }
 
       form.reset();
+      emitRefetch('sales');
+      emitRefetch('inventory');
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {

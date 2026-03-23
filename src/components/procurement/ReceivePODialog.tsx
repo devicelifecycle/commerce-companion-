@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { createPurchaseJournalEntry } from '@/lib/accounting/journalAutomation';
 import { useAuth } from '@/lib/auth';
@@ -442,6 +443,9 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
       }
 
       toast.success(`GRN ${grnNum} created — PO marked as ${newStatus.replace('_', ' ')}`);
+      emitRefetch('purchase_orders');
+      emitRefetch('inventory');
+      emitRefetch('expenses');
       onSuccess();
       onOpenChange(false);
       resetForm();

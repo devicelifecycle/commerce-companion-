@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useDataRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/lib/auth';
@@ -175,6 +176,8 @@ export default function Invoices() {
       setLoading(false);
     }
   };
+
+  useDataRefetch('invoices', fetchInvoices);
 
   const getDisplayStatus = useCallback((invoice: Invoice): DisplayStatus => {
     if (invoice.status === 'cancelled') return 'cancelled';

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -91,6 +92,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       }
 
       form.reset();
+      emitRefetch('team');
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {

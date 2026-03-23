@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { ROLE_LABELS, ROLE_DESCRIPTIONS, UserRole } from '@/hooks/usePermissions';
@@ -88,6 +89,7 @@ export function AssignRoleDialog({ open, onOpenChange, user, onSuccess }: Assign
       if (error) throw error;
 
       toast.success('Role updated successfully');
+      emitRefetch('team');
       onSuccess();
       onOpenChange(false);
     } catch (error) {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -145,6 +146,7 @@ export function ExpenseRefundDialog({ open, onOpenChange, expense, onSuccess }: 
       }
 
       toast.success('Refund recorded with reversal journal entry');
+      emitRefetch('expenses');
       onOpenChange(false);
       onSuccess();
       // Reset form

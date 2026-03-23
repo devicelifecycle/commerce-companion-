@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -412,6 +413,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
         toast.success('Expense added');
       }
 
+      emitRefetch('expenses');
       onSuccess();
       onOpenChange(false);
       resetForm();
