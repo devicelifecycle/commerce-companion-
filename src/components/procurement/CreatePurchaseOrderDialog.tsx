@@ -17,8 +17,11 @@ import {
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
+import {
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { toast } from 'sonner';
-import { ClipboardList, Plus, Trash2, ChevronsUpDown, Check } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, ChevronsUpDown, Check, Package, Wrench, Receipt, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -41,13 +44,20 @@ interface Company {
 }
 
 type TaxStatus = 'zero_rated' | 'gst_paid' | 'hst_paid' | 'tax_inclusive' | 'gst_pst';
+type ItemType = 'inventory' | 'repair_parts' | 'expense';
 
-const TAX_OPTIONS: { value: TaxStatus; label: string; rate: number }[] = [
-  { value: 'zero_rated', label: 'Zero-Rated', rate: 0 },
-  { value: 'gst_paid', label: 'GST Paid (5%)', rate: 0.05 },
-  { value: 'hst_paid', label: 'HST Paid (13%)', rate: 0.13 },
-  { value: 'gst_pst', label: 'GST + PST (5% + 7%)', rate: 0.12 },
-  { value: 'tax_inclusive', label: 'Tax Inclusive (13%)', rate: 0 },
+const TAX_OPTIONS: { value: TaxStatus; label: string }[] = [
+  { value: 'zero_rated', label: 'Zero-Rated' },
+  { value: 'gst_paid', label: 'GST 5%' },
+  { value: 'hst_paid', label: 'HST 13%' },
+  { value: 'gst_pst', label: 'GST+PST 12%' },
+  { value: 'tax_inclusive', label: 'Incl. 13%' },
+];
+
+const ITEM_TYPE_CONFIG: { value: ItemType; label: string; icon: typeof Package; color: string; description: string }[] = [
+  { value: 'inventory', label: 'Inventory', icon: Package, color: 'text-[hsl(var(--info))]', description: 'Added to product inventory on receive' },
+  { value: 'repair_parts', label: 'Repair Parts', icon: Wrench, color: 'text-[hsl(var(--warning))]', description: 'Added to repair parts inventory' },
+  { value: 'expense', label: 'Expense', icon: Receipt, color: 'text-[hsl(var(--accent))]', description: 'Recorded as expense, not inventory' },
 ];
 
 function calcTax(unitCost: number, quantity: number, taxStatus: TaxStatus) {
@@ -77,6 +87,7 @@ interface POLineItem {
   quantity: number;
   unit_cost: number;
   tax_status: TaxStatus;
+  item_type: ItemType;
 }
 
 let poLineCounter = 0;
@@ -88,6 +99,7 @@ function newPOLine(): POLineItem {
     quantity: 1,
     unit_cost: 0,
     tax_status: 'hst_paid',
+    item_type: 'inventory',
   };
 }
 
@@ -99,8 +111,6 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [supplierOpen, setSupplierOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState('');
-
-  const [poType, setPoType] = useState<'inventory' | 'repair_parts'>('inventory');
 
   const [formData, setFormData] = useState({
     po_number: '',
@@ -117,9 +127,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
 
   useEffect(() => {
-    if (open) {
-      loadCompanies();
-    }
+    if (open) loadCompanies();
   }, [open]);
 
   useEffect(() => {
@@ -165,12 +173,10 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
   }, [suppliers, supplierSearch]);
 
   const addLine = () => setLineItems(prev => [...prev, newPOLine()]);
-
   const removeLine = (id: string) => {
     if (lineItems.length <= 1) return;
     setLineItems(prev => prev.filter(li => li.id !== id));
   };
-
   const updateLine = (id: string, updates: Partial<POLineItem>) => {
     setLineItems(prev => prev.map(li => li.id === id ? { ...li, ...updates } : li));
   };
@@ -185,23 +191,21 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
   const totalPst = computedLines.reduce((s, li) => s + li.pst, 0);
   const grandTotal = subtotal + totalGst + totalPst;
 
+  // Determine dominant PO type from line items
+  const dominantType = useMemo(() => {
+    const types = new Set(lineItems.map(li => li.item_type));
+    if (types.size === 1) return lineItems[0].item_type;
+    return 'inventory'; // mixed
+  }, [lineItems]);
+
   const formatCurrency = (v: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(v);
 
   const handleSubmit = async () => {
-    if (!selectedCompanyId) {
-      toast.error('Select a company first');
-      return;
-    }
-    if (!formData.supplier_id) {
-      toast.error('Select a supplier');
-      return;
-    }
+    if (!selectedCompanyId) { toast.error('Select a company first'); return; }
+    if (!formData.supplier_id) { toast.error('Select a supplier'); return; }
     const validItems = computedLines.filter(li => li.description && li.unit_cost > 0);
-    if (validItems.length === 0) {
-      toast.error('Add at least one line item');
-      return;
-    }
+    if (validItems.length === 0) { toast.error('Add at least one line item'); return; }
 
     setLoading(true);
     try {
@@ -221,7 +225,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
         notes: formData.notes || null,
         company_id: selectedCompanyId,
         created_by: user?.id,
-        po_type: poType,
+        po_type: dominantType,
       } as any).select('id').single();
 
       if (poError) throw poError;
@@ -235,8 +239,8 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
           gst_hst_amount: li.gst,
           pst_qst_amount: li.pst,
           total_cost: li.total,
+          item_type: li.item_type,
         }));
-
         const { error: itemsError } = await supabase.from('purchase_order_items').insert(items);
         if (itemsError) throw itemsError;
       }
@@ -264,123 +268,98 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
     });
     setLineItems([newPOLine()]);
     setSelectedCompanyId('');
-    setPoType('inventory');
   };
+
+  const getItemTypeConfig = (type: ItemType) => ITEM_TYPE_CONFIG.find(c => c.value === type)!;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ClipboardList className="h-5 w-5" />
+            <ClipboardList className="h-5 w-5 text-primary" />
             Create Purchase Order
           </DialogTitle>
           <DialogDescription>
-            Create a purchase order for {poType === 'repair_parts' ? 'repair parts' : 'bulk items, supplies, and non-device inventory'}.
+            Order inventory, repair parts, and tools/supplies from a supplier.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* PO Type Selector */}
-          <div className="space-y-1.5">
-            <Label className="text-xs">PO Type *</Label>
-            <Select value={poType} onValueChange={(v) => setPoType(v as 'inventory' | 'repair_parts')}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="inventory">Device Inventory</SelectItem>
-                <SelectItem value="repair_parts">Repair Parts</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Company + PO Header */}
-          <div className="grid grid-cols-3 gap-4">
+        <div className="space-y-5">
+          {/* Header Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs">Company *</Label>
+              <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Company *</Label>
               <Select value={selectedCompanyId} onValueChange={setSelectedCompanyId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select company..." />
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Select..." />
                 </SelectTrigger>
                 <SelectContent>
                   {companies.map(c => (
                     <SelectItem key={c.id} value={c.id}>
-                      <span className="font-medium">{c.code}</span>
-                      <span className="text-muted-foreground ml-1.5">— {c.name}</span>
+                      <span className="font-semibold">{c.code}</span>
+                      <span className="text-muted-foreground ml-1">— {c.name}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">PO Number</Label>
-              <Input
-                value={formData.po_number}
-                onChange={e => setFormData(prev => ({ ...prev, po_number: e.target.value }))}
-              />
+              <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">PO Number</Label>
+              <Input className="h-9" value={formData.po_number} onChange={e => setFormData(prev => ({ ...prev, po_number: e.target.value }))} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">PO Date</Label>
-              <Input
-                type="date"
-                value={formData.po_date}
-                onChange={e => setFormData(prev => ({ ...prev, po_date: e.target.value }))}
-              />
+              <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">PO Date</Label>
+              <Input className="h-9" type="date" value={formData.po_date} onChange={e => setFormData(prev => ({ ...prev, po_date: e.target.value }))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Delivery Date</Label>
+              <Input className="h-9" type="date" value={formData.expected_delivery_date || ''} onChange={e => setFormData(prev => ({ ...prev, expected_delivery_date: e.target.value || null }))} />
             </div>
           </div>
 
-          {/* Supplier Search */}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Supplier *</Label>
-            <Popover open={supplierOpen} onOpenChange={setSupplierOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" role="combobox" className="w-full justify-between font-normal" disabled={!selectedCompanyId}>
-                  {formData.supplier_name || (selectedCompanyId ? 'Search supplier by name or code...' : 'Select a company first')}
-                  <ChevronsUpDown className="h-4 w-4 ml-2 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0" align="start">
-                <Command shouldFilter={false}>
-                  <CommandInput placeholder="Search suppliers..." value={supplierSearch} onValueChange={setSupplierSearch} />
-                  <CommandList>
-                    <CommandEmpty>No suppliers found.</CommandEmpty>
-                    <CommandGroup>
-                      {filteredSuppliers.map(sup => (
-                        <CommandItem
-                          key={sup.id}
-                          value={sup.id}
-                          onSelect={() => {
-                            setFormData(prev => ({ ...prev, supplier_id: sup.id, supplier_name: sup.name }));
-                            setSupplierOpen(false);
-                            setSupplierSearch('');
-                          }}
-                        >
-                          <Check className={cn('h-4 w-4 mr-2', formData.supplier_id === sup.id ? 'opacity-100' : 'opacity-0')} />
-                          <span className="font-medium">{sup.name}</span>
-                          <Badge variant="outline" className="ml-auto text-xs">#{sup.supplier_code}</Badge>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs">Expected Delivery Date</Label>
-              <Input
-                type="date"
-                value={formData.expected_delivery_date || ''}
-                onChange={e => setFormData(prev => ({ ...prev, expected_delivery_date: e.target.value || null }))}
-              />
+          {/* Supplier + Payment */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="md:col-span-2 space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Supplier *</Label>
+              <Popover open={supplierOpen} onOpenChange={setSupplierOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal h-9" disabled={!selectedCompanyId}>
+                    {formData.supplier_name || (selectedCompanyId ? 'Search supplier...' : 'Select company first')}
+                    <ChevronsUpDown className="h-3.5 w-3.5 ml-2 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[400px] p-0" align="start">
+                  <Command shouldFilter={false}>
+                    <CommandInput placeholder="Search suppliers..." value={supplierSearch} onValueChange={setSupplierSearch} />
+                    <CommandList>
+                      <CommandEmpty>No suppliers found.</CommandEmpty>
+                      <CommandGroup>
+                        {filteredSuppliers.map(sup => (
+                          <CommandItem
+                            key={sup.id}
+                            value={sup.id}
+                            onSelect={() => {
+                              setFormData(prev => ({ ...prev, supplier_id: sup.id, supplier_name: sup.name }));
+                              setSupplierOpen(false);
+                              setSupplierSearch('');
+                            }}
+                          >
+                            <Check className={cn('h-4 w-4 mr-2', formData.supplier_id === sup.id ? 'opacity-100' : 'opacity-0')} />
+                            <span className="font-medium">{sup.name}</span>
+                            <Badge variant="outline" className="ml-auto text-[10px]">#{sup.supplier_code}</Badge>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Payment Method</Label>
+              <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Payment Method</Label>
               <Select value={formData.payment_method} onValueChange={v => setFormData(prev => ({ ...prev, payment_method: v }))}>
-                <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
+                <SelectTrigger className="h-9"><SelectValue placeholder="Select..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="credit">Credit / Net Terms</SelectItem>
                   <SelectItem value="wire_transfer">Wire Transfer</SelectItem>
@@ -392,63 +371,123 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
             </div>
           </div>
 
+          <Separator />
+
           {/* Line Items */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-sm">Line Items</span>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-sm">Line Items</span>
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right" className="max-w-xs text-xs">
+                      <p className="font-semibold mb-1">Item Types:</p>
+                      {ITEM_TYPE_CONFIG.map(c => (
+                        <p key={c.value} className="flex items-center gap-1.5 mb-0.5">
+                          <c.icon className={cn('h-3 w-3', c.color)} />
+                          <span className="font-medium">{c.label}:</span> {c.description}
+                        </p>
+                      ))}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <Button type="button" variant="outline" size="sm" onClick={addLine}>
-                <Plus className="h-3.5 w-3.5 mr-1" /> Add Item
+                <Plus className="h-3.5 w-3.5 mr-1" /> Add Line
               </Button>
+            </div>
+
+            {/* Table header */}
+            <div className="hidden md:grid grid-cols-[1fr,auto,70px,90px,100px,80px,36px] gap-2 px-3 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+              <span>Description</span>
+              <span className="w-[90px]">Type</span>
+              <span>Qty</span>
+              <span>Unit Cost</span>
+              <span>Tax</span>
+              <span className="text-right">Total</span>
+              <span></span>
             </div>
 
             {lineItems.map((item, index) => {
               const computed = computedLines[index];
+              const typeConfig = getItemTypeConfig(item.item_type);
               return (
-                <div key={item.id} className="border rounded-lg p-3 space-y-2 bg-muted/30">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">Item {index + 1}</span>
-                    {lineItems.length > 1 && (
-                      <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => removeLine(item.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-12 gap-2">
-                    <div className="col-span-4">
-                      <label className="text-xs text-muted-foreground mb-1 block">Description *</label>
-                      <Input placeholder="Item description" value={item.description} onChange={e => updateLine(item.id, { description: e.target.value })} />
-                    </div>
-                    <div className="col-span-1">
-                      <label className="text-xs text-muted-foreground mb-1 block">Qty</label>
-                      <Input type="number" min={1} value={item.quantity} onChange={e => updateLine(item.id, { quantity: parseInt(e.target.value) || 1 })} />
-                    </div>
-                    <div className="col-span-2">
-                      <label className="text-xs text-muted-foreground mb-1 block">Unit Cost</label>
-                      <Input type="number" step="0.01" value={item.unit_cost || ''} onChange={e => updateLine(item.id, { unit_cost: parseFloat(e.target.value) || 0 })} />
-                    </div>
-                    <div className="col-span-3">
-                      <label className="text-xs text-muted-foreground mb-1 block">Tax Treatment</label>
-                      <Select value={item.tax_status} onValueChange={(v: TaxStatus) => updateLine(item.id, { tax_status: v })}>
-                        <SelectTrigger className="h-9 text-xs">
-                          <SelectValue />
+                <div key={item.id} className="rounded-lg border border-border/60 p-3 bg-muted/20 hover:bg-muted/30 transition-colors">
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,70px,90px,100px,80px,36px] gap-2 items-center">
+                    {/* Description */}
+                    <Input
+                      className="h-8 text-xs"
+                      placeholder="Item description *"
+                      value={item.description}
+                      onChange={e => updateLine(item.id, { description: e.target.value })}
+                    />
+                    {/* Type selector */}
+                    <div className="w-[90px]">
+                      <Select value={item.item_type} onValueChange={(v: ItemType) => updateLine(item.id, { item_type: v })}>
+                        <SelectTrigger className="h-8 text-[11px] px-2">
+                          <div className="flex items-center gap-1">
+                            <typeConfig.icon className={cn('h-3 w-3 shrink-0', typeConfig.color)} />
+                            <span className="truncate">{typeConfig.label}</span>
+                          </div>
                         </SelectTrigger>
                         <SelectContent>
-                          {TAX_OPTIONS.map(opt => (
-                            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                          {ITEM_TYPE_CONFIG.map(c => (
+                            <SelectItem key={c.value} value={c.value}>
+                              <div className="flex items-center gap-2">
+                                <c.icon className={cn('h-3.5 w-3.5', c.color)} />
+                                <span>{c.label}</span>
+                              </div>
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="col-span-2 flex items-end">
-                      <div className="pb-2 text-right w-full">
-                        <p className="text-sm font-mono font-medium">{formatCurrency(computed?.total ?? 0)}</p>
-                        {(computed?.gst > 0 || computed?.pst > 0) && (
-                          <p className="text-[10px] text-muted-foreground">
-                            Tax: {formatCurrency((computed?.gst ?? 0) + (computed?.pst ?? 0))}
-                          </p>
-                        )}
-                      </div>
+                    {/* Qty */}
+                    <Input
+                      className="h-8 text-xs text-center"
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={e => updateLine(item.id, { quantity: parseInt(e.target.value) || 1 })}
+                    />
+                    {/* Unit cost */}
+                    <Input
+                      className="h-8 text-xs"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={item.unit_cost || ''}
+                      onChange={e => updateLine(item.id, { unit_cost: parseFloat(e.target.value) || 0 })}
+                    />
+                    {/* Tax */}
+                    <Select value={item.tax_status} onValueChange={(v: TaxStatus) => updateLine(item.id, { tax_status: v })}>
+                      <SelectTrigger className="h-8 text-[11px] px-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TAX_OPTIONS.map(opt => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {/* Total */}
+                    <div className="text-right">
+                      <p className="text-xs font-mono font-semibold">{formatCurrency(computed?.total ?? 0)}</p>
                     </div>
+                    {/* Delete */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-destructive hover:text-destructive"
+                      onClick={() => removeLine(item.id)}
+                      disabled={lineItems.length <= 1}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               );
@@ -458,33 +497,37 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
           <Separator />
 
           {/* Totals */}
-          <div className="rounded-lg border p-3 space-y-1 bg-muted/30">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span>{formatCurrency(subtotal)}</span>
-            </div>
-            {totalGst > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">GST/HST</span>
-                <span>{formatCurrency(totalGst)}</span>
+          <div className="flex justify-end">
+            <div className="w-64 rounded-lg border border-border/60 p-3 bg-muted/20 space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Subtotal</span>
+                <span className="font-mono">{formatCurrency(subtotal)}</span>
               </div>
-            )}
-            {totalPst > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">PST/QST</span>
-                <span>{formatCurrency(totalPst)}</span>
+              {totalGst > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">GST/HST</span>
+                  <span className="font-mono">{formatCurrency(totalGst)}</span>
+                </div>
+              )}
+              {totalPst > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">PST/QST</span>
+                  <span className="font-mono">{formatCurrency(totalPst)}</span>
+                </div>
+              )}
+              <Separator className="my-1" />
+              <div className="flex justify-between font-semibold">
+                <span>Total</span>
+                <span className="font-mono">{formatCurrency(grandTotal)}</span>
               </div>
-            )}
-            <Separator className="my-1" />
-            <div className="flex justify-between font-medium">
-              <span>Total</span>
-              <span>{formatCurrency(grandTotal)}</span>
             </div>
           </div>
 
+          {/* Notes */}
           <div className="space-y-1.5">
-            <Label className="text-xs">Notes</Label>
+            <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Notes</Label>
             <Textarea
+              className="min-h-[60px]"
               placeholder="Additional notes..."
               value={formData.notes}
               onChange={e => setFormData(prev => ({ ...prev, notes: e.target.value }))}
@@ -492,7 +535,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="pt-2">
           <Button variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>Cancel</Button>
           <Button onClick={handleSubmit} disabled={loading}>
             {loading ? 'Creating...' : 'Create Purchase Order'}
