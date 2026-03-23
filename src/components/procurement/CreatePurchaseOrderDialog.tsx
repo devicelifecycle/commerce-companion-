@@ -100,6 +100,8 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
   const [supplierOpen, setSupplierOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState('');
 
+  const [poType, setPoType] = useState<'inventory' | 'repair_parts'>('inventory');
+
   const [formData, setFormData] = useState({
     po_number: '',
     supplier_id: '',
