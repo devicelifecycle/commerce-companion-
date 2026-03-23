@@ -119,6 +119,8 @@ export default function PurchaseOrders() {
     setLoading(false);
   };
 
+  useDataRefetch('purchase_orders', loadOrders);
+
   const clearFilters = () => { setStatusFilter('all'); setPaymentFilter('all'); setSearch(''); };
 
   const exportCsv = () => {
