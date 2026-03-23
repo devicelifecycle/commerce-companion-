@@ -596,16 +596,16 @@ export function ProfitLossReport({ companyView }: Props) {
                 </div>
               </div>
 
-              <div className={`p-4 rounded-lg border ${plData.netProfit >= 0 ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-destructive/40 bg-destructive/10'}`}>
+              <div className={`p-4 rounded-lg border ${adjNetProfit >= 0 ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-destructive/40 bg-destructive/10'}`}>
                 <div className="flex justify-between font-bold text-xl text-foreground">
-                  <span>NET PROFIT</span>
-                  <span className={plData.netProfit >= 0 ? 'text-emerald-500' : 'text-destructive'}>
-                    {formatCurrency(plData.netProfit)}
+                  <span>NET PROFIT {isMgmt && <span className="text-sm font-normal text-muted-foreground">(Management)</span>}</span>
+                  <span className={adjNetProfit >= 0 ? 'text-emerald-500' : 'text-destructive'}>
+                    {formatCurrency(adjNetProfit)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>Net Margin</span>
-                  <span>{formatPercent(plData.netMargin)}</span>
+                  <span>{formatPercent(adjNetMargin)}</span>
                 </div>
               </div>
 
