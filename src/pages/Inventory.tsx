@@ -337,6 +337,7 @@ export default function Inventory() {
           actions={[
             { label: 'Export', icon: <Download className="h-4 w-4 mr-1" />, onClick: handleExportDevices },
             ...(canManage ? [
+              { label: 'Create RMA', icon: <RotateCcw className="h-4 w-4 mr-1" />, onClick: handleBulkCreateRMA },
               { label: 'Mark In Stock', onClick: () => handleBulkStatusChange('in_stock') },
               { label: 'Mark Sold', onClick: () => handleBulkStatusChange('sold') },
               { label: 'Send to FBA', icon: <Send className="h-4 w-4 mr-1" />, onClick: handleBulkSendToFBA },
