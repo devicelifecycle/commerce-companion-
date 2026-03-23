@@ -264,13 +264,33 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
           });
           toast.info(`Expense recorded for ${item.description}`);
         } else if (item.item_type === 'repair_parts') {
-          // Route to repair_parts table
-          const { data: existingPart } = await supabase
+          // Route to repair_parts table — match by normalized key first, then ilike name
+          const inputKey = item.description.toLowerCase().replace(/[^a-z0-9]/g, '');
+          
+          // Try exact name match first
+          let existingPart: any = null;
+          const { data: exactMatch } = await supabase
             .from('repair_parts')
             .select('id, quantity_on_hand')
             .eq('company_id', po.company_id!)
             .ilike('name', item.description)
             .maybeSingle();
+          existingPart = exactMatch;
+
+          // If no exact match, try fuzzy match on existing parts
+          if (!existingPart) {
+            const { data: allParts } = await supabase
+              .from('repair_parts')
+              .select('id, name, quantity_on_hand')
+              .eq('company_id', po.company_id!);
+            if (allParts) {
+              existingPart = allParts.find((p: any) => {
+                const partKey = p.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                return partKey === inputKey || 
+                  (inputKey.length > 5 && partKey.length > 5 && partKey.includes(inputKey.slice(0, 6)));
+              });
+            }
+          }
 
           if (existingPart) {
             await supabase.from('repair_parts').update({
@@ -290,7 +310,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
             });
           }
         } else {
-          // Route to products table (inventory)
+          // Route to products table (inventory & product types)
           const { data: existingProduct } = await supabase
             .from('products')
             .select('id, quantity_on_hand')
@@ -304,6 +324,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
               cost_price: poItem.unit_cost,
             }).eq('id', existingProduct.id);
           } else {
+            // Auto-create product if it doesn't exist
             await supabase.from('products').insert({
               name: item.description,
               company_id: po.company_id,
@@ -313,6 +334,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
               status: 'active',
               created_by: user.id,
             });
+            toast.info(`New product "${item.description}" auto-created`);
           }
         }
       }
