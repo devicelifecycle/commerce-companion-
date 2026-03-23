@@ -92,6 +92,7 @@ export function InviteUserDialog({ open, onOpenChange, onSuccess }: InviteUserDi
       }
 
       form.reset();
+      emitRefetch('team');
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {

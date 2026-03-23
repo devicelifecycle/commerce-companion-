@@ -146,6 +146,7 @@ export function ExpenseRefundDialog({ open, onOpenChange, expense, onSuccess }: 
       }
 
       toast.success('Refund recorded with reversal journal entry');
+      emitRefetch('expenses');
       onOpenChange(false);
       onSuccess();
       // Reset form

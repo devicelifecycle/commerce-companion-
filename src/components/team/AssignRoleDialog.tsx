@@ -89,6 +89,7 @@ export function AssignRoleDialog({ open, onOpenChange, user, onSuccess }: Assign
       if (error) throw error;
 
       toast.success('Role updated successfully');
+      emitRefetch('team');
       onSuccess();
       onOpenChange(false);
     } catch (error) {

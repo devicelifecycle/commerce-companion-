@@ -254,6 +254,8 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
       toast.success(`Sale recorded with ${validItems.length} item(s)`);
       form.reset();
       setLineItems([newLineItem()]);
+      emitRefetch('sales');
+      emitRefetch('inventory');
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {

@@ -242,6 +242,7 @@ export function DeviceRepairDialog({ open, onOpenChange, device, onSuccess }: De
       queryClient.invalidateQueries({ queryKey: ['repair-parts'] });
       queryClient.invalidateQueries({ queryKey: ['devices'] });
       queryClient.invalidateQueries({ queryKey: ['device-repairs'] });
+      emitRefetch('inventory');
       onSuccess();
       onOpenChange(false);
     } catch (err: any) {

@@ -130,6 +130,8 @@ export function IntercompanySaleDialog({ open, onOpenChange, onSuccess }: Interc
       }
 
       form.reset();
+      emitRefetch('sales');
+      emitRefetch('inventory');
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {

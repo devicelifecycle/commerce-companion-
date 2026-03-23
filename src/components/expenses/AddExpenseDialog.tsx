@@ -413,6 +413,7 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
         toast.success('Expense added');
       }
 
+      emitRefetch('expenses');
       onSuccess();
       onOpenChange(false);
       resetForm();

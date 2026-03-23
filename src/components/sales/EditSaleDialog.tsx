@@ -102,6 +102,7 @@ export function EditSaleDialog({
           : 'Device unlinked from sale.',
       });
 
+      emitRefetch('sales');
       onOpenChange(false);
       onSaved();
     } catch (error: any) {

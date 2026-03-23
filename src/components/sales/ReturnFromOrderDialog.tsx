@@ -140,6 +140,8 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
 
       const resLabel = resolutionType === 'refund' ? 'Refund processed' : resolutionType === 'exchange' ? 'Exchange completed' : 'Repair initiated';
       toast.success(`${rmaNumber} — ${resLabel}`);
+      emitRefetch('sales');
+      emitRefetch('returns');
       onOpenChange(false);
       onSuccess();
     } catch (error: any) {

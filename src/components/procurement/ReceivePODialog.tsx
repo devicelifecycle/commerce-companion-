@@ -443,6 +443,9 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
       }
 
       toast.success(`GRN ${grnNum} created — PO marked as ${newStatus.replace('_', ' ')}`);
+      emitRefetch('purchase_orders');
+      emitRefetch('inventory');
+      emitRefetch('expenses');
       onSuccess();
       onOpenChange(false);
       resetForm();

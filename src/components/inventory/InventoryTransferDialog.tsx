@@ -121,6 +121,7 @@ export function InventoryTransferDialog({
       toast.success(`Device transferred to ${toCompany?.code || 'new company'} — accounting entries created`);
       
       resetForm();
+      emitRefetch('inventory');
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {

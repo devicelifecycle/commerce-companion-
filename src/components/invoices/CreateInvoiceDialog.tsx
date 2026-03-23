@@ -324,6 +324,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
       }
 
       toast.success(`Invoice ${invoiceNumber} created`);
+      emitRefetch('invoices');
       resetForm();
       onOpenChange(false);
       onCreated();

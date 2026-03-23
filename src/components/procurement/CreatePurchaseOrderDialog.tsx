@@ -251,6 +251,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
 
       toast.success('Purchase Order created');
       resetForm();
+      emitRefetch('purchase_orders');
       onSuccess();
       onOpenChange(false);
     } catch (error: any) {
