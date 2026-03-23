@@ -17,7 +17,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { PackageCheck, AlertCircle, AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { PackageCheck, AlertCircle, AlertTriangle, Plus, Trash2, Package, Wrench, Receipt } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface ReceivePODialogProps {
