@@ -17,7 +17,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { PackageCheck, AlertCircle, AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { PackageCheck, AlertCircle, AlertTriangle, Plus, Trash2, Package, Wrench, Receipt } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface ReceivePODialogProps {
@@ -49,6 +49,7 @@ interface POItem {
   gst_hst_amount: number | null;
   pst_qst_amount: number | null;
   total_cost: number;
+  item_type: string;
 }
 
 /** Each PO line item can have multiple split rows with different conditions */
@@ -64,6 +65,7 @@ interface ReceiveGroup {
   po_item_id: string;
   description: string;
   ordered_qty: number;
+  item_type: string;
   splits: SplitRow[];
 }
 
@@ -101,6 +103,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
         po_item_id: item.id,
         description: item.description,
         ordered_qty: item.quantity,
+        item_type: item.item_type || 'inventory',
         splits: [{
           id: newSplitId(),
           qty: item.quantity,
@@ -157,7 +160,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
   };
 
   // Flatten all splits for summary
-  const allSplits = groups.flatMap(g => g.splits.map(s => ({ ...s, po_item_id: g.po_item_id, description: g.description, ordered_qty: g.ordered_qty })));
+  const allSplits = groups.flatMap(g => g.splits.map(s => ({ ...s, po_item_id: g.po_item_id, description: g.description, ordered_qty: g.ordered_qty, item_type: g.item_type })));
   const totalReceived = allSplits.reduce((sum, s) => sum + s.qty, 0);
   const totalOrdered = groups.reduce((sum, g) => sum + g.ordered_qty, 0);
   const isPartial = totalReceived < totalOrdered && totalReceived > 0;
@@ -222,26 +225,45 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
       const newStatus = isPartial ? 'partially_received' : 'received';
       await supabase.from('purchase_orders').update({ status: newStatus }).eq('id', po.id);
 
-      // 5. Add accepted items to inventory — route based on po_type
-      const isRepairPartsPO = po.po_type === 'repair_parts';
-      const acceptedByItem = new Map<string, { qty: number; description: string; po_item_id: string }>();
+      // 5. Add accepted items to inventory — route based on item_type per line
+      const acceptedByItem = new Map<string, { qty: number; description: string; po_item_id: string; item_type: string }>();
       for (const split of validSplits) {
         if (split.condition === 'passed' || split.action === 'accept') {
           const existing = acceptedByItem.get(split.po_item_id);
           if (existing) {
             existing.qty += split.qty;
           } else {
-            acceptedByItem.set(split.po_item_id, { qty: split.qty, description: split.description, po_item_id: split.po_item_id });
+            acceptedByItem.set(split.po_item_id, { qty: split.qty, description: split.description, po_item_id: split.po_item_id, item_type: split.item_type });
           }
         }
       }
 
-      if (isRepairPartsPO) {
-        // Route to repair_parts table
-        for (const [, item] of acceptedByItem) {
-          const poItem = poItems.find(p => p.id === item.po_item_id);
-          if (!poItem) continue;
+      for (const [, item] of acceptedByItem) {
+        const poItem = poItems.find(p => p.id === item.po_item_id);
+        if (!poItem) continue;
 
+        if (item.item_type === 'expense') {
+          // Route to expenses table — tools/supplies not for inventory
+          const totalCost = poItem.unit_cost * item.qty;
+          const gst = (poItem.gst_hst_amount || 0) * (item.qty / poItem.quantity);
+          const pst = (poItem.pst_qst_amount || 0) * (item.qty / poItem.quantity);
+          await supabase.from('expenses').insert({
+            description: `${item.description} (PO ${po.po_number})`,
+            amount: totalCost,
+            gst_hst_amount: parseFloat(gst.toFixed(2)),
+            pst_amount: parseFloat(pst.toFixed(2)),
+            category: 'supplies' as any,
+            subcategory: 'Tools & Equipment',
+            vendor: po.supplier_name,
+            expense_date: receivedDate,
+            company_id: po.company_id,
+            created_by: user.id,
+            payment_method: 'credit',
+            notes: `Auto-created from PO ${po.po_number}`,
+          });
+          toast.info(`Expense recorded for ${item.description}`);
+        } else if (item.item_type === 'repair_parts') {
+          // Route to repair_parts table
           const { data: existingPart } = await supabase
             .from('repair_parts')
             .select('id, quantity_on_hand')
@@ -266,13 +288,8 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
               created_by: user.id,
             });
           }
-        }
-      } else {
-        // Route to products table (existing logic)
-        for (const [, item] of acceptedByItem) {
-          const poItem = poItems.find(p => p.id === item.po_item_id);
-          if (!poItem) continue;
-
+        } else {
+          // Route to products table (inventory)
           const { data: existingProduct } = await supabase
             .from('products')
             .select('id, quantity_on_hand')
@@ -397,8 +414,9 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
         }
       }
 
-      // 9. Create product lot records for accepted items
+      // 9. Create product lot records for accepted inventory items only
       for (const [, item] of acceptedByItem) {
+        if (item.item_type !== 'inventory') continue; // skip expense & repair_parts
         const poItem = poItems.find(p => p.id === item.po_item_id);
         if (!poItem) continue;
 
@@ -493,6 +511,21 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{group.description}</span>
+                      {group.item_type === 'expense' && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-[hsl(var(--accent))] bg-[hsl(var(--accent)/.1)] border-[hsl(var(--accent)/.25)]">
+                          <Receipt className="h-2.5 w-2.5" /> Expense
+                        </Badge>
+                      )}
+                      {group.item_type === 'repair_parts' && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-[hsl(var(--warning))] bg-[hsl(var(--warning)/.1)] border-[hsl(var(--warning)/.25)]">
+                          <Wrench className="h-2.5 w-2.5" /> Repair
+                        </Badge>
+                      )}
+                      {group.item_type === 'inventory' && (
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-[hsl(var(--info))] bg-[hsl(var(--info)/.1)] border-[hsl(var(--info)/.25)]">
+                          <Package className="h-2.5 w-2.5" /> Inventory
+                        </Badge>
+                      )}
                       <Badge variant="outline" className="text-xs font-mono">
                         Ordered: {group.ordered_qty}
                       </Badge>
@@ -564,7 +597,9 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
                                 </SelectContent>
                               </Select>
                             ) : (
-                              <span className="text-xs text-muted-foreground">Accept → Inventory</span>
+                              <span className="text-xs text-muted-foreground">
+                                {group.item_type === 'expense' ? 'Accept → Expense' : group.item_type === 'repair_parts' ? 'Accept → Repair Parts' : 'Accept → Inventory'}
+                              </span>
                             )}
                           </TableCell>
                           <TableCell>
