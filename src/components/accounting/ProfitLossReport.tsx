@@ -352,7 +352,17 @@ export function ProfitLossReport({ companyView }: Props) {
         </Alert>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Compute adjusted values based on costing view */}
+      {(() => {
+        const isMgmt = costingView === 'management';
+        const adjCogs = (plData?.cogs || 0) + (isMgmt ? (plData?.managementLaborCost || 0) : 0);
+        const adjGrossProfit = (plData?.revenue.total || 0) - adjCogs;
+        const adjGrossMargin = (plData?.revenue.total || 0) > 0 ? (adjGrossProfit / (plData?.revenue.total || 1)) * 100 : 0;
+        const adjOpex = (plData?.expenses.total || 0) - (isMgmt ? (plData?.payrollExpenses || 0) : 0);
+        const adjNetProfit = adjGrossProfit - adjOpex;
+        const adjNetMargin = (plData?.revenue.total || 0) > 0 ? (adjNetProfit / (plData?.revenue.total || 1)) * 100 : 0;
+        return (<>
+
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
