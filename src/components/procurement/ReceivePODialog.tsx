@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { createPurchaseJournalEntry } from '@/lib/accounting/journalAutomation';
 import { useAuth } from '@/lib/auth';
