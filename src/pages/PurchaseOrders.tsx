@@ -146,6 +146,7 @@ export default function PurchaseOrders() {
       const { error } = await supabase.from('purchase_orders').delete().eq('id', id);
       if (error) throw error;
       const details = [journalCount > 0 && `${journalCount} JEs`, grnCount > 0 && `${grnCount} GRNs`].filter(Boolean).join(', ');
+      logDelete('purchase_orders', id, { po_number: po.po_number, total_amount: po.total_amount }, `PO ${po.po_number} deleted${details ? `. Reversed: ${details}` : ''}`);
       toast.success(`PO deleted${details ? ` — reversed: ${details}` : ''}`);
       loadOrders();
       emitRefetch('financials');
