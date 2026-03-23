@@ -118,22 +118,15 @@ const MODULE_GUIDES: ModuleGuide[] = [
     ],
   },
   {
-    module: 'Purchase Orders', icon: ClipboardCheck, category: 'procurement',
-    description: 'Create and manage purchase orders for supplier procurement.',
+    module: 'PO & GRN', icon: ClipboardCheck, category: 'procurement',
+    description: 'Create purchase orders with mixed item types (inventory, repair parts, expense/tools) and receive goods.',
     sections: [
-      { title: 'Overview', content: 'Formalize procurement with purchase orders. Track order status from draft through receipt and payment.' },
-      { title: 'Creating POs', content: 'Select a supplier, add items with quantities and unit costs. The system generates a PO number and tracks approval status.' },
-      { title: 'Approval workflow', content: 'POs can be submitted for approval. Admins can approve or reject with notes.' },
-      { title: 'Receiving', content: 'When goods arrive, create a Goods Received Note (GRN) linked to the PO. This updates inventory and triggers AP entries.' },
-    ],
-  },
-  {
-    module: 'Goods Received', icon: PackageCheck, category: 'procurement',
-    description: 'Record receipt of purchased goods and link to purchase orders.',
-    sections: [
-      { title: 'Overview', content: 'Document the physical receipt of goods against purchase orders. Each GRN records quantities received, condition, and any discrepancies.' },
-      { title: 'Creating GRNs', content: 'Select a PO, enter received quantities per item, and note any quality issues. Devices are created in inventory upon GRN completion.' },
-      { title: 'Accounting impact', content: 'Completing a GRN triggers: Inventory asset increase (DR Inventory), AP liability creation (CR Accounts Payable).' },
+      { title: 'Overview', content: 'The PO & GRN module handles all procurement. Create purchase orders for suppliers, receive goods via GRNs, and track payment status. POs and GRNs are managed in a single unified page.' },
+      { title: 'Item types per line', content: 'Each PO line item has a type: Inventory (added to product stock on receive), Repair Parts (added to repair parts inventory), or Expense (tools/supplies recorded as an expense, not inventory). A single PO can mix all three types — e.g. ordering phones plus a screwdriver set from the same supplier.' },
+      { title: 'Creating POs', content: 'Select a company and supplier, add line items with description, quantity, unit cost, tax status, and item type. The system auto-generates a PO number and calculates tax totals per line.' },
+      { title: 'Receiving (GRN)', content: 'When goods arrive, use "Receive Items" to create a GRN. Each line can be split by condition (passed, defective, damaged) with different actions. Inventory items go to product stock, repair parts to repair inventory, and expense items create expense records automatically.' },
+      { title: 'Cloning & export', content: 'Clone existing POs for recurring orders. Export PO data to CSV for reporting.' },
+      { title: 'Accounting impact', content: 'Receiving triggers: Inventory items → DR Inventory / CR AP. Repair parts → DR Repair Parts / CR AP. Expense items → DR Expense / CR AP. AP entries and GRNs are created for all types.' },
     ],
   },
   {
