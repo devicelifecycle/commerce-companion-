@@ -28,6 +28,7 @@ import PurchaseOrders from "./pages/PurchaseOrders";
 import Returns from "./pages/Returns";
 import IntegrationHealth from "./pages/IntegrationHealth";
 import Customers from "./pages/Customers";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 const queryClient = new QueryClient();
 
@@ -60,7 +61,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/mfa-verify" replace />;
   }
 
-  return <>{children}</>;
+  return <ErrorBoundary fallbackTitle="This page encountered an error">{children}</ErrorBoundary>;
 }
 
 const App = () => (

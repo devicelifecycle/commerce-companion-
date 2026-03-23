@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useDataRefetch } from '@/hooks/useDataRefetch';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -80,8 +81,12 @@ export function ProfitLossReport({ companyView }: Props) {
     return selectedCompany;
   })();
 
+  const queryClient = useQueryClient();
+
   const fetchPLDataCallback = useCallback(() => {
     fetchPLData();
+    // Also invalidate any cached report queries so other components pick up changes
+    queryClient.invalidateQueries({ queryKey: ['report', 'profit-loss'] });
   }, [effectiveCompany?.id, startDate, endDate]);
 
   useEffect(() => {

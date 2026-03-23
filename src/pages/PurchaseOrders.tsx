@@ -3,6 +3,7 @@ import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupBeforePODelete } from '@/lib/accounting/reversalUtils';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -71,6 +72,7 @@ const POTypeBadge = ({ type }: { type: string }) => {
 
 export default function PurchaseOrders() {
   const { selectedCompany, hasPermission, isSuperAdmin } = useCompany();
+  const { logDelete } = useAuditLog();
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -144,6 +146,7 @@ export default function PurchaseOrders() {
       const { error } = await supabase.from('purchase_orders').delete().eq('id', id);
       if (error) throw error;
       const details = [journalCount > 0 && `${journalCount} JEs`, grnCount > 0 && `${grnCount} GRNs`].filter(Boolean).join(', ');
+      logDelete('purchase_orders', id, { po_number: po.po_number, total_amount: po.total_amount }, `PO ${po.po_number} deleted${details ? `. Reversed: ${details}` : ''}`);
       toast.success(`PO deleted${details ? ` — reversed: ${details}` : ''}`);
       loadOrders();
       emitRefetch('financials');

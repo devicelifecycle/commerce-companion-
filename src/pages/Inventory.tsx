@@ -96,8 +96,12 @@ export default function Inventory() {
   // Bulk actions
   const handleBulkDelete = async () => {
     try {
-      const { error } = await supabase.from('devices').delete().in('id', Array.from(selection.selectedIds));
+      const ids = Array.from(selection.selectedIds);
+      const { error } = await supabase.from('devices').delete().in('id', ids);
       if (error) throw error;
+      for (const id of ids) {
+        logEvent({ action: 'DELETE', tableName: 'devices', recordId: id, module: 'Inventory', notes: `Device deleted` });
+      }
       toast.success(`${selection.count} device(s) deleted`);
       selection.clear();
       refetch();

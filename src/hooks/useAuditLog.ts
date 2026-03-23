@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 
-type AuditAction = 'LOGIN' | 'LOGOUT' | 'EXPORT' | 'IMPORT' | 'VIEW' | 'SEARCH' | 'PRINT' | 'UPLOAD' | 'DOWNLOAD';
+type AuditAction = 'LOGIN' | 'LOGOUT' | 'EXPORT' | 'IMPORT' | 'VIEW' | 'SEARCH' | 'PRINT' | 'UPLOAD' | 'DOWNLOAD' | 'CREATE' | 'UPDATE' | 'DELETE';
 
 interface LogEventParams {
   action: AuditAction;
@@ -28,7 +28,6 @@ export function useAuditLog() {
     status = 'success',
   }: LogEventParams) => {
     try {
-      // Insert directly into audit_logs table instead of using RPC
       const { error } = await supabase
         .from('audit_logs')
         .insert({
@@ -38,7 +37,7 @@ export function useAuditLog() {
           old_data: oldData || null,
           new_data: newData || null,
           company_id: selectedCompany?.id || null,
-          module: module || null,
+          module: module || getModuleFromTable(tableName),
           notes: notes || null,
           status,
         });
@@ -49,6 +48,40 @@ export function useAuditLog() {
     } catch (err) {
       console.error('Audit logging error:', err);
     }
+  };
+
+  const logCreate = async (tableName: string, recordId: string, newData?: any, notes?: string) => {
+    return logEvent({
+      action: 'CREATE',
+      tableName,
+      recordId,
+      newData,
+      module: getModuleFromTable(tableName),
+      notes: notes || `Created ${tableName.replace(/_/g, ' ')} record`,
+    });
+  };
+
+  const logUpdate = async (tableName: string, recordId: string, oldData?: any, newData?: any, notes?: string) => {
+    return logEvent({
+      action: 'UPDATE',
+      tableName,
+      recordId,
+      oldData,
+      newData,
+      module: getModuleFromTable(tableName),
+      notes: notes || `Updated ${tableName.replace(/_/g, ' ')} record`,
+    });
+  };
+
+  const logDelete = async (tableName: string, recordId: string, oldData?: any, notes?: string) => {
+    return logEvent({
+      action: 'DELETE',
+      tableName,
+      recordId,
+      oldData,
+      module: getModuleFromTable(tableName),
+      notes: notes || `Deleted ${tableName.replace(/_/g, ' ')} record`,
+    });
   };
 
   const logExport = async (tableName: string, recordCount: number, format: string = 'CSV') => {
@@ -90,6 +123,9 @@ export function useAuditLog() {
 
   return {
     logEvent,
+    logCreate,
+    logUpdate,
+    logDelete,
     logExport,
     logImport,
     logLogin,
@@ -116,6 +152,8 @@ function getModuleFromTable(tableName: string): string {
     customers: 'Customers',
     user_company_assignments: 'Team',
     profiles: 'Team',
+    purchase_orders: 'Procurement',
+    return_authorizations: 'Returns',
   };
 
   return moduleMap[tableName] || 'System';

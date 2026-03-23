@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { SystemAlertsBanner } from '@/components/alerts/SystemAlertsBanner';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,6 +48,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { selectedCompany, companies, isSuperAdmin, assignments } = useCompany();
+  const queryClient = useQueryClient();
   const isAdmin = isSuperAdmin || assignments.some(a => a.role === 'admin');
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('6');

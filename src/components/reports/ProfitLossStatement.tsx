@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useDataRefetch } from '@/hooks/useDataRefetch';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -69,8 +70,11 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
   const [costingView, setCostingView] = useState<'accounting' | 'management'>('accounting');
   const [data, setData] = useState<ComparisonData | null>(null);
 
+  const queryClient = useQueryClient();
+
   const fetchPLDataCallback = useCallback(() => {
     fetchPLData();
+    queryClient.invalidateQueries({ queryKey: ['report', 'profit-loss'] });
   }, [viewMode, periodType, selectedPeriod, selectedCompany]);
 
   useEffect(() => {
