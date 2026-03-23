@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useDataRefetch } from '@/hooks/useDataRefetch';
+import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupBeforePODelete } from '@/lib/accounting/reversalUtils';
 import { useCompany } from '@/contexts/CompanyContext';
