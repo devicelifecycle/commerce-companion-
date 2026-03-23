@@ -147,6 +147,8 @@ export default function Expenses() {
     }
   };
 
+  useDataRefetch('expenses', fetchExpenses);
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this expense?')) return;
     try {
