@@ -230,7 +230,7 @@ export default function PurchaseOrders() {
   const canReceive = (status: string) => status === 'pending' || status === 'partially_received';
 
   return (
-    <PermissionGuard permission="inventory_view" title="Purchase Orders">
+    <PermissionGuard permission="inventory_view" title="PO & GRN">
     <DashboardLayout>
       <div className="space-y-4 animate-fade-in">
         {/* Header */}
