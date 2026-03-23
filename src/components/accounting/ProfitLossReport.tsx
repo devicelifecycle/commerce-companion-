@@ -14,7 +14,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Download, Printer, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Download, Printer, TrendingUp, TrendingDown, DollarSign, ToggleLeft, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
 
 interface PLData {
@@ -50,6 +52,9 @@ interface PLData {
   netMargin: number;
   taxPaid: number;
   netTaxPayable: number;
+  // Management costing
+  managementLaborCost: number;
+  payrollExpenses: number;
 }
 
 interface Props {
@@ -63,6 +68,7 @@ export function ProfitLossReport({ companyView }: Props) {
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [plData, setPLData] = useState<PLData | null>(null);
+  const [costingView, setCostingView] = useState<'accounting' | 'management'>('accounting');
 
   // Resolve effective company from companyView prop or context
   const effectiveCompany = (() => {
@@ -125,6 +131,7 @@ export function ProfitLossReport({ companyView }: Props) {
           bankFees: 0, software: 0, telecom: 0, other: 0, total: 0,
         },
         netProfit: 0, netMargin: 0, taxPaid: 0, netTaxPayable: 0,
+        managementLaborCost: 0, payrollExpenses: 0,
       };
 
       // Track which codes we've explicitly handled
@@ -179,6 +186,25 @@ export function ProfitLossReport({ companyView }: Props) {
         else if (code.startsWith('80') || code.startsWith('81')) pl.taxPaid += debit - credit;
       });
 
+      // Fetch management labor cost from sold devices in this period
+      let salesQuery = supabase
+        .from('sales')
+        .select('device_id, devices(management_labor_cost)')
+        .gte('sale_date', startDate)
+        .lte('sale_date', endDate);
+      if (effectiveCompany) {
+        salesQuery = salesQuery.eq('company_id', effectiveCompany.id);
+      }
+      const { data: salesData } = await salesQuery;
+      if (salesData) {
+        pl.managementLaborCost = (salesData as any[]).reduce((sum, s) => {
+          return sum + Number(s.devices?.management_labor_cost || 0);
+        }, 0);
+      }
+
+      // Track payroll expenses (salaries line = account 6300)
+      pl.payrollExpenses = pl.expenses.salaries;
+
       // Calculate totals
       pl.revenue.total = pl.revenue.amazon + pl.revenue.bestbuy + pl.revenue.shopify
         + pl.revenue.intercompany + pl.revenue.invoiceSales + pl.revenue.otherRevenue;
@@ -205,6 +231,15 @@ export function ProfitLossReport({ companyView }: Props) {
   const formatPercent = (value: number) => `${value.toFixed(1)}%`;
 
   const companyLabel = effectiveCompany?.name || 'All Companies';
+
+  // Adjusted values based on costing view
+  const isMgmt = costingView === 'management';
+  const adjCogs = (plData?.cogs || 0) + (isMgmt ? (plData?.managementLaborCost || 0) : 0);
+  const adjGrossProfit = (plData?.revenue.total || 0) - adjCogs;
+  const adjGrossMargin = (plData?.revenue.total || 0) > 0 ? (adjGrossProfit / (plData?.revenue.total || 1)) * 100 : 0;
+  const adjOpex = (plData?.expenses.total || 0) - (isMgmt ? (plData?.payrollExpenses || 0) : 0);
+  const adjNetProfit = adjGrossProfit - adjOpex;
+  const adjNetMargin = (plData?.revenue.total || 0) > 0 ? (adjNetProfit / (plData?.revenue.total || 1)) * 100 : 0;
 
   const handleExport = () => {
     if (!plData) return;
@@ -288,6 +323,23 @@ export function ProfitLossReport({ companyView }: Props) {
           <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-[160px]" />
         </div>
         <div className="ml-auto flex gap-2">
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={costingView === 'management' ? 'default' : 'outline'}
+                  onClick={() => setCostingView(v => v === 'accounting' ? 'management' : 'accounting')}
+                >
+                  <ToggleLeft className="h-4 w-4 mr-2" />
+                  {costingView === 'accounting' ? 'Accounting View' : 'Management View'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="max-w-xs text-xs">
+                <p><strong>Accounting:</strong> Standard GAAP — payroll in OpEx, COGS from journal entries only.</p>
+                <p className="mt-1"><strong>Management:</strong> Shifts estimated device labor into COGS and excludes payroll from OpEx to show true per-unit profitability.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Button variant="outline" onClick={handleExport}>
             <Download className="h-4 w-4 mr-2" />Export
           </Button>
@@ -297,9 +349,19 @@ export function ProfitLossReport({ companyView }: Props) {
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* View Mode Alert */}
+      {costingView === 'management' && (
+        <Alert className="border-primary/30 bg-primary/5">
+          <Info className="h-4 w-4" />
+          <AlertTitle>Management View Active</AlertTitle>
+          <AlertDescription className="text-xs">
+            Estimated device labor ({formatCurrency(plData?.managementLaborCost || 0)}) is moved into COGS. 
+            Payroll ({formatCurrency(plData?.payrollExpenses || 0)}) is excluded from OpEx to avoid double-counting.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
@@ -314,10 +376,10 @@ export function ProfitLossReport({ companyView }: Props) {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Gross Profit</p>
-                <p className="text-2xl font-bold">{formatCurrency(plData?.grossProfit || 0)}</p>
+                <p className="text-sm text-muted-foreground">Gross Profit {isMgmt && <span className="text-[10px]">(Mgmt)</span>}</p>
+                <p className="text-2xl font-bold">{formatCurrency(adjGrossProfit)}</p>
                 <Badge variant="outline" className="mt-1">
-                  {formatPercent(plData?.grossMargin || 0)} margin
+                  {formatPercent(adjGrossMargin)} margin
                 </Badge>
               </div>
               <TrendingUp className="h-8 w-8 text-blue-500" />
@@ -328,25 +390,25 @@ export function ProfitLossReport({ companyView }: Props) {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Expenses</p>
+                <p className="text-sm text-muted-foreground">Expenses {isMgmt && <span className="text-[10px]">(Mgmt)</span>}</p>
                 <p className="text-2xl font-bold text-destructive">
-                  {formatCurrency(plData?.expenses.total || 0)}
+                  {formatCurrency(adjOpex)}
                 </p>
               </div>
               <TrendingDown className="h-8 w-8 text-destructive" />
             </div>
           </CardContent>
         </Card>
-        <Card className={plData && plData.netProfit >= 0 ? 'border-emerald-500/50' : 'border-destructive/50'}>
+        <Card className={adjNetProfit >= 0 ? 'border-emerald-500/50' : 'border-destructive/50'}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Net Profit</p>
-                <p className={`text-2xl font-bold ${plData && plData.netProfit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
-                  {formatCurrency(plData?.netProfit || 0)}
+                <p className="text-sm text-muted-foreground">Net Profit {isMgmt && <span className="text-[10px]">(Mgmt)</span>}</p>
+                <p className={`text-2xl font-bold ${adjNetProfit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
+                  {formatCurrency(adjNetProfit)}
                 </p>
                 <Badge variant="outline" className="mt-1">
-                  {formatPercent(plData?.netMargin || 0)} margin
+                  {formatPercent(adjNetMargin)} margin
                 </Badge>
               </div>
             </div>
@@ -412,20 +474,34 @@ export function ProfitLossReport({ companyView }: Props) {
               {/* COGS Section */}
               <div>
                 <h3 className="font-semibold text-lg text-blue-500 mb-3">COST OF GOODS SOLD</h3>
-                <div className="flex justify-between ml-4">
-                  <span>COGS (FIFO Calculation)</span>
-                  <span className="text-destructive">({formatCurrency(plData.cogs)})</span>
+                <div className="space-y-2 ml-4">
+                  <div className="flex justify-between">
+                    <span>COGS (FIFO Calculation)</span>
+                    <span className="text-destructive">({formatCurrency(plData.cogs)})</span>
+                  </div>
+                  {isMgmt && plData.managementLaborCost > 0 && (
+                    <div className="flex justify-between text-muted-foreground italic">
+                      <span>Management Labor (estimated)</span>
+                      <span className="text-destructive">({formatCurrency(plData.managementLaborCost)})</span>
+                    </div>
+                  )}
                 </div>
+                {isMgmt && plData.managementLaborCost > 0 && (
+                  <div className="flex justify-between font-semibold mt-2 pt-2 border-t ml-4">
+                    <span>Total COGS</span>
+                    <span className="text-destructive">({formatCurrency(adjCogs)})</span>
+                  </div>
+                )}
               </div>
 
               <div className="border border-primary/30 bg-primary/10 p-4 rounded-lg">
                 <div className="flex justify-between font-bold text-lg text-foreground">
                   <span>GROSS PROFIT</span>
-                  <span>{formatCurrency(plData.grossProfit)}</span>
+                  <span>{formatCurrency(adjGrossProfit)}</span>
                 </div>
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>Gross Margin</span>
-                  <span>{formatPercent(plData.grossMargin)}</span>
+                  <span>{formatPercent(adjGrossMargin)}</span>
                 </div>
               </div>
 
@@ -453,9 +529,15 @@ export function ProfitLossReport({ companyView }: Props) {
                       <span>{formatCurrency(plData.expenses.rent)}</span>
                     </div>
                   )}
-                  {plData.expenses.salaries > 0 && (
+                  {plData.expenses.salaries > 0 && !isMgmt && (
                     <div className="flex justify-between">
                       <span>Salaries and Wages</span>
+                      <span>{formatCurrency(plData.expenses.salaries)}</span>
+                    </div>
+                  )}
+                  {isMgmt && plData.expenses.salaries > 0 && (
+                    <div className="flex justify-between text-muted-foreground line-through italic">
+                      <span>Salaries and Wages (excluded in mgmt view)</span>
                       <span>{formatCurrency(plData.expenses.salaries)}</span>
                     </div>
                   )}
@@ -510,20 +592,20 @@ export function ProfitLossReport({ companyView }: Props) {
                 </div>
                 <div className="flex justify-between font-bold mt-2 pt-2 border-t">
                   <span>Total Operating Expenses</span>
-                  <span className="text-destructive">({formatCurrency(plData.expenses.total)})</span>
+                  <span className="text-destructive">({formatCurrency(adjOpex)})</span>
                 </div>
               </div>
 
-              <div className={`p-4 rounded-lg border ${plData.netProfit >= 0 ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-destructive/40 bg-destructive/10'}`}>
+              <div className={`p-4 rounded-lg border ${adjNetProfit >= 0 ? 'border-emerald-500/40 bg-emerald-500/10' : 'border-destructive/40 bg-destructive/10'}`}>
                 <div className="flex justify-between font-bold text-xl text-foreground">
-                  <span>NET PROFIT</span>
-                  <span className={plData.netProfit >= 0 ? 'text-emerald-500' : 'text-destructive'}>
-                    {formatCurrency(plData.netProfit)}
+                  <span>NET PROFIT {isMgmt && <span className="text-sm font-normal text-muted-foreground">(Management)</span>}</span>
+                  <span className={adjNetProfit >= 0 ? 'text-emerald-500' : 'text-destructive'}>
+                    {formatCurrency(adjNetProfit)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>Net Margin</span>
-                  <span>{formatPercent(plData.netMargin)}</span>
+                  <span>{formatPercent(adjNetMargin)}</span>
                 </div>
               </div>
 
