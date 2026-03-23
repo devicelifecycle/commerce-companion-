@@ -150,12 +150,13 @@ export default function Expenses() {
   useDataRefetch('expenses', fetchExpenses);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this expense?')) return;
+    if (!confirm('Delete this expense? Associated journal entries, ITCs, and refunds will also be reversed.')) return;
     try {
+      const { journalCount } = await cleanupBeforeExpenseDelete(id);
       const { error } = await supabase.from('expenses').delete().eq('id', id);
       if (error) throw error;
-      logEvent({ action: 'DELETE' as any, tableName: 'expenses', recordId: id, module: 'Expenses', notes: 'Expense deleted' });
-      toast.success('Expense deleted');
+      logEvent({ action: 'DELETE' as any, tableName: 'expenses', recordId: id, module: 'Expenses', notes: `Expense deleted. ${journalCount} journal entries reversed.` });
+      toast.success(`Expense deleted${journalCount > 0 ? ` — ${journalCount} journal entries reversed` : ''}`);
       fetchExpenses();
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete expense');
