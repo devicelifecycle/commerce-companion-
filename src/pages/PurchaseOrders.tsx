@@ -3,6 +3,7 @@ import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupBeforePODelete } from '@/lib/accounting/reversalUtils';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
