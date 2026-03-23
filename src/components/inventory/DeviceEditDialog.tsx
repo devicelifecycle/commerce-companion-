@@ -257,6 +257,33 @@ export function DeviceEditDialog({ open, onOpenChange, device, onSuccess }: Devi
             <Label>Notes</Label>
             <Textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Additional notes..." />
           </div>
+
+          {/* Management Labor Section */}
+          <div className="rounded-md border border-border bg-muted/20 p-3 space-y-3">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm font-semibold">Management Labor Estimate</Label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>Used for management profit calculations only. Does not affect accounting books or device cost.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Labor Hours</Label>
+                <Input type="number" step="0.25" value={form.management_labor_hours} onChange={(e) => set('management_labor_hours', e.target.value)} placeholder="e.g. 1.5" />
+              </div>
+              <div className="space-y-2">
+                <Label>Labor Cost ($)</Label>
+                <Input type="number" step="0.01" value={form.management_labor_cost} onChange={(e) => set('management_labor_cost', e.target.value)} placeholder="e.g. 25.00" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <DialogFooter>

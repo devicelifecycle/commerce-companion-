@@ -70,11 +70,6 @@ export function RepairPartsManagement({ canManage }: RepairPartsManagementProps)
               className="pl-8 w-[200px]"
             />
           </div>
-          {canManage && (
-            <Button size="sm" onClick={() => { setEditPart(null); setShowAddDialog(true); }}>
-              <Plus className="h-4 w-4 mr-1" /> Add Part
-            </Button>
-          )}
         </div>
       </CardHeader>
       <CardContent>
