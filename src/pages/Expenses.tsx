@@ -206,11 +206,17 @@ export default function Expenses() {
   const selection = useTableSelection(filteredExpenses);
 
   const handleBulkDelete = async () => {
-    if (!confirm(`Delete ${selection.count} selected expense(s)?`)) return;
+    if (!confirm(`Delete ${selection.count} selected expense(s)? All associated journal entries and ITCs will be reversed.`)) return;
     try {
-      const { error } = await supabase.from('expenses').delete().in('id', Array.from(selection.selectedIds));
+      const ids = Array.from(selection.selectedIds);
+      let totalJE = 0;
+      for (const id of ids) {
+        const { journalCount } = await cleanupBeforeExpenseDelete(id);
+        totalJE += journalCount;
+      }
+      const { error } = await supabase.from('expenses').delete().in('id', ids);
       if (error) throw error;
-      toast.success(`${selection.count} expense(s) deleted`);
+      toast.success(`${selection.count} expense(s) deleted${totalJE > 0 ? ` — ${totalJE} journal entries reversed` : ''}`);
       selection.clear();
       fetchExpenses();
     } catch (error: any) {
