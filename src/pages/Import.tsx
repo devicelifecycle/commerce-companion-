@@ -871,7 +871,7 @@ export default function Import() {
         const dueDate = new Date();
         dueDate.setDate(dueDate.getDate() + 30);
 
-        const { data: apRecord } = await supabase.from('accounts_payable').insert({
+        const { data: apRecord, error: apError } = await supabase.from('accounts_payable').insert({
           company_id: batchInfo.company_id,
           vendor_name: draft.supplierName,
           vendor_id: draft.supplierId,
@@ -888,6 +888,11 @@ export default function Import() {
           status: isPaid ? 'paid' : 'outstanding',
           created_by: user?.id,
         }).select('id').single();
+
+        if (apError) {
+          console.error('AP creation failed:', apError);
+          toast.error(`AP creation failed for ${draft.supplierName}: ${apError.message}`);
+        }
 
         // If paid immediately, record AP payment and mark PO as paid
         if (isPaid && apRecord) {
