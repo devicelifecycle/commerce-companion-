@@ -47,7 +47,7 @@ interface Company {
 }
 
 type TaxStatus = 'zero_rated' | 'gst_paid' | 'hst_paid' | 'tax_inclusive' | 'gst_pst';
-type ItemType = 'inventory' | 'repair_parts' | 'expense';
+type ItemType = 'inventory' | 'product' | 'repair_parts' | 'expense';
 
 const TAX_OPTIONS: { value: TaxStatus; label: string }[] = [
   { value: 'zero_rated', label: 'Zero-Rated' },
