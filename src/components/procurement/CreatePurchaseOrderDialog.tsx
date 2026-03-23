@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import { ClipboardList, Plus, Trash2, ChevronsUpDown, Check, Package, Wrench, Receipt, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { ProductSearchCombobox, type ProductOption } from '@/components/inventory/ProductSearchCombobox';
 
 interface CreatePurchaseOrderDialogProps {
   open: boolean;
@@ -88,6 +89,7 @@ interface POLineItem {
   unit_cost: number;
   tax_status: TaxStatus;
   item_type: ItemType;
+  product_id: string | null;
 }
 
 let poLineCounter = 0;
@@ -100,6 +102,7 @@ function newPOLine(): POLineItem {
     unit_cost: 0,
     tax_status: 'hst_paid',
     item_type: 'inventory',
+    product_id: null,
   };
 }
 
@@ -417,13 +420,36 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
               return (
                 <div key={item.id} className="rounded-lg border border-border/60 p-3 bg-muted/20 hover:bg-muted/30 transition-colors">
                   <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,70px,90px,100px,80px,36px] gap-2 items-center">
-                    {/* Description */}
-                    <Input
-                      className="h-8 text-xs"
-                      placeholder="Item description *"
-                      value={item.description}
-                      onChange={e => updateLine(item.id, { description: e.target.value })}
-                    />
+                    {/* Description / Product selector */}
+                    {item.item_type === 'inventory' ? (
+                      <div className="space-y-1">
+                        <ProductSearchCombobox
+                          value={item.product_id}
+                          companyId={selectedCompanyId}
+                          disabled={!selectedCompanyId}
+                          placeholder="Select product..."
+                          className="h-8 text-xs"
+                          onSelect={(product: ProductOption | null) => {
+                            if (product) {
+                              updateLine(item.id, {
+                                product_id: product.id,
+                                description: product.name + (product.sku ? ` (${product.sku})` : ''),
+                                unit_cost: product.cost_price || item.unit_cost,
+                              });
+                            } else {
+                              updateLine(item.id, { product_id: null, description: '' });
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <Input
+                        className="h-8 text-xs"
+                        placeholder="Item description *"
+                        value={item.description}
+                        onChange={e => updateLine(item.id, { description: e.target.value })}
+                      />
+                    )}
                     {/* Type selector */}
                     <div className="w-[90px]">
                       <Select value={item.item_type} onValueChange={(v: ItemType) => updateLine(item.id, { item_type: v })}>
