@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useDataRefetch } from '@/hooks/useDataRefetch';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -68,9 +69,16 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
   const [costingView, setCostingView] = useState<'accounting' | 'management'>('accounting');
   const [data, setData] = useState<ComparisonData | null>(null);
 
+  const fetchPLDataCallback = useCallback(() => {
+    fetchPLData();
+  }, [viewMode, periodType, selectedPeriod, selectedCompany]);
+
   useEffect(() => {
     fetchPLData();
   }, [viewMode, periodType, selectedPeriod, selectedCompany]);
+
+  // Auto-refresh when financials change (expense/sale/PO deletions)
+  useDataRefetch(['financials', 'expenses', 'sales', 'invoices', 'purchase_orders'], fetchPLDataCallback);
 
   const getPeriodDates = (periodStr: string, type: 'monthly' | 'quarterly' | 'yearly') => {
     const [year, monthOrQuarter] = periodStr.split('-');

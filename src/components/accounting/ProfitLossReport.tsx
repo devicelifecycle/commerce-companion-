@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useDataRefetch } from '@/hooks/useDataRefetch';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,7 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { Download, Printer, TrendingUp, TrendingDown, DollarSign, ToggleLeft, Info } from 'lucide-react';
+import { Download, Printer, TrendingUp, TrendingDown, DollarSign, ToggleLeft, Info, RefreshCw } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
@@ -79,9 +80,16 @@ export function ProfitLossReport({ companyView }: Props) {
     return selectedCompany;
   })();
 
+  const fetchPLDataCallback = useCallback(() => {
+    fetchPLData();
+  }, [effectiveCompany?.id, startDate, endDate]);
+
   useEffect(() => {
     fetchPLData();
   }, [effectiveCompany?.id, startDate, endDate]);
+
+  // Subscribe to refetch events from expenses, sales, invoices, POs
+  useDataRefetch(['financials', 'expenses', 'sales', 'invoices', 'purchase_orders'], fetchPLDataCallback);
 
   useEffect(() => {
     const now = new Date();
@@ -323,6 +331,9 @@ export function ProfitLossReport({ companyView }: Props) {
           <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-[160px]" />
         </div>
         <div className="ml-auto flex gap-2">
+          <Button variant="outline" size="icon" onClick={fetchPLData} title="Refresh">
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>

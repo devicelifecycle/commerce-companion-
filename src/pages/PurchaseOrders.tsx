@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useDataRefetch } from '@/hooks/useDataRefetch';
+import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupBeforePODelete } from '@/lib/accounting/reversalUtils';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -146,6 +146,7 @@ export default function PurchaseOrders() {
       const details = [journalCount > 0 && `${journalCount} JEs`, grnCount > 0 && `${grnCount} GRNs`].filter(Boolean).join(', ');
       toast.success(`PO deleted${details ? ` — reversed: ${details}` : ''}`);
       loadOrders();
+      emitRefetch('financials');
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete PO');
     }

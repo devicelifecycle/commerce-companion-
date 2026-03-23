@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useDataRefetch } from '@/hooks/useDataRefetch';
+import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupBeforeSaleDelete } from '@/lib/accounting/reversalUtils';
 import { OrdersGuide } from '@/components/guides/OrdersGuide';
@@ -147,6 +147,7 @@ export default function Sales() {
       toast.success(`Sale deleted${journalCount > 0 ? ` — ${journalCount} journal entries reversed` : ''}`);
       setSelectedIds(prev => { const n = new Set(prev); n.delete(id); return n; });
       fetchSales();
+      emitRefetch('financials');
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete sale');
     }
@@ -167,6 +168,7 @@ export default function Sales() {
       toast.success(`${selectedIds.size} sale(s) deleted${totalJE > 0 ? ` — ${totalJE} journal entries reversed` : ''}`);
       setSelectedIds(new Set());
       fetchSales();
+      emitRefetch('financials');
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete sales');
     }

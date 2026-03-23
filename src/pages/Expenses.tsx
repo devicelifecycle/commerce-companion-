@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useDataRefetch } from '@/hooks/useDataRefetch';
+import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupBeforeExpenseDelete } from '@/lib/accounting/reversalUtils';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -220,6 +220,7 @@ export default function Expenses() {
       toast.success(`${selection.count} expense(s) deleted${totalJE > 0 ? ` — ${totalJE} journal entries reversed` : ''}`);
       selection.clear();
       fetchExpenses();
+      emitRefetch('financials');
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete expenses');
     }
