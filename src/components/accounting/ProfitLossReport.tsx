@@ -52,6 +52,9 @@ interface PLData {
   netMargin: number;
   taxPaid: number;
   netTaxPayable: number;
+  // Management costing
+  managementLaborCost: number;
+  payrollExpenses: number;
 }
 
 interface Props {
