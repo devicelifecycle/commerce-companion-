@@ -498,14 +498,23 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
       </div>
 
       {/* Costing View Explanation */}
+      {costingView === 'accounting' && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertTitle>Accounting View</AlertTitle>
+          <AlertDescription>
+            Standard P&L using actual costs. Device COGS includes purchase price + capitalized repair parts.
+            Labor appears as payroll in Operating Expenses. This is the GAAP-compliant view.
+          </AlertDescription>
+        </Alert>
+      )}
       {costingView === 'management' && (
         <Alert>
           <Info className="h-4 w-4" />
-          <AlertTitle>Management Costing View</AlertTitle>
+          <AlertTitle>Management View</AlertTitle>
           <AlertDescription>
-            Device COGS includes capitalized repair costs (parts + labor). Payroll is reduced by{' '}
-            <strong>{formatCurrency(data.current.capitalizedRepairLabor)}</strong> in capitalized repair labor to avoid double-counting.
-            This view shows the true per-unit cost of bringing devices to sale condition. Net profit is identical to the Accounting View.
+            Performance P&L. Device COGS includes purchase price + repair parts + estimated labor per device
+            ({formatCurrency(data.current.managementLaborCost)}). Payroll expenses ({formatCurrency(data.current.payrollExpenses)}) are excluded to avoid double-counting.
           </AlertDescription>
         </Alert>
       )}
