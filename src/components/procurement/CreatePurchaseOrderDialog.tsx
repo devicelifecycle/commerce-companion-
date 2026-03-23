@@ -281,6 +281,20 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* PO Type Selector */}
+          <div className="space-y-1.5">
+            <Label className="text-xs">PO Type *</Label>
+            <Select value={poType} onValueChange={(v) => setPoType(v as 'inventory' | 'repair_parts')}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="inventory">Device Inventory</SelectItem>
+                <SelectItem value="repair_parts">Repair Parts</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Company + PO Header */}
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1.5">
