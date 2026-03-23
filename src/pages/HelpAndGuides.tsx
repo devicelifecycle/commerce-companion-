@@ -368,11 +368,17 @@ const ACCOUNTING_FLOWS = [
 ];
 
 const KEYBOARD_SHORTCUTS = [
-  { key: '⌘ + K', action: 'Global search' },
-  { key: '⌘ + N', action: 'New item (context-aware)' },
-  { key: '⌘ + S', action: 'Save changes' },
+  { key: '⌘ / Ctrl + K', action: 'Open Command Palette' },
+  { key: 'Alt + S', action: 'Record a Sale' },
+  { key: 'Alt + E', action: 'Add Expense' },
+  { key: 'Alt + I', action: 'Import Devices' },
+  { key: 'Alt + N', action: 'Create Invoice' },
+  { key: 'Alt + P', action: 'Create PO' },
+  { key: 'Alt + D', action: 'Go to Dashboard' },
+  { key: 'Alt + O', action: 'Go to Orders' },
+  { key: 'Alt + V', action: 'Go to Inventory' },
+  { key: '?', action: 'Show keyboard shortcuts dialog' },
   { key: 'Esc', action: 'Close dialog' },
-  { key: '⌘ + /', action: 'Show shortcuts' },
 ];
 
 // ─── COMPONENT ───────────────────────────────────────────────
