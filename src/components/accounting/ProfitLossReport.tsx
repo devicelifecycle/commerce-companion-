@@ -131,6 +131,7 @@ export function ProfitLossReport({ companyView }: Props) {
           bankFees: 0, software: 0, telecom: 0, other: 0, total: 0,
         },
         netProfit: 0, netMargin: 0, taxPaid: 0, netTaxPayable: 0,
+        managementLaborCost: 0, payrollExpenses: 0,
       };
 
       // Track which codes we've explicitly handled
