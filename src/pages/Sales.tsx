@@ -485,24 +485,24 @@ export default function Sales() {
                   <TableHeader>
                     <TableRow>
                       {canManageSales && (
-                        <TableHead className="w-[40px]">
+                        <TableHead className="w-[32px] px-2">
                           <Checkbox
                             checked={filteredSales.length > 0 && selectedIds.size === filteredSales.length}
                             onCheckedChange={toggleSelectAll}
                           />
                         </TableHead>
                       )}
-                      <TableHead>Order</TableHead>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Channel</TableHead>
-                      <TableHead>Prov</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Revenue</TableHead>
-                      <TableHead className="text-right">Fees</TableHead>
-                      <TableHead className="text-right">Acct Profit</TableHead>
-                      <TableHead className="text-right">Mgmt Profit</TableHead>
-                      <TableHead className="w-[50px]" />
+                      <TableHead className="w-[130px]">Order</TableHead>
+                      <TableHead className="w-[160px]">Item</TableHead>
+                      <TableHead className="w-[70px]">Channel</TableHead>
+                      <TableHead className="w-[50px]">Prov</TableHead>
+                      <TableHead className="w-[80px]">Status</TableHead>
+                      <TableHead className="w-[80px]">Date</TableHead>
+                      <TableHead className="w-[80px] text-right">Revenue</TableHead>
+                      <TableHead className="w-[70px] text-right">Fees</TableHead>
+                      <TableHead className="w-[80px] text-right">Acct $</TableHead>
+                      <TableHead className="w-[80px] text-right">Mgmt $</TableHead>
+                      <TableHead className="w-[36px]" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
