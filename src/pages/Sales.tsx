@@ -485,24 +485,24 @@ export default function Sales() {
                   <TableHeader>
                     <TableRow>
                       {canManageSales && (
-                        <TableHead className="w-[40px]">
+                        <TableHead className="w-[32px] px-2">
                           <Checkbox
                             checked={filteredSales.length > 0 && selectedIds.size === filteredSales.length}
                             onCheckedChange={toggleSelectAll}
                           />
                         </TableHead>
                       )}
-                      <TableHead>Order</TableHead>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Channel</TableHead>
-                      <TableHead>Prov</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Revenue</TableHead>
-                      <TableHead className="text-right">Fees</TableHead>
-                      <TableHead className="text-right">Acct Profit</TableHead>
-                      <TableHead className="text-right">Mgmt Profit</TableHead>
-                      <TableHead className="w-[50px]" />
+                      <TableHead className="w-[130px]">Order</TableHead>
+                      <TableHead className="w-[160px]">Item</TableHead>
+                      <TableHead className="w-[70px]">Channel</TableHead>
+                      <TableHead className="w-[50px]">Prov</TableHead>
+                      <TableHead className="w-[80px]">Status</TableHead>
+                      <TableHead className="w-[80px]">Date</TableHead>
+                      <TableHead className="w-[80px] text-right">Revenue</TableHead>
+                      <TableHead className="w-[70px] text-right">Fees</TableHead>
+                      <TableHead className="w-[80px] text-right">Acct $</TableHead>
+                      <TableHead className="w-[80px] text-right">Mgmt $</TableHead>
+                      <TableHead className="w-[36px]" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -521,71 +521,66 @@ export default function Sales() {
                             />
                           </TableCell>
                         )}
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <div className="min-w-0">
-                              <p className="text-xs font-semibold truncate">{sale.order_number}</p>
+                        <TableCell className="px-2">
+                          <div className="flex items-center gap-1 min-w-0">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold truncate max-w-[110px]" title={sale.order_number}>{sale.order_number}</p>
                               {sale.customer_name && (
-                                <p className="text-[11px] text-muted-foreground truncate max-w-[140px]">{sale.customer_name}</p>
+                                <p className="text-[10px] text-muted-foreground truncate max-w-[110px]">{sale.customer_name}</p>
                               )}
                             </div>
                             {returnSaleIds.has(sale.id) && (
-                              <Badge variant="outline" className="text-destructive border-destructive/40 text-[10px] px-1 py-0 shrink-0">
-                                <RotateCcw className="h-2.5 w-2.5 mr-0.5" />
+                              <Badge variant="outline" className="text-destructive border-destructive/40 text-[9px] px-1 py-0 shrink-0">
                                 RMA
                               </Badge>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-2">
                           {sale.devices ? (
                             <div className="min-w-0">
-                              <p className="text-xs font-medium truncate">{sale.devices.brand} {sale.devices.model}</p>
-                              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                              <p className="text-xs font-medium truncate max-w-[140px]">{sale.devices.brand} {sale.devices.model}</p>
+                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                                 {sale.devices.storage && <span>{sale.devices.storage}</span>}
                                 {sale.devices.condition && <span className="capitalize">· {sale.devices.condition}</span>}
-                                {sale.devices.imei && (
-                                  <span className="font-mono truncate max-w-[90px]" title={sale.devices.imei}>· {sale.devices.imei}</span>
-                                )}
                               </div>
                             </div>
                           ) : sale.product_title ? (
                             <div className="min-w-0">
-                              <p className="text-xs font-medium truncate max-w-[180px]" title={sale.product_title}>{sale.product_title}</p>
-                              {sale.marketplace_sku && (
-                                <p className="text-[10px] text-muted-foreground font-mono">SKU: {sale.marketplace_sku}</p>
-                              )}
+                              <p className="text-xs font-medium truncate max-w-[140px]" title={sale.product_title}>{sale.product_title}</p>
                             </div>
                           ) : (
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0">Unlinked</Badge>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-2">
                           <MarketplaceBadge marketplace={sale.marketplace} />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-2">
                           {sale.shipping_province ? (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">{sale.shipping_province}</Badge>
+                            <Badge variant="outline" className="text-[10px] px-1 py-0">{sale.shipping_province}</Badge>
                           ) : (
-                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
+                            <Badge variant="destructive" className="text-[9px] px-1 py-0 gap-0.5">
                               <AlertCircle className="h-2.5 w-2.5" />N/A
                             </Badge>
                           )}
+                        </TableCell>
+                        <TableCell className="px-2">
                           <MarketplaceStatusBadge 
                             marketplace={sale.marketplace} 
                             marketplaceStatus={sale.marketplace_status} 
                           />
                         </TableCell>
-                        <TableCell className="text-[11px] text-muted-foreground whitespace-nowrap">
+                        <TableCell className="px-2 text-[11px] text-muted-foreground whitespace-nowrap">
                           {formatDate(sale.sale_date)}
                         </TableCell>
-                        <TableCell className="text-right text-xs font-medium tabular-nums">
+                        <TableCell className="px-2 text-right text-xs font-medium tabular-nums">
                           {formatCurrency(sale.sale_price)}
                         </TableCell>
-                        <TableCell className="text-right text-[11px] text-muted-foreground tabular-nums">
+                        <TableCell className="px-2 text-right text-[11px] text-muted-foreground tabular-nums">
                           {formatCurrency(sale.marketplace_fees + sale.shipping_cost)}
                         </TableCell>
-                        <TableCell className="text-right text-xs font-medium tabular-nums">
+                        <TableCell className="px-2 text-right text-xs font-medium tabular-nums">
                           {sale.profit != null ? (
                             <span className={sale.profit >= 0 ? 'text-[hsl(var(--success))]' : 'text-destructive'}>
                               {formatCurrency(sale.profit)}
@@ -594,7 +589,7 @@ export default function Sales() {
                             <span className="text-muted-foreground">—</span>
                           )}
                         </TableCell>
-                        <TableCell className="text-right text-xs font-medium tabular-nums">
+                        <TableCell className="px-2 text-right text-xs font-medium tabular-nums">
                           {(() => {
                             if (!sale.devices) return <span className="text-muted-foreground">—</span>;
                             const originalCost = sale.devices.original_cost_price ?? sale.devices.cost_price;
@@ -607,7 +602,7 @@ export default function Sales() {
                             );
                           })()}
                         </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="px-1" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon">
