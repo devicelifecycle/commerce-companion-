@@ -80,9 +80,16 @@ export function ProfitLossReport({ companyView }: Props) {
     return selectedCompany;
   })();
 
+  const fetchPLDataCallback = useCallback(() => {
+    fetchPLData();
+  }, [effectiveCompany?.id, startDate, endDate]);
+
   useEffect(() => {
     fetchPLData();
   }, [effectiveCompany?.id, startDate, endDate]);
+
+  // Subscribe to refetch events from expenses, sales, invoices, POs
+  useDataRefetch(['financials', 'expenses', 'sales', 'invoices', 'purchase_orders'], fetchPLDataCallback);
 
   useEffect(() => {
     const now = new Date();
