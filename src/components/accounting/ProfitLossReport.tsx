@@ -68,6 +68,7 @@ export function ProfitLossReport({ companyView }: Props) {
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [plData, setPLData] = useState<PLData | null>(null);
+  const [costingView, setCostingView] = useState<'accounting' | 'management'>('accounting');
 
   // Resolve effective company from companyView prop or context
   const effectiveCompany = (() => {
