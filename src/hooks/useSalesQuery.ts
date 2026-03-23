@@ -42,6 +42,8 @@ export interface SaleRecord {
     storage?: string | null;
     color?: string | null;
     condition?: string | null;
+    original_cost_price?: number | null;
+    management_labor_cost?: number | null;
   } | null;
 }
 
