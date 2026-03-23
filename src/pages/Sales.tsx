@@ -5,7 +5,7 @@ import { cleanupBeforeSaleDelete } from '@/lib/accounting/reversalUtils';
 import { OrdersGuide } from '@/components/guides/OrdersGuide';
 import { useAuth } from '@/lib/auth';
 import { useAuditLog } from '@/hooks/useAuditLog';
-import { ActivityLog } from '@/components/audit/ActivityLog';
+
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { EditSaleDialog } from '@/components/sales/EditSaleDialog';
