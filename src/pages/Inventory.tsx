@@ -366,6 +366,14 @@ export default function Inventory() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Bulk RMA Dialog */}
+        <SupplierReturnDialog
+          open={bulkRmaOpen}
+          onOpenChange={setBulkRmaOpen}
+          preselectedItems={bulkRmaItems}
+          onSuccess={() => { selection.clear(); refetch(); }}
+        />
       </div>
     </DashboardLayout>
   );
