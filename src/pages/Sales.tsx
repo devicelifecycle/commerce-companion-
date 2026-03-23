@@ -553,29 +553,31 @@ export default function Sales() {
                             <Badge variant="outline" className="text-[10px] px-1.5 py-0">Unlinked</Badge>
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-2">
                           <MarketplaceBadge marketplace={sale.marketplace} />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-2">
                           {sale.shipping_province ? (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">{sale.shipping_province}</Badge>
+                            <Badge variant="outline" className="text-[10px] px-1 py-0">{sale.shipping_province}</Badge>
                           ) : (
-                            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 gap-0.5">
+                            <Badge variant="destructive" className="text-[9px] px-1 py-0 gap-0.5">
                               <AlertCircle className="h-2.5 w-2.5" />N/A
                             </Badge>
                           )}
+                        </TableCell>
+                        <TableCell className="px-2">
                           <MarketplaceStatusBadge 
                             marketplace={sale.marketplace} 
                             marketplaceStatus={sale.marketplace_status} 
                           />
                         </TableCell>
-                        <TableCell className="text-[11px] text-muted-foreground whitespace-nowrap">
+                        <TableCell className="px-2 text-[11px] text-muted-foreground whitespace-nowrap">
                           {formatDate(sale.sale_date)}
                         </TableCell>
-                        <TableCell className="text-right text-xs font-medium tabular-nums">
+                        <TableCell className="px-2 text-right text-xs font-medium tabular-nums">
                           {formatCurrency(sale.sale_price)}
                         </TableCell>
-                        <TableCell className="text-right text-[11px] text-muted-foreground tabular-nums">
+                        <TableCell className="px-2 text-right text-[11px] text-muted-foreground tabular-nums">
                           {formatCurrency(sale.marketplace_fees + sale.shipping_cost)}
                         </TableCell>
                         <TableCell className="text-right text-xs font-medium tabular-nums">
