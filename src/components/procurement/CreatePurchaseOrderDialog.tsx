@@ -58,7 +58,8 @@ const TAX_OPTIONS: { value: TaxStatus; label: string }[] = [
 ];
 
 const ITEM_TYPE_CONFIG: { value: ItemType; label: string; icon: typeof Package; color: string; description: string }[] = [
-  { value: 'inventory', label: 'Inventory', icon: Package, color: 'text-[hsl(var(--info))]', description: 'Added to product inventory on receive' },
+  { value: 'inventory', label: 'Device', icon: Package, color: 'text-[hsl(var(--info))]', description: 'Serialized items (phones, laptops, tablets)' },
+  { value: 'product', label: 'Product', icon: Package, color: 'text-[hsl(var(--success))]', description: 'Bulk/generic items added to product stock' },
   { value: 'repair_parts', label: 'Repair Parts', icon: Wrench, color: 'text-[hsl(var(--warning))]', description: 'Added to repair parts inventory' },
   { value: 'expense', label: 'Expense', icon: Receipt, color: 'text-[hsl(var(--accent))]', description: 'Recorded as expense, not inventory' },
 ];
