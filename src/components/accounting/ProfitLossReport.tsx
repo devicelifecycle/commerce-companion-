@@ -390,9 +390,9 @@ export function ProfitLossReport({ companyView }: Props) {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Expenses</p>
+                <p className="text-sm text-muted-foreground">Expenses {isMgmt && <span className="text-[10px]">(Mgmt)</span>}</p>
                 <p className="text-2xl font-bold text-destructive">
-                  {formatCurrency(plData?.expenses.total || 0)}
+                  {formatCurrency(adjOpex)}
                 </p>
               </div>
               <TrendingDown className="h-8 w-8 text-destructive" />
