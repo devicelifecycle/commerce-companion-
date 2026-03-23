@@ -399,16 +399,16 @@ export function ProfitLossReport({ companyView }: Props) {
             </div>
           </CardContent>
         </Card>
-        <Card className={plData && plData.netProfit >= 0 ? 'border-emerald-500/50' : 'border-destructive/50'}>
+        <Card className={adjNetProfit >= 0 ? 'border-emerald-500/50' : 'border-destructive/50'}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Net Profit</p>
-                <p className={`text-2xl font-bold ${plData && plData.netProfit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
-                  {formatCurrency(plData?.netProfit || 0)}
+                <p className="text-sm text-muted-foreground">Net Profit {isMgmt && <span className="text-[10px]">(Mgmt)</span>}</p>
+                <p className={`text-2xl font-bold ${adjNetProfit >= 0 ? 'text-emerald-500' : 'text-destructive'}`}>
+                  {formatCurrency(adjNetProfit)}
                 </p>
                 <Badge variant="outline" className="mt-1">
-                  {formatPercent(plData?.netMargin || 0)} margin
+                  {formatPercent(adjNetMargin)} margin
                 </Badge>
               </div>
             </div>
