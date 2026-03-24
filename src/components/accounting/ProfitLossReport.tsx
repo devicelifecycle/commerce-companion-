@@ -219,8 +219,11 @@ export function ProfitLossReport({ companyView }: Props) {
       pl.payrollExpenses = pl.expenses.salaries;
 
       // Calculate totals
+      // In consolidated view (no effectiveCompany), eliminate intercompany to avoid double-counting
+      const isConsolidated = !effectiveCompany;
+      const intercompanyElimination = isConsolidated ? pl.revenue.intercompany : 0;
       pl.revenue.total = pl.revenue.amazon + pl.revenue.bestbuy + pl.revenue.shopify
-        + pl.revenue.intercompany + pl.revenue.invoiceSales + pl.revenue.otherRevenue;
+        + (isConsolidated ? 0 : pl.revenue.intercompany) + pl.revenue.invoiceSales + pl.revenue.otherRevenue;
       pl.grossProfit = pl.revenue.total - pl.cogs;
       pl.grossMargin = pl.revenue.total > 0 ? (pl.grossProfit / pl.revenue.total) * 100 : 0;
 

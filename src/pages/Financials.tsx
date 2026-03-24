@@ -35,11 +35,14 @@ import { CostLedgerPanel } from '@/components/financials/CostLedgerPanel';
 // Accounting Audit Trail
 import { AccountingAuditTrail } from '@/components/financials/AccountingAuditTrail';
 
+// Year-End Closing
+import { YearEndClosing } from '@/components/accounting/YearEndClosing';
+
 import {
   TrendingUp, ArrowLeftRight, Receipt,
   Scale, CheckSquare, Calculator, FileText, LayoutDashboard,
   Warehouse, Banknote, Wallet, BookOpen, ClipboardCheck,
-  Building2,
+  Building2, Lock,
 } from 'lucide-react';
 
 type SubView =
@@ -49,7 +52,8 @@ type SubView =
   | 'ap' | 'ar'
   | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing'
   | 'cost-devices'
-  | 'accounting-trail';
+  | 'accounting-trail'
+  | 'year-end-closing';
 
 const SECTIONS = [
   {
@@ -114,6 +118,14 @@ const SECTIONS = [
     icon: ClipboardCheck,
     views: [
       { value: 'accounting-trail' as SubView, label: 'Accounting Trail', icon: ClipboardCheck },
+    ],
+  },
+  {
+    key: 'closing',
+    label: 'Year-End',
+    icon: Lock,
+    views: [
+      { value: 'year-end-closing' as SubView, label: 'Year-End Closing', icon: Lock },
     ],
   },
 ];
@@ -229,6 +241,7 @@ export default function Financials() {
             {subView === 'tax-filing' && <TaxFilingReport />}
 
             {subView === 'accounting-trail' && <AccountingAuditTrail companyView={companyView} />}
+            {subView === 'year-end-closing' && <YearEndClosing />}
           </div>
         </div>
       </DashboardLayout>

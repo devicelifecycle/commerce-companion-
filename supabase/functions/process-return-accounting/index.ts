@@ -129,7 +129,8 @@ serve(async (req) => {
     const companyId = rma.company_id;
     const returnDate = rma.refund_date || new Date().toISOString().split("T")[0];
     const refundAmount = Number(rma.refund_amount || rma.original_cost || 0);
-    const taxRefunded = Number(rma.tax_refunded || 0);
+    // Use tax_refunded from RMA, or fall back to original sale's tax_amount
+    let taxRefunded = Number(rma.tax_refunded || 0);
 
     if (rma.return_type === "sales_return" && rma.sale_id) {
       // Fetch the original sale
@@ -140,6 +141,11 @@ serve(async (req) => {
         .single();
 
       if (!sale) throw new Error("Original sale not found");
+
+      // If tax_refunded wasn't explicitly set, use original sale's tax
+      if (taxRefunded === 0 && Number(sale.tax_amount || 0) > 0) {
+        taxRefunded = Number(sale.tax_amount);
+      }
 
       const codes = ACCOUNT_MAP[sale.marketplace] || ACCOUNT_MAP["other"];
 

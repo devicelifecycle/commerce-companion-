@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useDataRefetch } from '@/hooks/useDataRefetch';
 import { SupplierReturnDialog } from '@/components/inventory/SupplierReturnDialog';
+import { InventoryWriteOffDialog } from '@/components/inventory/InventoryWriteOffDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/lib/auth';
@@ -37,7 +38,7 @@ import {
 import { toast } from 'sonner';
 import {
   Upload, ArrowRightLeft, Smartphone, Boxes, List,
-  Download, Send, Trash2, Wrench, RotateCcw,
+  Download, Send, Trash2, Wrench, RotateCcw, XCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -90,6 +91,8 @@ export default function Inventory() {
   const [repairDevice, setRepairDevice] = useState<any>(null);
   const [bulkRmaOpen, setBulkRmaOpen] = useState(false);
   const [bulkRmaItems, setBulkRmaItems] = useState<any[]>([]);
+  const [writeOffOpen, setWriteOffOpen] = useState(false);
+  const [writeOffDevices, setWriteOffDevices] = useState<any[]>([]);
 
   const selection = useTableSelection(devices);
 
@@ -163,6 +166,20 @@ export default function Inventory() {
     }));
     setBulkRmaItems(items);
     setBulkRmaOpen(true);
+  };
+
+  const handleBulkWriteOff = () => {
+    const items = selection.selectedItems.filter((d: any) => d.status !== 'sold').map((d: any) => ({
+      id: d.id,
+      brand: d.brand,
+      model: d.model,
+      imei: d.imei,
+      cost_price: d.cost_price,
+      company_id: d.company_id,
+    }));
+    if (items.length === 0) { toast.error('No eligible devices selected (sold devices cannot be written off)'); return; }
+    setWriteOffDevices(items);
+    setWriteOffOpen(true);
   };
 
   if (!canView) {
@@ -346,6 +363,7 @@ export default function Inventory() {
               { label: 'Mark Sold', onClick: () => handleBulkStatusChange('sold') },
               { label: 'Send to FBA', icon: <Send className="h-4 w-4 mr-1" />, onClick: handleBulkSendToFBA },
               { label: 'Delete', icon: <Trash2 className="h-4 w-4 mr-1" />, onClick: () => setBulkDeleteConfirm(true), variant: 'destructive' as const },
+              { label: 'Write Off', icon: <XCircle className="h-4 w-4 mr-1" />, onClick: handleBulkWriteOff, variant: 'destructive' as const },
             ] : []),
           ]}
         />
@@ -376,6 +394,14 @@ export default function Inventory() {
           open={bulkRmaOpen}
           onOpenChange={setBulkRmaOpen}
           preselectedItems={bulkRmaItems}
+          onSuccess={() => { selection.clear(); refetch(); }}
+        />
+
+        {/* Write-Off Dialog */}
+        <InventoryWriteOffDialog
+          open={writeOffOpen}
+          onOpenChange={setWriteOffOpen}
+          devices={writeOffDevices}
           onSuccess={() => { selection.clear(); refetch(); }}
         />
       </div>
