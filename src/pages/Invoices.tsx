@@ -747,19 +747,14 @@ export default function Invoices() {
 
   const deleteInvoice = async (id: string) => {
     try {
+      const { cleanupBeforeInvoiceDelete } = await import('@/lib/accounting/reversalUtils');
+      const { journalCount } = await cleanupBeforeInvoiceDelete(id);
+
+      const { error: delErr } = await supabase.from('invoices').delete().eq('id', id);
+      if (delErr) throw delErr;
+
       const invoice = invoices.find(i => i.id === id);
-      if (invoice && invoice.status !== 'cancelled') await cancelInvoice(id);
-      await supabase.from('invoice_items').delete().eq('invoice_id', id);
-      const { data: arRecord } = await supabase.from('accounts_receivable').select('id').eq('invoice_id', id).maybeSingle();
-      if (arRecord) await supabase.from('ar_payments').delete().eq('accounts_receivable_id', arRecord.id);
-      await supabase.from('accounts_receivable').delete().eq('invoice_id', id);
-      const { data: jes } = await supabase.from('journal_entries').select('id').eq('reference_id', id);
-      if (jes) for (const je of jes) {
-        await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', je.id);
-        await supabase.from('journal_entries').delete().eq('id', je.id);
-      }
-      await supabase.from('invoices').delete().eq('id', id);
-      toast.success(`Invoice ${invoice?.invoice_number} deleted`);
+      toast.success(`Invoice ${invoice?.invoice_number} deleted — ${journalCount} journal entries reversed`);
       fetchInvoices();
     } catch (error: any) {
       console.error('Error deleting invoice:', error);
