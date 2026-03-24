@@ -442,7 +442,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
             try {
               await createPurchaseJournalEntry({
                 companyId: po.company_id,
-                purchaseId: apRecord?.id || po.id,
+                purchaseId: apRecordId || po.id,
                 receiveDate: receivedDate,
                 supplierName: po.supplier_name,
                 poNumber: po.po_number,
