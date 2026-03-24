@@ -103,6 +103,14 @@ export function BalanceSheetReport({ companyView }: Props) {
         else if (code === '3200' || code === '3201') bs.equity.currentYearPL += balance;
       });
 
+      // In consolidated view, eliminate intercompany balances
+      const isConsolidated = !effectiveCompany;
+      if (isConsolidated) {
+        // Intercompany receivables and payables net to zero in consolidation
+        bs.assets.intercompanyReceivable = 0;
+        bs.liabilities.intercompanyPayable = 0;
+      }
+
       bs.assets.totalAssets = bs.assets.cash + bs.assets.accountsReceivable + bs.assets.inventory
         + bs.assets.prepaidExpenses + bs.assets.intercompanyReceivable;
 
