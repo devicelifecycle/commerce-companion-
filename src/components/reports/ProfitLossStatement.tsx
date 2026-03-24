@@ -133,50 +133,136 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
       const { start: prevStart, end: prevEnd } = getPeriodDates(prevPeriod, periodType);
 
       const fetchPeriodData = async (startDate: Date, endDate: Date): Promise<PLData> => {
-        const companyFilter = viewMode !== 'consolidated'
-          ? `company_id.eq.${viewMode}`
-          : null;
+        const startStr = startDate.toISOString().split('T')[0];
+        const endStr = endDate.toISOString().split('T')[0];
 
-        // Fetch sales
-        let salesQuery = supabase
-          .from('sales')
-          .select('sale_price, profit, marketplace, company_id')
-          .gte('sale_date', startDate.toISOString())
-          .lte('sale_date', endDate.toISOString());
-        
-        if (companyFilter) salesQuery = salesQuery.or(companyFilter);
-        const { data: sales } = await salesQuery;
+        // ── Source of truth: journal_entry_lines joined to chart_of_accounts ──
+        // Filter journal entries by entry_date within the period
+        let jeQuery = supabase
+          .from('journal_entries')
+          .select('id, company_id')
+          .gte('entry_date', startStr)
+          .lte('entry_date', endStr);
 
-        // Fetch invoices (non-cancelled) for invoice revenue
-        let invoicesQuery = supabase
-          .from('invoices')
-          .select('subtotal, tax_amount, total, status, company_id')
-          .gte('issue_date', startDate.toISOString().split('T')[0])
-          .lte('issue_date', endDate.toISOString().split('T')[0])
-          .neq('status', 'cancelled');
-        
-        if (companyFilter) invoicesQuery = invoicesQuery.or(companyFilter);
-        const { data: invoices } = await invoicesQuery;
+        if (viewMode !== 'consolidated') {
+          jeQuery = jeQuery.eq('company_id', viewMode);
+        }
 
-        // Fetch expenses
+        const { data: journalEntries } = await jeQuery;
+        const jeIds = journalEntries?.map(j => j.id) || [];
+
+        // Fetch all lines for those JEs with account info
+        let lines: Array<{
+          debit_amount: number | null;
+          credit_amount: number | null;
+          chart_of_accounts: {
+            account_code: string;
+            account_name: string;
+            account_type: string;
+            account_subtype: string | null;
+          } | null;
+        }> = [];
+
+        if (jeIds.length > 0) {
+          // Batch in chunks of 200 to avoid query limits
+          for (let i = 0; i < jeIds.length; i += 200) {
+            const chunk = jeIds.slice(i, i + 200);
+            const { data: chunkLines } = await supabase
+              .from('journal_entry_lines')
+              .select('debit_amount, credit_amount, account_id, chart_of_accounts!inner(account_code, account_name, account_type, account_subtype)')
+              .in('journal_entry_id', chunk);
+            if (chunkLines) lines = lines.concat(chunkLines as any);
+          }
+        }
+
+        // ── Aggregate by account type/subtype ──
+        const grossSalesByMarketplace: Record<string, number> = {};
+        let totalRevenue = 0;
+        let totalCOGS = 0;
+        const operatingExpensesByCategory: Record<string, number> = {};
+        let intercompanyCharges = 0;
+        let otherIncome = 0;
+
+        for (const line of lines) {
+          const acct = line.chart_of_accounts;
+          if (!acct) continue;
+          const debit = Number(line.debit_amount || 0);
+          const credit = Number(line.credit_amount || 0);
+
+          if (acct.account_type === 'revenue') {
+            // Revenue accounts have credit normal balance
+            const amount = credit - debit;
+            if (acct.account_subtype === 'Tax Revenue') continue; // Exclude tax collected
+            if (acct.account_subtype === 'Other Income') {
+              if (acct.account_name.includes('Inter-company')) {
+                intercompanyCharges += amount;
+              } else {
+                otherIncome += amount;
+              }
+              continue;
+            }
+            // Map to marketplace from account name
+            const name = acct.account_name.toLowerCase();
+            let mp = 'other';
+            if (name.includes('amazon')) mp = 'amazon';
+            else if (name.includes('bestbuy') || name.includes('best buy')) mp = 'bestbuy';
+            else if (name.includes('shopify')) mp = 'shopify';
+            else if (name.includes('direct') || name.includes('invoice')) mp = 'invoices';
+            else if (name.includes('temu')) mp = 'temu';
+            grossSalesByMarketplace[mp] = (grossSalesByMarketplace[mp] || 0) + amount;
+            totalRevenue += amount;
+          } else if (acct.account_type === 'expense') {
+            // Expense accounts have debit normal balance
+            const amount = debit - credit;
+            if (acct.account_subtype === 'COGS') {
+              totalCOGS += amount;
+            } else {
+              // Map to opex category from account name/code
+              const code = acct.account_code;
+              let cat = 'other';
+              if (code.startsWith('60') && acct.account_name.toLowerCase().includes('marketplace')) cat = 'marketplace_fees';
+              else if (code.startsWith('61')) cat = 'shipping';
+              else if (code === '6200') cat = 'utilities';
+              else if (code === '6300') cat = 'payroll';
+              else if (code === '6400') cat = 'marketing';
+              else if (code === '6500') cat = 'office';
+              else if (code === '6600') cat = 'professional_services';
+              else if (code === '6700') cat = 'insurance';
+              else if (code === '6800') cat = 'other'; // bank fees
+              else if (code === '6900') cat = 'software';
+              else if (code === '7000') cat = 'utilities';
+              else if (code === '7100') cat = 'other';
+              operatingExpensesByCategory[cat] = (operatingExpensesByCategory[cat] || 0) + amount;
+            }
+          }
+        }
+
+        // Also pull in expenses that may not have JEs yet (fallback)
         let expensesQuery = supabase
           .from('expenses')
-          .select('amount, gst_hst_amount, pst_amount, category, company_id, is_shared, allocation_ves, allocation_tgw')
-          .gte('expense_date', startDate.toISOString().split('T')[0])
-          .lte('expense_date', endDate.toISOString().split('T')[0]);
-        
-        if (companyFilter) expensesQuery = expensesQuery.or(`${companyFilter},is_shared.eq.true`);
+          .select('id, amount, gst_hst_amount, pst_amount, category, company_id, is_shared, allocation_ves, allocation_tgw')
+          .gte('expense_date', startStr)
+          .lte('expense_date', endStr);
+        if (viewMode !== 'consolidated') {
+          expensesQuery = expensesQuery.or(`company_id.eq.${viewMode},is_shared.eq.true`);
+        }
         const { data: expenses } = await expensesQuery;
 
-        // Fetch inventory purchases (devices)
-        let devicesQuery = supabase
-          .from('devices')
-          .select('cost_price, status, purchase_date, company_id');
-        
-        if (companyFilter) devicesQuery = devicesQuery.or(companyFilter);
-        const { data: devices } = await devicesQuery;
+        // Check which expenses have JEs already
+        const expenseIds = expenses?.map(e => e.id) || [];
+        let expensesWithJEs = new Set<string>();
+        if (expenseIds.length > 0) {
+          for (let i = 0; i < expenseIds.length; i += 200) {
+            const chunk = expenseIds.slice(i, i + 200);
+            const { data: existingJEs } = await supabase
+              .from('journal_entries')
+              .select('reference_id')
+              .in('reference_id', chunk);
+            existingJEs?.forEach(je => { if (je.reference_id) expensesWithJEs.add(je.reference_id); });
+          }
+        }
 
-        // Calculate effective expense
+        // Add expenses without JEs to opex (fallback for unbooked expenses)
         const getEffectiveExpense = (exp: any) => {
           const total = (exp.amount || 0) + (exp.gst_hst_amount || 0) + (exp.pst_amount || 0);
           if (!exp.is_shared) return total;
@@ -189,82 +275,70 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
           return total;
         };
 
-        // Sales by marketplace
-        const grossSalesByMarketplace: Record<string, number> = {};
-        sales?.forEach(s => {
-          grossSalesByMarketplace[s.marketplace] = (grossSalesByMarketplace[s.marketplace] || 0) + Number(s.sale_price);
+        expenses?.filter(e => !expensesWithJEs.has(e.id) && e.category !== 'inventory').forEach(e => {
+          const cat = e.category;
+          const amount = getEffectiveExpense(e);
+          operatingExpensesByCategory[cat] = (operatingExpensesByCategory[cat] || 0) + amount;
         });
 
-        // Add invoice revenue as a separate line
-        const invoiceRevenue = invoices?.reduce((sum, inv) => sum + Number(inv.subtotal || 0), 0) || 0;
-        if (invoiceRevenue > 0) {
-          grossSalesByMarketplace['invoices'] = invoiceRevenue;
+        // COGS fallback: if no COGS JEs exist, use device purchases
+        if (totalCOGS === 0 && jeIds.length === 0) {
+          let devicesQuery = supabase
+            .from('devices')
+            .select('cost_price, purchase_date')
+            .gte('purchase_date', startStr)
+            .lte('purchase_date', endStr);
+          if (viewMode !== 'consolidated') devicesQuery = devicesQuery.eq('company_id', viewMode);
+          const { data: devices } = await devicesQuery;
+          totalCOGS = devices?.reduce((sum, d) => sum + Number(d.cost_price), 0) || 0;
         }
 
-        const grossSales = Object.values(grossSalesByMarketplace).reduce((sum, v) => sum + v, 0);
-        const returns = 0; // Would need returns tracking
-        const netSales = grossSales - returns;
-
-        // COGS calculation
-        const periodPurchases = devices?.filter(d => 
-          d.purchase_date && new Date(d.purchase_date) >= startDate && new Date(d.purchase_date) <= endDate
-        ) || [];
-        const purchases = periodPurchases.reduce((sum, d) => sum + Number(d.cost_price), 0);
-        
-        // Simple approximation for inventory
-        const endingInventory = devices?.filter(d => d.status === 'in_stock')
-          .reduce((sum, d) => sum + Number(d.cost_price), 0) || 0;
-        const beginningInventory = endingInventory + purchases; // Simplified
-        
-        const inventoryExpenses = expenses?.filter(e => e.category === 'inventory') || [];
-        const cogsFromExpenses = inventoryExpenses.reduce((sum, e) => sum + getEffectiveExpense(e), 0);
-        const totalCOGS = purchases + cogsFromExpenses;
+        const returns = 0; // Returns are already reflected in JEs as revenue reversals
+        const netSales = totalRevenue - returns;
         const grossProfit = netSales - totalCOGS;
 
-        // Operating expenses by category
-        const operatingExpensesByCategory: Record<string, number> = {};
-        expenses?.filter(e => e.category !== 'inventory').forEach(e => {
-          const cat = e.category;
-          operatingExpensesByCategory[cat] = (operatingExpensesByCategory[cat] || 0) + getEffectiveExpense(e);
-        });
+        // Inventory values (for display only)
+        let inventoryQuery = supabase
+          .from('devices')
+          .select('cost_price, status, purchase_date');
+        if (viewMode !== 'consolidated') inventoryQuery = inventoryQuery.eq('company_id', viewMode);
+        const { data: allDevices } = await inventoryQuery;
+        
+        const endingInventory = allDevices?.filter(d => d.status === 'in_stock')
+          .reduce((sum, d) => sum + Number(d.cost_price), 0) || 0;
+        const periodPurchases = allDevices?.filter(d =>
+          d.purchase_date && d.purchase_date >= startStr && d.purchase_date <= endStr
+        ) || [];
+        const purchases = periodPurchases.reduce((sum, d) => sum + Number(d.cost_price), 0);
+        const beginningInventory = endingInventory + purchases;
 
         const totalOperatingExpenses = Object.values(operatingExpensesByCategory).reduce((sum, v) => sum + v, 0);
         const operatingProfit = grossProfit - totalOperatingExpenses;
 
-        // Fetch management labor cost from sold devices in the period
+        // Management costing data
         let soldDevicesQuery = supabase
           .from('sales')
           .select('devices!inner(management_labor_cost)')
           .gte('sale_date', startDate.toISOString())
           .lte('sale_date', endDate.toISOString())
           .not('device_id', 'is', null);
-        if (companyFilter) soldDevicesQuery = soldDevicesQuery.or(companyFilter);
+        if (viewMode !== 'consolidated') soldDevicesQuery = soldDevicesQuery.eq('company_id', viewMode);
         const { data: soldDevicesData } = await soldDevicesQuery;
-
-        const managementLaborCost = soldDevicesData?.reduce((sum: number, s: any) => 
+        const managementLaborCost = soldDevicesData?.reduce((sum: number, s: any) =>
           sum + Number(s.devices?.management_labor_cost || 0), 0) || 0;
 
-        // Calculate payroll/labor expenses (categories that represent actual labor payments)
-        const payrollCategories = ['payroll', 'salaries'];
-        const payrollExpenses = expenses?.filter(e => 
-          payrollCategories.includes(e.category)
-        ).reduce((sum, e) => sum + getEffectiveExpense(e), 0) || 0;
+        const payrollExpenses = operatingExpensesByCategory['payroll'] || 0;
 
-        // Fetch repair parts cost for reference
         let repairsQuery = supabase
           .from('device_repairs')
           .select('total_parts_cost')
           .eq('status', 'completed')
           .gte('completed_at', startDate.toISOString())
           .lte('completed_at', endDate.toISOString());
-        if (companyFilter) repairsQuery = repairsQuery.or(companyFilter);
+        if (viewMode !== 'consolidated') repairsQuery = repairsQuery.eq('company_id', viewMode);
         const { data: repairs } = await repairsQuery;
-
         const repairPartsCost = repairs?.reduce((sum, r) => sum + Number(r.total_parts_cost || 0), 0) || 0;
 
-        // Other income/expenses
-        const intercompanyCharges = 0;
-        const otherIncome = 0;
         const netProfitBeforeTax = operatingProfit + otherIncome - intercompanyCharges;
         const incomeTax = netProfitBeforeTax > 0 ? netProfitBeforeTax * 0.15 : 0;
         const netProfitAfterTax = netProfitBeforeTax - incomeTax;
