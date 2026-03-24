@@ -249,6 +249,25 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
         }));
         const { error: itemsError } = await supabase.from('purchase_order_items').insert(items);
         if (itemsError) throw itemsError;
+
+        // Create AP record immediately so the obligation is visible in AP view
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 30);
+        await supabase.from('accounts_payable').insert({
+          company_id: selectedCompanyId,
+          vendor_name: formData.supplier_name,
+          vendor_id: formData.supplier_id,
+          bill_number: formData.po_number,
+          bill_date: formData.po_date,
+          due_date: dueDate.toISOString().split('T')[0],
+          original_amount: grandTotal,
+          gst_hst_amount: totalGst,
+          pst_amount: totalPst,
+          category: 'inventory_purchase',
+          description: `PO ${formData.po_number} — ${validItems.length} line items`,
+          status: 'outstanding',
+          created_by: user?.id,
+        });
       }
 
       toast.success('Purchase Order created');
