@@ -372,7 +372,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
         toast.info(`${returnSplits.length} supplier return(s) created in Returns`);
       }
 
-      // 7. Auto-create AP entry (only for accepted items value)
+      // 7. Update existing AP entry (created when PO was first created) or create if missing
       if (createAP) {
         let acceptedQty = 0;
         for (const [, item] of acceptedByItem) acceptedQty += item.qty;
@@ -383,31 +383,56 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
         const apSubtotal = parseFloat((apAmount - apGst - apPst).toFixed(2));
 
         if (apAmount > 0) {
-          const dueDate = new Date();
-          dueDate.setDate(dueDate.getDate() + 30);
+          // Check if AP already exists from PO creation
+          const { data: existingAP } = await supabase
+            .from('accounts_payable')
+            .select('id')
+            .eq('bill_number', po.po_number)
+            .eq('company_id', po.company_id)
+            .limit(1);
 
-          const { data: apRecord, error: apError } = await supabase.from('accounts_payable').insert({
-            vendor_name: po.supplier_name,
-            vendor_id: po.supplier_id,
-            original_amount: apAmount,
-            balance_due: apAmount,
-            gst_hst_amount: apGst,
-            pst_amount: apPst,
-            bill_date: receivedDate,
-            due_date: dueDate.toISOString().split('T')[0],
-            status: 'unpaid',
-            category: 'inventory_purchase',
-            description: `PO ${po.po_number} — ${po.supplier_name}`,
-            bill_number: po.po_number,
-            company_id: po.company_id,
-            created_by: user.id,
-          }).select('id').single();
+          let apRecordId: string | null = null;
 
-          if (apError) {
-            console.error('AP creation error:', apError);
-            toast.warning('PO received but AP entry failed — create manually in Accounts Payable');
+          if (existingAP && existingAP.length > 0) {
+            // Update existing AP with final received amounts
+            apRecordId = existingAP[0].id;
+            await supabase.from('accounts_payable').update({
+              original_amount: apAmount,
+              balance_due: apAmount,
+              gst_hst_amount: apGst,
+              pst_amount: apPst,
+              description: `PO ${po.po_number} — ${po.supplier_name} (received)`,
+            }).eq('id', apRecordId);
+            toast.success(`AP entry updated for ${fmtCurrency(apAmount)}`);
           } else {
-            toast.success(`AP entry created for ${fmtCurrency(apAmount)}`);
+            // Create AP if it doesn't exist (e.g., legacy POs created before this fix)
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 30);
+
+            const { data: apRecord, error: apError } = await supabase.from('accounts_payable').insert({
+              vendor_name: po.supplier_name,
+              vendor_id: po.supplier_id,
+              original_amount: apAmount,
+              balance_due: apAmount,
+              gst_hst_amount: apGst,
+              pst_amount: apPst,
+              bill_date: receivedDate,
+              due_date: dueDate.toISOString().split('T')[0],
+              status: 'unpaid',
+              category: 'inventory_purchase',
+              description: `PO ${po.po_number} — ${po.supplier_name}`,
+              bill_number: po.po_number,
+              company_id: po.company_id,
+              created_by: user.id,
+            }).select('id').single();
+
+            if (apError) {
+              console.error('AP creation error:', apError);
+              toast.warning('PO received but AP entry failed — create manually in Accounts Payable');
+            } else {
+              apRecordId = apRecord?.id || null;
+              toast.success(`AP entry created for ${fmtCurrency(apAmount)}`);
+            }
           }
 
           // 8. Auto-post journal entry
