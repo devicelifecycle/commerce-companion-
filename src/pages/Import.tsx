@@ -894,7 +894,7 @@ export default function Import() {
           toast.error(`AP creation failed for ${draft.supplierName}: ${apError.message}`);
         }
 
-        // If paid immediately, record AP payment and mark PO as paid
+        // If paid immediately, record AP payment, JE, and mark PO as paid
         if (isPaid && apRecord) {
           await supabase.from('ap_payments').insert({
             accounts_payable_id: apRecord.id,
@@ -913,6 +913,21 @@ export default function Import() {
               payment_method: draft.paymentMethod,
             })
             .eq('id', purchaseOrder.id);
+
+          // Post JE: Dr. AP / Cr. Cash
+          try {
+            const { createPaymentMadeJournalEntry } = await import('@/lib/accounting/journalAutomation');
+            await createPaymentMadeJournalEntry({
+              companyId: batchInfo.company_id,
+              paymentDate: draft.paymentDate,
+              amount: invoiceTotal,
+              referenceId: apRecord.id,
+              supplierName: draft.supplierName,
+              isVES,
+            });
+          } catch (jeErr) {
+            console.error('AP payment JE failed:', jeErr);
+          }
         }
 
         // Journal entry: Dr. Inventory + Dr. GST/HST → Cr. AP

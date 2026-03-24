@@ -169,7 +169,27 @@ export function ReturnsManagement() {
 
       if (error) throw error;
 
-      if (newStatus !== 'refunded') {
+      // For purchase return completions (exchange/repair), also trigger accounting
+      if (newStatus === 'completed') {
+        const rma = returns.find(r => r.id === id);
+        if (rma?.return_type === 'purchase_return') {
+          try {
+            const { error: accError } = await supabase.functions.invoke('process-return-accounting', {
+              body: { return_id: id },
+            });
+            if (accError) {
+              console.error('Return accounting error:', accError);
+              toast.error('Status updated but accounting entries could not be created');
+            } else {
+              toast.success('Return completed with accounting entries');
+            }
+          } catch (accErr) {
+            console.error('Error calling return accounting:', accErr);
+          }
+        } else {
+          toast.success('Return status updated');
+        }
+      } else if (newStatus !== 'refunded') {
         toast.success('Return status updated');
       }
       fetchData();

@@ -188,6 +188,82 @@ export async function cleanupBeforePODelete(
 }
 
 /**
+ * Full cleanup for deleting an invoice:
+ * - Reverse account balances from journal entries
+ * - Remove journal entry lines and entries
+ * - Remove AR payments and AR records
+ * - Remove invoice items
+ */
+export async function cleanupBeforeInvoiceDelete(invoiceId: string): Promise<{ journalCount: number }> {
+  // 1. Reverse account balances from JE lines before deleting
+  const { data: jes } = await supabase
+    .from('journal_entries')
+    .select('id')
+    .eq('reference_id', invoiceId);
+
+  let journalCount = 0;
+  if (jes && jes.length > 0) {
+    for (const je of jes) {
+      const { data: lines } = await supabase
+        .from('journal_entry_lines')
+        .select('account_id, debit_amount, credit_amount')
+        .eq('journal_entry_id', je.id);
+
+      if (lines) {
+        for (const line of lines) {
+          const { data: account } = await supabase
+            .from('chart_of_accounts')
+            .select('current_balance, normal_balance')
+            .eq('id', line.account_id)
+            .single();
+
+          if (account) {
+            const debit = Number(line.debit_amount || 0);
+            const credit = Number(line.credit_amount || 0);
+            const current = Number(account.current_balance || 0);
+            const newBal = account.normal_balance === 'debit'
+              ? current - debit + credit
+              : current - credit + debit;
+            await supabase.from('chart_of_accounts').update({ current_balance: newBal }).eq('id', line.account_id);
+          }
+        }
+      }
+    }
+
+    // Delete lines then entries
+    const jeIds = jes.map(j => j.id);
+    const { error: linesErr } = await supabase.from('journal_entry_lines').delete().in('journal_entry_id', jeIds);
+    if (linesErr) throw new Error(`Failed to delete invoice JE lines: ${linesErr.message}`);
+
+    const { error: jesErr } = await supabase.from('journal_entries').delete().in('id', jeIds);
+    if (jesErr) throw new Error(`Failed to delete invoice JEs: ${jesErr.message}`);
+
+    journalCount = jeIds.length;
+  }
+
+  // 2. Clean up AR payments and AR records
+  const { data: arRecord } = await supabase
+    .from('accounts_receivable')
+    .select('id')
+    .eq('invoice_id', invoiceId)
+    .maybeSingle();
+
+  if (arRecord) {
+    const { error: arPayErr } = await supabase.from('ar_payments').delete().eq('accounts_receivable_id', arRecord.id);
+    if (arPayErr) throw new Error(`Failed to delete AR payments: ${arPayErr.message}`);
+
+    const { error: arErr } = await supabase.from('accounts_receivable').delete().eq('id', arRecord.id);
+    if (arErr) throw new Error(`Failed to delete AR record: ${arErr.message}`);
+  }
+
+  // 3. Clean up invoice items
+  const { error: itemsErr } = await supabase.from('invoice_items').delete().eq('invoice_id', invoiceId);
+  if (itemsErr) throw new Error(`Failed to delete invoice items: ${itemsErr.message}`);
+
+  return { journalCount };
+}
+
+/**
  * Pre-delete check for devices: ensure no active sales or repairs reference it.
  */
 export async function checkDeviceDeletable(deviceId: string): Promise<{ canDelete: boolean; reason?: string }> {
