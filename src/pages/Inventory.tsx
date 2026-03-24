@@ -396,6 +396,14 @@ export default function Inventory() {
           preselectedItems={bulkRmaItems}
           onSuccess={() => { selection.clear(); refetch(); }}
         />
+
+        {/* Write-Off Dialog */}
+        <InventoryWriteOffDialog
+          open={writeOffOpen}
+          onOpenChange={setWriteOffOpen}
+          devices={writeOffDevices}
+          onSuccess={() => { selection.clear(); refetch(); }}
+        />
       </div>
     </DashboardLayout>
   );
