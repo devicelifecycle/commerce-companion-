@@ -16,7 +16,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Search, Download, Plus, ClipboardList, X, Trash2, PackageCheck, Copy, Eye, Package, Wrench, Receipt } from 'lucide-react';
+import { Search, Download, Plus, ClipboardList, X, Trash2, PackageCheck, Copy, Eye, Package, Wrench, Receipt, Upload } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -27,6 +27,7 @@ import {
 import { PurchaseOrdersGuide } from '@/components/guides/PurchaseOrdersGuide';
 import { CreatePurchaseOrderDialog } from '@/components/procurement/CreatePurchaseOrderDialog';
 import { ReceivePODialog } from '@/components/procurement/ReceivePODialog';
+import { ImportRepairPartsDialog } from '@/components/procurement/ImportRepairPartsDialog';
 import { PODetailDialog } from '@/components/procurement/PODetailDialog';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
@@ -84,6 +85,7 @@ export default function PurchaseOrders() {
   const [detailPoId, setDetailPoId] = useState<string | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [cloneLoading, setCloneLoading] = useState<string | null>(null);
+  const [showImportRepairParts, setShowImportRepairParts] = useState(false);
 
   const canManage = hasPermission('inventory_manage', 'edit') || isSuperAdmin;
 
@@ -256,9 +258,14 @@ export default function PurchaseOrders() {
               <Download className="h-3.5 w-3.5 mr-1" /> Export
             </Button>
             {canManage && (
-              <Button size="sm" onClick={() => setShowCreateDialog(true)}>
-                <Plus className="h-3.5 w-3.5 mr-1" /> Create PO
-              </Button>
+              <>
+                <Button variant="outline" size="sm" onClick={() => setShowImportRepairParts(true)}>
+                  <Upload className="h-3.5 w-3.5 mr-1" /> Import Parts Invoice
+                </Button>
+                <Button size="sm" onClick={() => setShowCreateDialog(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Create PO
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -433,6 +440,7 @@ export default function PurchaseOrders() {
         <CreatePurchaseOrderDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} onSuccess={loadOrders} />
         <ReceivePODialog open={showReceiveDialog} onOpenChange={setShowReceiveDialog} onSuccess={loadOrders} poId={receivePoId} />
         <PODetailDialog open={showDetailDialog} onOpenChange={setShowDetailDialog} onUpdate={loadOrders} poId={detailPoId} canManage={canManage} />
+        <ImportRepairPartsDialog open={showImportRepairParts} onOpenChange={setShowImportRepairParts} onSuccess={loadOrders} />
       </div>
     </DashboardLayout>
     </PermissionGuard>
