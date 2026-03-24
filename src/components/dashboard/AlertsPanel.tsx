@@ -82,6 +82,26 @@ export function AlertsPanel() {
         newAlerts.push({ id: 'low-margin', type: 'warning', category: 'margin', title: 'Low Margin', message: `MTD ${mtdMargin.toFixed(1)}% (target 20%+)`, link: '/reports', timestamp: new Date() });
       }
 
+      // Unlinked orders (revenue_only) — COGS not booked
+      let unlinkQuery = supabase.from('sales').select('id, sale_date, sale_price').eq('accounting_status', 'revenue_only');
+      if (selectedCompany) unlinkQuery = unlinkQuery.eq('company_id', selectedCompany.id);
+      const { data: unlinkSales } = await unlinkQuery;
+
+      if (unlinkSales && unlinkSales.length > 0) {
+        const totalUnlinked = unlinkSales.reduce((s, r) => s + Number(r.sale_price || 0), 0);
+        const oldUnlinked = unlinkSales.filter(s => differenceInDays(new Date(), new Date(s.sale_date)) >= 7);
+        const severity = oldUnlinked.length >= 5 ? 'critical' : unlinkSales.length >= 3 ? 'warning' : 'info';
+        newAlerts.push({
+          id: 'unlinked-orders',
+          type: severity as Alert['type'],
+          category: 'margin',
+          title: 'Unlinked Orders — COGS Missing',
+          message: `${unlinkSales.length} orders ($${totalUnlinked.toLocaleString()}) without device/cost linked`,
+          link: '/sales',
+          timestamp: new Date(),
+        });
+      }
+
       const inStockCount = devices?.length || 0;
       if (inStockCount < 10 && inStockCount > 0) {
         newAlerts.push({ id: 'low-inventory', type: 'warning', category: 'inventory', title: 'Low Stock', message: `Only ${inStockCount} in stock`, link: '/inventory', timestamp: new Date() });
