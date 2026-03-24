@@ -226,15 +226,117 @@ export function DeviceRepairDialog({ open, onOpenChange, device, onSuccess }: De
           original_cost_price: originalCost,
         }).eq('id', device.id);
 
+        // === JOURNAL ENTRIES ===
+        // Look up chart of accounts for this company
+        const { data: accounts } = await supabase
+          .from('chart_of_accounts')
+          .select('id, account_code')
+          .eq('company_id', device.company_id)
+          .in('account_code', ['1100', '1101', '1110', '1111', '2300', '2301']);
+
+        const deviceInventoryId = accounts?.find(a => ['1100', '1101'].includes(a.account_code))?.id;
+        const partsInventoryId = accounts?.find(a => ['1110', '1111'].includes(a.account_code))?.id;
+        const accruedLaborId = accounts?.find(a => ['2300', '2301'].includes(a.account_code))?.id;
+
+        const today = new Date().toISOString().split('T')[0];
+        const entryPrefix = `RPR-${today.replace(/-/g, '')}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+        const deviceDesc = `${device.brand} ${device.model}${device.imei ? ` (${device.imei})` : ''}`;
+
+        // Entry 1: Dr. Inventory (Device) / Cr. Repair Parts Inventory — move parts cost into device asset
+        if (totalPartsCost > 0 && deviceInventoryId && partsInventoryId) {
+          const { data: partsEntry } = await supabase.from('journal_entries').insert({
+            company_id: device.company_id,
+            entry_number: `${entryPrefix}-P`,
+            entry_date: today,
+            description: `Repair parts capitalized — ${deviceDesc}`,
+            reference_type: 'repair',
+            reference_id: repairId,
+            total_debit: totalPartsCost,
+            total_credit: totalPartsCost,
+            is_auto_generated: true,
+            status: 'posted',
+            posted_at: new Date().toISOString(),
+          }).select('id').single();
+
+          if (partsEntry) {
+            await supabase.from('journal_entry_lines').insert([
+              {
+                journal_entry_id: partsEntry.id,
+                account_id: deviceInventoryId,
+                description: `Parts capitalized to device — ${deviceDesc}`,
+                debit_amount: totalPartsCost,
+                credit_amount: 0,
+              },
+              {
+                journal_entry_id: partsEntry.id,
+                account_id: partsInventoryId,
+                description: `Repair parts consumed — ${deviceDesc}`,
+                debit_amount: 0,
+                credit_amount: totalPartsCost,
+              },
+            ]);
+
+            // Update account balances
+            const { data: devInvAcct } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', deviceInventoryId).single();
+            await supabase.from('chart_of_accounts').update({ current_balance: Number(devInvAcct?.current_balance || 0) + totalPartsCost }).eq('id', deviceInventoryId);
+
+            const { data: partsInvAcct } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', partsInventoryId).single();
+            await supabase.from('chart_of_accounts').update({ current_balance: Number(partsInvAcct?.current_balance || 0) - totalPartsCost }).eq('id', partsInventoryId);
+          }
+        }
+
+        // Entry 2: Dr. Inventory (Device) / Cr. Accrued Repair Labor — capitalize labour into asset
+        if (totalLaborCost > 0 && deviceInventoryId && accruedLaborId) {
+          const { data: laborEntry } = await supabase.from('journal_entries').insert({
+            company_id: device.company_id,
+            entry_number: `${entryPrefix}-L`,
+            entry_date: today,
+            description: `Repair labor capitalized — ${deviceDesc}`,
+            reference_type: 'repair',
+            reference_id: repairId,
+            total_debit: totalLaborCost,
+            total_credit: totalLaborCost,
+            is_auto_generated: true,
+            status: 'posted',
+            posted_at: new Date().toISOString(),
+          }).select('id').single();
+
+          if (laborEntry) {
+            await supabase.from('journal_entry_lines').insert([
+              {
+                journal_entry_id: laborEntry.id,
+                account_id: deviceInventoryId,
+                description: `Labor capitalized to device — ${deviceDesc}`,
+                debit_amount: totalLaborCost,
+                credit_amount: 0,
+              },
+              {
+                journal_entry_id: laborEntry.id,
+                account_id: accruedLaborId,
+                description: `Accrued repair labor — ${deviceDesc}`,
+                debit_amount: 0,
+                credit_amount: totalLaborCost,
+              },
+            ]);
+
+            // Update account balances
+            const { data: devInvAcct2 } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', deviceInventoryId).single();
+            await supabase.from('chart_of_accounts').update({ current_balance: Number(devInvAcct2?.current_balance || 0) + totalLaborCost }).eq('id', deviceInventoryId);
+
+            const { data: laborAcct } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', accruedLaborId).single();
+            await supabase.from('chart_of_accounts').update({ current_balance: Number(laborAcct?.current_balance || 0) + totalLaborCost }).eq('id', accruedLaborId);
+          }
+        }
+
         logEvent({
           action: 'UPDATE' as any,
           tableName: 'devices',
           module: 'Inventory',
           recordId: device.id,
-          notes: `Repair completed: parts cost $${totalPartsCost.toFixed(2)} added to device cost. Labor $${totalLaborCost.toFixed(2)} tracked for management reporting. Original cost: $${Number(originalCost).toFixed(2)}, new cost: $${newCostPrice.toFixed(2)}.`,
+          notes: `Repair completed: parts cost $${totalPartsCost.toFixed(2)} added to device cost. Labor $${totalLaborCost.toFixed(2)} capitalized (Dr. Inventory / Cr. Accrued Labor). Original cost: $${Number(originalCost).toFixed(2)}, new cost: $${newCostPrice.toFixed(2)}.`,
         });
 
-        toast.success(`Repair completed — parts cost $${totalPartsCost.toFixed(2)} added to device cost`);
+        toast.success(`Repair completed — parts $${totalPartsCost.toFixed(2)} + labor $${totalLaborCost.toFixed(2)} posted to books`);
       } else {
         toast.success('Repair saved as in progress');
       }
