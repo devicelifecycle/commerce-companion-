@@ -25,6 +25,10 @@ export const ASSET_ACCOUNTS: AccountDefinition[] = [
   { code: '1100', name: 'Inventory - VES', type: 'asset', subtype: 'Current Assets', normalBalance: 'debit', company: 'VES', description: 'VES inventory at cost (FIFO)' },
   { code: '1101', name: 'Inventory - TGW', type: 'asset', subtype: 'Current Assets', normalBalance: 'debit', company: 'TGW', description: 'TGW inventory at cost (FIFO)' },
   
+  // Repair Parts Inventory (sub-account of inventory)
+  { code: '1110', name: 'Repair Parts Inventory - VES', type: 'asset', subtype: 'Current Assets', normalBalance: 'debit', company: 'VES', description: 'VES repair parts at cost' },
+  { code: '1111', name: 'Repair Parts Inventory - TGW', type: 'asset', subtype: 'Current Assets', normalBalance: 'debit', company: 'TGW', description: 'TGW repair parts at cost' },
+
   // Prepaid Expenses
   { code: '1200', name: 'Prepaid Expenses - VES', type: 'asset', subtype: 'Current Assets', normalBalance: 'debit', company: 'VES', description: 'VES prepaid expenses' },
   { code: '1201', name: 'Prepaid Expenses - TGW', type: 'asset', subtype: 'Current Assets', normalBalance: 'debit', company: 'TGW', description: 'TGW prepaid expenses' },
@@ -44,6 +48,10 @@ export const LIABILITY_ACCOUNTS: AccountDefinition[] = [
   { code: '2100', name: 'QST Payable - VES', type: 'liability', subtype: 'Current Liabilities', normalBalance: 'credit', company: 'VES', description: 'VES QST if applicable' },
   { code: '2101', name: 'QST Payable - TGW', type: 'liability', subtype: 'Current Liabilities', normalBalance: 'credit', company: 'TGW', description: 'TGW QST if applicable' },
   
+  // Accrued Wages / Repair Labor Payable
+  { code: '2300', name: 'Accrued Repair Labor - VES', type: 'liability', subtype: 'Current Liabilities', normalBalance: 'credit', company: 'VES', description: 'VES accrued wages for device repairs' },
+  { code: '2301', name: 'Accrued Repair Labor - TGW', type: 'liability', subtype: 'Current Liabilities', normalBalance: 'credit', company: 'TGW', description: 'TGW accrued wages for device repairs' },
+
   // Inter-company accounts
   { code: '2200', name: 'Inter-company Payable - VES to TGW', type: 'liability', subtype: 'Current Liabilities', normalBalance: 'credit', company: 'VES', description: 'VES owes TGW' },
   { code: '2201', name: 'Inter-company Receivable - TGW from VES', type: 'asset', subtype: 'Current Assets', normalBalance: 'debit', company: 'TGW', description: 'TGW receivable from VES' },
