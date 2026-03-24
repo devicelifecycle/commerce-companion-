@@ -8,16 +8,32 @@ import { supabase } from '@/integrations/supabase/client';
  * Reverse all journal entries linked to a reference (sale, expense, purchase, etc.)
  */
 export async function reverseJournalEntries(referenceId: string): Promise<number> {
-  const { data: entries } = await supabase
+  const { data: entries, error: fetchError } = await supabase
     .from('journal_entries')
     .select('id')
     .eq('reference_id', referenceId);
 
+  if (fetchError) {
+    console.error('Failed to fetch journal entries for reversal:', fetchError);
+    throw new Error(`Failed to fetch journal entries: ${fetchError.message}`);
+  }
+
   if (!entries || entries.length === 0) return 0;
 
   const entryIds = entries.map(e => e.id);
-  await supabase.from('journal_entry_lines').delete().in('journal_entry_id', entryIds);
-  await supabase.from('journal_entries').delete().in('id', entryIds);
+
+  const { error: linesError } = await supabase.from('journal_entry_lines').delete().in('journal_entry_id', entryIds);
+  if (linesError) {
+    console.error('Failed to delete journal entry lines:', linesError);
+    throw new Error(`Failed to delete journal entry lines: ${linesError.message}`);
+  }
+
+  const { error: entriesError } = await supabase.from('journal_entries').delete().in('id', entryIds);
+  if (entriesError) {
+    console.error('Failed to delete journal entries:', entriesError);
+    throw new Error(`Failed to delete journal entries: ${entriesError.message}`);
+  }
+
   return entryIds.length;
 }
 
