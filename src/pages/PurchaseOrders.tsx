@@ -85,6 +85,7 @@ export default function PurchaseOrders() {
   const [detailPoId, setDetailPoId] = useState<string | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [cloneLoading, setCloneLoading] = useState<string | null>(null);
+  const [showImportRepairParts, setShowImportRepairParts] = useState(false);
 
   const canManage = hasPermission('inventory_manage', 'edit') || isSuperAdmin;
 
