@@ -25,6 +25,7 @@ interface ReturnFromOrderDialogProps {
     order_number: string;
     customer_name: string | null;
     sale_price: number;
+    tax_amount?: number | null;
     device_id: string | null;
     company_id: string | null;
     marketplace?: string;
@@ -114,6 +115,7 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
           repair_notes: resolutionType === 'repair' ? repairNotes : null,
           replacement_device_id: resolutionType === 'exchange' && replacementDeviceId ? replacementDeviceId : null,
           refund_date: (resolutionType === 'refund' || resolutionType === 'adjustment') ? new Date().toISOString().split('T')[0] : null,
+          tax_refunded: (resolutionType !== 'adjustment' && sale.tax_amount) ? sale.tax_amount : 0,
           marketplace_initiated: marketplaceInitiated,
           refund_reason_detail: reasonDetail || null,
         } as any)
