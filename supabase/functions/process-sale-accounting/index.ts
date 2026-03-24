@@ -212,7 +212,7 @@ serve(async (req) => {
     let salesQuery = supabase
       .from("sales")
       .select(
-        "id, order_number, marketplace, sale_price, shipping_cost, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status"
+        "id, order_number, marketplace, sale_price, shipping_cost, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost"
       )
       .in("accounting_status", ["unprocessed", "revenue_only"]);
 
@@ -436,8 +436,10 @@ serve(async (req) => {
           }
         }
 
-        // === Entry 2: COGS (only if device is linked and COGS not yet created) ===
+        // === Entry 2: COGS (device linked OR manual_cost provided) ===
         let newStatus = "revenue_only";
+        const manualCost = Number(sale.manual_cost || 0);
+        
         if (device && device.cost > 0 && !salesWithCOGS.has(sale.id)) {
           if (accounts.cogs && accounts.inventory) {
             await createJournalEntry(
@@ -464,7 +466,44 @@ serve(async (req) => {
             );
             newStatus = "fully_processed";
           }
+        } else if (!device && manualCost > 0 && !salesWithCOGS.has(sale.id)) {
+          // Manual cost orders without linked device — book COGS against a general COGS account
+          if (accounts.cogs) {
+            // Use a general expense account (no inventory impact since there's no device)
+            const cogsAccountId = accounts.cogs;
+            // For manual cost, we Dr COGS and Cr a cost clearing / AP account
+            // Since there's no inventory to reduce, we credit the same COGS to net zero the balance sheet impact
+            // Actually, for manual cost (labor, services), Dr COGS / Cr Cash/AP equivalent
+            // Use inventory account as the offset (represents cost already incurred)
+            if (accounts.inventory) {
+              await createJournalEntry(
+                supabase,
+                sale.company_id,
+                saleDate,
+                `COGS (manual) - Order#${sale.order_number}`,
+                sale.id,
+                "sale",
+                [
+                  {
+                    account_id: cogsAccountId,
+                    description: `Manual cost of goods sold - ${sale.order_number}`,
+                    debit_amount: manualCost,
+                    credit_amount: 0,
+                  },
+                  {
+                    account_id: accounts.inventory!,
+                    description: `Manual cost offset - ${sale.order_number}`,
+                    debit_amount: 0,
+                    credit_amount: manualCost,
+                  },
+                ]
+              );
+            }
+            newStatus = "fully_processed";
+          }
         } else if (device && salesWithCOGS.has(sale.id)) {
+          newStatus = "fully_processed";
+        } else if (!device && manualCost > 0 && salesWithCOGS.has(sale.id)) {
           newStatus = "fully_processed";
         }
 
