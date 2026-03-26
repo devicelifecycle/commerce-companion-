@@ -45,23 +45,24 @@ export function FBAInventoryTracker() {
   const [selectedTransitIds, setSelectedTransitIds] = useState<Set<string>>(new Set());
   const [confirmingArrival, setConfirmingArrival] = useState(false);
 
-  // VES company = Amazon FBA
-  const vesCompany = companies.find(c => c.code === 'VES');
+  const { selectedCompany } = useCompany();
 
   useEffect(() => {
-    if (vesCompany) fetchFBAInventory();
-  }, [vesCompany, channelFilter]);
+    fetchFBAInventory();
+  }, [selectedCompany, channelFilter]);
 
   const fetchFBAInventory = async () => {
-    if (!vesCompany) return;
     setLoading(true);
     try {
       let query = supabase
         .from('devices')
         .select('id, brand, model, storage, color, condition, cost_price, sku, category, purchase_date, created_at, fulfillment_channel')
-        .eq('company_id', vesCompany.id)
         .eq('status', 'in_stock')
         .order('brand', { ascending: true });
+
+      if (selectedCompany) {
+        query = query.eq('company_id', selectedCompany.id);
+      }
 
       if (channelFilter !== 'all') {
         query = query.eq('fulfillment_channel', channelFilter);
