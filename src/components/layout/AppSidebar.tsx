@@ -19,6 +19,7 @@ import {
   ClipboardCheck,
   RotateCcw,
   Activity,
+  Wrench,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth';
@@ -48,6 +49,7 @@ const mainNav = [
 const operationsNav = [
   { title: 'Orders', url: '/orders', icon: ShoppingCart },
   { title: 'Inventory', url: '/inventory', icon: Smartphone },
+  { title: 'Refurbishment', url: '/refurbishment', icon: Wrench },
   { title: 'Import', url: '/import', icon: Upload },
   { title: 'PO & GRN', url: '/purchase-orders', icon: ClipboardCheck },
   { title: 'Returns / RMA', url: '/returns', icon: RotateCcw },
