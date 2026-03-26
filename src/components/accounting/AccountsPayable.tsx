@@ -219,7 +219,6 @@ export function AccountsPayable({ companyFilter }: AccountsPayableProps = {}) {
         .from('accounts_payable')
         .update({
           paid_amount: newPaidAmount,
-          balance_due: Math.max(0, newBalanceDue),
           status: newStatus,
         })
         .eq('id', selectedRecord.id);

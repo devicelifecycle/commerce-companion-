@@ -398,7 +398,6 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
             apRecordId = existingAP[0].id;
             await supabase.from('accounts_payable').update({
               original_amount: apAmount,
-              balance_due: apAmount,
               gst_hst_amount: apGst,
               pst_amount: apPst,
               description: `PO ${po.po_number} — ${po.supplier_name} (received)`,
@@ -413,7 +412,6 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
               vendor_name: po.supplier_name,
               vendor_id: po.supplier_id,
               original_amount: apAmount,
-              balance_due: apAmount,
               gst_hst_amount: apGst,
               pst_amount: apPst,
               bill_date: receivedDate,

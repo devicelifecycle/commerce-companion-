@@ -190,7 +190,6 @@ export function AccountsReceivable({ companyFilter }: AccountsReceivableProps = 
         .from('accounts_receivable')
         .update({
           paid_amount: newPaidAmount,
-          balance_due: Math.max(0, newBalanceDue),
           status: newStatus,
         })
         .eq('id', selectedRecord.id);
