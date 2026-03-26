@@ -208,7 +208,7 @@ export default function Import() {
     storage: '',
     color: '',
     condition: 'new' as string,
-    status: 'in_stock' as string,
+    status: 'hold_for_refurbishment' as string,
     cost_price: '',
     sale_price: '',
     supplier_id: '',
