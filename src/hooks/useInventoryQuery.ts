@@ -41,6 +41,9 @@ export function useInventoryQuery({ statusFilter, categoryFilter, channelFilter,
         } else {
           query = query.eq('fulfillment_channel', channelFilter);
         }
+      } else {
+        // Default: exclude FBA devices from main inventory — they live in FBA Management
+        query = query.or('fulfillment_channel.eq.local,fulfillment_channel.is.null');
       }
       if (selectedCompany) {
         query = query.eq('company_id', selectedCompany.id);
