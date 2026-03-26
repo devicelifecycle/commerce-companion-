@@ -835,6 +835,118 @@ export type Database = {
           },
         ]
       }
+      device_refurbishment_parts: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          device_id: string
+          id: string
+          quantity_used: number
+          repair_part_id: string
+          total_cost: number
+          unit_cost: number
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          device_id: string
+          id?: string
+          quantity_used?: number
+          repair_part_id: string
+          total_cost?: number
+          unit_cost?: number
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          device_id?: string
+          id?: string
+          quantity_used?: number
+          repair_part_id?: string
+          total_cost?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_refurbishment_parts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_refurbishment_parts_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_refurbishment_parts_repair_part_id_fkey"
+            columns: ["repair_part_id"]
+            isOneToOne: false
+            referencedRelation: "repair_parts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      device_refurbishment_tasks: {
+        Row: {
+          company_id: string | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          device_id: string
+          id: string
+          is_completed: boolean
+          is_custom: boolean
+          notes: string | null
+          task_name: string
+        }
+        Insert: {
+          company_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          device_id: string
+          id?: string
+          is_completed?: boolean
+          is_custom?: boolean
+          notes?: string | null
+          task_name: string
+        }
+        Update: {
+          company_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          device_id?: string
+          id?: string
+          is_completed?: boolean
+          is_custom?: boolean
+          notes?: string | null
+          task_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "device_refurbishment_tasks_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "device_refurbishment_tasks_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       device_repairs: {
         Row: {
           company_id: string | null
@@ -915,6 +1027,11 @@ export type Database = {
           notes: string | null
           original_cost_price: number | null
           purchase_date: string | null
+          refurbishment_completed_at: string | null
+          refurbishment_labor_cost: number | null
+          refurbishment_notes: string | null
+          refurbishment_started_at: string | null
+          refurbishment_status: string | null
           sale_price: number | null
           sku: string | null
           status: Database["public"]["Enums"]["device_status"]
@@ -944,6 +1061,11 @@ export type Database = {
           notes?: string | null
           original_cost_price?: number | null
           purchase_date?: string | null
+          refurbishment_completed_at?: string | null
+          refurbishment_labor_cost?: number | null
+          refurbishment_notes?: string | null
+          refurbishment_started_at?: string | null
+          refurbishment_status?: string | null
           sale_price?: number | null
           sku?: string | null
           status?: Database["public"]["Enums"]["device_status"]
@@ -973,6 +1095,11 @@ export type Database = {
           notes?: string | null
           original_cost_price?: number | null
           purchase_date?: string | null
+          refurbishment_completed_at?: string | null
+          refurbishment_labor_cost?: number | null
+          refurbishment_notes?: string | null
+          refurbishment_started_at?: string | null
+          refurbishment_status?: string | null
           sale_price?: number | null
           sku?: string | null
           status?: Database["public"]["Enums"]["device_status"]
