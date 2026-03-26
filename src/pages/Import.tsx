@@ -285,14 +285,16 @@ export default function Import() {
         storage: manualForm.storage || null,
         color: manualForm.color || null,
         condition: manualForm.condition as any,
-        status: manualForm.status as any,
+        status: 'hold_for_refurbishment' as any,
         cost_price: parseFloat(manualForm.cost_price),
+        original_cost_price: parseFloat(manualForm.cost_price),
         sale_price: manualForm.sale_price ? parseFloat(manualForm.sale_price) : null,
         supplier_id: manualForm.supplier_id || null,
         purchase_date: manualForm.purchase_date,
         notes: manualForm.notes || null,
         company_id: targetCompany.id,
         created_by: user?.id,
+        refurbishment_status: 'pending',
       });
       if (error) throw error;
 
@@ -665,7 +667,9 @@ export default function Import() {
           tax_status: taxStatusDb,
           import_batch_id: currentBatchId,
           created_by: user?.id,
-          status: 'in_stock' as const,
+          status: 'hold_for_refurbishment' as const,
+          refurbishment_status: 'pending',
+          original_cost_price: parseFloat(String(row[mapping.cost_price] || '0')),
         };
 
         // Check if we should update existing
