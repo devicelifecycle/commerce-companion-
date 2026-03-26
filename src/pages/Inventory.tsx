@@ -234,11 +234,9 @@ export default function Inventory() {
             <TabsTrigger value="products" className="flex items-center gap-2">
               <Boxes className="h-4 w-4" /> Products
             </TabsTrigger>
-            {isSuperAdmin && (
             <TabsTrigger value="fba" className="flex items-center gap-2">
-                <List className="h-4 w-4" /> FBA Management
-              </TabsTrigger>
-            )}
+              <List className="h-4 w-4" /> FBA Management
+            </TabsTrigger>
             <TabsTrigger value="repairs" className="flex items-center gap-2">
               <Wrench className="h-4 w-4" /> Repair Parts
             </TabsTrigger>
@@ -292,11 +290,9 @@ export default function Inventory() {
             <ProductsManagement canManage={canManage} />
           </TabsContent>
 
-          {isSuperAdmin && (
-            <TabsContent value="fba">
-              <FBAInventoryTracker />
-            </TabsContent>
-          )}
+          <TabsContent value="fba">
+            <FBAInventoryTracker />
+          </TabsContent>
 
           <TabsContent value="repairs">
             <RepairPartsManagement canManage={canManage} />
