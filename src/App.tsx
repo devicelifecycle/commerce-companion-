@@ -28,6 +28,7 @@ import PurchaseOrders from "./pages/PurchaseOrders";
 import Returns from "./pages/Returns";
 import IntegrationHealth from "./pages/IntegrationHealth";
 import Customers from "./pages/Customers";
+import Refurbishment from "./pages/Refurbishment";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 const queryClient = new QueryClient();
@@ -82,6 +83,7 @@ const App = () => (
               <Route path="/orders" element={<ProtectedRoute><Sales /></ProtectedRoute>} />
               <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
               <Route path="/import" element={<ProtectedRoute><Import /></ProtectedRoute>} />
+              <Route path="/refurbishment" element={<ProtectedRoute><Refurbishment /></ProtectedRoute>} />
               <Route path="/suppliers" element={<ProtectedRoute><Suppliers /></ProtectedRoute>} />
               <Route path="/invoices" element={<ProtectedRoute><Invoices /></ProtectedRoute>} />
               <Route path="/expenses" element={<ProtectedRoute><Expenses /></ProtectedRoute>} />
