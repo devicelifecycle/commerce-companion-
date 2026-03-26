@@ -18,7 +18,7 @@ const statusBadge = (status: string) => {
   switch (status) {
     case 'pending': return <Badge variant="outline" className="gap-1"><Clock className="h-3 w-3" /> Pending</Badge>;
     case 'in_progress': return <Badge variant="secondary" className="gap-1"><Wrench className="h-3 w-3" /> In Progress</Badge>;
-    case 'completed': return <Badge className="gap-1 bg-green-600"><CheckCircle2 className="h-3 w-3" /> Completed</Badge>;
+    case 'completed': return <Badge className="gap-1 bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 border-emerald-600/20"><CheckCircle2 className="h-3 w-3" /> Completed</Badge>;
     default: return <Badge variant="outline">{status}</Badge>;
   }
 };

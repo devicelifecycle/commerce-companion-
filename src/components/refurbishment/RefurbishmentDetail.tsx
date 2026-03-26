@@ -356,7 +356,7 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
           </p>
         </div>
         {isCompleted ? (
-          <Badge className="bg-green-600 text-white"><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Completed</Badge>
+          <Badge className="bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 border-emerald-600/20"><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Completed</Badge>
         ) : (
           <Badge variant="secondary"><Wrench className="h-3.5 w-3.5 mr-1" /> In Progress</Badge>
         )}
