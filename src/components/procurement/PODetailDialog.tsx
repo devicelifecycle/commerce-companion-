@@ -146,7 +146,6 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }
           // Update AP balance
           await supabase.from('accounts_payable').update({
             paid_amount: apNewPaid,
-            balance_due: Math.max(0, apNewBalance),
             status: apStatus,
           }).eq('id', apRecord.id);
 

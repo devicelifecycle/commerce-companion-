@@ -242,7 +242,7 @@ serve(async (req) => {
           await supabase.from("accounts_receivable").update({
             status: "cancelled",
             notes: `Cancelled due to return RMA#${rma.rma_number}`,
-            balance_due: 0,
+            paid_amount: arRecord.original_amount,
           }).eq("id", arRecord.id);
         }
       }

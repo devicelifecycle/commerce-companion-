@@ -306,7 +306,6 @@ export default function Import() {
         await supabase.from('accounts_payable').insert({
           vendor_name: supplier?.name || 'Unknown Supplier',
           original_amount: costPrice,
-          balance_due: costPrice,
           bill_date: manualForm.purchase_date,
           due_date: new Date(new Date(manualForm.purchase_date).getTime() + 30 * 86400000).toISOString().split('T')[0],
           description: `Manual device: ${normalizedBrand} ${normalizedModel}`,
@@ -884,7 +883,6 @@ export default function Import() {
           due_date: dueDate.toISOString().split('T')[0],
           original_amount: invoiceTotal,
           paid_amount: isPaid ? invoiceTotal : 0,
-          balance_due: isPaid ? 0 : invoiceTotal,
           gst_hst_amount: totalTax,
           pst_amount: 0,
           category: 'inventory_purchase',

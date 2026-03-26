@@ -137,7 +137,6 @@ export function ReturnsManagement() {
 
               await supabase.from('accounts_payable').update({
                 original_amount: newOriginal,
-                balance_due: newBalance,
                 status: apStatus,
                 notes: `Reduced by ${refundAmt} due to supplier return RMA ${rma.rma_number}`,
               }).eq('id', apRecord.id);
