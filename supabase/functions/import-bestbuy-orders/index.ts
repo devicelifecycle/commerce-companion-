@@ -646,7 +646,7 @@ serve(async (req) => {
                 hst_amount: calculatedHst,
                 pst_amount: calculatedPst,
                 qst_amount: calculatedQst,
-                total_tax: parseFloat(taxAmount.toFixed(2)),
+                // total_tax is a generated column, do not insert
                 is_marketplace_collected: false, // We collect and remit
               });
               if (taxError) {
