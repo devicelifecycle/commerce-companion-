@@ -232,10 +232,12 @@ serve(async (req) => {
       AMAZON_REFRESH_TOKEN
     );
 
-    // Calculate date 7 days ago
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const createdAfter = sevenDaysAgo.toISOString();
+    // Accept startDate from request body or default to 7 days ago
+    let body: any = {};
+    try { body = await req.json(); } catch (_) { /* empty body is fine */ }
+    const defaultStart = new Date();
+    defaultStart.setDate(defaultStart.getDate() - 7);
+    const createdAfter = body.startDate ? new Date(body.startDate).toISOString() : defaultStart.toISOString();
 
     console.log(`Fetching Amazon orders since ${createdAfter}`);
 

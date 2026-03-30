@@ -279,10 +279,12 @@ serve(async (req) => {
       return null;
     }
 
-    // Calculate date 7 days ago for filtering recent orders
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const startDate = sevenDaysAgo.toISOString();
+    // Accept startDate from request body or default to 7 days ago
+    let body: any = {};
+    try { body = await req.json(); } catch (_) { /* empty body is fine */ }
+    const defaultStart = new Date();
+    defaultStart.setDate(defaultStart.getDate() - 7);
+    const startDate = body.startDate ? new Date(body.startDate).toISOString() : defaultStart.toISOString();
 
     console.log(`Fetching Best Buy Canada orders since ${startDate}`);
 

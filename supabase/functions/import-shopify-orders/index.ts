@@ -159,10 +159,12 @@ serve(async (req) => {
     const companyId = tgwCompany.id;
     console.log(`Using TGW company ID: ${companyId}`);
 
-    // Calculate date 7 days ago
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const createdAtMin = sevenDaysAgo.toISOString();
+    // Accept startDate from request body or default to 7 days ago
+    let body: any = {};
+    try { body = await req.json(); } catch (_) { /* empty body is fine */ }
+    const defaultStart = new Date();
+    defaultStart.setDate(defaultStart.getDate() - 7);
+    const createdAtMin = body.startDate ? new Date(body.startDate).toISOString() : defaultStart.toISOString();
 
     console.log(`Fetching Shopify orders since ${createdAtMin}`);
 
