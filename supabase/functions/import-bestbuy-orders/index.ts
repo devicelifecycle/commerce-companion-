@@ -179,10 +179,22 @@ serve(async (req) => {
   }
 
   try {
-    // Auth check - temporarily bypassed for bulk import
+    // Auth check - require valid user JWT or service role key
     const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const token = authHeader.replace('Bearer ', '');
+    if (token !== SUPABASE_SERVICE_ROLE_KEY) {
+      const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { Authorization: authHeader } } });
+      const { data: userData, error: authError } = await authClient.auth.getUser();
+      if (authError || !userData.user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
 
     const BESTBUY_API_KEY = Deno.env.get("BESTBUY_API_KEY");
 
