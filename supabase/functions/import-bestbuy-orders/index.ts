@@ -676,7 +676,7 @@ serve(async (req) => {
       records_errored: errors.length,
       error_message: errors.length > 0 ? errors.join("; ") : null,
       sync_type: "scheduled",
-      metadata: { total_from_api: orders.length, total_count: data.total_count },
+      metadata: { total_from_api: orders.length, total_count: totalCount },
     });
 
     // Trigger accounting processor for newly imported sales
