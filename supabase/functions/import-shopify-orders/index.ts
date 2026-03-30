@@ -116,7 +116,7 @@ serve(async (req) => {
   }
 
   try {
-    // Auth check
+    // Auth check - require valid user JWT or service role key
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -159,10 +159,12 @@ serve(async (req) => {
     const companyId = tgwCompany.id;
     console.log(`Using TGW company ID: ${companyId}`);
 
-    // Calculate date 7 days ago
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const createdAtMin = sevenDaysAgo.toISOString();
+    // Accept startDate from request body or default to 7 days ago
+    let body: any = {};
+    try { body = await req.json(); } catch (_) { /* empty body is fine */ }
+    const defaultStart = new Date();
+    defaultStart.setDate(defaultStart.getDate() - 7);
+    const createdAtMin = body.startDate ? new Date(body.startDate).toISOString() : defaultStart.toISOString();
 
     console.log(`Fetching Shopify orders since ${createdAtMin}`);
 
