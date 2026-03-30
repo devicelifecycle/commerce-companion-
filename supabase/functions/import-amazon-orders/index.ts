@@ -205,9 +205,6 @@ serve(async (req) => {
       throw new Error("Amazon SP-API credentials not configured");
     }
 
-
-
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Get VES company ID (Amazon is for VES)
@@ -241,30 +238,47 @@ serve(async (req) => {
 
     console.log(`Fetching Amazon orders since ${createdAfter}`);
 
-    // Amazon SP-API - Orders API (Canada marketplace)
-    const ordersUrl = new URL("https://sellingpartnerapi-na.amazon.com/orders/v0/orders");
-    ordersUrl.searchParams.set("MarketplaceIds", "A2EUQ1WTGCTBG2"); // Amazon.ca
-    ordersUrl.searchParams.set("CreatedAfter", createdAfter);
-    ordersUrl.searchParams.set("MaxResultsPerPage", "100");
+    // Amazon SP-API - Orders API with pagination (Canada marketplace)
+    const orders: AmazonOrder[] = [];
+    let nextToken: string | null = null;
+    let pageCount = 0;
 
-    const ordersResponse = await fetch(ordersUrl.toString(), {
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "x-amz-access-token": accessToken,
-        "Content-Type": "application/json",
-      },
-    });
+    do {
+      const ordersUrl = new URL("https://sellingpartnerapi-na.amazon.com/orders/v0/orders");
+      if (nextToken) {
+        ordersUrl.searchParams.set("NextToken", nextToken);
+      } else {
+        ordersUrl.searchParams.set("MarketplaceIds", "A2EUQ1WTGCTBG2"); // Amazon.ca
+        ordersUrl.searchParams.set("CreatedAfter", createdAfter);
+      }
+      ordersUrl.searchParams.set("MaxResultsPerPage", "100");
 
-    if (!ordersResponse.ok) {
-      const errorText = await ordersResponse.text();
-      console.error(`Amazon API error: ${ordersResponse.status} - ${errorText}`);
-      throw new Error("Failed to fetch orders from marketplace");
-    }
+      const ordersResponse = await fetch(ordersUrl.toString(), {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "x-amz-access-token": accessToken,
+          "Content-Type": "application/json",
+        },
+      });
 
-    const ordersData = await ordersResponse.json();
-    const orders: AmazonOrder[] = ordersData.payload?.Orders || [];
+      if (!ordersResponse.ok) {
+        const errorText = await ordersResponse.text();
+        console.error(`Amazon API error: ${ordersResponse.status} - ${errorText}`);
+        throw new Error("Failed to fetch orders from marketplace");
+      }
 
-    console.log(`Found ${orders.length} orders from Amazon Canada`);
+      const ordersData = await ordersResponse.json();
+      const pageOrders: AmazonOrder[] = ordersData.payload?.Orders || [];
+      orders.push(...pageOrders);
+      nextToken = ordersData.payload?.NextToken || null;
+      pageCount++;
+      console.log(`Page ${pageCount}: ${pageOrders.length} orders (total so far: ${orders.length})`);
+
+      // Rate limiting between pages
+      if (nextToken) await new Promise(r => setTimeout(r, 1000));
+    } while (nextToken && pageCount < 50); // Safety limit
+
+    console.log(`Found ${orders.length} total orders from Amazon Canada across ${pageCount} pages`);
 
     // Schema validation — check first order against expected SP-API structure
     if (orders.length > 0) {

@@ -202,9 +202,6 @@ serve(async (req) => {
       throw new Error("Best Buy API key not configured");
     }
 
-
-
-
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     // Get TGW company ID (BestBuy is for TGW)
@@ -249,11 +246,11 @@ serve(async (req) => {
       "SASKATCHEWAN": "SK", "SK": "SK",
       "NOVA SCOTIA": "NS", "NS": "NS",
       "NEW BRUNSWICK": "NB", "NB": "NB",
-      "NEWFOUNDLAND AND LABRADOR": "NL", "NEWFOUNDLAND": "NL", "NL": "NL",
-      "PRINCE EDWARD ISLAND": "PE", "PEI": "PE", "PE": "PE",
-      "NORTHWEST TERRITORIES": "NT", "NT": "NT",
-      "YUKON": "YT", "YT": "YT",
+      "NEWFOUNDLAND AND LABRADOR": "NL", "NL": "NL", "NFLD": "NL",
+      "PRINCE EDWARD ISLAND": "PE", "PE": "PE", "PEI": "PE",
+      "NORTHWEST TERRITORIES": "NT", "NT": "NT", "NWT": "NT",
       "NUNAVUT": "NU", "NU": "NU",
+      "YUKON": "YT", "YT": "YT",
     };
 
     function resolveProvinceCode(state: string | null | undefined): string | null {
@@ -288,37 +285,53 @@ serve(async (req) => {
 
     console.log(`Fetching Best Buy Canada orders since ${startDate}`);
 
-    // Best Buy Canada uses Mirakl platform
+    // Best Buy Canada uses Mirakl platform — paginated fetch
     const baseUrl = "https://marketplace.bestbuy.ca/api/orders";
-    
-    const params = new URLSearchParams({
-      start_date: startDate,
-      max: "100",
-      paginate: "true",
-    });
+    const orders: MiraklOrder[] = [];
+    let offset = 0;
+    let totalCount = 0;
+    let pageCount = 0;
 
-    const ordersUrl = `${baseUrl}?${params.toString()}`;
+    do {
+      const params = new URLSearchParams({
+        start_date: startDate,
+        max: "100",
+        offset: offset.toString(),
+        paginate: "true",
+      });
 
-    console.log(`Calling Best Buy Mirakl API: ${ordersUrl}`);
+      const ordersUrl = `${baseUrl}?${params.toString()}`;
+      console.log(`Calling Best Buy Mirakl API page ${pageCount + 1}: offset=${offset}`);
 
-    const response = await fetch(ordersUrl, {
-      headers: {
-        "Authorization": BESTBUY_API_KEY,
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-      },
-    });
+      const response = await fetch(ordersUrl, {
+        headers: {
+          "Authorization": BESTBUY_API_KEY,
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Best Buy API error: ${response.status} - ${errorText}`);
-      throw new Error("Failed to fetch orders from marketplace");
-    }
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`Best Buy API error: ${response.status} - ${errorText}`);
+        throw new Error("Failed to fetch orders from marketplace");
+      }
 
-    const data: MiraklOrdersResponse = await response.json();
-    const orders = data.orders || [];
+      const data: MiraklOrdersResponse = await response.json();
+      const pageOrders = data.orders || [];
+      orders.push(...pageOrders);
+      totalCount = data.total_count || 0;
+      offset += pageOrders.length;
+      pageCount++;
+      console.log(`Page ${pageCount}: ${pageOrders.length} orders (total so far: ${orders.length} of ${totalCount})`);
 
-    console.log(`Found ${orders.length} orders from Best Buy Canada (total: ${data.total_count})`);
+      // Rate limiting between pages
+      if (offset < totalCount) await new Promise(r => setTimeout(r, 500));
+    } while (offset < totalCount && pageCount < 50); // Safety limit
+
+    console.log(`Found ${orders.length} total orders from Best Buy across ${pageCount} pages`);
+
+    // (duplicate log removed — total already logged above)
 
     // Schema validation — check first order against expected Mirakl structure
     if (orders.length > 0) {
@@ -645,7 +658,7 @@ serve(async (req) => {
                 hst_amount: calculatedHst,
                 pst_amount: calculatedPst,
                 qst_amount: calculatedQst,
-                total_tax: parseFloat(taxAmount.toFixed(2)),
+                // total_tax is a generated column, do not insert
                 is_marketplace_collected: false, // We collect and remit
               });
               if (taxError) {
@@ -675,7 +688,7 @@ serve(async (req) => {
       records_errored: errors.length,
       error_message: errors.length > 0 ? errors.join("; ") : null,
       sync_type: "scheduled",
-      metadata: { total_from_api: orders.length, total_count: data.total_count },
+      metadata: { total_from_api: orders.length, total_count: totalCount },
     });
 
     // Trigger accounting processor for newly imported sales
