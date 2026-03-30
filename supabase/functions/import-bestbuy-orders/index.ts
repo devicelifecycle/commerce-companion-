@@ -319,7 +319,7 @@ serve(async (req) => {
 
     console.log(`Found ${orders.length} total orders from Best Buy across ${pageCount} pages`);
 
-    console.log(`Found ${orders.length} orders from Best Buy Canada (total: ${data.total_count})`);
+    // (duplicate log removed — total already logged above)
 
     // Schema validation — check first order against expected Mirakl structure
     if (orders.length > 0) {
