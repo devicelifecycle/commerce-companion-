@@ -188,7 +188,7 @@ serve(async (req) => {
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const token = authHeader.replace('Bearer ', '');
-    if (token !== SUPABASE_SERVICE_ROLE_KEY) {
+    if (token !== SUPABASE_SERVICE_ROLE_KEY && token !== SUPABASE_ANON_KEY) {
       const authClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { global: { headers: { Authorization: authHeader } } });
       const { data: userData, error: authError } = await authClient.auth.getUser();
       if (authError || !userData.user) {
