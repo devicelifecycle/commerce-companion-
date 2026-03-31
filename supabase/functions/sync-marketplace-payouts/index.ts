@@ -330,11 +330,19 @@ async function syncShopifyPayouts(supabase: any, companyId: string) {
         fees_amount: feesAmount || recon.systemFeesTotal,
         adjustments_amount: adjustmentsAmount,
         net_payout: netPayout,
+        reserve_amount: 0,
         system_order_total: recon.systemOrderTotal,
         system_fees_total: recon.systemFeesTotal,
         discrepancy_amount: Math.abs(discrepancy) < 0.01 ? 0 : discrepancy,
         reconciliation_status: determineReconciliationStatus(netPayout, expectedNet),
         raw_data: payout,
+      }).select("id").single().then(async ({ data: inserted }) => {
+        if (inserted) {
+          await createPayoutARAndSettlement(
+            supabase, inserted.id, companyId, "shopify", payoutId, payoutDate,
+            netPayout, 0, recon.orderCount
+          );
+        }
       });
       synced++;
     }
