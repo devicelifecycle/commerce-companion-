@@ -36,7 +36,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-  Search, Trash2, Link, Unlink, MoreHorizontal,
+  Search, Trash2, Link, Unlink, MoreHorizontal, Plus,
   Download, RefreshCw, AlertCircle,
   Package, Clock, Truck, PackageCheck, ShoppingCart, RotateCcw, Eye,
 } from 'lucide-react';
