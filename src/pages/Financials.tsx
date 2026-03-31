@@ -99,6 +99,7 @@ const SECTIONS = [
     icon: CheckSquare,
     views: [
       { value: 'reconciliation' as SubView, label: 'Marketplace', icon: CheckSquare },
+      { value: 'fba-reconciliation' as SubView, label: 'FBA Reconciliation', icon: Package },
       { value: 'payouts' as SubView, label: 'Payouts', icon: Banknote },
     ],
   },
