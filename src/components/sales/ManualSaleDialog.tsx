@@ -257,9 +257,15 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
         }
       }
 
+      // Trigger accounting: Revenue, AR, COGS journal entries
+      if (sale) {
+        await processSaleAccounting([sale.id]);
+      }
+
       toast.success(`Sale recorded with ${validItems.length} item(s)`);
       form.reset();
       setLineItems([newLineItem()]);
+      setSaleCompanyId(selectedCompany?.id || '');
       emitRefetch('sales');
       emitRefetch('inventory');
       onSuccess();
