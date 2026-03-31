@@ -54,9 +54,6 @@ const operationsNav = [
   { title: 'Suppliers', url: '/suppliers', icon: Package },
   { title: 'Customers', url: '/customers', icon: Users },
   { title: 'Invoices', url: '/invoices', icon: FileText },
-];
-
-const expenseNav = [
   { title: 'Expenses', url: '/expenses', icon: Wallet },
 ];
 
