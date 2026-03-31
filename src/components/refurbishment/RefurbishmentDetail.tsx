@@ -68,6 +68,7 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
   const [notes, setNotes] = useState('');
   const [completeConfirm, setCompleteConfirm] = useState(false);
   const [customTaskName, setCustomTaskName] = useState('');
+  const [cosmeticGrade, setCosmeticGrade] = useState('');
 
   // Parts state
   const [selectedPartId, setSelectedPartId] = useState('');
