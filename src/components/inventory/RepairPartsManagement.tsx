@@ -347,43 +347,31 @@ function RepairPartHistoryDialog({ open, onOpenChange, part }: {
     queryKey: ['repair-part-history', part?.id],
     enabled: !!part?.id && open,
     queryFn: async () => {
-      // Get PO items linked to this part
-      const { data: poItems, error: poErr } = await supabase
-        .from('purchase_order_items')
-        .select('quantity, unit_price, purchase_order_id')
-        .eq('repair_part_id', part.id)
-        .order('created_at', { ascending: false }) as any;
-      if (poErr) throw poErr;
-
-      // Fetch PO details separately
-      const poIds = [...new Set((poItems || []).map((i: any) => i.purchase_order_id).filter(Boolean))];
-      let poMap: Record<string, any> = {};
-      if (poIds.length > 0) {
-        const { data: pos } = await supabase
-          .from('purchase_orders')
-          .select('id, po_number, order_date, status, suppliers(name)')
-          .in('id', poIds) as any;
-        (pos || []).forEach((po: any) => { poMap[po.id] = po; });
-      }
-
       // Get device refurbishment usage
-      const { data: usageItems, error: usageErr } = await supabase
+      const { data: usageItems } = await supabase
         .from('device_refurbishment_parts')
         .select('quantity_used, unit_cost, total_cost, created_at, devices(brand, model)')
         .eq('repair_part_id', part.id)
         .order('created_at', { ascending: false }) as any;
-      if (usageErr) throw usageErr;
+
+      // Get audit log entries for this part
+      const { data: auditItems } = await supabase
+        .from('audit_logs')
+        .select('action, created_at, notes, new_data')
+        .eq('table_name', 'repair_parts')
+        .eq('record_id', part.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
 
       const events: any[] = [];
 
-      (poItems || []).forEach((item: any) => {
+      (auditItems || []).forEach((item: any) => {
         events.push({
-          type: 'received',
-          date: item.purchase_orders?.order_date || '',
-          description: `PO ${item.purchase_orders?.po_number || '?'}`,
-          supplier: item.purchase_orders?.suppliers?.name || '—',
-          quantity: item.quantity,
-          unitCost: item.unit_price,
+          type: item.action === 'CREATE' ? 'received' : 'update',
+          date: item.created_at,
+          description: item.notes || item.action,
+          quantity: null,
+          unitCost: null,
         });
       });
 
@@ -391,8 +379,7 @@ function RepairPartHistoryDialog({ open, onOpenChange, part }: {
         events.push({
           type: 'used',
           date: item.created_at || '',
-          description: `Used on ${item.devices?.brand || ''} ${item.devices?.model || ''}`,
-          supplier: '',
+          description: `Used on ${item.devices?.brand || ''} ${item.devices?.model || ''}`.trim(),
           quantity: -item.quantity_used,
           unitCost: item.unit_cost,
         });
