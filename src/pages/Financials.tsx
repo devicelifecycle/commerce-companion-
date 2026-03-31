@@ -232,6 +232,7 @@ export default function Financials() {
             {subView === 'cost-devices' && <CostLedgerPanel companyView={companyView} />}
 
             {subView === 'reconciliation' && <MarketplaceReconciliation companyView={companyView} />}
+            {subView === 'fba-reconciliation' && <FBAReconciliation />}
             {subView === 'payouts' && <PayoutReconciliation companyView={companyView} />}
 
             {subView === 'ap' && <AccountsPayable companyFilter={companyView} />}
