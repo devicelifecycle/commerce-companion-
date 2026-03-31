@@ -545,7 +545,7 @@ async function syncBestBuyPayouts(supabase: any, companyId: string) {
     const expectedNet = recon.systemOrderTotal - recon.systemFeesTotal;
     const discrepancy = netPayout - expectedNet;
 
-    await supabase.from("marketplace_payouts").insert({
+    const { data: inserted } = await supabase.from("marketplace_payouts").insert({
       company_id: companyId,
       marketplace: "bestbuy",
       payout_id: payoutId,
@@ -556,12 +556,20 @@ async function syncBestBuyPayouts(supabase: any, companyId: string) {
       fees_amount: totalFees,
       adjustments_amount: adjustments,
       net_payout: netPayout,
+      reserve_amount: 0,
       system_order_total: recon.systemOrderTotal,
       system_fees_total: recon.systemFeesTotal,
       discrepancy_amount: Math.abs(discrepancy) < 0.01 ? 0 : discrepancy,
       reconciliation_status: determineReconciliationStatus(netPayout, expectedNet),
       raw_data: doc,
-    });
+    }).select("id").single();
+
+    if (inserted) {
+      await createPayoutARAndSettlement(
+        supabase, inserted.id, companyId, "bestbuy", payoutId, payoutDate,
+        netPayout, 0, recon.orderCount
+      );
+    }
     synced++;
   }
 
