@@ -554,6 +554,11 @@ export default function Sales() {
                                 RMA
                               </Badge>
                             )}
+                            {sale.fulfillment_status === 'cancelled' && (
+                              <Badge variant="destructive" className="text-[9px] px-1 py-0 shrink-0">
+                                VOID
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="px-2">
