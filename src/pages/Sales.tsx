@@ -63,6 +63,7 @@ export default function Sales() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [returningSale, setReturningSale] = useState<Sale | null>(null);
+  const [showManualSale, setShowManualSale] = useState(false);
 
   const canManageSales = hasPermission('sales_manage', 'edit');
   const canViewSales = hasPermission('sales_view', 'view');
