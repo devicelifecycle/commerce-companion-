@@ -513,7 +513,6 @@ export default function Sales() {
                         </TableHead>
                       )}
                       <TableHead className="w-[130px]">Order</TableHead>
-                      <TableHead className="w-[160px]">Item</TableHead>
                       <TableHead className="w-[70px]">Channel</TableHead>
                       <TableHead className="w-[50px]">Prov</TableHead>
                       <TableHead className="w-[80px]">Status</TableHead>
