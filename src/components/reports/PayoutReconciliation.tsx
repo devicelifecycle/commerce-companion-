@@ -33,6 +33,7 @@ interface MarketplacePayout {
   fees_amount: number;
   adjustments_amount: number;
   net_payout: number;
+  reserve_amount: number;
   system_order_total: number | null;
   system_fees_total: number | null;
   discrepancy_amount: number | null;
