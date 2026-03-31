@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { MarketplaceBadge, FulfillmentBadge, MarketplaceStatusBadge } from '@/components/ui/status-badge';
-import { Package, User, MapPin, DollarSign, Calendar, FileText, RotateCcw, Link, Unlink, AlertTriangle, Wrench } from 'lucide-react';
+import { Package, User, MapPin, DollarSign, Calendar, FileText, RotateCcw, Link, Unlink, AlertTriangle, Wrench, ShoppingCart, Hash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DeviceSearchCombobox } from '@/components/inventory/DeviceSearchCombobox';
@@ -60,6 +60,9 @@ interface Sale {
   shipping_province?: string | null;
   manual_cost?: number | null;
   manual_cost_description?: string | null;
+  is_multi_item?: boolean | null;
+  item_count?: number | null;
+  subtotal?: number | null;
   devices?: {
     brand: string;
     model: string;
@@ -71,6 +74,19 @@ interface Sale {
   } | null;
 }
 
+interface SaleItem {
+  id: string;
+  description: string;
+  sku: string | null;
+  quantity: number;
+  unit_price: number;
+  cost_price: number | null;
+  total: number;
+  imei: string | null;
+  device_id: string | null;
+  product_id: string | null;
+}
+
 interface OrderDetailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -80,12 +96,9 @@ interface OrderDetailDialogProps {
   onSaleUpdated?: () => void;
 }
 
-// Extract province code from a Canadian address string
 function extractProvinceFromAddress(address: string | null): string | null {
   if (!address) return null;
   const upper = address.toUpperCase().trim();
-  
-  // Province code map including common full names and abbreviations
   const PROVINCE_MAP: Record<string, string> = {
     'ONTARIO': 'ON', 'QUEBEC': 'QC', 'BRITISH COLUMBIA': 'BC', 'ALBERTA': 'AB',
     'MANITOBA': 'MB', 'SASKATCHEWAN': 'SK', 'NOVA SCOTIA': 'NS', 'NEW BRUNSWICK': 'NB',
@@ -93,31 +106,20 @@ function extractProvinceFromAddress(address: string | null): string | null {
     'NORTHWEST TERRITORIES': 'NT', 'NUNAVUT': 'NU', 'YUKON': 'YT',
     'PQ': 'QC', 'NFLD': 'NL', 'PEI': 'PE', 'NWT': 'NT',
   };
-  
   const validCodes = new Set(['ON', 'QC', 'BC', 'AB', 'MB', 'SK', 'NS', 'NB', 'NL', 'PE', 'NT', 'NU', 'YT']);
-
-  // Try to find province code before a Canadian postal code pattern (e.g., "ON K1A 0B1")
   const postalMatch = upper.match(/\b([A-Z]{2})\s+[A-Z]\d[A-Z]\s*\d[A-Z]\d/);
   if (postalMatch && validCodes.has(postalMatch[1])) return postalMatch[1];
-
-  // Try comma-separated segments: "City, ON K1A 0B1" or "City, Ontario"
   const parts = upper.split(',').map(p => p.trim());
   for (const part of parts) {
-    // Check if part starts with a valid code
     const firstWord = part.split(/\s+/)[0];
     if (validCodes.has(firstWord)) return firstWord;
-    // Check full province name
     for (const [name, code] of Object.entries(PROVINCE_MAP)) {
       if (part.includes(name)) return code;
     }
   }
-
-  // Last resort: scan for any standalone 2-letter province code
   for (const code of validCodes) {
-    const regex = new RegExp(`\\b${code}\\b`);
-    if (regex.test(upper)) return code;
+    if (new RegExp(`\\b${code}\\b`).test(upper)) return code;
   }
-
   return null;
 }
 
@@ -132,21 +134,35 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const [manualCostAmount, setManualCostAmount] = useState<string>(sale.manual_cost?.toString() || '');
   const [manualCostDesc, setManualCostDesc] = useState<string>(sale.manual_cost_description || '');
   const [savingManualCost, setSavingManualCost] = useState(false);
+  const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
 
-  // Sync local province when sale changes
   useEffect(() => {
     setLocalProvince(sale.shipping_province || null);
     setManualCostAmount(sale.manual_cost?.toString() || '');
     setManualCostDesc(sale.manual_cost_description || '');
   }, [sale.shipping_province, sale.id, sale.manual_cost]);
 
-  // Auto-extract province from address if not set
+  // Fetch sale_items when dialog opens
+  useEffect(() => {
+    if (!open) return;
+    setLoadingItems(true);
+    supabase
+      .from('sale_items')
+      .select('id, description, sku, quantity, unit_price, cost_price, total, imei, device_id, product_id')
+      .eq('sale_id', sale.id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        setSaleItems((data || []) as SaleItem[]);
+        setLoadingItems(false);
+      });
+  }, [open, sale.id]);
+
   const suggestedProvince = useMemo(() => {
-    if (localProvince) return null; // Already set
+    if (localProvince) return null;
     return extractProvinceFromAddress(sale.shipping_address);
   }, [sale.shipping_address, localProvince]);
 
-  // Auto-apply suggested province on dialog open for Best Buy orders
   useEffect(() => {
     if (open && !localProvince && suggestedProvince && sale.marketplace === 'bestbuy') {
       handleProvinceChange(suggestedProvince);
@@ -154,22 +170,18 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   }, [open, sale.id]);
 
   const handleProvinceChange = async (provinceCode: string) => {
-    setLocalProvince(provinceCode); // Immediately update UI
+    setLocalProvince(provinceCode);
     setSavingProvince(true);
     try {
-      // Fetch tax rates for the selected province
       const { data: taxRate, error: taxError } = await supabase
         .from('provincial_tax_rates')
         .select('*')
         .eq('province_code', provinceCode)
         .single();
-
       if (taxError) throw taxError;
 
-      // Recalculate tax based on sale price
       let newTaxAmount = 0;
       let calculatedGst = 0, calculatedHst = 0, calculatedPst = 0, calculatedQst = 0;
-
       if (taxRate.is_hst_province && taxRate.hst_rate) {
         calculatedHst = parseFloat((sale.sale_price * taxRate.hst_rate / 100).toFixed(2));
         newTaxAmount = calculatedHst;
@@ -180,7 +192,6 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
         newTaxAmount = calculatedGst + calculatedPst + calculatedQst;
       }
 
-      // Update the sale with new province and recalculated tax
       const { error: updateError } = await supabase
         .from('sales')
         .update({
@@ -188,10 +199,8 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
           tax_amount: parseFloat(newTaxAmount.toFixed(2)),
         })
         .eq('id', sale.id);
-
       if (updateError) throw updateError;
 
-      // Update sales_tax_details
       await supabase
         .from('sales_tax_details')
         .update({
@@ -204,7 +213,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
         })
         .eq('sale_id', sale.id);
 
-      toast.success(`Province updated to ${provinceCode} — tax recalculated to ${new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(newTaxAmount)}`);
+      toast.success(`Province updated to ${provinceCode} — tax recalculated to ${formatCurrency(newTaxAmount)}`);
       onSaleUpdated?.();
     } catch (error: any) {
       toast.error(error.message || 'Failed to update province');
@@ -270,8 +279,6 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
     setLinking(true);
     try {
       if (selectedDeviceId) {
-        const { data: device } = await supabase.from('devices').select('cost_price, sale_price').eq('id', selectedDeviceId).single();
-        
         const { error: saleError } = await supabase.from('sales').update({
           device_id: selectedDeviceId,
           accounting_status: 'unprocessed',
@@ -286,7 +293,6 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
 
         toast.success('Device linked to order');
       } else if (selectedProductId) {
-        // Create a sale_item linking the product to this sale
         const { data: product } = await supabase.from('products').select('name, sku, cost_price, sale_price').eq('id', selectedProductId).single();
         if (!product) throw new Error('Product not found');
 
@@ -333,7 +339,6 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
       }).eq('id', sale.device_id);
       if (deviceError) throw deviceError;
 
-      // Clean up COGS journal entries
       const { data: cogsEntries } = await supabase
         .from('journal_entries')
         .select('id')
@@ -357,12 +362,21 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
     }
   };
 
+  const isMultiItem = sale.is_multi_item || (sale.item_count && sale.item_count > 1) || saleItems.length > 1;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>Order {sale.order_number}</span>
+            <div className="flex items-center gap-2">
+              <span>Order {sale.order_number}</span>
+              {isMultiItem && (
+                <Badge variant="secondary" className="text-[10px] px-1.5">
+                  {sale.item_count || saleItems.length} items
+                </Badge>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <MarketplaceBadge marketplace={sale.marketplace as any} />
               {hasReturn && (
@@ -376,31 +390,98 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
           <DialogDescription className="sr-only">Details for order {sale.order_number}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5">
+        <div className="space-y-4">
           {/* Status Row */}
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             <MarketplaceStatusBadge marketplace={sale.marketplace as any} marketplaceStatus={sale.marketplace_status} />
             <FulfillmentBadge status={(sale.fulfillment_status || 'received') as any} />
             {sale.accounting_status && (
               <Badge variant="outline" className="text-xs capitalize">{sale.accounting_status.replace('_', ' ')}</Badge>
             )}
+            <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              {formatDate(sale.sale_date)}
+            </span>
           </div>
 
           <Separator />
+
+          {/* Marketplace Listing Info */}
+          {(sale.product_title || sale.marketplace_sku) && (
+            <>
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <ShoppingCart className="h-3.5 w-3.5" /> Marketplace Listing
+                </h4>
+                <div className="bg-muted/30 border border-border/40 rounded-lg p-3 text-sm space-y-1">
+                  {sale.product_title && (
+                    <p className="font-medium leading-snug">{sale.product_title}</p>
+                  )}
+                  {sale.marketplace_sku && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Hash className="h-3 w-3" />
+                      <span className="font-mono">{sale.marketplace_sku}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+              <Separator />
+            </>
+          )}
+
+          {/* Line Items (multi-item orders) */}
+          {saleItems.length > 0 && (
+            <>
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Package className="h-3.5 w-3.5" /> Order Items ({saleItems.length})
+                </h4>
+                <div className="border border-border/40 rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-muted/40 text-xs text-muted-foreground">
+                        <th className="text-left px-3 py-1.5 font-medium">Item</th>
+                        <th className="text-right px-3 py-1.5 font-medium w-12">Qty</th>
+                        <th className="text-right px-3 py-1.5 font-medium w-24">Unit Price</th>
+                        <th className="text-right px-3 py-1.5 font-medium w-24">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {saleItems.map((item) => (
+                        <tr key={item.id} className="border-t border-border/30">
+                          <td className="px-3 py-2">
+                            <p className="font-medium leading-tight">{item.description}</p>
+                            <div className="flex gap-2 mt-0.5 text-[11px] text-muted-foreground">
+                              {item.sku && <span className="font-mono">SKU: {item.sku}</span>}
+                              {item.imei && <span className="font-mono">IMEI: {item.imei}</span>}
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">{item.quantity}</td>
+                          <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(item.unit_price)}</td>
+                          <td className="px-3 py-2 text-right tabular-nums font-medium">{formatCurrency(item.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <Separator />
+            </>
+          )}
 
           {/* Customer Info */}
           <div>
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
               <User className="h-3.5 w-3.5" /> Customer
             </h4>
-            <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div>
                 <p className="text-muted-foreground text-xs">Name</p>
                 <p className="font-medium">{sale.customer_name || '—'}</p>
               </div>
               <div>
                 <p className="text-muted-foreground text-xs">Email</p>
-                <p className="font-medium">{sale.customer_email || '—'}</p>
+                <p className="font-medium truncate">{sale.customer_email || '—'}</p>
               </div>
               {sale.shipping_address && (
                 <div className="col-span-2">
@@ -450,10 +531,10 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
 
           <Separator />
 
-          {/* Device / Item */}
+          {/* Device / Linked Item */}
           <div>
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5" /> Item & Cost
+              <Package className="h-3.5 w-3.5" /> Linked Inventory & Cost
             </h4>
             {sale.devices ? (
               <div className="bg-muted/30 border border-border/40 rounded-lg p-3">
@@ -464,6 +545,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                       {sale.devices.imei && <span className="font-mono">IMEI: {sale.devices.imei}</span>}
                       {sale.devices.storage && <span>{sale.devices.storage}</span>}
                       {sale.devices.color && <span>{sale.devices.color}</span>}
+                      {sale.devices.condition && <span className="capitalize">{sale.devices.condition}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -554,15 +636,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                   </div>
                 ) : (
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-muted-foreground">No item linked to this order</p>
-                      {sale.product_title && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          Marketplace listing: {sale.product_title}
-                          {sale.marketplace_sku && <span className="font-mono ml-1">({sale.marketplace_sku})</span>}
-                        </p>
-                      )}
-                    </div>
+                    <p className="text-sm text-muted-foreground">No inventory item linked</p>
                     <Button variant="outline" size="sm" onClick={() => setShowLinkDevice(true)}>
                       <Link className="h-3.5 w-3.5 mr-1.5" />
                       Link / Add Cost
@@ -581,28 +655,34 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
               <DollarSign className="h-3.5 w-3.5" /> Financial Breakdown
             </h4>
             <div className="space-y-1.5 text-sm">
+              {sale.subtotal != null && sale.subtotal !== sale.sale_price && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(sale.subtotal)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Sale Price</span>
-                <span className="font-medium">{formatCurrency(grossRevenue)}</span>
+                <span className="text-muted-foreground">Sale Price (total charged)</span>
+                <span className="font-medium tabular-nums">{formatCurrency(grossRevenue)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Shipping Cost</span>
-                <span className="text-destructive">-{formatCurrency(sale.shipping_cost)}</span>
+                <span className="text-destructive tabular-nums">-{formatCurrency(sale.shipping_cost)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Marketplace Fees</span>
-                <span className="text-destructive">-{formatCurrency(sale.marketplace_fees)}</span>
+                <span className="text-destructive tabular-nums">-{formatCurrency(sale.marketplace_fees)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
                   Tax {sale.is_marketplace_remitted ? '(marketplace remits)' : '(you remit)'}
                 </span>
-                <span className="text-destructive">-{formatCurrency(sale.tax_amount)}</span>
+                <span className="text-destructive tabular-nums">-{formatCurrency(sale.tax_amount)}</span>
               </div>
               <Separator className="my-1" />
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Net Revenue</span>
-                <span className="font-medium">{formatCurrency(netRevenue)}</span>
+                <span className="font-medium tabular-nums">{formatCurrency(netRevenue)}</span>
               </div>
               {hasCost && (
                 <div className="flex justify-between">
@@ -612,7 +692,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                       <span className="text-xs ml-1">({sale.manual_cost_description || 'manual'})</span>
                     )}
                   </span>
-                  <span className="text-destructive">-{formatCurrency(costPrice)}</span>
+                  <span className="text-destructive tabular-nums">-{formatCurrency(costPrice)}</span>
                 </div>
               )}
               <Separator className="my-1" />
@@ -625,20 +705,16 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
             </div>
           </div>
 
-          {/* Date & Notes */}
-          <Separator />
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div>
-              <p className="text-muted-foreground text-xs flex items-center gap-1"><Calendar className="h-3 w-3" /> Sale Date</p>
-              <p className="font-medium">{formatDate(sale.sale_date)}</p>
-            </div>
-            {sale.notes && (
-              <div className="col-span-2">
-                <p className="text-muted-foreground text-xs flex items-center gap-1"><FileText className="h-3 w-3" /> Notes</p>
+          {/* Notes */}
+          {sale.notes && (
+            <>
+              <Separator />
+              <div>
+                <p className="text-muted-foreground text-xs flex items-center gap-1 mb-1"><FileText className="h-3 w-3" /> Notes</p>
                 <p className="text-sm">{sale.notes}</p>
               </div>
-            )}
-          </div>
+            </>
+          )}
 
           {/* Return Action */}
           {!hasReturn && (
