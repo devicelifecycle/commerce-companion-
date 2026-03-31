@@ -49,7 +49,7 @@ import {
 type SubView =
   | 'pl' | 'balance-sheet'
   | 'chart-of-accounts' | 'journal-entries' | 'trial-balance'
-  | 'reconciliation' | 'payouts'
+  | 'reconciliation' | 'payouts' | 'fba-reconciliation'
   | 'ap' | 'ar'
   | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing'
   | 'cost-devices'
