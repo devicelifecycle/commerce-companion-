@@ -42,7 +42,9 @@ import {
   Upload, ArrowRightLeft, Smartphone, Boxes, List,
   Download, Send, Trash2, Wrench, RotateCcw, XCircle,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Badge } from '@/components/ui/badge';
 
 type DeviceStatus = 'in_stock' | 'reserved' | 'sold' | 'returned' | 'hold_for_refurbishment';
 
