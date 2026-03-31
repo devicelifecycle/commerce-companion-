@@ -276,10 +276,16 @@ export default function Inventory() {
 
         <InventoryGuide />
 
-        <Tabs defaultValue="list" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="list" className="flex items-center gap-2">
               <Smartphone className="h-4 w-4" /> Devices
+            </TabsTrigger>
+            <TabsTrigger value="refurbishment" className="flex items-center gap-2">
+              <Wrench className="h-4 w-4" /> Refurbishment
+              {pendingRefurbCount > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-xs">{pendingRefurbCount}</Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="products" className="flex items-center gap-2">
               <Boxes className="h-4 w-4" /> Products
@@ -288,7 +294,7 @@ export default function Inventory() {
               <List className="h-4 w-4" /> FBA Management
             </TabsTrigger>
             <TabsTrigger value="repairs" className="flex items-center gap-2">
-              <Wrench className="h-4 w-4" /> Repair Parts
+              <Package className="h-4 w-4" /> Repair Parts
             </TabsTrigger>
           </TabsList>
 
@@ -334,6 +340,42 @@ export default function Inventory() {
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="refurbishment">
+            {selectedRefurbDeviceId ? (
+              <RefurbishmentDetail
+                deviceId={selectedRefurbDeviceId}
+                onBack={() => { setSelectedRefurbDeviceId(null); refetchAllRefurb(); }}
+                canManage={canManage}
+              />
+            ) : (
+              <div className="space-y-4">
+                <Tabs defaultValue="queue">
+                  <TabsList>
+                    <TabsTrigger value="queue">Queue ({pendingRefurbCount})</TabsTrigger>
+                    <TabsTrigger value="completed">Completed</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="queue">
+                    <RefurbishmentQueue
+                      devices={pendingRefurb}
+                      isLoading={refurbLoading}
+                      onSelect={setSelectedRefurbDeviceId}
+                      canManage={canManage}
+                    />
+                  </TabsContent>
+                  <TabsContent value="completed">
+                    <RefurbishmentQueue
+                      devices={completedRefurb}
+                      isLoading={completedRefurbLoading}
+                      onSelect={setSelectedRefurbDeviceId}
+                      canManage={canManage}
+                      isCompletedView
+                    />
+                  </TabsContent>
+                </Tabs>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="products">
