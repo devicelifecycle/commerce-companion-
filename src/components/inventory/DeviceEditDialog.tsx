@@ -194,10 +194,6 @@ export function DeviceEditDialog({ open, onOpenChange, device, onSuccess }: Devi
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Color</Label>
-              <Input value={form.color} onChange={(e) => set('color', e.target.value)} placeholder="Space Black" />
-            </div>
-            <div className="space-y-2">
               <Label>Condition</Label>
               <Select value={form.condition} onValueChange={(v: DeviceCondition) => set('condition', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -206,6 +202,19 @@ export function DeviceEditDialog({ open, onOpenChange, device, onSuccess }: Devi
                   <SelectItem value="refurbished">Refurbished</SelectItem>
                   <SelectItem value="used">Used</SelectItem>
                   <SelectItem value="damaged">Damaged</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Cosmetic Grade</Label>
+              <Select value={form.cosmetic_grade} onValueChange={(v) => set('cosmetic_grade', v)}>
+                <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="A+">A+ (Like New)</SelectItem>
+                  <SelectItem value="A">A (Excellent)</SelectItem>
+                  <SelectItem value="B">B (Good)</SelectItem>
+                  <SelectItem value="C">C (Fair)</SelectItem>
+                  <SelectItem value="D">D (Poor)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
