@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX idx_devices_imei_unique ON public.devices (imei) WHERE imei IS NOT NULL AND imei != '';
