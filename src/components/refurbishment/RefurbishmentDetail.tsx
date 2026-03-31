@@ -271,7 +271,8 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
         cost_price: newCostPrice,
         original_cost_price: device.original_cost_price || device.cost_price,
         management_labor_cost: totalLaborCost || null,
-      }).eq('id', deviceId);
+        cosmetic_grade: cosmeticGrade || null,
+      } as any).eq('id', deviceId);
 
       // Create accounting entries: Dr. Inventory (device cost) / Cr. Repair Parts Inventory
       if (totalPartsCost > 0) {
