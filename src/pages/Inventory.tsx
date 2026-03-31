@@ -52,7 +52,15 @@ export default function Inventory() {
   const { user } = useAuth();
   const { selectedCompany, isSuperAdmin, hasPermission, companies } = useCompany();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { logEvent } = useAuditLog();
+
+  // Support ?tab= URL param for deep linking (e.g. /inventory?tab=refurbishment)
+  const defaultTab = searchParams.get('tab') || 'list';
+  const [activeTab, setActiveTab] = useState(defaultTab);
+
+  // Refurbishment state
+  const [selectedRefurbDeviceId, setSelectedRefurbDeviceId] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
