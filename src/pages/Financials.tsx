@@ -40,11 +40,15 @@ import { AccountingAuditTrail } from '@/components/financials/AccountingAuditTra
 // Year-End Closing
 import { YearEndClosing } from '@/components/accounting/YearEndClosing';
 
+// Data Integrity (moved from Audit Logs)
+import { UnaccountedMarketplaceData } from '@/components/audit/UnaccountedMarketplaceData';
+import { EntityRelationshipMap } from '@/components/audit/EntityRelationshipMap';
+
 import {
   TrendingUp, ArrowLeftRight, Receipt,
   Scale, CheckSquare, Calculator, FileText, LayoutDashboard,
   Warehouse, Banknote, Wallet, BookOpen, ClipboardCheck,
-  Building2, Lock, Package,
+  Building2, Lock, Package, Link2, PackageSearch,
 } from 'lucide-react';
 
 type SubView =
@@ -55,7 +59,8 @@ type SubView =
   | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing' | 'tax-reconciliation'
   | 'cost-devices'
   | 'accounting-trail'
-  | 'year-end-closing';
+  | 'year-end-closing'
+  | 'relationships' | 'unaccounted';
 
 const SECTIONS = [
   {
@@ -114,6 +119,15 @@ const SECTIONS = [
       { value: 'tax-itc' as SubView, label: 'ITC', icon: Calculator },
       { value: 'tax-reconciliation' as SubView, label: 'Reconciliation', icon: Scale },
       { value: 'tax-filing' as SubView, label: 'Filing', icon: FileText },
+    ],
+  },
+  {
+    key: 'data-integrity',
+    label: 'Data Integrity',
+    icon: Link2,
+    views: [
+      { value: 'relationships' as SubView, label: 'Relationships', icon: Link2 },
+      { value: 'unaccounted' as SubView, label: 'Unaccounted', icon: PackageSearch },
     ],
   },
   {
@@ -245,6 +259,9 @@ export default function Financials() {
             {subView === 'tax-itc' && <InputTaxCredits />}
             {subView === 'tax-filing' && <TaxFilingReport />}
             {subView === 'tax-reconciliation' && <HSTReconciliation />}
+
+            {subView === 'relationships' && <EntityRelationshipMap companyFilter={companyView === 'consolidated' ? null : companyView} />}
+            {subView === 'unaccounted' && <UnaccountedMarketplaceData companyFilter={companyView === 'consolidated' ? null : companyView} />}
 
             {subView === 'accounting-trail' && <AccountingAuditTrail companyView={companyView} />}
             {subView === 'year-end-closing' && <YearEndClosing />}
