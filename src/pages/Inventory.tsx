@@ -355,13 +355,21 @@ export default function Inventory() {
             { label: 'Export', icon: <Download className="h-4 w-4 mr-1" />, onClick: handleExportDevices },
             ...(canManage ? [
               { label: 'Create RMA', icon: <RotateCcw className="h-4 w-4 mr-1" />, onClick: handleBulkCreateRMA },
-              { label: 'Mark In Stock', onClick: () => handleBulkStatusChange('in_stock') },
-              { label: 'Mark Sold', onClick: () => handleBulkStatusChange('sold') },
               { label: 'Send to FBA', icon: <Send className="h-4 w-4 mr-1" />, onClick: handleBulkSendToFBA },
-              { label: 'Delete', icon: <Trash2 className="h-4 w-4 mr-1" />, onClick: () => setBulkDeleteConfirm(true), variant: 'destructive' as const },
               { label: 'Write Off', icon: <XCircle className="h-4 w-4 mr-1" />, onClick: handleBulkWriteOff, variant: 'destructive' as const },
+              { label: 'Delete', icon: <Trash2 className="h-4 w-4 mr-1" />, onClick: () => setBulkDeleteConfirm(true), variant: 'destructive' as const },
             ] : []),
           ]}
+          statusActions={canManage ? {
+            onStatusChange: handleBulkStatusChange,
+            options: [
+              { value: 'in_stock', label: 'In Stock' },
+              { value: 'reserved', label: 'Reserved' },
+              { value: 'hold_for_refurbishment', label: 'Hold for Refurb' },
+              { value: 'sold', label: 'Sold' },
+              { value: 'returned', label: 'Returned' },
+            ],
+          } : undefined}
         />
 
         {/* Bulk delete confirmation */}
