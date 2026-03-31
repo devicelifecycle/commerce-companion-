@@ -18,6 +18,7 @@ import { TrialBalance } from '@/components/accounting/TrialBalance';
 // Reconciliation
 import { MarketplaceReconciliation } from '@/components/reports/MarketplaceReconciliation';
 import { PayoutReconciliation } from '@/components/reports/PayoutReconciliation';
+import { FBAReconciliation } from '@/components/reports/FBAReconciliation';
 
 // AP & AR
 import { AccountsPayable } from '@/components/accounting/AccountsPayable';
@@ -42,13 +43,13 @@ import {
   TrendingUp, ArrowLeftRight, Receipt,
   Scale, CheckSquare, Calculator, FileText, LayoutDashboard,
   Warehouse, Banknote, Wallet, BookOpen, ClipboardCheck,
-  Building2, Lock,
+  Building2, Lock, Package,
 } from 'lucide-react';
 
 type SubView =
   | 'pl' | 'balance-sheet'
   | 'chart-of-accounts' | 'journal-entries' | 'trial-balance'
-  | 'reconciliation' | 'payouts'
+  | 'reconciliation' | 'payouts' | 'fba-reconciliation'
   | 'ap' | 'ar'
   | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing'
   | 'cost-devices'
@@ -98,6 +99,7 @@ const SECTIONS = [
     icon: CheckSquare,
     views: [
       { value: 'reconciliation' as SubView, label: 'Marketplace', icon: CheckSquare },
+      { value: 'fba-reconciliation' as SubView, label: 'FBA Reconciliation', icon: Package },
       { value: 'payouts' as SubView, label: 'Payouts', icon: Banknote },
     ],
   },
@@ -230,6 +232,7 @@ export default function Financials() {
             {subView === 'cost-devices' && <CostLedgerPanel companyView={companyView} />}
 
             {subView === 'reconciliation' && <MarketplaceReconciliation companyView={companyView} />}
+            {subView === 'fba-reconciliation' && <FBAReconciliation />}
             {subView === 'payouts' && <PayoutReconciliation companyView={companyView} />}
 
             {subView === 'ap' && <AccountsPayable companyFilter={companyView} />}

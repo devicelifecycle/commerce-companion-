@@ -139,6 +139,7 @@ export function DeviceTable({
               <TableHead>Device</TableHead>
               <TableHead>IMEI/SKU</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Grade</TableHead>
               <TableHead className="text-right">Cost</TableHead>
               <TableHead>Supplier</TableHead>
               {!selectedCompany && <TableHead>Company</TableHead>}
@@ -178,6 +179,11 @@ export function DeviceTable({
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={device.status as any} />
+                  </TableCell>
+                  <TableCell>
+                    {(device as any).cosmetic_grade ? (
+                      <Badge variant="outline" className="text-xs">{(device as any).cosmetic_grade}</Badge>
+                    ) : <span className="text-muted-foreground text-xs">—</span>}
                   </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(device.cost_price)}

@@ -68,6 +68,7 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
   const [notes, setNotes] = useState('');
   const [completeConfirm, setCompleteConfirm] = useState(false);
   const [customTaskName, setCustomTaskName] = useState('');
+  const [cosmeticGrade, setCosmeticGrade] = useState('');
 
   // Parts state
   const [selectedPartId, setSelectedPartId] = useState('');
@@ -162,6 +163,7 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
     if (device) {
       setLaborCost(device.refurbishment_labor_cost?.toString() || '');
       setNotes(device.refurbishment_notes || '');
+      setCosmeticGrade((device as any).cosmetic_grade || '');
     }
   }, [device]);
 
@@ -269,7 +271,8 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
         cost_price: newCostPrice,
         original_cost_price: device.original_cost_price || device.cost_price,
         management_labor_cost: totalLaborCost || null,
-      }).eq('id', deviceId);
+        cosmetic_grade: cosmeticGrade || null,
+      } as any).eq('id', deviceId);
 
       // Create accounting entries: Dr. Inventory (device cost) / Cr. Repair Parts Inventory
       if (totalPartsCost > 0) {
@@ -438,6 +441,21 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
+              <div>
+                <Label>Cosmetic Grade</Label>
+                <Select value={cosmeticGrade} onValueChange={setCosmeticGrade} disabled={!canManage || isCompleted}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Assign grade..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A+">A+ (Like New)</SelectItem>
+                    <SelectItem value="A">A (Excellent)</SelectItem>
+                    <SelectItem value="B">B (Good)</SelectItem>
+                    <SelectItem value="C">C (Fair)</SelectItem>
+                    <SelectItem value="D">D (Poor)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label>Management Labor Cost ($)</Label>
                 <Input

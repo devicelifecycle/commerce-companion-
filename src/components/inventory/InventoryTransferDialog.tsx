@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { emitRefetch } from '@/hooks/useDataRefetch';
+import { getTransferPriceFromRules } from '@/components/inventory/TransferPricingRules';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import {
@@ -88,6 +89,16 @@ export function InventoryTransferDialog({
     ? companies.find(c => c.id === selectedDevice.company_id)
     : null;
   const availableTargetCompanies = companies.filter(c => c.id !== selectedDevice?.company_id);
+
+  // Auto-apply transfer pricing rules when target company changes
+  useEffect(() => {
+    if (selectedDevice && toCompanyId) {
+      const suggestedPrice = getTransferPriceFromRules(selectedDevice.cost_price, selectedDevice.company_id, toCompanyId);
+      if (suggestedPrice !== selectedDevice.cost_price) {
+        setTransferPrice(suggestedPrice.toString());
+      }
+    }
+  }, [toCompanyId, selectedDevice]);
 
   const handleTransfer = async () => {
     if (!selectedDevice || !toCompanyId) {

@@ -21,6 +21,9 @@ import { RepairPartsManagement } from '@/components/inventory/RepairPartsManagem
 import { DeviceRepairDialog } from '@/components/inventory/DeviceRepairDialog';
 import { RefurbishmentQueue } from '@/components/refurbishment/RefurbishmentQueue';
 import { RefurbishmentDetail } from '@/components/refurbishment/RefurbishmentDetail';
+import { IMEIQuickLookup } from '@/components/inventory/IMEIQuickLookup';
+import { BulkPricingCalculator } from '@/components/inventory/BulkPricingCalculator';
+import { TransferPricingRules } from '@/components/inventory/TransferPricingRules';
 
 import { DeviceProcurementDialog } from '@/components/inventory/DeviceProcurementDialog';
 import { DeviceTimelineDialog } from '@/components/inventory/DeviceTimelineDialog';
@@ -40,7 +43,7 @@ import {
 import { toast } from 'sonner';
 import {
   Upload, ArrowRightLeft, Smartphone, Boxes, List, Package,
-  Download, Send, Trash2, Wrench, RotateCcw, XCircle,
+  Download, Send, Trash2, Wrench, RotateCcw, XCircle, Calculator, Settings,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -276,8 +279,11 @@ export default function Inventory() {
 
         <InventoryGuide />
 
+        {/* IMEI Quick Lookup */}
+        <IMEIQuickLookup onSelectDevice={(device) => setTimelineDevice(device)} />
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="list" className="flex items-center gap-2">
               <Smartphone className="h-4 w-4" /> Devices
             </TabsTrigger>
@@ -296,6 +302,14 @@ export default function Inventory() {
             <TabsTrigger value="repairs" className="flex items-center gap-2">
               <Package className="h-4 w-4" /> Repair Parts
             </TabsTrigger>
+            <TabsTrigger value="pricing" className="flex items-center gap-2">
+              <Calculator className="h-4 w-4" /> Pricing
+            </TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger value="transfer-rules" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" /> Transfer Rules
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="list">
@@ -389,6 +403,16 @@ export default function Inventory() {
           <TabsContent value="repairs">
             <RepairPartsManagement canManage={canManage} />
           </TabsContent>
+
+          <TabsContent value="pricing">
+            <BulkPricingCalculator canManage={canManage} />
+          </TabsContent>
+
+          {isSuperAdmin && (
+            <TabsContent value="transfer-rules">
+              <TransferPricingRules />
+            </TabsContent>
+          )}
         </Tabs>
 
         
