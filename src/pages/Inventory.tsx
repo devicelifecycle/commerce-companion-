@@ -43,7 +43,7 @@ import {
 import { toast } from 'sonner';
 import {
   Upload, ArrowRightLeft, Smartphone, Boxes, List, Package,
-  Download, Send, Trash2, Wrench, RotateCcw, XCircle,
+  Download, Send, Trash2, Wrench, RotateCcw, XCircle, Calculator, Settings,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
