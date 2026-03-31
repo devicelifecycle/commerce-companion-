@@ -43,7 +43,7 @@ import {
   TrendingUp, ArrowLeftRight, Receipt,
   Scale, CheckSquare, Calculator, FileText, LayoutDashboard,
   Warehouse, Banknote, Wallet, BookOpen, ClipboardCheck,
-  Building2, Lock,
+  Building2, Lock, Package,
 } from 'lucide-react';
 
 type SubView =
