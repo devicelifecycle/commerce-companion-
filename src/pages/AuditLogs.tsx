@@ -9,21 +9,16 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { format, subDays } from 'date-fns';
-import { formatStatus } from '@/lib/utils';
 import {
   FileText, Search, AlertCircle, Download, ChevronLeft, ChevronRight,
   Eye, History, Shield, Monitor, Globe, Clock, User, Database,
-  Link2, Activity, BookOpen, LogIn, Layers, ArrowRight,
-  PackageSearch,
+  Activity, Layers,
 } from 'lucide-react';
-import { UnaccountedMarketplaceData } from '@/components/audit/UnaccountedMarketplaceData';
 
 interface AuditLog {
   id: string;
@@ -65,19 +60,11 @@ export default function AuditLogs() {
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [profiles, setProfiles] = useState<Record<string, ProfileInfo>>({});
-  const [activeTab, setActiveTab] = useState('relationships');
+  const [activeTab, setActiveTab] = useState('changes');
   const pageSize = 50;
-
-  // Relationship data
-  const [relSales, setRelSales] = useState<any[]>([]);
-  const [relJournals, setRelJournals] = useState<any[]>([]);
-  const [relAP, setRelAP] = useState<any[]>([]);
-  const [relAR, setRelAR] = useState<any[]>([]);
-  const [relLoading, setRelLoading] = useState(true);
 
   const canViewAudit = hasPermission('audit_logs', 'view');
 
-  // Fetch profiles once
   useEffect(() => {
     const fetchProfiles = async () => {
       const { data } = await supabase.from('profiles').select('user_id, full_name, email');
@@ -90,7 +77,6 @@ export default function AuditLogs() {
     if (canViewAudit || isSuperAdmin) fetchProfiles();
   }, [canViewAudit, isSuperAdmin]);
 
-  // Fetch audit logs
   useEffect(() => {
     if (!canViewAudit && !isSuperAdmin) return;
     const fetchLogs = async () => {
@@ -104,9 +90,7 @@ export default function AuditLogs() {
           .order('created_at', { ascending: false })
           .range(page * pageSize, (page + 1) * pageSize - 1);
 
-        if (moduleFilter !== 'All') {
-          query = query.eq('module', moduleFilter);
-        }
+        if (moduleFilter !== 'All') query = query.eq('module', moduleFilter);
 
         const { data, error, count } = await query;
         if (error) throw error;
@@ -139,63 +123,6 @@ export default function AuditLogs() {
     fetchLogs();
   }, [selectedCompany, isSuperAdmin, actionFilter, moduleFilter, startDate, endDate, searchTerm, page, canViewAudit]);
 
-  // Fetch relationship data
-  useEffect(() => {
-    if ((!canViewAudit && !isSuperAdmin) || activeTab !== 'relationships') return;
-    const fetchRelationships = async () => {
-      setRelLoading(true);
-      try {
-        const companyFilter = selectedCompany?.id;
-
-        // Sales with devices and accounting
-        let salesQ = supabase
-          .from('sales')
-          .select('id, order_number, marketplace, sale_price, sale_date, device_id, company_id, accounting_status, customer_name, shipping_cost, marketplace_fees, tax_amount')
-          .order('sale_date', { ascending: false })
-          .limit(200);
-        if (companyFilter) salesQ = salesQ.eq('company_id', companyFilter);
-        const { data: salesData } = await salesQ;
-
-        // Journal entries
-        let jeQ = supabase
-          .from('journal_entries')
-          .select('id, entry_number, description, entry_date, reference_type, reference_id, total_debit, total_credit, status, is_auto_generated, company_id')
-          .order('entry_date', { ascending: false })
-          .limit(300);
-        if (companyFilter) jeQ = jeQ.eq('company_id', companyFilter);
-        const { data: jeData } = await jeQ;
-
-        // AP
-        let apQ = supabase
-          .from('accounts_payable')
-          .select('id, vendor_name, original_amount, balance_due, status, bill_date, description, company_id')
-          .order('bill_date', { ascending: false })
-          .limit(200);
-        if (companyFilter) apQ = apQ.eq('company_id', companyFilter);
-        const { data: apData } = await apQ;
-
-        // AR
-        let arQ = supabase
-          .from('accounts_receivable')
-          .select('id, customer_name, original_amount, balance_due, status, source_type, source_reference, marketplace, company_id')
-          .order('created_at', { ascending: false })
-          .limit(200);
-        if (companyFilter) arQ = arQ.eq('company_id', companyFilter);
-        const { data: arData } = await arQ;
-
-        setRelSales(salesData || []);
-        setRelJournals(jeData || []);
-        setRelAP(apData || []);
-        setRelAR(arData || []);
-      } catch (err) {
-        console.error('Error fetching relationships:', err);
-      } finally {
-        setRelLoading(false);
-      }
-    };
-    fetchRelationships();
-  }, [activeTab, selectedCompany, canViewAudit, isSuperAdmin]);
-
   const getUserName = (userId: string | null) => {
     if (!userId) return 'System';
     return profiles[userId]?.full_name || profiles[userId]?.email || userId.slice(0, 8);
@@ -206,26 +133,15 @@ export default function AuditLogs() {
     return companies.find(c => c.id === id)?.code || '—';
   };
 
-  const formatCurrency = (v: number) =>
-    new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(v);
-
-  // Stats
   const stats = useMemo(() => {
-    const sessions = logs.filter(l => l.action === 'LOGIN' || l.action === 'LOGOUT');
-    const creates = logs.filter(l => l.action === 'INSERT');
-    const updates = logs.filter(l => l.action === 'UPDATE');
-    const deletes = logs.filter(l => l.action === 'DELETE');
-    const accounting = logs.filter(l => l.module === 'Accounting');
-    const uniqueUsers = new Set(logs.map(l => l.user_id).filter(Boolean));
-    return { sessions: sessions.length, creates: creates.length, updates: updates.length, deletes: deletes.length, accounting: accounting.length, uniqueUsers: uniqueUsers.size };
+    const creates = logs.filter(l => l.action === 'INSERT').length;
+    const updates = logs.filter(l => l.action === 'UPDATE').length;
+    const deletes = logs.filter(l => l.action === 'DELETE').length;
+    const uniqueUsers = new Set(logs.map(l => l.user_id).filter(Boolean)).size;
+    return { creates, updates, deletes, uniqueUsers };
   }, [logs]);
 
-  // Session logs (login/logout)
-  const sessionLogs = useMemo(() => logs.filter(l => l.action === 'LOGIN' || l.action === 'LOGOUT'), [logs]);
-
-  // Data change logs
   const dataChangeLogs = useMemo(() => logs.filter(l => ['INSERT', 'UPDATE', 'DELETE'].includes(l.action)), [logs]);
-
 
   const getActionBadgeClass = (action: string) => {
     switch (action.toUpperCase()) {
@@ -273,10 +189,10 @@ export default function AuditLogs() {
   };
 
   const handleExport = () => {
-    const headers = ['Timestamp', 'User', 'Action', 'Module', 'Table', 'Record ID', 'Status', 'Notes', 'IP Address'];
+    const headers = ['Timestamp', 'User', 'Action', 'Module', 'Table', 'Record ID', 'Status', 'Notes'];
     const rows = logs.map(log => [
       log.created_at, getUserName(log.user_id), log.action, log.module || '',
-      log.table_name, log.record_id || '', log.status || 'success', log.notes || '', log.ip_address || '',
+      log.table_name, log.record_id || '', log.status || 'success', log.notes || '',
     ]);
     const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -309,7 +225,6 @@ export default function AuditLogs() {
     );
   }
 
-  // ======= Shared Log Table =======
   const LogTable = ({ data, showModule = true }: { data: AuditLog[]; showModule?: boolean }) => (
     <div className="border rounded-lg overflow-hidden">
       <Table>
@@ -331,30 +246,18 @@ export default function AuditLogs() {
           ) : data.map(log => (
             <TableRow key={log.id} className="hover:bg-muted/30">
               <TableCell className="text-sm font-mono">
-                <div className="flex items-center gap-1">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
-                  {format(new Date(log.created_at), 'MMM d, HH:mm:ss')}
-                </div>
+                <div className="flex items-center gap-1"><Clock className="h-3 w-3 text-muted-foreground" />{format(new Date(log.created_at), 'MMM d, HH:mm:ss')}</div>
               </TableCell>
               <TableCell className="text-sm">
-                <div className="flex items-center gap-1">
-                  <User className="h-3 w-3 text-muted-foreground" />
-                  {getUserName(log.user_id)}
-                </div>
+                <div className="flex items-center gap-1"><User className="h-3 w-3 text-muted-foreground" />{getUserName(log.user_id)}</div>
               </TableCell>
-              <TableCell>
-                <Badge className={`text-white text-[10px] ${getActionBadgeClass(log.action)}`}>{log.action}</Badge>
-              </TableCell>
-              {showModule && (
-                <TableCell>{log.module ? <Badge variant="outline" className="text-[10px]">{log.module}</Badge> : '—'}</TableCell>
-              )}
+              <TableCell><Badge className={`text-white text-[10px] ${getActionBadgeClass(log.action)}`}>{log.action}</Badge></TableCell>
+              {showModule && <TableCell>{log.module ? <Badge variant="outline" className="text-[10px]">{log.module}</Badge> : '—'}</TableCell>}
               <TableCell className="font-mono text-xs">{log.table_name}</TableCell>
               <TableCell className="text-xs text-muted-foreground max-w-[250px] truncate">{log.notes || (log.record_id ? `Record: ${log.record_id.slice(0, 8)}…` : '—')}</TableCell>
               <TableCell className="text-xs">{companyName(log.company_id)}</TableCell>
               <TableCell>
-                <Button variant="ghost" size="sm" onClick={() => { setSelectedLog(log); setDetailOpen(true); }}>
-                  <Eye className="h-4 w-4" />
-                </Button>
+                <Button variant="ghost" size="sm" onClick={() => { setSelectedLog(log); setDetailOpen(true); }}><Eye className="h-4 w-4" /></Button>
               </TableCell>
             </TableRow>
           ))}
@@ -369,22 +272,20 @@ export default function AuditLogs() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-display font-bold gradient-text">Audit Trail</h1>
-            <p className="text-muted-foreground">Complete traceability for every action, relationship, and transaction</p>
+            <p className="text-muted-foreground">Data change log and event history</p>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="gap-1"><Shield className="h-3 w-3" />{isSuperAdmin ? 'Super Admin' : 'Company Admin'}</Badge>
-            <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-1" />Export All</Button>
+            <Button variant="outline" size="sm" onClick={handleExport}><Download className="h-4 w-4 mr-1" />Export</Button>
           </div>
         </div>
 
         {/* KPI Row */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Card><CardContent className="pt-4 pb-3"><div className="flex items-center gap-2"><Database className="h-4 w-4 text-muted-foreground" /><div><p className="text-[11px] text-muted-foreground">Total Events</p><p className="text-xl font-bold">{totalCount.toLocaleString()}</p></div></div></CardContent></Card>
-          <Card><CardContent className="pt-4 pb-3"><div className="flex items-center gap-2"><User className="h-4 w-4 text-blue-500" /><div><p className="text-[11px] text-muted-foreground">Active Users</p><p className="text-xl font-bold">{stats.uniqueUsers}</p></div></div></CardContent></Card>
           <Card><CardContent className="pt-4 pb-3"><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-emerald-500" /><div><p className="text-[11px] text-muted-foreground">Creates</p><p className="text-xl font-bold text-emerald-500">{stats.creates}</p></div></div></CardContent></Card>
           <Card><CardContent className="pt-4 pb-3"><div className="flex items-center gap-2"><History className="h-4 w-4 text-amber-500" /><div><p className="text-[11px] text-muted-foreground">Updates</p><p className="text-xl font-bold text-amber-500">{stats.updates}</p></div></div></CardContent></Card>
           <Card><CardContent className="pt-4 pb-3"><div className="flex items-center gap-2"><AlertCircle className="h-4 w-4 text-destructive" /><div><p className="text-[11px] text-muted-foreground">Deletes</p><p className="text-xl font-bold text-destructive">{stats.deletes}</p></div></div></CardContent></Card>
-          <Card><CardContent className="pt-4 pb-3"><div className="flex items-center gap-2"><BookOpen className="h-4 w-4 text-primary" /><div><p className="text-[11px] text-muted-foreground">Accounting</p><p className="text-xl font-bold text-primary">{stats.accounting}</p></div></div></CardContent></Card>
         </div>
 
         {/* Filters */}
@@ -418,285 +319,17 @@ export default function AuditLogs() {
           </CardContent>
         </Card>
 
-        {/* Tabs */}
+        {/* Tabs — just Data Changes + All Events */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="relationships" className="flex items-center gap-1.5 text-xs">
-              <Link2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Relationships</span>
-            </TabsTrigger>
-            <TabsTrigger value="unaccounted" className="flex items-center gap-1.5 text-xs">
-              <PackageSearch className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Unaccounted</span>
-            </TabsTrigger>
-            <TabsTrigger value="sessions" className="flex items-center gap-1.5 text-xs">
-              <LogIn className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">User Sessions</span>
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 max-w-md">
             <TabsTrigger value="changes" className="flex items-center gap-1.5 text-xs">
-              <Activity className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Data Changes</span>
+              <Activity className="h-3.5 w-3.5" />Data Changes
             </TabsTrigger>
             <TabsTrigger value="all" className="flex items-center gap-1.5 text-xs">
-              <Layers className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">All Events</span>
+              <Layers className="h-3.5 w-3.5" />All Events
             </TabsTrigger>
           </TabsList>
 
-          {/* ========== TAB 1: RELATIONSHIPS ========== */}
-          <TabsContent value="relationships">
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Link2 className="h-5 w-5" />
-                    Entity Relationship Map
-                  </CardTitle>
-                  <CardDescription>
-                    Shows how sales, devices, journal entries, AP, and AR records are connected
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {relLoading ? (
-                    <div className="flex items-center justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>
-                  ) : (
-                    <div className="space-y-6">
-                      {/* Sales → Device + Accounting chain */}
-                      <div>
-                        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                          <Badge variant="outline">Sales</Badge>
-                          <ArrowRight className="h-3 w-3" />
-                          <Badge variant="outline">Devices</Badge>
-                          <ArrowRight className="h-3 w-3" />
-                          <Badge variant="outline">Journal Entries</Badge>
-                          <ArrowRight className="h-3 w-3" />
-                          <Badge variant="outline">AR</Badge>
-                        </h3>
-                        <div className="border rounded-lg overflow-auto max-h-[400px]">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-muted/50">
-                                <TableHead>Order #</TableHead>
-                                <TableHead>Marketplace</TableHead>
-                                <TableHead>Customer</TableHead>
-                                <TableHead className="text-right">Sale Price</TableHead>
-                                <TableHead>Device Linked?</TableHead>
-                                <TableHead>Accounting</TableHead>
-                                <TableHead>Journal Entries</TableHead>
-                                <TableHead>AR Record</TableHead>
-                                <TableHead>Company</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {relSales.slice(0, 100).map(sale => {
-                                const linkedJEs = relJournals.filter(j => j.reference_id === sale.id);
-                                const linkedAR = relAR.filter(a => a.source_reference === sale.order_number || a.source_reference === sale.id);
-                                const hasDevice = !!sale.device_id;
-                                const accStatus = sale.accounting_status || 'unprocessed';
-
-                                return (
-                                  <TableRow key={sale.id}>
-                                    <TableCell className="font-mono text-sm font-medium">{sale.order_number}</TableCell>
-                                    <TableCell><Badge variant="outline" className="text-[10px] capitalize">{sale.marketplace}</Badge></TableCell>
-                                    <TableCell className="text-sm">{sale.customer_name || '—'}</TableCell>
-                                    <TableCell className="text-right font-medium">{formatCurrency(sale.sale_price)}</TableCell>
-                                    <TableCell>
-                                      <Badge variant={hasDevice ? 'default' : 'destructive'} className="text-[10px]">
-                                        {hasDevice ? '✓ Linked' : '✗ Missing'}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                      <Badge variant={accStatus === 'fully_processed' ? 'default' : accStatus === 'revenue_only' ? 'secondary' : 'destructive'} className="text-[10px]">
-                                        {formatStatus(accStatus)}
-                                      </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                      {linkedJEs.length > 0 ? (
-                                        <span className="text-xs text-emerald-600 font-medium">{linkedJEs.length} entries</span>
-                                      ) : (
-                                        <span className="text-xs text-destructive">None</span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell>
-                                      {linkedAR.length > 0 ? (
-                                        <Badge variant="outline" className="text-[10px]">{formatStatus(linkedAR[0].status)}</Badge>
-                                      ) : (
-                                        <span className="text-xs text-muted-foreground">—</span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-xs">{companyName(sale.company_id)}</TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
-                        </div>
-                        {relSales.length > 100 && <p className="text-xs text-muted-foreground mt-2">Showing 100 of {relSales.length}</p>}
-                      </div>
-
-                      <Separator />
-
-                      {/* AP → Journal Entries */}
-                      <div>
-                        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                          <Badge variant="outline">Accounts Payable</Badge>
-                          <ArrowRight className="h-3 w-3" />
-                          <Badge variant="outline">Journal Entries</Badge>
-                        </h3>
-                        <div className="border rounded-lg overflow-auto max-h-[300px]">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="bg-muted/50">
-                                <TableHead>Vendor</TableHead>
-                                <TableHead className="text-right">Amount</TableHead>
-                                <TableHead className="text-right">Balance</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Description</TableHead>
-                                <TableHead>Journal Entries</TableHead>
-                                <TableHead>Company</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {relAP.slice(0, 50).map(ap => {
-                                const linkedJEs = relJournals.filter(j => j.reference_id === ap.id);
-                                return (
-                                  <TableRow key={ap.id}>
-                                    <TableCell className="font-medium text-sm">{ap.vendor_name}</TableCell>
-                                    <TableCell className="text-right">{formatCurrency(ap.original_amount)}</TableCell>
-                                    <TableCell className="text-right">{formatCurrency(ap.balance_due || 0)}</TableCell>
-                                    <TableCell><Badge variant="outline" className="text-[10px]">{formatStatus(ap.status)}</Badge></TableCell>
-                                    <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{ap.description || '—'}</TableCell>
-                                    <TableCell>
-                                      {linkedJEs.length > 0 ? (
-                                        <span className="text-xs text-emerald-600 font-medium">{linkedJEs.length} entries</span>
-                                      ) : (
-                                        <span className="text-xs text-amber-500">No entries</span>
-                                      )}
-                                    </TableCell>
-                                    <TableCell className="text-xs">{companyName(ap.company_id)}</TableCell>
-                                  </TableRow>
-                                );
-                              })}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      </div>
-
-                      <Separator />
-
-                      {/* Journal Entries summary */}
-                      <div>
-                        <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                          <Badge variant="outline">Journal Entries</Badge>
-                          — Source Breakdown
-                        </h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                          {['sale', 'purchase', 'expense', 'return', 'invoice', 'tax_payment', 'manual'].map(refType => {
-                            const count = relJournals.filter(j => j.reference_type === refType).length;
-                            if (count === 0) return null;
-                            return (
-                              <Card key={refType}>
-                                <CardContent className="pt-3 pb-3">
-                                  <p className="text-xs text-muted-foreground capitalize">{refType.replace('_', ' ')}</p>
-                                  <p className="text-lg font-bold">{count}</p>
-                                </CardContent>
-                              </Card>
-                            );
-                          })}
-                          <Card>
-                            <CardContent className="pt-3 pb-3">
-                              <p className="text-xs text-muted-foreground">Auto-Generated</p>
-                              <p className="text-lg font-bold">{relJournals.filter(j => j.is_auto_generated).length}</p>
-                            </CardContent>
-                          </Card>
-                          <Card>
-                            <CardContent className="pt-3 pb-3">
-                              <p className="text-xs text-muted-foreground">Manual</p>
-                              <p className="text-lg font-bold">{relJournals.filter(j => !j.is_auto_generated).length}</p>
-                            </CardContent>
-                          </Card>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-
-          {/* ========== TAB: UNACCOUNTED MARKETPLACE DATA ========== */}
-          <TabsContent value="unaccounted">
-            <UnaccountedMarketplaceData companyFilter={selectedCompany?.id || null} />
-          </TabsContent>
-          {/* ========== TAB 2: USER SESSIONS ========== */}
-          <TabsContent value="sessions">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2"><LogIn className="h-5 w-5" />User Session History</CardTitle>
-                <CardDescription>Login/logout events and user activity summary</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {sessionLogs.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <LogIn className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>No session events recorded in this period</p>
-                    <p className="text-xs mt-1">Login/logout events will appear here once tracked</p>
-                  </div>
-                ) : (
-                  <LogTable data={sessionLogs} showModule={false} />
-                )}
-
-                {/* User activity breakdown */}
-                {Object.keys(profiles).length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="font-semibold text-sm mb-3">User Activity Summary (in period)</h4>
-                    <div className="border rounded-lg overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow className="bg-muted/50">
-                            <TableHead>User</TableHead>
-                            <TableHead className="text-right">Total Actions</TableHead>
-                            <TableHead className="text-right">Creates</TableHead>
-                            <TableHead className="text-right">Updates</TableHead>
-                            <TableHead className="text-right">Deletes</TableHead>
-                            <TableHead className="text-right">Exports</TableHead>
-                            <TableHead className="text-right">Imports</TableHead>
-                            <TableHead>Last Active</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {Object.entries(
-                            logs.reduce<Record<string, AuditLog[]>>((acc, log) => {
-                              const uid = log.user_id || 'system';
-                              if (!acc[uid]) acc[uid] = [];
-                              acc[uid].push(log);
-                              return acc;
-                            }, {})
-                          ).sort((a, b) => b[1].length - a[1].length).map(([userId, userLogs]) => (
-                            <TableRow key={userId}>
-                              <TableCell className="font-medium">{getUserName(userId === 'system' ? null : userId)}</TableCell>
-                              <TableCell className="text-right font-bold">{userLogs.length}</TableCell>
-                              <TableCell className="text-right text-emerald-600">{userLogs.filter(l => l.action === 'INSERT').length || '—'}</TableCell>
-                              <TableCell className="text-right text-amber-600">{userLogs.filter(l => l.action === 'UPDATE').length || '—'}</TableCell>
-                              <TableCell className="text-right text-destructive">{userLogs.filter(l => l.action === 'DELETE').length || '—'}</TableCell>
-                              <TableCell className="text-right">{userLogs.filter(l => l.action === 'EXPORT').length || '—'}</TableCell>
-                              <TableCell className="text-right">{userLogs.filter(l => l.action === 'IMPORT').length || '—'}</TableCell>
-                              <TableCell className="text-xs text-muted-foreground">
-                                {format(new Date(userLogs[0].created_at), 'MMM d, HH:mm')}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* ========== TAB 3: DATA CHANGES ========== */}
           <TabsContent value="changes">
             <Card>
               <CardHeader>
@@ -713,15 +346,11 @@ export default function AuditLogs() {
             </Card>
           </TabsContent>
 
-
-          {/* ========== TAB 5: ALL EVENTS ========== */}
           <TabsContent value="all">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-base flex items-center gap-2"><Layers className="h-5 w-5" />Complete Event Log</CardTitle>
-                  <CardDescription>Showing {logs.length} of {totalCount} events</CardDescription>
-                </div>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2"><Layers className="h-5 w-5" />Complete Event Log</CardTitle>
+                <CardDescription>Showing {logs.length} of {totalCount} events</CardDescription>
               </CardHeader>
               <CardContent>
                 {loading ? (
@@ -794,23 +423,22 @@ export default function AuditLogs() {
 
                 <Separator />
 
-                <div className="space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2"><User className="h-4 w-4" />Session Information</h4>
-                  <div className="grid grid-cols-1 gap-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <Label className="text-muted-foreground w-24">User ID:</Label>
-                      <span className="font-mono text-xs">{selectedLog.user_id || 'System'}</span>
+                {(selectedLog.ip_address || selectedLog.user_agent) && (
+                  <>
+                    <div className="space-y-3">
+                      <h4 className="font-semibold flex items-center gap-2"><User className="h-4 w-4" />Session Info</h4>
+                      <div className="grid grid-cols-1 gap-2 text-sm">
+                        {selectedLog.ip_address && (
+                          <div className="flex items-center gap-2"><Globe className="h-4 w-4 text-muted-foreground" /><span className="font-mono text-xs">{selectedLog.ip_address}</span></div>
+                        )}
+                        {selectedLog.user_agent && (
+                          <div className="flex items-center gap-2"><Monitor className="h-4 w-4 text-muted-foreground" /><span className="text-xs truncate max-w-[400px]">{selectedLog.user_agent}</span></div>
+                        )}
+                      </div>
                     </div>
-                    {selectedLog.ip_address && (
-                      <div className="flex items-center gap-2"><Globe className="h-4 w-4 text-muted-foreground" /><span className="font-mono text-xs">{selectedLog.ip_address}</span></div>
-                    )}
-                    {selectedLog.user_agent && (
-                      <div className="flex items-center gap-2"><Monitor className="h-4 w-4 text-muted-foreground" /><span className="text-xs truncate max-w-[400px]">{selectedLog.user_agent}</span></div>
-                    )}
-                  </div>
-                </div>
-
-                <Separator />
+                    <Separator />
+                  </>
+                )}
 
                 <div className="space-y-3">
                   <h4 className="font-semibold flex items-center gap-2"><History className="h-4 w-4" />Changes</h4>
