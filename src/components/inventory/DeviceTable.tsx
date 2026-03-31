@@ -4,7 +4,6 @@ import { checkDeviceDeletable, reverseJournalEntries } from '@/lib/accounting/re
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
