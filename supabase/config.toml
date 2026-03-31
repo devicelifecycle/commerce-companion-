@@ -38,3 +38,6 @@ verify_jwt = false
 
 [functions.parse-repair-parts-invoice]
 verify_jwt = false
+
+[functions.generate-recurring-expenses]
+verify_jwt = false
