@@ -325,12 +325,13 @@ serve(async (req) => {
       try {
         const orderNumber = `AMZ-${order.AmazonOrderId}`;
 
-        // Check if order already exists
-        const { data: existingOrder } = await supabase
+        // Check if order already exists (use .limit(1) to avoid maybeSingle failure on dupes)
+        const { data: existingOrders } = await supabase
           .from("sales")
           .select("id")
           .eq("order_number", orderNumber)
-          .maybeSingle();
+          .limit(1);
+        const existingOrder = existingOrders && existingOrders.length > 0 ? existingOrders[0] : null;
 
         if (existingOrder) {
           // Backfill customer data and sync marketplace status on existing orders
