@@ -12,7 +12,7 @@ import {
   BarChart3,
   Wallet,
   Brain,
-  ClipboardList,
+  
   HelpCircle,
   Smartphone,
   ShoppingCart,
