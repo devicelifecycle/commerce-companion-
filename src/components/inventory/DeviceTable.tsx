@@ -138,11 +138,9 @@ export function DeviceTable({
               </TableHead>
               <TableHead>Device</TableHead>
               <TableHead>IMEI/SKU</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Condition</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Channel</TableHead>
               <TableHead className="text-right">Cost</TableHead>
+              <TableHead>Supplier</TableHead>
               {!selectedCompany && <TableHead>Company</TableHead>}
               {canManage && <TableHead className="w-[50px]" />}
             </TableRow>
