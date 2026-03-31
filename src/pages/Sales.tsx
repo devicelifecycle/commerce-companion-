@@ -530,7 +530,7 @@ export default function Sales() {
                       <TableRow 
                         key={sale.id} 
                         data-state={selectedIds.has(sale.id) ? 'selected' : undefined}
-                        className="cursor-pointer"
+                        className={`cursor-pointer ${sale.fulfillment_status === 'cancelled' ? 'opacity-60' : ''}`}
                         onClick={() => setViewingSale(sale)}
                       >
                         {canManageSales && (
