@@ -513,7 +513,6 @@ export default function Sales() {
                         </TableHead>
                       )}
                       <TableHead className="w-[130px]">Order</TableHead>
-                      <TableHead className="w-[160px]">Item</TableHead>
                       <TableHead className="w-[70px]">Channel</TableHead>
                       <TableHead className="w-[50px]">Prov</TableHead>
                       <TableHead className="w-[80px]">Status</TableHead>
@@ -560,23 +559,6 @@ export default function Sales() {
                               </Badge>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell className="px-2">
-                          {sale.devices ? (
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium truncate max-w-[140px]">{sale.devices.brand} {sale.devices.model}</p>
-                              <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                {sale.devices.storage && <span>{sale.devices.storage}</span>}
-                                {sale.devices.condition && <span className="capitalize">· {sale.devices.condition}</span>}
-                              </div>
-                            </div>
-                          ) : sale.product_title ? (
-                            <div className="min-w-0">
-                              <p className="text-xs font-medium truncate max-w-[140px]" title={sale.product_title}>{sale.product_title}</p>
-                            </div>
-                          ) : (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">Unlinked</Badge>
-                          )}
                         </TableCell>
                         <TableCell className="px-2">
                           <MarketplaceBadge marketplace={sale.marketplace} />
