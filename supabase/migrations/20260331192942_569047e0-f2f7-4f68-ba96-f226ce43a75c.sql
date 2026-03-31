@@ -1,0 +1,2 @@
+ALTER TABLE public.marketplace_payouts ADD COLUMN IF NOT EXISTS reserve_amount numeric NOT NULL DEFAULT 0;
+ALTER TABLE public.accounts_receivable ADD COLUMN IF NOT EXISTS payout_id uuid REFERENCES public.marketplace_payouts(id);
