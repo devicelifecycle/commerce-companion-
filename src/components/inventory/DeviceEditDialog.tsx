@@ -59,7 +59,7 @@ export function DeviceEditDialog({ open, onOpenChange, device, onSuccess }: Devi
     imei: '', sku: '', category: 'phone', model: '', brand: '', storage: '', color: '',
     condition: 'new' as DeviceCondition, status: 'in_stock' as DeviceStatus,
     cost_price: '', sale_price: '', supplier_id: '', purchase_date: '', warehouse_location: '', notes: '',
-    management_labor_cost: '', management_labor_hours: '',
+    management_labor_cost: '', management_labor_hours: '', cosmetic_grade: '',
   });
 
   useEffect(() => {
