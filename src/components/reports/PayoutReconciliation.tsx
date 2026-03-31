@@ -589,6 +589,9 @@ export function PayoutReconciliation({ companyView = 'consolidated' }: PayoutRec
                         <TableCell className="text-right text-muted-foreground">
                           {payout.adjustments_amount ? formatCurrency(payout.adjustments_amount) : '—'}
                         </TableCell>
+                        <TableCell className="text-right text-amber-500">
+                          {Number((payout as any).reserve_amount) > 0 ? formatCurrency(Number((payout as any).reserve_amount)) : '—'}
+                        </TableCell>
                         <TableCell className="text-right font-medium">{formatCurrency(payout.net_payout)}</TableCell>
                         <TableCell className="text-right">
                           {systemExpected ? formatCurrency(systemExpected) : '—'}
