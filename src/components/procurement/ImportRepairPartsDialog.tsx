@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import ExcelJS from 'exceljs';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/lib/auth';
@@ -22,13 +23,14 @@ import {
   createAutoJournalEntry, getAccountIdByCode, createPaymentMadeJournalEntry,
 } from '@/lib/accounting/journalAutomation';
 
-const PART_CATEGORIES = ['screen', 'battery', 'housing', 'camera', 'charging_port', 'speaker', 'button', 'connector', 'adhesive', 'general'];
+const PART_CATEGORIES = ['screen', 'battery', 'housing', 'camera', 'charging_port', 'speaker', 'button', 'connector', 'adhesive', 'ssd', 'general'];
 
 interface ParsedItem {
   sku: string;
   name: string;
   quantity: number;
   unit_cost: number;
+  subtotal: number;
   category: string;
 }
 
@@ -36,9 +38,10 @@ interface ParsedInvoice {
   invoice_number: string;
   invoice_date: string;
   subtotal: number;
-  gst_hst_amount: number;
   shipping_cost: number;
+  gst_hst_amount: number;
   total: number;
+  payment_method_from_file: string;
   items: ParsedItem[];
 }
 
@@ -48,6 +51,47 @@ interface ImportRepairPartsDialogProps {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onSuccess: () => void;
+}
+
+/** Guess category from product description */
+function guessCategory(desc: string): string {
+  const d = desc.toLowerCase();
+  if (d.includes('screen') || d.includes('lcd') || d.includes('display') || d.includes('digitizer')) return 'screen';
+  if (d.includes('battery')) return 'battery';
+  if (d.includes('housing') || d.includes('back glass') || d.includes('rear glass') || d.includes('frame')) return 'housing';
+  if (d.includes('camera')) return 'camera';
+  if (d.includes('charging') || d.includes('charge port') || d.includes('lightning') || d.includes('usb-c')) return 'charging_port';
+  if (d.includes('speaker') || d.includes('earpiece') || d.includes('buzzer')) return 'speaker';
+  if (d.includes('button') || d.includes('power flex') || d.includes('volume flex')) return 'button';
+  if (d.includes('connector') || d.includes('flex cable') || d.includes('ribbon')) return 'connector';
+  if (d.includes('adhesive') || d.includes('tape') || d.includes('sticker')) return 'adhesive';
+  if (d.includes('ssd') || d.includes('hard drive') || d.includes('storage')) return 'ssd';
+  return 'general';
+}
+
+/** Get raw cell value as string, handling scientific notation / rich text */
+function cellToString(cell: ExcelJS.Cell): string {
+  const v = cell.value;
+  if (v == null) return '';
+  if (typeof v === 'object' && 'richText' in (v as any)) {
+    return ((v as any).richText as any[]).map(r => r.text).join('');
+  }
+  // For numbers that look like SKUs (very large), get the raw text from the cell
+  if (typeof v === 'number' && v > 1e9) {
+    // Try to get the formatted text
+    const txt = cell.text;
+    if (txt && !txt.includes('E')) return txt;
+    return v.toFixed(0);
+  }
+  return String(v);
+}
+
+function cellToNumber(cell: ExcelJS.Cell): number {
+  const v = cell.value;
+  if (v == null) return 0;
+  if (typeof v === 'number') return v;
+  const parsed = parseFloat(String(v).replace(/[,$]/g, ''));
+  return isNaN(parsed) ? 0 : parsed;
 }
 
 export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: ImportRepairPartsDialogProps) {
@@ -78,16 +122,14 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
     onOpenChange(v);
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
 
-    const validTypes = ['application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv'];
-    const validExts = ['.pdf', '.xls', '.xlsx', '.csv'];
+    const validExts = ['.xls', '.xlsx', '.csv'];
     const ext = f.name.toLowerCase().substring(f.name.lastIndexOf('.'));
-
-    if (!validTypes.includes(f.type) && !validExts.includes(ext)) {
-      toast.error('Please upload a PDF, XLS, XLSX, or CSV file');
+    if (!validExts.includes(ext)) {
+      toast.error('Please upload an XLS, XLSX, or CSV file');
       return;
     }
 
@@ -95,36 +137,186 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
     setParsing(true);
 
     try {
-      const formData = new FormData();
-      formData.append('file', f);
+      const arrayBuffer = await f.arrayBuffer();
+      const workbook = new ExcelJS.Workbook();
 
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      if (ext === '.csv') {
+        const text = new TextDecoder().decode(arrayBuffer);
+        const blob = new Blob([text], { type: 'text/csv' });
+        const stream = blob.stream();
+        await workbook.csv.read(stream as any);
+      } else {
+        await workbook.xlsx.load(arrayBuffer);
+      }
 
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/parse-repair-parts-invoice`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: formData,
+      const ws = workbook.worksheets[0];
+      if (!ws) throw new Error('No worksheet found');
+
+      // Read headers from row 1
+      const headerRow = ws.getRow(1);
+      const headers: Record<number, string> = {};
+      headerRow.eachCell((cell, colNum) => {
+        headers[colNum] = cellToString(cell).toLowerCase().trim();
+      });
+
+      // Find column indices
+      const findCol = (...patterns: string[]) => {
+        for (const [colStr, h] of Object.entries(headers)) {
+          for (const p of patterns) {
+            if (h.includes(p)) return parseInt(colStr);
+          }
         }
-      );
+        return 0;
+      };
 
-      const json = await res.json();
-      if (!res.ok || json.error) throw new Error(json.error || 'Failed to parse');
+      const colOrderNum = findCol('order number', 'order_number', 'order #');
+      const colOrderDate = findCol('order date', 'order_date');
+      const colDesc = findCol('product description', 'description', 'product name', 'item');
+      const colSku = findCol('sku', 'part number');
+      const colUnitPrice = findCol('unit price', 'unit_price', 'price');
+      const colQty = findCol('quantity ordered', 'quantity', 'qty');
+      const colSubTotal = findCol('sub total', 'subtotal', 'line total', 'total');
+      const colPayment = findCol('payment method', 'payment');
 
-      setInvoice(json.data);
+      if (!colDesc || !colUnitPrice || !colQty) {
+        throw new Error('Could not find required columns (Product Description, Unit Price, Quantity). Please check the file format.');
+      }
+
+      // Parse line items and summary
+      const items: ParsedItem[] = [];
+      let orderNumber = '';
+      let orderDate = '';
+      let payMethodFromFile = '';
+      let summarySubtotal = 0;
+      let summaryShipping = 0;
+      let summaryTax = 0;
+      let summaryTotal = 0;
+
+      ws.eachRow((row, rowNum) => {
+        if (rowNum === 1) return; // skip header
+
+        // Check for summary rows by looking at merged/label cells
+        // MobileSentrix puts summary labels in the "Quantity Ordered" column area
+        // and values in the "Sub Total" column area
+        const qtyCell = colQty ? cellToString(ws.getRow(rowNum).getCell(colQty)).trim() : '';
+        const subTotalCell = colSubTotal ? cellToNumber(ws.getRow(rowNum).getCell(colSubTotal)) : 0;
+        const descCell = colDesc ? cellToString(ws.getRow(rowNum).getCell(colDesc)).trim() : '';
+
+        // Check if this is a summary row (no product description but has label in qty-adjacent columns)
+        const rowCells: string[] = [];
+        row.eachCell((cell) => {
+          rowCells.push(cellToString(cell).trim().toLowerCase());
+        });
+        const rowText = rowCells.join(' ');
+
+        if (rowText.includes('subtotal') && !rowText.includes('shipping') && !rowText.includes('tax') && !rowText.includes('grand')) {
+          summarySubtotal = subTotalCell || parseFloat(rowCells.find(c => /^\d+\.?\d*$/.test(c)) || '0');
+          return;
+        }
+        if (rowText.includes('shipping')) {
+          summaryShipping = subTotalCell || parseFloat(rowCells.find(c => /^\d+\.?\d*$/.test(c)) || '0');
+          return;
+        }
+        if (rowText.includes('sales tax') || rowText.includes('hst') || rowText.includes('gst')) {
+          // Try to find the tax amount
+          const taxMatch = rowCells.find(c => /^\d+\.?\d+$/.test(c) && parseFloat(c) > 0);
+          if (taxMatch) summaryTax = parseFloat(taxMatch);
+          if (!summaryTax && subTotalCell > 0) summaryTax = subTotalCell;
+          return;
+        }
+        if (rowText.includes('grand total')) {
+          summaryTotal = subTotalCell || parseFloat(rowCells.find(c => /^\d+\.?\d*$/.test(c)) || '0');
+          return;
+        }
+        if (rowText.includes('total due') || rowText.includes('paid(') || rowText.includes('total') && !descCell) {
+          // skip total/paid/due rows
+          if (rowText.includes('grand')) summaryTotal = subTotalCell;
+          return;
+        }
+
+        // Regular line item
+        const desc = colDesc ? cellToString(row.getCell(colDesc)).trim() : '';
+        if (!desc) return; // skip empty rows
+
+        const sku = colSku ? cellToString(row.getCell(colSku)).trim() : '';
+        const unitPrice = colUnitPrice ? cellToNumber(row.getCell(colUnitPrice)) : 0;
+        const qty = colQty ? cellToNumber(row.getCell(colQty)) : 0;
+        const lineTotal = colSubTotal ? cellToNumber(row.getCell(colSubTotal)) : unitPrice * qty;
+
+        if (qty <= 0 || unitPrice <= 0) return; // skip non-item rows
+
+        // Capture order info from first line item
+        if (!orderNumber && colOrderNum) {
+          orderNumber = cellToString(row.getCell(colOrderNum)).trim();
+        }
+        if (!orderDate && colOrderDate) {
+          const dateVal = row.getCell(colOrderDate).value;
+          if (dateVal instanceof Date) {
+            orderDate = dateVal.toISOString().split('T')[0];
+          } else {
+            const ds = cellToString(row.getCell(colOrderDate)).trim();
+            // Try MM/DD/YYYY format
+            const parts = ds.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (parts) {
+              orderDate = `${parts[3]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            } else {
+              orderDate = ds;
+            }
+          }
+        }
+        if (!payMethodFromFile && colPayment) {
+          payMethodFromFile = cellToString(row.getCell(colPayment)).trim();
+        }
+
+        items.push({
+          sku,
+          name: desc,
+          quantity: Math.round(qty),
+          unit_cost: Math.round(unitPrice * 100) / 100,
+          subtotal: Math.round(lineTotal * 100) / 100,
+          category: guessCategory(desc),
+        });
+      });
+
+      if (items.length === 0) {
+        throw new Error('No line items found in the file');
+      }
+
+      // Fallback calculations
+      const calcSubtotal = items.reduce((s, i) => s + i.unit_cost * i.quantity, 0);
+      if (!summarySubtotal) summarySubtotal = calcSubtotal;
+      if (!summaryTotal) summaryTotal = summarySubtotal + summaryShipping + summaryTax;
+
+      // Map file payment method
+      let mappedPayment = 'credit_card';
+      const pm = payMethodFromFile.toLowerCase();
+      if (pm.includes('bank') || pm.includes('wire') || pm.includes('transfer')) mappedPayment = 'wire';
+      else if (pm.includes('paypal')) mappedPayment = 'paypal';
+      else if (pm.includes('debit')) mappedPayment = 'debit';
+      else if (pm.includes('e-transfer') || pm.includes('etransfer')) mappedPayment = 'e_transfer';
+
+      setPaymentMethod(mappedPayment);
+      if (orderDate) setPaymentDate(orderDate);
+
+      setInvoice({
+        invoice_number: orderNumber,
+        invoice_date: orderDate || new Date().toISOString().split('T')[0],
+        subtotal: Math.round(summarySubtotal * 100) / 100,
+        shipping_cost: Math.round(summaryShipping * 100) / 100,
+        gst_hst_amount: Math.round(summaryTax * 100) / 100,
+        total: Math.round(summaryTotal * 100) / 100,
+        payment_method_from_file: payMethodFromFile,
+        items,
+      });
+
       setStep('review');
     } catch (err: any) {
-      toast.error(err.message || 'Failed to parse invoice');
+      toast.error(err.message || 'Failed to parse file');
       setFile(null);
     } finally {
       setParsing(false);
     }
-  };
+  }, []);
 
   const removeItem = (index: number) => {
     if (!invoice) return;
@@ -138,7 +330,22 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
     if (!invoice) return;
     const items = [...invoice.items];
     items[index] = { ...items[index], [field]: value };
-    setInvoice({ ...invoice, items });
+    // Recalc subtotal on the item
+    if (field === 'unit_cost' || field === 'quantity') {
+      items[index].subtotal = items[index].unit_cost * items[index].quantity;
+    }
+    const newSubtotal = items.reduce((s, i) => s + i.unit_cost * i.quantity, 0);
+    setInvoice({ ...invoice, items, subtotal: Math.round(newSubtotal * 100) / 100 });
+  };
+
+  const updateInvoiceField = (field: keyof ParsedInvoice, value: any) => {
+    if (!invoice) return;
+    const updated = { ...invoice, [field]: value };
+    // Recalc total when subtotal/shipping/tax change
+    if (['subtotal', 'shipping_cost', 'gst_hst_amount'].includes(field)) {
+      updated.total = Math.round((updated.subtotal + updated.shipping_cost + updated.gst_hst_amount) * 100) / 100;
+    }
+    setInvoice(updated);
   };
 
   const handleImport = async () => {
@@ -179,10 +386,10 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
 
       // 2. Create PO
       const poNumber = await generatePONumber(companyCode);
-      const subtotal = invoice.items.reduce((s, i) => s + i.unit_cost * i.quantity, 0);
-      const gstHst = invoice.gst_hst_amount || 0;
-      const shipping = invoice.shipping_cost || 0;
-      const totalAmount = subtotal + gstHst + shipping;
+      const subtotal = invoice.subtotal;
+      const gstHst = invoice.gst_hst_amount;
+      const shipping = invoice.shipping_cost;
+      const totalAmount = invoice.total;
 
       const { data: po, error: poErr } = await supabase
         .from('purchase_orders')
@@ -200,7 +407,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
           payment_status: 'paid',
           payment_method: paymentMethod,
           paid_amount: totalAmount,
-          notes: `MobileSentrix Invoice #${invoice.invoice_number}`,
+          notes: `MobileSentrix Order #${invoice.invoice_number}`,
           created_by: user?.id,
           po_type: 'repair_parts',
         })
@@ -214,7 +421,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
         description: `${item.name} (${item.sku})`,
         quantity: item.quantity,
         unit_cost: item.unit_cost,
-        gst_hst_amount: Math.round(item.unit_cost * item.quantity * (gstHst / subtotal) * 100) / 100 || 0,
+        gst_hst_amount: subtotal > 0 ? Math.round(item.unit_cost * item.quantity * (gstHst / subtotal) * 100) / 100 : 0,
         pst_qst_amount: 0,
         total_cost: item.unit_cost * item.quantity,
         item_type: 'repair_parts',
@@ -233,7 +440,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
           received_date: invoice.invoice_date || paymentDate,
           received_by: user?.id,
           status: 'completed',
-          notes: `Auto-received from MobileSentrix Invoice #${invoice.invoice_number}`,
+          notes: `Auto-received from MobileSentrix Order #${invoice.invoice_number}`,
         })
         .select('id')
         .single();
@@ -241,7 +448,6 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
 
       // 5. Create GRN items + upsert repair_parts
       for (const item of invoice.items) {
-        // GRN item
         await supabase.from('grn_items').insert({
           grn_id: grn.id,
           quantity_received: item.quantity,
@@ -249,7 +455,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
           notes: `${item.name} - SKU: ${item.sku}`,
         });
 
-        // Upsert repair part - try to match by SKU first
+        // Upsert repair part by SKU
         const { data: existingPart } = await supabase
           .from('repair_parts')
           .select('id, quantity_on_hand')
@@ -258,7 +464,6 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
           .maybeSingle();
 
         if (existingPart) {
-          // Update existing part: increment qty, update cost
           await supabase
             .from('repair_parts')
             .update({
@@ -268,7 +473,6 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
             })
             .eq('id', existingPart.id);
         } else {
-          // Create new repair part
           await supabase.from('repair_parts').insert({
             company_id: companyId,
             name: item.name,
@@ -314,7 +518,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
         amount: totalAmount,
         payment_date: paymentDate,
         payment_method: paymentMethod,
-        notes: `Prepayment for MobileSentrix Invoice #${invoice.invoice_number}`,
+        notes: `Payment for MobileSentrix Order #${invoice.invoice_number}`,
         created_by: user?.id,
       });
 
@@ -402,7 +606,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
             Import MobileSentrix Invoice
           </DialogTitle>
           <DialogDescription>
-            Upload a PDF or Excel invoice from MobileSentrix to automatically import repair parts.
+            Upload an XLS/XLSX or CSV export from MobileSentrix to import repair parts with full accounting.
           </DialogDescription>
         </DialogHeader>
 
@@ -412,27 +616,22 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
               {parsing ? (
                 <div className="flex flex-col items-center gap-3">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="text-sm text-muted-foreground">Parsing invoice with AI...</p>
-                  <p className="text-xs text-muted-foreground">This may take a few seconds</p>
+                  <p className="text-sm text-muted-foreground">Parsing file...</p>
                 </div>
               ) : (
                 <label className="cursor-pointer flex flex-col items-center gap-3">
                   <FileText className="h-10 w-10 text-muted-foreground" />
                   <div>
-                    <p className="text-sm font-medium">Drop or click to upload invoice</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Supports PDF, XLS, XLSX, CSV
-                    </p>
+                    <p className="text-sm font-medium">Drop or click to upload MobileSentrix export</p>
+                    <p className="text-xs text-muted-foreground mt-1">Supports XLS, XLSX, CSV</p>
                   </div>
                   <Input
                     type="file"
                     className="hidden"
-                    accept=".pdf,.xls,.xlsx,.csv"
+                    accept=".xls,.xlsx,.csv"
                     onChange={handleFileSelect}
                   />
-                  <Button variant="outline" size="sm" className="mt-2">
-                    Choose File
-                  </Button>
+                  <Button variant="outline" size="sm" className="mt-2">Choose File</Button>
                 </label>
               )}
             </div>
@@ -441,37 +640,54 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
 
         {step === 'review' && invoice && (
           <div className="space-y-4">
-            {/* Invoice summary */}
+            {/* Invoice header info */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="rounded-md border p-3">
-                <p className="text-xs text-muted-foreground">Invoice #</p>
-                <p className="text-sm font-semibold">{invoice.invoice_number}</p>
+                <p className="text-xs text-muted-foreground">Order #</p>
+                <Input
+                  value={invoice.invoice_number}
+                  onChange={e => updateInvoiceField('invoice_number', e.target.value)}
+                  className="h-7 text-sm font-semibold mt-1 p-1"
+                />
               </div>
               <div className="rounded-md border p-3">
-                <p className="text-xs text-muted-foreground">Date</p>
-                <p className="text-sm font-semibold">{invoice.invoice_date}</p>
+                <p className="text-xs text-muted-foreground">Order Date</p>
+                <Input
+                  type="date"
+                  value={invoice.invoice_date}
+                  onChange={e => updateInvoiceField('invoice_date', e.target.value)}
+                  className="h-7 text-sm font-semibold mt-1 p-1"
+                />
               </div>
               <div className="rounded-md border p-3">
                 <p className="text-xs text-muted-foreground">Items</p>
-                <p className="text-sm font-semibold">{invoice.items.length}</p>
+                <p className="text-sm font-semibold mt-1">{invoice.items.length}</p>
               </div>
               <div className="rounded-md border p-3">
-                <p className="text-xs text-muted-foreground">Total</p>
-                <p className="text-sm font-semibold">{fmtCurrency(invoice.total)}</p>
+                <p className="text-xs text-muted-foreground">Grand Total</p>
+                <p className="text-sm font-semibold mt-1">{fmtCurrency(invoice.total)}</p>
               </div>
             </div>
 
-            {/* Line items */}
-            <div className="max-h-[300px] overflow-y-auto border rounded-md">
+            {invoice.payment_method_from_file && (
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  Paid via: {invoice.payment_method_from_file}
+                </Badge>
+              </div>
+            )}
+
+            {/* Line items preview */}
+            <div className="max-h-[280px] overflow-y-auto border rounded-md">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[120px]">SKU</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead className="w-[100px]">Category</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead className="w-[110px]">Category</TableHead>
                     <TableHead className="w-[60px] text-right">Qty</TableHead>
                     <TableHead className="w-[90px] text-right">Unit Cost</TableHead>
-                    <TableHead className="w-[90px] text-right">Total</TableHead>
+                    <TableHead className="w-[90px] text-right">Subtotal</TableHead>
                     <TableHead className="w-[40px]" />
                   </TableRow>
                 </TableHeader>
@@ -482,7 +698,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
                         <Input
                           value={item.sku}
                           onChange={e => updateItem(idx, 'sku', e.target.value)}
-                          className="h-7 text-xs"
+                          className="h-7 text-xs font-mono"
                         />
                       </TableCell>
                       <TableCell>
@@ -537,25 +753,35 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
               </Table>
             </div>
 
-            {/* Totals */}
+            {/* Totals + payment */}
             <div className="grid grid-cols-2 gap-4 border-t pt-3">
               <div className="space-y-2">
-                <div className="flex justify-between text-xs">
+                <div className="flex justify-between items-center text-xs">
                   <span className="text-muted-foreground">Subtotal</span>
                   <span>{fmtCurrency(invoice.subtotal)}</span>
                 </div>
-                {invoice.shipping_cost > 0 && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Shipping</span>
-                    <span>{fmtCurrency(invoice.shipping_cost)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">GST/HST</span>
-                  <span>{fmtCurrency(invoice.gst_hst_amount)}</span>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">Shipping</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={invoice.shipping_cost}
+                    onChange={e => updateInvoiceField('shipping_cost', parseFloat(e.target.value) || 0)}
+                    className="h-6 text-xs text-right w-[80px]"
+                  />
+                </div>
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-muted-foreground">HST/GST (13%)</span>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={invoice.gst_hst_amount}
+                    onChange={e => updateInvoiceField('gst_hst_amount', parseFloat(e.target.value) || 0)}
+                    className="h-6 text-xs text-right w-[80px]"
+                  />
                 </div>
                 <div className="flex justify-between text-sm font-semibold border-t pt-1">
-                  <span>Total</span>
+                  <span>Grand Total</span>
                   <span>{fmtCurrency(invoice.total)}</span>
                 </div>
               </div>
@@ -570,7 +796,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
                       <SelectItem value="credit_card">Credit Card</SelectItem>
                       <SelectItem value="debit">Debit</SelectItem>
                       <SelectItem value="e_transfer">E-Transfer</SelectItem>
-                      <SelectItem value="wire">Wire Transfer</SelectItem>
+                      <SelectItem value="wire">Wire / Bank Transfer</SelectItem>
                       <SelectItem value="paypal">PayPal</SelectItem>
                     </SelectContent>
                   </Select>
@@ -590,7 +816,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
             {invoice.items.length === 0 && (
               <div className="flex items-center gap-2 text-sm text-destructive p-3 border border-destructive/30 rounded-md">
                 <AlertTriangle className="h-4 w-4" />
-                No items to import. Please re-upload the invoice.
+                No items to import. Please re-upload the file.
               </div>
             )}
           </div>
@@ -631,9 +857,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
         <DialogFooter>
           {step === 'review' && (
             <>
-              <Button variant="outline" onClick={() => { reset(); }}>
-                Re-upload
-              </Button>
+              <Button variant="outline" onClick={() => reset()}>Re-upload</Button>
               <Button
                 onClick={handleImport}
                 disabled={importing || !invoice?.items.length}
@@ -643,9 +867,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
             </>
           )}
           {step === 'complete' && (
-            <Button onClick={() => { handleClose(false); onSuccess(); }}>
-              Done
-            </Button>
+            <Button onClick={() => { handleClose(false); onSuccess(); }}>Done</Button>
           )}
         </DialogFooter>
       </DialogContent>
