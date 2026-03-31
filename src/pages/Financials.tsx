@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FinancialsGuide } from '@/components/guides/FinancialsGuide';
+import { HSTReconciliation } from '@/components/taxes/HSTReconciliation';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -51,7 +52,7 @@ type SubView =
   | 'chart-of-accounts' | 'journal-entries' | 'trial-balance'
   | 'reconciliation' | 'payouts' | 'fba-reconciliation'
   | 'ap' | 'ar'
-  | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing'
+  | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing' | 'tax-reconciliation'
   | 'cost-devices'
   | 'accounting-trail'
   | 'year-end-closing';
@@ -111,6 +112,7 @@ const SECTIONS = [
       { value: 'tax-dashboard' as SubView, label: 'Overview', icon: LayoutDashboard },
       { value: 'tax-collected' as SubView, label: 'Collected', icon: Receipt },
       { value: 'tax-itc' as SubView, label: 'ITC', icon: Calculator },
+      { value: 'tax-reconciliation' as SubView, label: 'Reconciliation', icon: Scale },
       { value: 'tax-filing' as SubView, label: 'Filing', icon: FileText },
     ],
   },
@@ -242,6 +244,7 @@ export default function Financials() {
             {subView === 'tax-collected' && <TaxCollectedReport />}
             {subView === 'tax-itc' && <InputTaxCredits />}
             {subView === 'tax-filing' && <TaxFilingReport />}
+            {subView === 'tax-reconciliation' && <HSTReconciliation />}
 
             {subView === 'accounting-trail' && <AccountingAuditTrail companyView={companyView} />}
             {subView === 'year-end-closing' && <YearEndClosing />}
