@@ -43,7 +43,7 @@ const routes = [
   { title: 'Returns / RMA', url: '/returns', icon: RotateCcw, group: 'Procurement' },
   { title: 'Integration Health', url: '/integration-health', icon: Activity, group: 'Admin' },
   { title: 'Team', url: '/team', icon: Users, group: 'Admin' },
-  { title: 'Audit Logs', url: '/audit-logs', icon: ClipboardList, group: 'Admin' },
+  
   { title: 'Settings', url: '/settings', icon: Settings, group: 'Admin' },
   { title: 'Help', url: '/help', icon: HelpCircle, group: 'Admin' },
 ];

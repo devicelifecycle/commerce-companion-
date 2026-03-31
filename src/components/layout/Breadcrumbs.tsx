@@ -37,7 +37,7 @@ const ROUTE_LABELS: Record<string, string> = {
   'forecasting': 'Forecasting',
   'integration-health': 'Integration Health',
   'team': 'Team',
-  'audit-logs': 'Audit Logs',
+  
   'settings': 'Settings',
   'help': 'Help',
 };
