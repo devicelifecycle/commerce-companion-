@@ -201,7 +201,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
       // Create the sale record
       const { data: sale, error: saleError } = await supabase.from('sales').insert({
         order_number: data.order_number,
-        marketplace: data.marketplace,
+        marketplace: data.marketplace as any,
         sale_price: subtotal,
         shipping_cost: data.shipping_cost,
         marketplace_fees: data.marketplace_fees,
@@ -218,7 +218,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
         is_multi_item: validItems.length > 1,
         item_count: validItems.length,
         subtotal,
-      }).select('id').single();
+      } as any).select('id').single();
 
       if (saleError) throw saleError;
 
