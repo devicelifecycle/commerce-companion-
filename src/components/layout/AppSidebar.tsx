@@ -54,9 +54,6 @@ const operationsNav = [
   { title: 'Suppliers', url: '/suppliers', icon: Package },
   { title: 'Customers', url: '/customers', icon: Users },
   { title: 'Invoices', url: '/invoices', icon: FileText },
-];
-
-const expenseNav = [
   { title: 'Expenses', url: '/expenses', icon: Wallet },
 ];
 
@@ -146,16 +143,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <Separator className="my-1.5 bg-border/50" />
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider px-2 py-1">
-            Expenses
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            {renderNavItems(expenseNav)}
-          </SidebarGroupContent>
-        </SidebarGroup>
+
 
         {isAdmin && (
           <>

@@ -24,7 +24,7 @@ import {
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { PurchaseOrdersGuide } from '@/components/guides/PurchaseOrdersGuide';
+
 import { CreatePurchaseOrderDialog } from '@/components/procurement/CreatePurchaseOrderDialog';
 import { ReceivePODialog } from '@/components/procurement/ReceivePODialog';
 import { ImportRepairPartsDialog } from '@/components/procurement/ImportRepairPartsDialog';
@@ -270,7 +270,7 @@ export default function PurchaseOrders() {
           </div>
         </div>
 
-        <PurchaseOrdersGuide />
+
 
         {/* Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

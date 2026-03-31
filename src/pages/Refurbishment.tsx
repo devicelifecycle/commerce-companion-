@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { CompanySelector } from '@/components/layout/CompanySelector';
+
 import { RefurbishmentQueue } from '@/components/refurbishment/RefurbishmentQueue';
 import { RefurbishmentDetail } from '@/components/refurbishment/RefurbishmentDetail';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -88,7 +88,7 @@ export default function Refurbishment() {
                 Devices awaiting inspection, repair, and quality check before entering inventory
               </p>
             </div>
-            <CompanySelector />
+            
           </div>
           <div className="flex gap-2">
             <Badge variant="outline" className="text-sm px-3 py-1">

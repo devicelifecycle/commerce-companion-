@@ -6,14 +6,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
-import { CompanySelector } from '@/components/layout/CompanySelector';
+
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { InventoryTransferDialog } from '@/components/inventory/InventoryTransferDialog';
 import { InventoryLabelDialog } from '@/components/inventory/InventoryLabelDialog';
 import { useInventoryQuery } from '@/hooks/useInventoryQuery';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
-import { InventoryGuide } from '@/components/guides/InventoryGuide';
+
 
 import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker';
 import { ProductsManagement } from '@/components/inventory/ProductsManagement';
@@ -256,7 +256,7 @@ export default function Inventory() {
                 {selectedCompany ? `${selectedCompany.name} inventory` : 'Consolidated view across all companies'}
               </p>
             </div>
-            <CompanySelector />
+            
           </div>
 
           <div className="flex gap-2">
@@ -277,7 +277,7 @@ export default function Inventory() {
           </div>
         </div>
 
-        <InventoryGuide />
+
 
         {/* IMEI Quick Lookup */}
         <IMEIQuickLookup onSelectDevice={(device) => setTimelineDevice(device)} />
