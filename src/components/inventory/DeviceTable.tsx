@@ -173,29 +173,17 @@ export function DeviceTable({
                       </p>
                     </div>
                   </TableCell>
-                  <TableCell className="font-mono text-sm">
+                  <TableCell className="font-mono text-xs">
                     {device.imei || device.sku || '-'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="capitalize">{device.category}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <ConditionBadge condition={device.condition as any} />
                   </TableCell>
                   <TableCell>
                     <StatusBadge status={device.status as any} />
                   </TableCell>
-                  <TableCell>
-                    {device.fulfillment_channel === 'fba' ? (
-                      <Badge className="bg-orange-500/15 text-orange-600 border-orange-500/30 text-[10px]">FBA</Badge>
-                    ) : device.fulfillment_channel === 'in_transit_fba' ? (
-                      <Badge className="bg-blue-500/15 text-blue-600 border-blue-500/30 text-[10px]">In Transit</Badge>
-                    ) : (
-                      <Badge variant="secondary" className="text-[10px]">Local</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right font-medium">
                     {formatCurrency(device.cost_price)}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {device.suppliers?.name || '-'}
                   </TableCell>
                   {!selectedCompany && (
                     <TableCell>
