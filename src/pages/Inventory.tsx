@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useDataRefetch } from '@/hooks/useDataRefetch';
 import { SupplierReturnDialog } from '@/components/inventory/SupplierReturnDialog';
 import { InventoryWriteOffDialog } from '@/components/inventory/InventoryWriteOffDialog';
@@ -19,6 +19,8 @@ import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker'
 import { ProductsManagement } from '@/components/inventory/ProductsManagement';
 import { RepairPartsManagement } from '@/components/inventory/RepairPartsManagement';
 import { DeviceRepairDialog } from '@/components/inventory/DeviceRepairDialog';
+import { RefurbishmentQueue } from '@/components/refurbishment/RefurbishmentQueue';
+import { RefurbishmentDetail } from '@/components/refurbishment/RefurbishmentDetail';
 
 import { DeviceProcurementDialog } from '@/components/inventory/DeviceProcurementDialog';
 import { DeviceTimelineDialog } from '@/components/inventory/DeviceTimelineDialog';
@@ -37,10 +39,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import {
-  Upload, ArrowRightLeft, Smartphone, Boxes, List,
+  Upload, ArrowRightLeft, Smartphone, Boxes, List, Package,
   Download, Send, Trash2, Wrench, RotateCcw, XCircle,
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { Badge } from '@/components/ui/badge';
 
 type DeviceStatus = 'in_stock' | 'reserved' | 'sold' | 'returned' | 'hold_for_refurbishment';
 
@@ -48,7 +52,15 @@ export default function Inventory() {
   const { user } = useAuth();
   const { selectedCompany, isSuperAdmin, hasPermission, companies } = useCompany();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { logEvent } = useAuditLog();
+
+  // Support ?tab= URL param for deep linking (e.g. /inventory?tab=refurbishment)
+  const defaultTab = searchParams.get('tab') || 'list';
+  const [activeTab, setActiveTab] = useState(defaultTab);
+
+  // Refurbishment state
+  const [selectedRefurbDeviceId, setSelectedRefurbDeviceId] = useState<string | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -79,7 +91,45 @@ export default function Inventory() {
 
   useDataRefetch('inventory', refetch);
 
-  // Dialog states
+  // Refurbishment queries
+  const { data: pendingRefurb = [], isLoading: refurbLoading, refetch: refetchRefurb } = useQuery({
+    queryKey: ['refurbishment-pending', selectedCompany?.id],
+    enabled: activeTab === 'refurbishment',
+    queryFn: async () => {
+      let query = supabase
+        .from('devices')
+        .select('*, suppliers(name)')
+        .eq('status', 'hold_for_refurbishment')
+        .in('refurbishment_status', ['pending', 'in_progress'])
+        .order('created_at', { ascending: false });
+      if (selectedCompany) query = query.eq('company_id', selectedCompany.id);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: completedRefurb = [], isLoading: completedRefurbLoading, refetch: refetchCompletedRefurb } = useQuery({
+    queryKey: ['refurbishment-completed', selectedCompany?.id],
+    enabled: activeTab === 'refurbishment',
+    queryFn: async () => {
+      let query = supabase
+        .from('devices')
+        .select('*, suppliers(name)')
+        .eq('refurbishment_status', 'completed')
+        .order('refurbishment_completed_at', { ascending: false })
+        .limit(50);
+      if (selectedCompany) query = query.eq('company_id', selectedCompany.id);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const refetchAllRefurb = () => { refetchRefurb(); refetchCompletedRefurb(); };
+  const pendingRefurbCount = pendingRefurb.length;
+
+
   const [editDevice, setEditDevice] = useState<any>(null);
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [transferDevice, setTransferDevice] = useState<any>(null);
@@ -226,10 +276,16 @@ export default function Inventory() {
 
         <InventoryGuide />
 
-        <Tabs defaultValue="list" className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList>
             <TabsTrigger value="list" className="flex items-center gap-2">
               <Smartphone className="h-4 w-4" /> Devices
+            </TabsTrigger>
+            <TabsTrigger value="refurbishment" className="flex items-center gap-2">
+              <Wrench className="h-4 w-4" /> Refurbishment
+              {pendingRefurbCount > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-xs">{pendingRefurbCount}</Badge>
+              )}
             </TabsTrigger>
             <TabsTrigger value="products" className="flex items-center gap-2">
               <Boxes className="h-4 w-4" /> Products
@@ -238,7 +294,7 @@ export default function Inventory() {
               <List className="h-4 w-4" /> FBA Management
             </TabsTrigger>
             <TabsTrigger value="repairs" className="flex items-center gap-2">
-              <Wrench className="h-4 w-4" /> Repair Parts
+              <Package className="h-4 w-4" /> Repair Parts
             </TabsTrigger>
           </TabsList>
 
@@ -284,6 +340,42 @@ export default function Inventory() {
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="refurbishment">
+            {selectedRefurbDeviceId ? (
+              <RefurbishmentDetail
+                deviceId={selectedRefurbDeviceId}
+                onBack={() => { setSelectedRefurbDeviceId(null); refetchAllRefurb(); }}
+                canManage={canManage}
+              />
+            ) : (
+              <div className="space-y-4">
+                <Tabs defaultValue="queue">
+                  <TabsList>
+                    <TabsTrigger value="queue">Queue ({pendingRefurbCount})</TabsTrigger>
+                    <TabsTrigger value="completed">Completed</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="queue">
+                    <RefurbishmentQueue
+                      devices={pendingRefurb}
+                      isLoading={refurbLoading}
+                      onSelect={setSelectedRefurbDeviceId}
+                      canManage={canManage}
+                    />
+                  </TabsContent>
+                  <TabsContent value="completed">
+                    <RefurbishmentQueue
+                      devices={completedRefurb}
+                      isLoading={completedRefurbLoading}
+                      onSelect={setSelectedRefurbDeviceId}
+                      canManage={canManage}
+                      isCompletedView
+                    />
+                  </TabsContent>
+                </Tabs>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="products">
