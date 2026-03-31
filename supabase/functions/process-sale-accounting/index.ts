@@ -410,31 +410,37 @@ serve(async (req) => {
             revenueLines
           );
 
-          // Create Accounts Receivable record
-          const arDueDate = new Date(saleDate);
-          arDueDate.setDate(arDueDate.getDate() + 14);
+          // Create Accounts Receivable record — only for non-marketplace sales
+          // Marketplace sales (amazon, shopify, bestbuy) are settled via batch payouts,
+          // so AR is created at payout level in sync-marketplace-payouts instead
+          const isMarketplaceSale = ["amazon", "bestbuy", "shopify", "temu"].includes(sale.marketplace);
 
-          const { data: existingAR } = await supabase
-            .from("accounts_receivable")
-            .select("id")
-            .eq("source_reference", sale.id)
-            .maybeSingle();
+          if (!isMarketplaceSale) {
+            const arDueDate = new Date(saleDate);
+            arDueDate.setDate(arDueDate.getDate() + 14);
 
-          if (!existingAR) {
-            const { error: arError } = await supabase.from("accounts_receivable").insert({
-              company_id: sale.company_id,
-              source_type: "marketplace",
-              source_reference: sale.id,
-              marketplace: sale.marketplace,
-              customer_name: `${sale.marketplace} Marketplace`,
-              original_amount: settlementAmount,
-              paid_amount: 0,
-              due_date: arDueDate.toISOString().split("T")[0],
-              status: "outstanding",
-              notes: `Order #${sale.order_number} - ${deviceDesc}`,
-            });
-            if (arError) {
-              console.error(`Failed to create AR for ${sale.order_number}:`, arError);
+            const { data: existingAR } = await supabase
+              .from("accounts_receivable")
+              .select("id")
+              .eq("source_reference", sale.id)
+              .maybeSingle();
+
+            if (!existingAR) {
+              const { error: arError } = await supabase.from("accounts_receivable").insert({
+                company_id: sale.company_id,
+                source_type: "sale",
+                source_reference: sale.id,
+                marketplace: sale.marketplace,
+                customer_name: `${sale.marketplace} Sale`,
+                original_amount: settlementAmount,
+                paid_amount: 0,
+                due_date: arDueDate.toISOString().split("T")[0],
+                status: "outstanding",
+                notes: `Order #${sale.order_number} - ${deviceDesc}`,
+              });
+              if (arError) {
+                console.error(`Failed to create AR for ${sale.order_number}:`, arError);
+              }
             }
           }
         }
