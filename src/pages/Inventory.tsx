@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import {
-  Upload, ArrowRightLeft, Smartphone, Boxes, List,
+  Upload, ArrowRightLeft, Smartphone, Boxes, List, Package,
   Download, Send, Trash2, Wrench, RotateCcw, XCircle,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
