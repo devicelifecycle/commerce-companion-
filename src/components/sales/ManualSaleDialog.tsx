@@ -89,9 +89,14 @@ function newLineItem(): LineItem {
 
 export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDialogProps) {
   const { user } = useAuth();
-  const { selectedCompany } = useCompany();
+  const { selectedCompany, companies } = useCompany();
+  const { processSaleAccounting } = useSaleAccounting();
   const [loading, setLoading] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([newLineItem()]);
+  const [saleCompanyId, setSaleCompanyId] = useState<string>(selectedCompany?.id || '');
+
+  // Reset company selection when dialog opens or selectedCompany changes
+  const effectiveCompanyId = saleCompanyId || selectedCompany?.id || '';
 
   const form = useForm<OrderFormData>({
     resolver: zodResolver(orderSchema),
