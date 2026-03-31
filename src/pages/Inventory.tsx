@@ -13,7 +13,7 @@ import { InventoryLabelDialog } from '@/components/inventory/InventoryLabelDialo
 import { useInventoryQuery } from '@/hooks/useInventoryQuery';
 import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
-import { InventoryGuide } from '@/components/guides/InventoryGuide';
+
 
 import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker';
 import { ProductsManagement } from '@/components/inventory/ProductsManagement';
