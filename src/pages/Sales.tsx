@@ -652,7 +652,7 @@ export default function Sales() {
                                       Unlink Item
                                     </DropdownMenuItem>
                                   )}
-                                  {!returnSaleIds.has(sale.id) && (
+                                  {!returnSaleIds.has(sale.id) && sale.fulfillment_status !== 'cancelled' && (
                                     <DropdownMenuItem onClick={() => setReturningSale(sale)}>
                                       <RotateCcw className="h-4 w-4 mr-2" />
                                       Initiate Return
