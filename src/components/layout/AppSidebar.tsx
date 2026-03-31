@@ -19,7 +19,6 @@ import {
   ClipboardCheck,
   RotateCcw,
   Activity,
-  Wrench,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth';
