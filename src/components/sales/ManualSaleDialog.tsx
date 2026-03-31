@@ -56,7 +56,7 @@ const PROVINCES = [
 
 const orderSchema = z.object({
   order_number: z.string().min(1, 'Order number is required'),
-  marketplace: z.enum(['shopify', 'amazon', 'bestbuy', 'other']),
+  marketplace: z.string().min(1, 'Marketplace is required'),
   shipping_cost: z.number().min(0).default(0),
   marketplace_fees: z.number().min(0).default(0),
   customer_name: z.string().optional(),
