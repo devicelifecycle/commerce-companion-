@@ -336,11 +336,11 @@ serve(async (req) => {
     const knownCodes = new Set([
       '1000','1001','1050','1051','1100','1101','1200','1201',
       '2000','2001','2010','2011','2050','2051','2100','2101',
-      '3000','3001',
-      '4000','4100','4200','4300','4400','4401',
+      '3000','3001','3100','3101',
+      '4000','4100','4101','4200','4201','4300','4400','4401',
       '5000','5001',
       '6000','6001','6100','6101','6200','6201','6300','6301','6400','6401','6500','6501',
-      '7000','7001','7100','7101',
+      '7000','7001','7100','7101','7200','7201',
       '8000','8001','8100','8101',
     ]);
 
@@ -359,6 +359,64 @@ serve(async (req) => {
           record_type: "chart_of_accounts",
           description: `Account ${acc.account_code} (${acc.account_name}) is not mapped in reports — may be excluded from P&L/Balance Sheet`,
           details: { account_code: acc.account_code, account_name: acc.account_name },
+        });
+      }
+    }
+
+    // === CHECK 12: Orphan devices — status 'sold' but no sale record ===
+    const { data: soldDevices } = await supabase
+      .from("devices")
+      .select("id, brand, model, imei, company_id")
+      .eq("status", "sold")
+      .limit(500);
+
+    for (const device of soldDevices || []) {
+      const { data: sale } = await supabase
+        .from("sales")
+        .select("id")
+        .eq("device_id", device.id)
+        .limit(1);
+
+      if (!sale || sale.length === 0) {
+        issuesFound.push({
+          issue_type: "orphan_sold_device",
+          severity: "critical",
+          company_id: device.company_id,
+          record_id: device.id,
+          record_type: "device",
+          description: `${device.brand} ${device.model}${device.imei ? ` (${device.imei})` : ''} is marked "sold" but has no linked sale`,
+          details: { brand: device.brand, model: device.model, imei: device.imei },
+        });
+      }
+    }
+
+    // === CHECK 13: Duplicate IMEIs (informational — unique index now prevents new dupes) ===
+    const { data: imeiDevices } = await supabase
+      .from("devices")
+      .select("imei, company_id")
+      .not("imei", "is", null)
+      .neq("imei", "")
+      .limit(2000);
+
+    const imeiCounts: Record<string, { count: number; companyId: string | null }> = {};
+    for (const d of imeiDevices || []) {
+      if (d.imei) {
+        if (imeiCounts[d.imei]) {
+          imeiCounts[d.imei].count++;
+        } else {
+          imeiCounts[d.imei] = { count: 1, companyId: d.company_id };
+        }
+      }
+    }
+    for (const [imei, info] of Object.entries(imeiCounts)) {
+      if (info.count > 1) {
+        issuesFound.push({
+          issue_type: "duplicate_imei",
+          severity: "critical",
+          company_id: info.companyId,
+          record_type: "device",
+          description: `IMEI ${imei} appears ${info.count} times in inventory`,
+          details: { imei, count: info.count },
         });
       }
     }
