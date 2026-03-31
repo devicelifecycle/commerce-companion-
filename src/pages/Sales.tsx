@@ -3,6 +3,7 @@ import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupBeforeSaleDelete } from '@/lib/accounting/reversalUtils';
 import { OrdersGuide } from '@/components/guides/OrdersGuide';
+import { ManualSaleDialog } from '@/components/sales/ManualSaleDialog';
 import { useAuth } from '@/lib/auth';
 import { useAuditLog } from '@/hooks/useAuditLog';
 
@@ -35,7 +36,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-  Search, Trash2, Link, Unlink, MoreHorizontal,
+  Search, Trash2, Link, Unlink, MoreHorizontal, Plus,
   Download, RefreshCw, AlertCircle,
   Package, Clock, Truck, PackageCheck, ShoppingCart, RotateCcw, Eye,
 } from 'lucide-react';
@@ -62,6 +63,7 @@ export default function Sales() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [returningSale, setReturningSale] = useState<Sale | null>(null);
+  const [showManualSale, setShowManualSale] = useState(false);
 
   const canManageSales = hasPermission('sales_manage', 'edit');
   const canViewSales = hasPermission('sales_view', 'view');
@@ -398,6 +400,10 @@ export default function Sales() {
                   Export
                 </Button>
 
+                <Button variant="secondary" onClick={() => setShowManualSale(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Record Sale
+                </Button>
               </>
             )}
           </div>
@@ -524,7 +530,7 @@ export default function Sales() {
                       <TableRow 
                         key={sale.id} 
                         data-state={selectedIds.has(sale.id) ? 'selected' : undefined}
-                        className="cursor-pointer"
+                        className={`cursor-pointer ${sale.fulfillment_status === 'cancelled' ? 'opacity-60' : ''}`}
                         onClick={() => setViewingSale(sale)}
                       >
                         {canManageSales && (
@@ -546,6 +552,11 @@ export default function Sales() {
                             {returnSaleIds.has(sale.id) && (
                               <Badge variant="outline" className="text-destructive border-destructive/40 text-[9px] px-1 py-0 shrink-0">
                                 RMA
+                              </Badge>
+                            )}
+                            {sale.fulfillment_status === 'cancelled' && (
+                              <Badge variant="destructive" className="text-[9px] px-1 py-0 shrink-0">
+                                VOID
                               </Badge>
                             )}
                           </div>
@@ -646,7 +657,7 @@ export default function Sales() {
                                       Unlink Item
                                     </DropdownMenuItem>
                                   )}
-                                  {!returnSaleIds.has(sale.id) && (
+                                  {!returnSaleIds.has(sale.id) && sale.fulfillment_status !== 'cancelled' && (
                                     <DropdownMenuItem onClick={() => setReturningSale(sale)}>
                                       <RotateCcw className="h-4 w-4 mr-2" />
                                       Initiate Return
@@ -724,6 +735,14 @@ export default function Sales() {
           open={!!returningSale}
           onOpenChange={() => setReturningSale(null)}
           sale={returningSale}
+          onSuccess={fetchSales}
+        />
+      )}
+
+      {showManualSale && (
+        <ManualSaleDialog
+          open={showManualSale}
+          onOpenChange={setShowManualSale}
           onSuccess={fetchSales}
         />
       )}

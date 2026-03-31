@@ -64,8 +64,9 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
   const [replacementDeviceId, setReplacementDeviceId] = useState<string | null>(null);
   const [marketplaceInitiated, setMarketplaceInitiated] = useState(false);
 
-  // Adjustment type doesn't require device condition
-  const needsDeviceCondition = resolutionType !== 'adjustment';
+  // Device condition only needed when a physical item is being returned/restocked
+  // Not needed for: adjustments, courtesy refunds (no device), or refunds where item stays with customer
+  const needsDeviceCondition = sale.device_id && restockDevice && resolutionType !== 'adjustment';
   // Adjustment doesn't return the physical item
   const showRestockToggle = sale.device_id && resolutionType !== 'adjustment';
 

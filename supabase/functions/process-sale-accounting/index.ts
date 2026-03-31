@@ -214,7 +214,8 @@ serve(async (req) => {
       .select(
         "id, order_number, marketplace, sale_price, shipping_cost, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost"
       )
-      .in("accounting_status", ["unprocessed", "revenue_only"]);
+      .in("accounting_status", ["unprocessed", "revenue_only"])
+      .not("accounting_status", "eq", "voided");
 
     if (saleIds && saleIds.length > 0) {
       salesQuery = salesQuery.in("id", saleIds);

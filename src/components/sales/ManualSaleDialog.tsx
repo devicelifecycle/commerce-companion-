@@ -56,7 +56,7 @@ const PROVINCES = [
 
 const orderSchema = z.object({
   order_number: z.string().min(1, 'Order number is required'),
-  marketplace: z.enum(['shopify', 'amazon', 'bestbuy', 'other']),
+  marketplace: z.string().min(1, 'Marketplace is required'),
   shipping_cost: z.number().min(0).default(0),
   marketplace_fees: z.number().min(0).default(0),
   customer_name: z.string().optional(),
@@ -201,7 +201,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
       // Create the sale record
       const { data: sale, error: saleError } = await supabase.from('sales').insert({
         order_number: data.order_number,
-        marketplace: data.marketplace,
+        marketplace: data.marketplace as any,
         sale_price: subtotal,
         shipping_cost: data.shipping_cost,
         marketplace_fees: data.marketplace_fees,
@@ -218,7 +218,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
         is_multi_item: validItems.length > 1,
         item_count: validItems.length,
         subtotal,
-      }).select('id').single();
+      } as any).select('id').single();
 
       if (saleError) throw saleError;
 
@@ -320,6 +320,12 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                         <SelectItem value="shopify">Shopify</SelectItem>
                         <SelectItem value="amazon">Amazon</SelectItem>
                         <SelectItem value="bestbuy">Best Buy</SelectItem>
+                        <SelectItem value="ebay">eBay</SelectItem>
+                        <SelectItem value="facebook">Facebook Marketplace</SelectItem>
+                        <SelectItem value="kijiji">Kijiji</SelectItem>
+                        <SelectItem value="temu">Temu</SelectItem>
+                        <SelectItem value="walmart">Walmart</SelectItem>
+                        <SelectItem value="private">Private Sale</SelectItem>
                         <SelectItem value="other">Other / Offline</SelectItem>
                       </SelectContent>
                     </Select>
