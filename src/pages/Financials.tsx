@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FinancialsGuide } from '@/components/guides/FinancialsGuide';
+
 import { HSTReconciliation } from '@/components/taxes/HSTReconciliation';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
