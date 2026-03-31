@@ -424,18 +424,22 @@ function RepairPartHistoryDialog({ open, onOpenChange, part }: {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Badge variant={event.type === 'received' ? 'default' : 'secondary'} className="text-[10px]">
-                          {event.type === 'received' ? 'Received' : 'Used'}
+                        <Badge variant={event.type === 'used' ? 'secondary' : 'default'} className="text-[10px]">
+                          {event.type === 'used' ? 'Used' : event.type === 'received' ? 'Received' : 'Updated'}
                         </Badge>
                         <span className="text-sm">{event.description}</span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <span className={event.quantity > 0 ? 'text-emerald-600' : 'text-destructive'}>
-                        {event.quantity > 0 ? '+' : ''}{event.quantity}
-                      </span>
+                      {event.quantity != null ? (
+                        <span className={event.quantity > 0 ? 'text-emerald-600' : 'text-destructive'}>
+                          {event.quantity > 0 ? '+' : ''}{event.quantity}
+                        </span>
+                      ) : '—'}
                     </TableCell>
-                    <TableCell className="text-right text-sm">${Number(event.unitCost).toFixed(2)}</TableCell>
+                    <TableCell className="text-right text-sm">
+                      {event.unitCost != null ? `$${Number(event.unitCost).toFixed(2)}` : '—'}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
