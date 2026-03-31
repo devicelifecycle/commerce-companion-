@@ -219,7 +219,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
         shipping_province: data.shipping_province || null,
         notes: data.notes || null,
         device_id: validItems.length === 1 ? validItems[0].device_id : null,
-        company_id: selectedCompany.id,
+        company_id: effectiveCompanyId,
         created_by: user?.id,
         is_multi_item: validItems.length > 1,
         item_count: validItems.length,
