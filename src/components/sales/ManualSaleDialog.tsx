@@ -282,6 +282,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
     if (!open) {
       form.reset();
       setLineItems([newLineItem()]);
+      setSaleCompanyId(selectedCompany?.id || '');
     }
     onOpenChange(open);
   };
@@ -295,14 +296,39 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
             Record Sale
           </DialogTitle>
           <DialogDescription>
-            Record a sale with one or more items for {selectedCompany?.code || 'selected company'}
+            Record a sale with one or more items
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            {/* Order Header */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Company + Order Header */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Company *</label>
+                <Select value={effectiveCompanyId} onValueChange={(v) => {
+                  setSaleCompanyId(v);
+                  // Clear device links when company changes
+                  setLineItems(prev => prev.map(li => ({
+                    ...li,
+                    device_id: null,
+                    device: null,
+                    item_type: li.item_type === 'device' ? 'custom' as const : li.item_type,
+                    cost_price: li.item_type === 'device' ? 0 : li.cost_price,
+                  })));
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.code === 'VES' ? 'Virtual eShop' : c.code === 'TGW' ? 'Tech Genius Warehouse' : c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <FormField
                 control={form.control}
                 name="order_number"
