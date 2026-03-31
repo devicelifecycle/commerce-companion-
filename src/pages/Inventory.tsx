@@ -277,7 +277,7 @@ export default function Inventory() {
           </div>
         </div>
 
-        <InventoryGuide />
+
 
         {/* IMEI Quick Lookup */}
         <IMEIQuickLookup onSelectDevice={(device) => setTimelineDevice(device)} />

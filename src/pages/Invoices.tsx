@@ -811,7 +811,6 @@ export default function Invoices() {
           </Button>
         </div>
 
-        <InvoicesGuide />
 
 
         {/* KPIs */}

@@ -188,7 +188,7 @@ export default function Financials() {
             </ToggleGroup>
           </div>
 
-          <FinancialsGuide />
+
 
           {/* Section tabs */}
           <ToggleGroup

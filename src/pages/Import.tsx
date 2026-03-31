@@ -1269,7 +1269,7 @@ export default function Import() {
           </div>
         )}
 
-        <ImportGuide />
+
 
         {/* Step indicator */}
         <div className="flex items-center gap-2 text-sm">

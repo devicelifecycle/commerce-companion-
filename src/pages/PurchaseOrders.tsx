@@ -270,7 +270,7 @@ export default function PurchaseOrders() {
           </div>
         </div>
 
-        <PurchaseOrdersGuide />
+
 
         {/* Metrics */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

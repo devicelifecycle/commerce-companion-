@@ -412,7 +412,7 @@ export default function Suppliers() {
           </Dialog>
         </div>
 
-        <SuppliersGuide />
+
 
         <Alert className="border-primary/30 bg-primary/5">
           <Info className="h-4 w-4" />
