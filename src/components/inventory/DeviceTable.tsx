@@ -180,6 +180,11 @@ export function DeviceTable({
                   <TableCell>
                     <StatusBadge status={device.status as any} />
                   </TableCell>
+                  <TableCell>
+                    {(device as any).cosmetic_grade ? (
+                      <Badge variant="outline" className="text-xs">{(device as any).cosmetic_grade}</Badge>
+                    ) : <span className="text-muted-foreground text-xs">—</span>}
+                  </TableCell>
                   <TableCell className="text-right font-medium">
                     {formatCurrency(device.cost_price)}
                   </TableCell>
