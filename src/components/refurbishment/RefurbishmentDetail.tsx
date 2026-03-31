@@ -163,6 +163,7 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
     if (device) {
       setLaborCost(device.refurbishment_labor_cost?.toString() || '');
       setNotes(device.refurbishment_notes || '');
+      setCosmeticGrade((device as any).cosmetic_grade || '');
     }
   }, [device]);
 
