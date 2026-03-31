@@ -40,11 +40,15 @@ import { AccountingAuditTrail } from '@/components/financials/AccountingAuditTra
 // Year-End Closing
 import { YearEndClosing } from '@/components/accounting/YearEndClosing';
 
+// Data Integrity (moved from Audit Logs)
+import { UnaccountedMarketplaceData } from '@/components/audit/UnaccountedMarketplaceData';
+import { EntityRelationshipMap } from '@/components/audit/EntityRelationshipMap';
+
 import {
   TrendingUp, ArrowLeftRight, Receipt,
   Scale, CheckSquare, Calculator, FileText, LayoutDashboard,
   Warehouse, Banknote, Wallet, BookOpen, ClipboardCheck,
-  Building2, Lock, Package,
+  Building2, Lock, Package, Link2, PackageSearch,
 } from 'lucide-react';
 
 type SubView =
