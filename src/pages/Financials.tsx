@@ -112,6 +112,7 @@ const SECTIONS = [
       { value: 'tax-dashboard' as SubView, label: 'Overview', icon: LayoutDashboard },
       { value: 'tax-collected' as SubView, label: 'Collected', icon: Receipt },
       { value: 'tax-itc' as SubView, label: 'ITC', icon: Calculator },
+      { value: 'tax-reconciliation' as SubView, label: 'Reconciliation', icon: Scale },
       { value: 'tax-filing' as SubView, label: 'Filing', icon: FileText },
     ],
   },
