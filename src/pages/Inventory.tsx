@@ -403,6 +403,16 @@ export default function Inventory() {
           <TabsContent value="repairs">
             <RepairPartsManagement canManage={canManage} />
           </TabsContent>
+
+          <TabsContent value="pricing">
+            <BulkPricingCalculator canManage={canManage} />
+          </TabsContent>
+
+          {isSuperAdmin && (
+            <TabsContent value="transfer-rules">
+              <TransferPricingRules />
+            </TabsContent>
+          )}
         </Tabs>
 
         
