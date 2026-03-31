@@ -139,6 +139,7 @@ export function DeviceTable({
               <TableHead>Device</TableHead>
               <TableHead>IMEI/SKU</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Grade</TableHead>
               <TableHead className="text-right">Cost</TableHead>
               <TableHead>Supplier</TableHead>
               {!selectedCompany && <TableHead>Company</TableHead>}
