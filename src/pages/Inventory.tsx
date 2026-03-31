@@ -91,7 +91,45 @@ export default function Inventory() {
 
   useDataRefetch('inventory', refetch);
 
-  // Dialog states
+  // Refurbishment queries
+  const { data: pendingRefurb = [], isLoading: refurbLoading, refetch: refetchRefurb } = useQuery({
+    queryKey: ['refurbishment-pending', selectedCompany?.id],
+    enabled: activeTab === 'refurbishment',
+    queryFn: async () => {
+      let query = supabase
+        .from('devices')
+        .select('*, suppliers(name)')
+        .eq('status', 'hold_for_refurbishment')
+        .in('refurbishment_status', ['pending', 'in_progress'])
+        .order('created_at', { ascending: false });
+      if (selectedCompany) query = query.eq('company_id', selectedCompany.id);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const { data: completedRefurb = [], isLoading: completedRefurbLoading, refetch: refetchCompletedRefurb } = useQuery({
+    queryKey: ['refurbishment-completed', selectedCompany?.id],
+    enabled: activeTab === 'refurbishment',
+    queryFn: async () => {
+      let query = supabase
+        .from('devices')
+        .select('*, suppliers(name)')
+        .eq('refurbishment_status', 'completed')
+        .order('refurbishment_completed_at', { ascending: false })
+        .limit(50);
+      if (selectedCompany) query = query.eq('company_id', selectedCompany.id);
+      const { data, error } = await query;
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const refetchAllRefurb = () => { refetchRefurb(); refetchCompletedRefurb(); };
+  const pendingRefurbCount = pendingRefurb.length;
+
+
   const [editDevice, setEditDevice] = useState<any>(null);
   const [showTransferDialog, setShowTransferDialog] = useState(false);
   const [transferDevice, setTransferDevice] = useState<any>(null);
