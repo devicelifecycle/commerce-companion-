@@ -11,9 +11,9 @@ import {
 } from '@/components/ui/command';
 import {
   LayoutDashboard, ShoppingCart, Smartphone, Upload, Package, FileText,
-  Wallet, BarChart3, Brain, Users, ClipboardList, Activity,
-  Settings, HelpCircle, Search, ClipboardCheck, PackageCheck, RotateCcw,
-  Plus, Receipt, Warehouse,
+  Wallet, BarChart3, Brain, Users, Activity,
+  Settings, HelpCircle, Search, ClipboardCheck, RotateCcw,
+  Plus, Receipt,
 } from 'lucide-react';
 import { dispatchQuickAction } from '@/hooks/useGlobalShortcuts';
 
@@ -26,24 +26,19 @@ const quickActions = [
 ];
 
 const routes = [
-  { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard, group: 'Analytics', shortcut: 'Alt+D' },
+  { title: 'Reports', url: '/dashboard', icon: LayoutDashboard, group: 'Analytics', shortcut: 'Alt+D' },
   { title: 'Financials', url: '/financials', icon: BarChart3, group: 'Analytics' },
   { title: 'Forecasting', url: '/forecasting', icon: Brain, group: 'Analytics' },
-  { title: 'Reports', url: '/reports', icon: BarChart3, group: 'Analytics' },
   { title: 'Orders', url: '/orders', icon: ShoppingCart, group: 'Operations', shortcut: 'Alt+O' },
   { title: 'Inventory', url: '/inventory', icon: Smartphone, group: 'Operations', shortcut: 'Alt+V' },
-  { title: 'Cost Ledger', url: '/cost-ledger', icon: Warehouse, group: 'Operations' },
   { title: 'Import Devices', url: '/import', icon: Upload, group: 'Operations' },
   { title: 'Suppliers', url: '/suppliers', icon: Package, group: 'Operations' },
   { title: 'Customers', url: '/customers', icon: Users, group: 'Operations' },
   { title: 'Invoices', url: '/invoices', icon: FileText, group: 'Operations' },
   { title: 'Expenses', url: '/expenses', icon: Wallet, group: 'Expenses' },
   { title: 'PO & GRN', url: '/purchase-orders', icon: ClipboardCheck, group: 'Procurement' },
-  { title: 'Goods Received', url: '/goods-received', icon: PackageCheck, group: 'Procurement' },
   { title: 'Returns / RMA', url: '/returns', icon: RotateCcw, group: 'Procurement' },
   { title: 'Integration Health', url: '/integration-health', icon: Activity, group: 'Admin' },
-  { title: 'Team', url: '/team', icon: Users, group: 'Admin' },
-  
   { title: 'Settings', url: '/settings', icon: Settings, group: 'Admin' },
   { title: 'Help', url: '/help', icon: HelpCircle, group: 'Admin' },
 ];
