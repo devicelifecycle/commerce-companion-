@@ -19,6 +19,8 @@ import { FBAInventoryTracker } from '@/components/inventory/FBAInventoryTracker'
 import { ProductsManagement } from '@/components/inventory/ProductsManagement';
 import { RepairPartsManagement } from '@/components/inventory/RepairPartsManagement';
 import { DeviceRepairDialog } from '@/components/inventory/DeviceRepairDialog';
+import { RefurbishmentQueue } from '@/components/refurbishment/RefurbishmentQueue';
+import { RefurbishmentDetail } from '@/components/refurbishment/RefurbishmentDetail';
 
 import { DeviceProcurementDialog } from '@/components/inventory/DeviceProcurementDialog';
 import { DeviceTimelineDialog } from '@/components/inventory/DeviceTimelineDialog';
