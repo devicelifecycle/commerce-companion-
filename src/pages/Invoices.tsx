@@ -22,7 +22,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { InvoicesGuide } from '@/components/guides/InvoicesGuide';
+
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { format } from 'date-fns';
 import { toTitleCase } from '@/lib/utils';
