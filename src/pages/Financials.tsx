@@ -59,7 +59,8 @@ type SubView =
   | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing' | 'tax-reconciliation'
   | 'cost-devices'
   | 'accounting-trail'
-  | 'year-end-closing';
+  | 'year-end-closing'
+  | 'relationships' | 'unaccounted';
 
 const SECTIONS = [
   {
