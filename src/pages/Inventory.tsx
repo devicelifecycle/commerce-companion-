@@ -279,8 +279,11 @@ export default function Inventory() {
 
         <InventoryGuide />
 
+        {/* IMEI Quick Lookup */}
+        <IMEIQuickLookup onSelectDevice={(device) => setTimelineDevice(device)} />
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="list" className="flex items-center gap-2">
               <Smartphone className="h-4 w-4" /> Devices
             </TabsTrigger>
@@ -299,6 +302,14 @@ export default function Inventory() {
             <TabsTrigger value="repairs" className="flex items-center gap-2">
               <Package className="h-4 w-4" /> Repair Parts
             </TabsTrigger>
+            <TabsTrigger value="pricing" className="flex items-center gap-2">
+              <Calculator className="h-4 w-4" /> Pricing
+            </TabsTrigger>
+            {isSuperAdmin && (
+              <TabsTrigger value="transfer-rules" className="flex items-center gap-2">
+                <Settings className="h-4 w-4" /> Transfer Rules
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="list">
