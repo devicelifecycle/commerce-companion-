@@ -191,7 +191,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
 
   const handleSubmit = async (data: OrderFormData) => {
-    if (!selectedCompany) {
+    if (!effectiveCompanyId) {
       toast.error('Please select a company');
       return;
     }
