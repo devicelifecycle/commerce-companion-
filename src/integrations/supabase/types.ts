@@ -1014,6 +1014,7 @@ export type Database = {
           color: string | null
           company_id: string | null
           condition: Database["public"]["Enums"]["device_condition"]
+          cosmetic_grade: string | null
           cost_price: number
           created_at: string
           created_by: string | null
@@ -1048,6 +1049,7 @@ export type Database = {
           color?: string | null
           company_id?: string | null
           condition?: Database["public"]["Enums"]["device_condition"]
+          cosmetic_grade?: string | null
           cost_price: number
           created_at?: string
           created_by?: string | null
@@ -1082,6 +1084,7 @@ export type Database = {
           color?: string | null
           company_id?: string | null
           condition?: Database["public"]["Enums"]["device_condition"]
+          cosmetic_grade?: string | null
           cost_price?: number
           created_at?: string
           created_by?: string | null
