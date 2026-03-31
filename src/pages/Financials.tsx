@@ -52,7 +52,7 @@ type SubView =
   | 'chart-of-accounts' | 'journal-entries' | 'trial-balance'
   | 'reconciliation' | 'payouts' | 'fba-reconciliation'
   | 'ap' | 'ar'
-  | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing'
+  | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing' | 'tax-reconciliation'
   | 'cost-devices'
   | 'accounting-trail'
   | 'year-end-closing';
