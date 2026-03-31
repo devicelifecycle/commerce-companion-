@@ -442,6 +442,21 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
+                <Label>Cosmetic Grade</Label>
+                <Select value={cosmeticGrade} onValueChange={setCosmeticGrade} disabled={!canManage || isCompleted}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Assign grade..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="A+">A+ (Like New)</SelectItem>
+                    <SelectItem value="A">A (Excellent)</SelectItem>
+                    <SelectItem value="B">B (Good)</SelectItem>
+                    <SelectItem value="C">C (Fair)</SelectItem>
+                    <SelectItem value="D">D (Poor)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
                 <Label>Management Labor Cost ($)</Label>
                 <Input
                   type="number"
