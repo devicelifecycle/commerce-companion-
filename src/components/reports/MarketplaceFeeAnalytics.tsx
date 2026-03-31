@@ -318,6 +318,62 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
         </Card>
       )}
 
+      {/* Fee breakdown explanation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">What's Included in "Marketplace Fees"</CardTitle>
+          <CardDescription>Each channel bundles different costs into the fees we track</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-lg border border-border p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full" style={{ background: MARKETPLACE_COLORS.amazon }} />
+                <span className="font-semibold text-sm">Amazon</span>
+              </div>
+              <ul className="text-xs text-muted-foreground space-y-1 pl-5 list-disc">
+                <li><span className="text-foreground font-medium">Referral fee</span> — ~15% of sale price (category-dependent)</li>
+                <li><span className="text-foreground font-medium">FBA fulfillment</span> — per-unit pick, pack & ship (included in settlement)</li>
+                <li><span className="text-foreground font-medium">Monthly storage</span> — per cu-ft warehouse fee (included in settlement)</li>
+                <li><span className="text-foreground font-medium">Closing / variable fees</span> — applies to media categories</li>
+              </ul>
+              <p className="text-[10px] text-muted-foreground italic pt-1 border-t border-border/50">
+                Source: Estimated at 15% until settlement report is synced, then actual deducted amount is used.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full" style={{ background: MARKETPLACE_COLORS.shopify }} />
+                <span className="font-semibold text-sm">Shopify</span>
+              </div>
+              <ul className="text-xs text-muted-foreground space-y-1 pl-5 list-disc">
+                <li><span className="text-foreground font-medium">Payment processing</span> — 2.9% + $0.30 per transaction (Shopify Payments)</li>
+                <li><span className="text-foreground font-medium">Currency conversion</span> — 1.5% if cross-border (when applicable)</li>
+                <li><span className="text-foreground font-medium">Third-party fees</span> — 0.5–2% if using external gateway</li>
+              </ul>
+              <p className="text-[10px] text-muted-foreground italic pt-1 border-t border-border/50">
+                Source: Actual fee from balance transactions (total charged − net payout). Falls back to 2.9% + $0.30 estimate.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-2.5 w-2.5 rounded-full" style={{ background: MARKETPLACE_COLORS.bestbuy }} />
+                <span className="font-semibold text-sm">Best Buy (Mirakl)</span>
+              </div>
+              <ul className="text-xs text-muted-foreground space-y-1 pl-5 list-disc">
+                <li><span className="text-foreground font-medium">Commission fee</span> — percentage of sale (category-dependent)</li>
+                <li><span className="text-foreground font-medium">Commission tax</span> — GST/HST charged on the commission itself</li>
+              </ul>
+              <p className="text-[10px] text-muted-foreground italic pt-1 border-t border-border/50">
+                Source: Actual commission + commission tax from Mirakl API. Commission tax is an ITC-eligible business expense.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Per-marketplace detail table */}
       <Card>
         <CardHeader>
