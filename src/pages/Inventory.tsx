@@ -21,6 +21,9 @@ import { RepairPartsManagement } from '@/components/inventory/RepairPartsManagem
 import { DeviceRepairDialog } from '@/components/inventory/DeviceRepairDialog';
 import { RefurbishmentQueue } from '@/components/refurbishment/RefurbishmentQueue';
 import { RefurbishmentDetail } from '@/components/refurbishment/RefurbishmentDetail';
+import { IMEIQuickLookup } from '@/components/inventory/IMEIQuickLookup';
+import { BulkPricingCalculator } from '@/components/inventory/BulkPricingCalculator';
+import { TransferPricingRules } from '@/components/inventory/TransferPricingRules';
 
 import { DeviceProcurementDialog } from '@/components/inventory/DeviceProcurementDialog';
 import { DeviceTimelineDialog } from '@/components/inventory/DeviceTimelineDialog';
