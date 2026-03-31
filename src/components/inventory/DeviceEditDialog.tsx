@@ -73,6 +73,7 @@ export function DeviceEditDialog({ open, onOpenChange, device, onSuccess }: Devi
         warehouse_location: device.warehouse_location || '', notes: device.notes || '',
         management_labor_cost: (device as any).management_labor_cost?.toString() || '',
         management_labor_hours: (device as any).management_labor_hours?.toString() || '',
+        cosmetic_grade: (device as any).cosmetic_grade || '',
       });
     }
   }, [device, open]);
