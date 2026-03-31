@@ -320,6 +320,12 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                         <SelectItem value="shopify">Shopify</SelectItem>
                         <SelectItem value="amazon">Amazon</SelectItem>
                         <SelectItem value="bestbuy">Best Buy</SelectItem>
+                        <SelectItem value="ebay">eBay</SelectItem>
+                        <SelectItem value="facebook">Facebook Marketplace</SelectItem>
+                        <SelectItem value="kijiji">Kijiji</SelectItem>
+                        <SelectItem value="temu">Temu</SelectItem>
+                        <SelectItem value="walmart">Walmart</SelectItem>
+                        <SelectItem value="private">Private Sale</SelectItem>
                         <SelectItem value="other">Other / Offline</SelectItem>
                       </SelectContent>
                     </Select>

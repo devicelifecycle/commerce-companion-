@@ -734,6 +734,14 @@ export default function Sales() {
         />
       )}
 
+      {showManualSale && (
+        <ManualSaleDialog
+          open={showManualSale}
+          onOpenChange={setShowManualSale}
+          onSuccess={fetchSales}
+        />
+      )}
+
       <BatchActionBar
         count={selectedIds.size}
         onClear={() => setSelectedIds(new Set())}
