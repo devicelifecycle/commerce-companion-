@@ -8,7 +8,7 @@ export default function Returns() {
     <PermissionGuard permission="inventory_view" title="Returns">
     <DashboardLayout>
       <div className="space-y-6">
-        <ReturnsGuide />
+        
         <ReturnsManagement />
       </div>
     </DashboardLayout>

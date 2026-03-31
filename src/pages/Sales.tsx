@@ -409,7 +409,7 @@ export default function Sales() {
           </div>
         </div>
 
-        <OrdersGuide />
+        
         <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
           {isSuperAdmin && (
             <Button

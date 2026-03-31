@@ -88,7 +88,7 @@ export default function Refurbishment() {
                 Devices awaiting inspection, repair, and quality check before entering inventory
               </p>
             </div>
-            <CompanySelector />
+            
           </div>
           <div className="flex gap-2">
             <Badge variant="outline" className="text-sm px-3 py-1">
