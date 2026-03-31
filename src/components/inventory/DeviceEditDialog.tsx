@@ -117,6 +117,7 @@ export function DeviceEditDialog({ open, onOpenChange, device, onSuccess }: Devi
         warehouse_location: form.warehouse_location || null, notes: form.notes || null,
         management_labor_cost: form.management_labor_cost ? parseFloat(form.management_labor_cost) : null,
         management_labor_hours: form.management_labor_hours ? parseFloat(form.management_labor_hours) : null,
+        cosmetic_grade: form.cosmetic_grade || null,
       } as any).eq('id', device.id);
       if (error) throw error;
       logEvent({ action: 'UPDATE' as any, tableName: 'devices', recordId: device.id, module: 'Inventory', notes: `Updated ${form.brand} ${form.model}` });
