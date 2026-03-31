@@ -86,6 +86,137 @@ function determineReconciliationStatus(netPayout: number, expectedNet: number, t
   return "discrepancy";
 }
 
+// Generate unique entry number for journal entries
+function generateEntryNumber(): string {
+  const now = new Date();
+  const date = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}`;
+  const rand = Math.floor(Math.random() * 10000).toString().padStart(4, "0");
+  return `PAY-${date}-${rand}`;
+}
+
+// Get GL account ID by code
+async function getAccountId(supabase: any, companyId: string, accountCode: string): Promise<string | null> {
+  const { data } = await supabase
+    .from("chart_of_accounts")
+    .select("id")
+    .eq("company_id", companyId)
+    .eq("account_code", accountCode)
+    .maybeSingle();
+  return data?.id || null;
+}
+
+// Account code map for AR/Cash
+const CASH_AR_MAP: Record<string, { cash: string; ar: string }> = {
+  amazon: { cash: "1000", ar: "1050" },
+  shopify: { cash: "1001", ar: "1051" },
+  bestbuy: { cash: "1001", ar: "1051" },
+  temu: { cash: "1001", ar: "1051" },
+};
+
+/**
+ * Creates payout-level AR + settlement GL entries.
+ * Instead of per-order AR, we create ONE AR per payout and immediately settle it
+ * with a Dr. Cash / Cr. AR journal entry.
+ */
+async function createPayoutARAndSettlement(
+  supabase: any,
+  payoutDbId: string,
+  companyId: string,
+  marketplace: string,
+  payoutId: string,
+  payoutDate: string,
+  netPayout: number,
+  reserveAmount: number,
+  orderCount: number
+) {
+  if (netPayout <= 0) return;
+
+  const codes = CASH_AR_MAP[marketplace] || CASH_AR_MAP.shopify;
+
+  // Create payout-level AR record (settled immediately since payout is received)
+  const { error: arError } = await supabase.from("accounts_receivable").insert({
+    company_id: companyId,
+    source_type: "payout",
+    source_reference: payoutDbId,
+    payout_id: payoutDbId,
+    marketplace,
+    customer_name: `${marketplace.charAt(0).toUpperCase() + marketplace.slice(1)} Payout`,
+    original_amount: netPayout + reserveAmount,
+    paid_amount: netPayout,
+    balance_due: reserveAmount,
+    due_date: payoutDate,
+    status: reserveAmount > 0 ? "partial" : "paid",
+    notes: `Payout ${payoutId} — ${orderCount} orders${reserveAmount > 0 ? ` ($${reserveAmount.toFixed(2)} in reserves)` : ""}`,
+  });
+
+  if (arError) {
+    console.error(`Failed to create payout AR for ${payoutId}:`, arError);
+    return;
+  }
+
+  // Create GL settlement: Dr. Cash / Cr. AR for the net payout amount
+  const [cashId, arId] = await Promise.all([
+    getAccountId(supabase, companyId, codes.cash),
+    getAccountId(supabase, companyId, codes.ar),
+  ]);
+
+  if (!cashId || !arId) {
+    console.error(`Missing GL accounts for ${marketplace} payout settlement`);
+    return;
+  }
+
+  // Journal entry: Dr. Cash / Cr. AR
+  const entryNumber = generateEntryNumber();
+  const { data: entry, error: jeError } = await supabase
+    .from("journal_entries")
+    .insert({
+      company_id: companyId,
+      entry_number: entryNumber,
+      entry_date: payoutDate,
+      description: `${marketplace} payout received — ${payoutId} (${orderCount} orders)`,
+      reference_type: "payment_received",
+      reference_id: payoutDbId,
+      total_debit: netPayout,
+      total_credit: netPayout,
+      is_auto_generated: true,
+      status: "posted",
+      posted_at: new Date().toISOString(),
+    })
+    .select("id")
+    .single();
+
+  if (jeError) {
+    console.error(`Failed to create settlement JE for ${payoutId}:`, jeError);
+    return;
+  }
+
+  await supabase.from("journal_entry_lines").insert([
+    {
+      journal_entry_id: entry.id,
+      account_id: cashId,
+      description: `Cash received — ${marketplace} payout ${payoutId}`,
+      debit_amount: netPayout,
+      credit_amount: 0,
+    },
+    {
+      journal_entry_id: entry.id,
+      account_id: arId,
+      description: `AR settled — ${marketplace} payout ${payoutId}`,
+      debit_amount: 0,
+      credit_amount: netPayout,
+    },
+  ]);
+
+  // Update account balances
+  for (const [accId, dr, cr] of [[cashId, netPayout, 0], [arId, 0, netPayout]] as [string, number, number][]) {
+    const { data: acc } = await supabase.from("chart_of_accounts").select("current_balance, normal_balance").eq("id", accId).single();
+    if (!acc) continue;
+    const cur = Number(acc.current_balance || 0);
+    const newBal = acc.normal_balance === "debit" ? cur + dr - cr : cur + cr - dr;
+    await supabase.from("chart_of_accounts").update({ current_balance: newBal }).eq("id", accId);
+  }
+}
+
 // Write sync log entry
 async function writeSyncLog(
   supabase: any,
@@ -199,11 +330,19 @@ async function syncShopifyPayouts(supabase: any, companyId: string) {
         fees_amount: feesAmount || recon.systemFeesTotal,
         adjustments_amount: adjustmentsAmount,
         net_payout: netPayout,
+        reserve_amount: 0,
         system_order_total: recon.systemOrderTotal,
         system_fees_total: recon.systemFeesTotal,
         discrepancy_amount: Math.abs(discrepancy) < 0.01 ? 0 : discrepancy,
         reconciliation_status: determineReconciliationStatus(netPayout, expectedNet),
         raw_data: payout,
+      }).select("id").single().then(async ({ data: inserted }) => {
+        if (inserted) {
+          await createPayoutARAndSettlement(
+            supabase, inserted.id, companyId, "shopify", payoutId, payoutDate,
+            netPayout, 0, recon.orderCount
+          );
+        }
       });
       synced++;
     }
@@ -319,7 +458,10 @@ async function syncAmazonPayouts(supabase: any, companyId: string) {
     const expectedNet = recon.systemOrderTotal - recon.systemFeesTotal;
     const discrepancy = netPayout - expectedNet;
 
-    await supabase.from("marketplace_payouts").insert({
+    // Amazon may hold reserves — detect from settlement data
+    const reserveAmount = 0; // TODO: Parse reserve_amount from Amazon settlement if available
+
+    const { data: inserted } = await supabase.from("marketplace_payouts").insert({
       company_id: companyId,
       marketplace: "amazon",
       payout_id: reportId,
@@ -330,12 +472,20 @@ async function syncAmazonPayouts(supabase: any, companyId: string) {
       fees_amount: totalFees,
       adjustments_amount: totalOther,
       net_payout: netPayout,
+      reserve_amount: reserveAmount,
       system_order_total: recon.systemOrderTotal,
       system_fees_total: recon.systemFeesTotal,
       discrepancy_amount: Math.abs(discrepancy) < 0.01 ? 0 : discrepancy,
       reconciliation_status: determineReconciliationStatus(netPayout, expectedNet),
       raw_data: { reportId, settlementStartDate, settlementEndDate, totalAmount, totalFees, totalOther },
-    });
+    }).select("id").single();
+
+    if (inserted) {
+      await createPayoutARAndSettlement(
+        supabase, inserted.id, companyId, "amazon", reportId, payoutDate,
+        netPayout, reserveAmount, recon.orderCount
+      );
+    }
     synced++;
   }
 
@@ -395,7 +545,7 @@ async function syncBestBuyPayouts(supabase: any, companyId: string) {
     const expectedNet = recon.systemOrderTotal - recon.systemFeesTotal;
     const discrepancy = netPayout - expectedNet;
 
-    await supabase.from("marketplace_payouts").insert({
+    const { data: inserted } = await supabase.from("marketplace_payouts").insert({
       company_id: companyId,
       marketplace: "bestbuy",
       payout_id: payoutId,
@@ -406,12 +556,20 @@ async function syncBestBuyPayouts(supabase: any, companyId: string) {
       fees_amount: totalFees,
       adjustments_amount: adjustments,
       net_payout: netPayout,
+      reserve_amount: 0,
       system_order_total: recon.systemOrderTotal,
       system_fees_total: recon.systemFeesTotal,
       discrepancy_amount: Math.abs(discrepancy) < 0.01 ? 0 : discrepancy,
       reconciliation_status: determineReconciliationStatus(netPayout, expectedNet),
       raw_data: doc,
-    });
+    }).select("id").single();
+
+    if (inserted) {
+      await createPayoutARAndSettlement(
+        supabase, inserted.id, companyId, "bestbuy", payoutId, payoutDate,
+        netPayout, 0, recon.orderCount
+      );
+    }
     synced++;
   }
 

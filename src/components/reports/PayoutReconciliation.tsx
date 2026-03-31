@@ -33,6 +33,7 @@ interface MarketplacePayout {
   fees_amount: number;
   adjustments_amount: number;
   net_payout: number;
+  reserve_amount: number;
   system_order_total: number | null;
   system_fees_total: number | null;
   discrepancy_amount: number | null;
@@ -330,6 +331,21 @@ export function PayoutReconciliation({ companyView = 'consolidated' }: PayoutRec
             <p className="text-2xl font-bold text-destructive">{formatCurrency(metrics.totalAbsVariance)}</p>
           </CardContent>
         </Card>
+        {/* Reserves */}
+        {(() => {
+          const totalReserves = payouts.reduce((s, p) => s + (Number((p as any).reserve_amount) || 0), 0);
+          return totalReserves > 0 ? (
+            <Card>
+              <CardContent className="pt-4 pb-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <DollarSign className="h-3 w-3 text-amber-500" /> Held Reserves
+                </p>
+                <p className="text-2xl font-bold text-amber-500">{formatCurrency(totalReserves)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Funds held by marketplaces</p>
+              </CardContent>
+            </Card>
+          ) : null;
+        })()}
       </div>
 
       {metrics.totalPayouts === 0 && (
@@ -538,6 +554,7 @@ export function PayoutReconciliation({ companyView = 'consolidated' }: PayoutRec
                     <TableHead className="text-right">Gross</TableHead>
                     <TableHead className="text-right">Fees</TableHead>
                     <TableHead className="text-right">Adjustments</TableHead>
+                    <TableHead className="text-right">Reserves</TableHead>
                     <TableHead className="text-right">Net Payout</TableHead>
                     <TableHead className="text-right">System Expected</TableHead>
                     <TableHead className="text-right">Variance</TableHead>
@@ -571,6 +588,9 @@ export function PayoutReconciliation({ companyView = 'consolidated' }: PayoutRec
                         <TableCell className="text-right text-muted-foreground">{formatCurrency(payout.fees_amount)}</TableCell>
                         <TableCell className="text-right text-muted-foreground">
                           {payout.adjustments_amount ? formatCurrency(payout.adjustments_amount) : '—'}
+                        </TableCell>
+                        <TableCell className="text-right text-amber-500">
+                          {Number((payout as any).reserve_amount) > 0 ? formatCurrency(Number((payout as any).reserve_amount)) : '—'}
                         </TableCell>
                         <TableCell className="text-right font-medium">{formatCurrency(payout.net_payout)}</TableCell>
                         <TableCell className="text-right">
@@ -652,6 +672,12 @@ export function PayoutReconciliation({ companyView = 'consolidated' }: PayoutRec
                 <div>
                   <p className="text-muted-foreground">Adjustments</p>
                   <p className="font-medium">{formatCurrency(selectedPayout.adjustments_amount)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Reserves Held</p>
+                  <p className="font-medium text-amber-500">
+                    {Number((selectedPayout as any).reserve_amount) > 0 ? formatCurrency(Number((selectedPayout as any).reserve_amount)) : '$0.00'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-muted-foreground">Net Payout</p>

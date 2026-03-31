@@ -112,6 +112,7 @@ export type Database = {
           notes: string | null
           original_amount: number
           paid_amount: number | null
+          payout_id: string | null
           source_reference: string | null
           source_type: string
           status: string | null
@@ -130,6 +131,7 @@ export type Database = {
           notes?: string | null
           original_amount: number
           paid_amount?: number | null
+          payout_id?: string | null
           source_reference?: string | null
           source_type: string
           status?: string | null
@@ -148,6 +150,7 @@ export type Database = {
           notes?: string | null
           original_amount?: number
           paid_amount?: number | null
+          payout_id?: string | null
           source_reference?: string | null
           source_type?: string
           status?: string | null
@@ -166,6 +169,13 @@ export type Database = {
             columns: ["invoice_id"]
             isOneToOne: false
             referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "accounts_receivable_payout_id_fkey"
+            columns: ["payout_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_payouts"
             referencedColumns: ["id"]
           },
         ]
@@ -1954,6 +1964,7 @@ export type Database = {
           period_start: string | null
           raw_data: Json | null
           reconciliation_status: string
+          reserve_amount: number
           review_notes: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -1979,6 +1990,7 @@ export type Database = {
           period_start?: string | null
           raw_data?: Json | null
           reconciliation_status?: string
+          reserve_amount?: number
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -2004,6 +2016,7 @@ export type Database = {
           period_start?: string | null
           raw_data?: Json | null
           reconciliation_status?: string
+          reserve_amount?: number
           review_notes?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
