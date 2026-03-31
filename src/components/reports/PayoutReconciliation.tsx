@@ -331,6 +331,21 @@ export function PayoutReconciliation({ companyView = 'consolidated' }: PayoutRec
             <p className="text-2xl font-bold text-destructive">{formatCurrency(metrics.totalAbsVariance)}</p>
           </CardContent>
         </Card>
+        {/* Reserves */}
+        {(() => {
+          const totalReserves = payouts.reduce((s, p) => s + (Number((p as any).reserve_amount) || 0), 0);
+          return totalReserves > 0 ? (
+            <Card>
+              <CardContent className="pt-4 pb-3">
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <DollarSign className="h-3 w-3 text-amber-500" /> Held Reserves
+                </p>
+                <p className="text-2xl font-bold text-amber-500">{formatCurrency(totalReserves)}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Funds held by marketplaces</p>
+              </CardContent>
+            </Card>
+          ) : null;
+        })()}
       </div>
 
       {metrics.totalPayouts === 0 && (
