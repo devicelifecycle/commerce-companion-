@@ -260,6 +260,9 @@ export default function Financials() {
             {subView === 'tax-filing' && <TaxFilingReport />}
             {subView === 'tax-reconciliation' && <HSTReconciliation />}
 
+            {subView === 'relationships' && <EntityRelationshipMap companyFilter={companyView === 'consolidated' ? null : companyView} />}
+            {subView === 'unaccounted' && <UnaccountedMarketplaceData companyFilter={companyView === 'consolidated' ? null : companyView} />}
+
             {subView === 'accounting-trail' && <AccountingAuditTrail companyView={companyView} />}
             {subView === 'year-end-closing' && <YearEndClosing />}
           </div>
