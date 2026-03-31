@@ -418,6 +418,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                           <DeviceSearchCombobox
                             value={item.device_id}
                             onSelect={(device) => handleDeviceSelect(item.id, device)}
+                            companyId={effectiveCompanyId}
                             excludeIds={linkedDeviceIds.filter(id => id !== item.device_id)}
                             disabled={!!item.product_id}
                           />
