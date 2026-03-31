@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useSaleAccounting } from '@/hooks/useSaleAccounting';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -88,9 +89,14 @@ function newLineItem(): LineItem {
 
 export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDialogProps) {
   const { user } = useAuth();
-  const { selectedCompany } = useCompany();
+  const { selectedCompany, companies } = useCompany();
+  const { processSaleAccounting } = useSaleAccounting();
   const [loading, setLoading] = useState(false);
   const [lineItems, setLineItems] = useState<LineItem[]>([newLineItem()]);
+  const [saleCompanyId, setSaleCompanyId] = useState<string>(selectedCompany?.id || '');
+
+  // Reset company selection when dialog opens or selectedCompany changes
+  const effectiveCompanyId = saleCompanyId || selectedCompany?.id || '';
 
   const form = useForm<OrderFormData>({
     resolver: zodResolver(orderSchema),
@@ -185,7 +191,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
 
   const handleSubmit = async (data: OrderFormData) => {
-    if (!selectedCompany) {
+    if (!effectiveCompanyId) {
       toast.error('Please select a company');
       return;
     }
@@ -213,7 +219,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
         shipping_province: data.shipping_province || null,
         notes: data.notes || null,
         device_id: validItems.length === 1 ? validItems[0].device_id : null,
-        company_id: selectedCompany.id,
+        company_id: effectiveCompanyId,
         created_by: user?.id,
         is_multi_item: validItems.length > 1,
         item_count: validItems.length,
@@ -251,9 +257,15 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
         }
       }
 
+      // Trigger accounting: Revenue, AR, COGS journal entries
+      if (sale) {
+        await processSaleAccounting([sale.id]);
+      }
+
       toast.success(`Sale recorded with ${validItems.length} item(s)`);
       form.reset();
       setLineItems([newLineItem()]);
+      setSaleCompanyId(selectedCompany?.id || '');
       emitRefetch('sales');
       emitRefetch('inventory');
       onSuccess();
@@ -270,6 +282,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
     if (!open) {
       form.reset();
       setLineItems([newLineItem()]);
+      setSaleCompanyId(selectedCompany?.id || '');
     }
     onOpenChange(open);
   };
@@ -283,14 +296,39 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
             Record Sale
           </DialogTitle>
           <DialogDescription>
-            Record a sale with one or more items for {selectedCompany?.code || 'selected company'}
+            Record a sale with one or more items
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            {/* Order Header */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Company + Order Header */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Company *</label>
+                <Select value={effectiveCompanyId} onValueChange={(v) => {
+                  setSaleCompanyId(v);
+                  // Clear device links when company changes
+                  setLineItems(prev => prev.map(li => ({
+                    ...li,
+                    device_id: null,
+                    device: null,
+                    item_type: li.item_type === 'device' ? 'custom' as const : li.item_type,
+                    cost_price: li.item_type === 'device' ? 0 : li.cost_price,
+                  })));
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {companies.map(c => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.code === 'VES' ? 'Virtual eShop' : c.code === 'TGW' ? 'Tech Genius Warehouse' : c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <FormField
                 control={form.control}
                 name="order_number"
@@ -380,6 +418,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                           <DeviceSearchCombobox
                             value={item.device_id}
                             onSelect={(device) => handleDeviceSelect(item.id, device)}
+                            companyId={effectiveCompanyId}
                             excludeIds={linkedDeviceIds.filter(id => id !== item.device_id)}
                             disabled={!!item.product_id}
                           />
@@ -389,6 +428,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                           <ProductSearchCombobox
                             value={item.product_id}
                             onSelect={(product) => handleProductSelect(item.id, product)}
+                            companyId={effectiveCompanyId}
                             disabled={!!item.device_id}
                           />
                         </div>
