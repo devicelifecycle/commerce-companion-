@@ -458,7 +458,10 @@ async function syncAmazonPayouts(supabase: any, companyId: string) {
     const expectedNet = recon.systemOrderTotal - recon.systemFeesTotal;
     const discrepancy = netPayout - expectedNet;
 
-    await supabase.from("marketplace_payouts").insert({
+    // Amazon may hold reserves — detect from settlement data
+    const reserveAmount = 0; // TODO: Parse reserve_amount from Amazon settlement if available
+
+    const { data: inserted } = await supabase.from("marketplace_payouts").insert({
       company_id: companyId,
       marketplace: "amazon",
       payout_id: reportId,
@@ -469,12 +472,20 @@ async function syncAmazonPayouts(supabase: any, companyId: string) {
       fees_amount: totalFees,
       adjustments_amount: totalOther,
       net_payout: netPayout,
+      reserve_amount: reserveAmount,
       system_order_total: recon.systemOrderTotal,
       system_fees_total: recon.systemFeesTotal,
       discrepancy_amount: Math.abs(discrepancy) < 0.01 ? 0 : discrepancy,
       reconciliation_status: determineReconciliationStatus(netPayout, expectedNet),
       raw_data: { reportId, settlementStartDate, settlementEndDate, totalAmount, totalFees, totalOther },
-    });
+    }).select("id").single();
+
+    if (inserted) {
+      await createPayoutARAndSettlement(
+        supabase, inserted.id, companyId, "amazon", reportId, payoutDate,
+        netPayout, reserveAmount, recon.orderCount
+      );
+    }
     synced++;
   }
 
