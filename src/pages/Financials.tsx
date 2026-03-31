@@ -122,6 +122,15 @@ const SECTIONS = [
     ],
   },
   {
+    key: 'data-integrity',
+    label: 'Data Integrity',
+    icon: Link2,
+    views: [
+      { value: 'relationships' as SubView, label: 'Relationships', icon: Link2 },
+      { value: 'unaccounted' as SubView, label: 'Unaccounted', icon: PackageSearch },
+    ],
+  },
+  {
     key: 'audit-trail',
     label: 'Audit Trail',
     icon: ClipboardCheck,
