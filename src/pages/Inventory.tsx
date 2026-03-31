@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuditLog } from '@/hooks/useAuditLog';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
-import { CompanySelector } from '@/components/layout/CompanySelector';
+
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { InventoryTransferDialog } from '@/components/inventory/InventoryTransferDialog';
 import { InventoryLabelDialog } from '@/components/inventory/InventoryLabelDialog';
