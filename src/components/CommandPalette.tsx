@@ -11,9 +11,9 @@ import {
 } from '@/components/ui/command';
 import {
   LayoutDashboard, ShoppingCart, Smartphone, Upload, Package, FileText,
-  Wallet, BarChart3, Brain, Users, ClipboardList, Activity,
-  Settings, HelpCircle, Search, ClipboardCheck, PackageCheck, RotateCcw,
-  Plus, Receipt, Warehouse,
+  Wallet, BarChart3, Brain, Users, Activity,
+  Settings, HelpCircle, Search, ClipboardCheck, RotateCcw,
+  Plus, Receipt,
 } from 'lucide-react';
 import { dispatchQuickAction } from '@/hooks/useGlobalShortcuts';
 
