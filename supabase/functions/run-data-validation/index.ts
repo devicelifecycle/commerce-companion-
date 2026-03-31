@@ -479,6 +479,8 @@ serve(async (req) => {
           ar_no_je: issuesFound.filter((i) => i.issue_type === "ar_no_je").length,
           expense_no_je: issuesFound.filter((i) => i.issue_type === "expense_no_je").length,
           unmapped_account: issuesFound.filter((i) => i.issue_type === "unmapped_account").length,
+          orphan_sold_device: issuesFound.filter((i) => i.issue_type === "orphan_sold_device").length,
+          duplicate_imei: issuesFound.filter((i) => i.issue_type === "duplicate_imei").length,
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
