@@ -32,7 +32,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/forecasting': 'AI Forecasting',
   '/integration-health': 'Integration Health',
   '/team': 'Team',
-  '/audit-logs': 'Audit Logs',
+  
   '/settings': 'Settings',
   '/help': 'Help',
 };
