@@ -337,6 +337,8 @@ export default function Dashboard() {
     <DashboardLayout>
       <div className="space-y-3 animate-fade-in">
         <SystemAlertsBanner />
+        {/* Operational KPIs */}
+        <OperationalKPIs />
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
