@@ -18,6 +18,7 @@ import { TrialBalance } from '@/components/accounting/TrialBalance';
 // Reconciliation
 import { MarketplaceReconciliation } from '@/components/reports/MarketplaceReconciliation';
 import { PayoutReconciliation } from '@/components/reports/PayoutReconciliation';
+import { FBAReconciliation } from '@/components/reports/FBAReconciliation';
 
 // AP & AR
 import { AccountsPayable } from '@/components/accounting/AccountsPayable';
