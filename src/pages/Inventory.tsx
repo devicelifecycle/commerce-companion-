@@ -405,7 +405,7 @@ export default function Inventory() {
           </TabsContent>
 
           <TabsContent value="pricing">
-            <BulkPricingCalculator canManage={canManage} />
+            <BulkPricingCalculator />
           </TabsContent>
 
           {isSuperAdmin && (
