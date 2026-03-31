@@ -554,6 +554,7 @@ export function PayoutReconciliation({ companyView = 'consolidated' }: PayoutRec
                     <TableHead className="text-right">Gross</TableHead>
                     <TableHead className="text-right">Fees</TableHead>
                     <TableHead className="text-right">Adjustments</TableHead>
+                    <TableHead className="text-right">Reserves</TableHead>
                     <TableHead className="text-right">Net Payout</TableHead>
                     <TableHead className="text-right">System Expected</TableHead>
                     <TableHead className="text-right">Variance</TableHead>
