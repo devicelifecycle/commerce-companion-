@@ -400,6 +400,10 @@ export default function Sales() {
                   Export
                 </Button>
 
+                <Button variant="secondary" onClick={() => setShowManualSale(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Record Sale
+                </Button>
               </>
             )}
           </div>
