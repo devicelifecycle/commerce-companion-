@@ -350,17 +350,28 @@ function RepairPartHistoryDialog({ open, onOpenChange, part }: {
       // Get PO items linked to this part
       const { data: poItems, error: poErr } = await supabase
         .from('purchase_order_items')
-        .select('quantity, unit_price, purchase_orders(po_number, order_date, status, suppliers(name))')
+        .select('quantity, unit_price, purchase_order_id')
         .eq('repair_part_id', part.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as any;
       if (poErr) throw poErr;
+
+      // Fetch PO details separately
+      const poIds = [...new Set((poItems || []).map((i: any) => i.purchase_order_id).filter(Boolean))];
+      let poMap: Record<string, any> = {};
+      if (poIds.length > 0) {
+        const { data: pos } = await supabase
+          .from('purchase_orders')
+          .select('id, po_number, order_date, status, suppliers(name)')
+          .in('id', poIds) as any;
+        (pos || []).forEach((po: any) => { poMap[po.id] = po; });
+      }
 
       // Get device refurbishment usage
       const { data: usageItems, error: usageErr } = await supabase
         .from('device_refurbishment_parts')
         .select('quantity_used, unit_cost, total_cost, created_at, devices(brand, model)')
         .eq('repair_part_id', part.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }) as any;
       if (usageErr) throw usageErr;
 
       const events: any[] = [];
