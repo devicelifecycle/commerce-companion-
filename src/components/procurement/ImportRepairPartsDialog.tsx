@@ -141,7 +141,10 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
       const workbook = new ExcelJS.Workbook();
 
       if (ext === '.csv') {
-        await workbook.csv.load(arrayBuffer);
+        const text = new TextDecoder().decode(arrayBuffer);
+        const blob = new Blob([text], { type: 'text/csv' });
+        const stream = blob.stream();
+        await workbook.csv.read(stream as any);
       } else {
         await workbook.xlsx.load(arrayBuffer);
       }
