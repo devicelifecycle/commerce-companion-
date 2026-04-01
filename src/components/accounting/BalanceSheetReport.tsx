@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useDataRefetch } from '@/hooks/useDataRefetch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,25 +54,52 @@ export function BalanceSheetReport({ companyView }: Props) {
     return selectedCompany;
   })();
 
-  useEffect(() => {
-    fetchBalanceSheet();
-  }, [effectiveCompany?.id, asOfDate]);
-
-  const fetchBalanceSheet = async () => {
+  const fetchBalanceSheet = useCallback(async () => {
     setLoading(true);
     try {
-      let query = supabase
+      // Step 1: Fetch all active accounts with their opening_balance and metadata
+      let acctQuery = supabase
         .from('chart_of_accounts')
-        .select('account_code, account_name, account_type, current_balance, normal_balance')
+        .select('id, account_code, account_name, account_type, normal_balance, opening_balance')
         .eq('is_active', true);
 
       if (effectiveCompany) {
-        query = query.eq('company_id', effectiveCompany.id);
+        acctQuery = acctQuery.eq('company_id', effectiveCompany.id);
       }
 
-      const { data: accounts, error } = await query;
-      if (error) throw error;
+      const { data: accounts, error: acctError } = await acctQuery;
+      if (acctError) throw acctError;
+      if (!accounts || accounts.length === 0) {
+        setData(null);
+        setLoading(false);
+        return;
+      }
 
+      // Step 2: Fetch ALL journal_entry_lines for these accounts (live ledger)
+      const accountIds = accounts.map(a => a.id);
+      let allLines: Array<{ account_id: string; debit_amount: number | null; credit_amount: number | null }> = [];
+
+      for (let i = 0; i < accountIds.length; i += 200) {
+        const chunk = accountIds.slice(i, i + 200);
+        const { data: lines } = await supabase
+          .from('journal_entry_lines')
+          .select('account_id, debit_amount, credit_amount')
+          .in('account_id', chunk);
+        if (lines) allLines = allLines.concat(lines);
+      }
+
+      // Step 3: Aggregate lines by account_id
+      const lineAgg = new Map<string, { totalDebit: number; totalCredit: number }>();
+      for (const line of allLines) {
+        const existing = lineAgg.get(line.account_id) || { totalDebit: 0, totalCredit: 0 };
+        existing.totalDebit += Number(line.debit_amount || 0);
+        existing.totalCredit += Number(line.credit_amount || 0);
+        lineAgg.set(line.account_id, existing);
+      }
+
+      // Step 4: Compute live balance for each account
+      // For debit-normal accounts: balance = opening + debits - credits
+      // For credit-normal accounts: balance = opening + credits - debits
       const bs: BalanceSheetData = {
         assets: { cash: 0, accountsReceivable: 0, inventory: 0, prepaidExpenses: 0, intercompanyReceivable: 0, totalAssets: 0 },
         liabilities: { accountsPayable: 0, gstPayable: 0, qstPayable: 0, intercompanyPayable: 0, totalLiabilities: 0 },
@@ -80,9 +108,14 @@ export function BalanceSheetReport({ companyView }: Props) {
         isBalanced: false,
       };
 
-      (accounts || []).forEach((acc: any) => {
+      for (const acc of accounts) {
+        const opening = Number(acc.opening_balance || 0);
+        const agg = lineAgg.get(acc.id) || { totalDebit: 0, totalCredit: 0 };
+        const balance = acc.normal_balance === 'debit'
+          ? opening + agg.totalDebit - agg.totalCredit
+          : opening + agg.totalCredit - agg.totalDebit;
+
         const code = acc.account_code;
-        const balance = Number(acc.current_balance || 0);
 
         // Assets
         if (code === '1000' || code === '1001') bs.assets.cash += balance;
@@ -90,35 +123,29 @@ export function BalanceSheetReport({ companyView }: Props) {
         else if (code === '1100' || code === '1101') bs.assets.inventory += balance;
         else if (code === '1200' || code === '1201') bs.assets.prepaidExpenses += balance;
         else if (code === '2201') bs.assets.intercompanyReceivable += balance;
-
         // Liabilities
         else if (code === '2010' || code === '2011') bs.liabilities.accountsPayable += balance;
         else if (code === '2000' || code === '2001') bs.liabilities.gstPayable += balance;
         else if (code === '2100' || code === '2101') bs.liabilities.qstPayable += balance;
         else if (code === '2200') bs.liabilities.intercompanyPayable += balance;
-
         // Equity
         else if (code === '3000' || code === '3001') bs.equity.ownersEquity += balance;
         else if (code === '3100' || code === '3101') bs.equity.retainedEarnings += balance;
         else if (code === '3200' || code === '3201') bs.equity.currentYearPL += balance;
-      });
+      }
 
-      // In consolidated view, eliminate intercompany balances
+      // Consolidated: eliminate intercompany
       const isConsolidated = !effectiveCompany;
       if (isConsolidated) {
-        // Intercompany receivables and payables net to zero in consolidation
         bs.assets.intercompanyReceivable = 0;
         bs.liabilities.intercompanyPayable = 0;
       }
 
       bs.assets.totalAssets = bs.assets.cash + bs.assets.accountsReceivable + bs.assets.inventory
         + bs.assets.prepaidExpenses + bs.assets.intercompanyReceivable;
-
       bs.liabilities.totalLiabilities = bs.liabilities.accountsPayable + bs.liabilities.gstPayable
         + bs.liabilities.qstPayable + bs.liabilities.intercompanyPayable;
-
       bs.equity.totalEquity = bs.equity.ownersEquity + bs.equity.retainedEarnings + bs.equity.currentYearPL;
-
       bs.totalLiabilitiesEquity = bs.liabilities.totalLiabilities + bs.equity.totalEquity;
       bs.isBalanced = Math.abs(bs.assets.totalAssets - bs.totalLiabilitiesEquity) < 0.01;
 
@@ -128,7 +155,14 @@ export function BalanceSheetReport({ companyView }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [effectiveCompany?.id, asOfDate]);
+
+  useEffect(() => {
+    fetchBalanceSheet();
+  }, [fetchBalanceSheet]);
+
+  // Auto-refresh when any financial data changes
+  useDataRefetch(['financials', 'sales', 'expenses', 'inventory', 'invoices', 'purchase_orders'], fetchBalanceSheet);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
@@ -137,7 +171,6 @@ export function BalanceSheetReport({ companyView }: Props) {
 
   const handleExport = () => {
     if (!data) return;
-
     const lines = [
       `Balance Sheet`,
       companyLabel,
@@ -166,7 +199,6 @@ export function BalanceSheetReport({ companyView }: Props) {
       '',
       `Total Liabilities + Equity,${data.totalLiabilitiesEquity.toFixed(2)}`,
     ];
-
     const csv = lines.join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -191,7 +223,6 @@ export function BalanceSheetReport({ companyView }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Controls */}
       <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-2">
           <Label>As of Date</Label>
@@ -207,7 +238,6 @@ export function BalanceSheetReport({ companyView }: Props) {
         </div>
       </div>
 
-      {/* Balance Sheet */}
       <Card className="print:shadow-none">
         <CardHeader className="text-center border-b">
           <CardTitle className="text-2xl flex items-center justify-center gap-2">
