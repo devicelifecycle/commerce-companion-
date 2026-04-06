@@ -357,7 +357,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
   };
 
   const handleImport = async () => {
-    if (!invoice || !selectedCompany) return;
+    if (!invoice || !importCompany) return;
     setImporting(true);
     setStep('processing');
 
