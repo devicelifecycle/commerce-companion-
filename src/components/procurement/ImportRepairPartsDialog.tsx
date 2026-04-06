@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import ExcelJS from 'exceljs';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -96,7 +96,7 @@ function cellToNumber(cell: ExcelJS.Cell): number {
 
 export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: ImportRepairPartsDialogProps) {
   const { user } = useAuth();
-  const { selectedCompany } = useCompany();
+  const { selectedCompany, companies } = useCompany();
   const [step, setStep] = useState<Step>('upload');
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -105,6 +105,14 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
   const [paymentMethod, setPaymentMethod] = useState('credit_card');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [result, setResult] = useState<{ poNumber: string; grnNumber: string; itemCount: number } | null>(null);
+  const [dialogCompanyId, setDialogCompanyId] = useState<string>(selectedCompany?.id || '');
+
+  // The company to use: dialog override or sidebar selection
+  const importCompany = companies.find(c => c.id === dialogCompanyId) || selectedCompany;
+
+  // Sync when sidebar company changes
+  const companyIdForSync = selectedCompany?.id;
+  useEffect(() => { if (companyIdForSync) setDialogCompanyId(companyIdForSync); }, [companyIdForSync]);
 
   const reset = () => {
     setStep('upload');
@@ -349,13 +357,13 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
   };
 
   const handleImport = async () => {
-    if (!invoice || !selectedCompany) return;
+    if (!invoice || !importCompany) return;
     setImporting(true);
     setStep('processing');
 
     try {
-      const companyCode = selectedCompany.code || 'XX';
-      const companyId = selectedCompany.id;
+      const companyCode = importCompany.code || 'XX';
+      const companyId = importCompany.id;
       const isVES = companyCode === 'VES';
 
       // 1. Create/find MobileSentrix supplier
@@ -644,123 +652,106 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
         )}
 
         {step === 'review' && invoice && (
-          <div className="space-y-5">
-            {/* Invoice Summary Card */}
+          <div className="space-y-4">
+            {/* Top bar: Invoice header + Company + Total */}
             <div className="bg-muted/30 border rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <FileText className="h-4 w-4 text-primary" />
-                  Invoice Details
-                </h3>
-                <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
-                  {invoice.items.length} items
-                </Badge>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                 <div>
-                  <p className="text-[11px] text-muted-foreground mb-0.5">Order #</p>
+                  <Label className="text-[11px] text-muted-foreground">Order #</Label>
                   <Input
                     value={invoice.invoice_number}
                     onChange={e => updateInvoiceField('invoice_number', e.target.value)}
-                    className="h-8 text-sm font-semibold"
+                    className="h-8 text-sm font-semibold mt-0.5"
                   />
                 </div>
                 <div>
-                  <p className="text-[11px] text-muted-foreground mb-0.5">Order Date</p>
+                  <Label className="text-[11px] text-muted-foreground">Order Date</Label>
                   <Input
                     type="date"
                     value={invoice.invoice_date}
                     onChange={e => updateInvoiceField('invoice_date', e.target.value)}
-                    className="h-8 text-sm"
+                    className="h-8 text-sm mt-0.5"
                   />
                 </div>
                 <div>
-                  <p className="text-[11px] text-muted-foreground mb-0.5">Supplier</p>
-                  <p className="text-sm font-medium mt-1.5">MobileSentrix</p>
+                  <Label className="text-[11px] text-muted-foreground">Supplier</Label>
+                  <p className="text-sm font-medium mt-2">MobileSentrix</p>
                 </div>
                 <div>
-                  <p className="text-[11px] text-muted-foreground mb-0.5">Grand Total</p>
-                  <p className="text-lg font-bold text-primary mt-0.5">{fmtCurrency(invoice.total)}</p>
+                  <Label className="text-[11px] text-muted-foreground">Import To</Label>
+                  <Select value={dialogCompanyId} onValueChange={setDialogCompanyId}>
+                    <SelectTrigger className="h-8 text-sm font-semibold mt-0.5">
+                      <SelectValue placeholder="Select company..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.filter(c => (c.code as string) !== 'ALL').map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name} ({c.code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col justify-end">
+                  <Label className="text-[11px] text-muted-foreground">Total</Label>
+                  <p className="text-xl font-bold text-primary">{fmtCurrency(invoice.total)}</p>
                 </div>
               </div>
             </div>
 
             {invoice.payment_method_from_file && (
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">
-                  Detected payment: {invoice.payment_method_from_file}
-                </Badge>
-              </div>
+              <Badge variant="outline" className="text-xs">
+                Detected payment: {invoice.payment_method_from_file}
+              </Badge>
             )}
 
             {/* Line items table */}
-            <div>
-              <h3 className="text-sm font-semibold mb-2">Line Items</h3>
-              <div className="max-h-[260px] overflow-y-auto border rounded-lg">
+            <div className="border rounded-lg overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 bg-muted/40 border-b">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Line Items ({invoice.items.length})
+                </h3>
+              </div>
+              <div className="max-h-[240px] overflow-y-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-[120px] text-[11px]">SKU</TableHead>
-                      <TableHead className="text-[11px]">Description</TableHead>
-                      <TableHead className="w-[110px] text-[11px]">Category</TableHead>
-                      <TableHead className="w-[60px] text-right text-[11px]">Qty</TableHead>
-                      <TableHead className="w-[90px] text-right text-[11px]">Unit Cost</TableHead>
-                      <TableHead className="w-[90px] text-right text-[11px]">Subtotal</TableHead>
-                      <TableHead className="w-[40px]" />
+                    <TableRow className="bg-muted/20 text-[11px]">
+                      <TableHead className="w-[110px]">SKU</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="w-[100px]">Category</TableHead>
+                      <TableHead className="w-[55px] text-right">Qty</TableHead>
+                      <TableHead className="w-[85px] text-right">Unit $</TableHead>
+                      <TableHead className="w-[85px] text-right">Line $</TableHead>
+                      <TableHead className="w-[36px]" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {invoice.items.map((item, idx) => (
-                      <TableRow key={idx} className="hover:bg-muted/20">
-                        <TableCell>
-                          <Input
-                            value={item.sku}
-                            onChange={e => updateItem(idx, 'sku', e.target.value)}
-                            className="h-7 text-xs font-mono"
-                          />
+                      <TableRow key={idx} className="hover:bg-muted/10">
+                        <TableCell className="p-1.5">
+                          <Input value={item.sku} onChange={e => updateItem(idx, 'sku', e.target.value)} className="h-7 text-xs font-mono" />
                         </TableCell>
-                        <TableCell>
-                          <Input
-                            value={item.name}
-                            onChange={e => updateItem(idx, 'name', e.target.value)}
-                            className="h-7 text-xs"
-                          />
+                        <TableCell className="p-1.5">
+                          <Input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="h-7 text-xs" />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="p-1.5">
                           <Select value={item.category} onValueChange={v => updateItem(idx, 'category', v)}>
-                            <SelectTrigger className="h-7 text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               {PART_CATEGORIES.map(c => (
-                                <SelectItem key={c} value={c} className="capitalize text-xs">
-                                  {c.replace('_', ' ')}
-                                </SelectItem>
+                                <SelectItem key={c} value={c} className="capitalize text-xs">{c.replace('_', ' ')}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <Input
-                            type="number"
-                            value={item.quantity}
-                            onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 0)}
-                            className="h-7 text-xs text-right w-[50px] ml-auto"
-                          />
+                        <TableCell className="p-1.5 text-right">
+                          <Input type="number" value={item.quantity} onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 0)} className="h-7 text-xs text-right w-[45px] ml-auto" />
                         </TableCell>
-                        <TableCell className="text-right">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={item.unit_cost}
-                            onChange={e => updateItem(idx, 'unit_cost', parseFloat(e.target.value) || 0)}
-                            className="h-7 text-xs text-right w-[80px] ml-auto"
-                          />
+                        <TableCell className="p-1.5 text-right">
+                          <Input type="number" step="0.01" value={item.unit_cost} onChange={e => updateItem(idx, 'unit_cost', parseFloat(e.target.value) || 0)} className="h-7 text-xs text-right w-[75px] ml-auto" />
                         </TableCell>
-                        <TableCell className="text-right text-xs font-mono text-muted-foreground">
+                        <TableCell className="p-1.5 text-right text-xs font-mono text-muted-foreground">
                           {fmtCurrency(item.unit_cost * item.quantity)}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="p-1">
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(idx)}>
                             <Trash2 className="h-3 w-3 text-destructive" />
                           </Button>
@@ -772,50 +763,36 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
               </div>
             </div>
 
-            {/* Totals + Payment side by side */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Bottom row: Financials + Payment + Actions preview */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {/* Financial Summary */}
-              <div className="border rounded-lg p-4 space-y-2">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Financial Summary</h4>
-                <div className="flex justify-between items-center text-sm">
+              <div className="border rounded-lg p-3 space-y-1.5">
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Financials</h4>
+                <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
                   <span className="font-medium">{fmtCurrency(invoice.subtotal)}</span>
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Shipping</span>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={invoice.shipping_cost}
-                    onChange={e => updateInvoiceField('shipping_cost', parseFloat(e.target.value) || 0)}
-                    className="h-7 text-xs text-right w-[90px]"
-                  />
+                  <Input type="number" step="0.01" value={invoice.shipping_cost} onChange={e => updateInvoiceField('shipping_cost', parseFloat(e.target.value) || 0)} className="h-7 text-xs text-right w-[80px]" />
                 </div>
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">HST/GST</span>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={invoice.gst_hst_amount}
-                    onChange={e => updateInvoiceField('gst_hst_amount', parseFloat(e.target.value) || 0)}
-                    className="h-7 text-xs text-right w-[90px]"
-                  />
+                  <Input type="number" step="0.01" value={invoice.gst_hst_amount} onChange={e => updateInvoiceField('gst_hst_amount', parseFloat(e.target.value) || 0)} className="h-7 text-xs text-right w-[80px]" />
                 </div>
-                <div className="flex justify-between text-sm font-bold border-t pt-2 mt-2">
-                  <span>Grand Total</span>
+                <div className="flex justify-between text-sm font-bold border-t border-border pt-1.5">
+                  <span>Total</span>
                   <span className="text-primary">{fmtCurrency(invoice.total)}</span>
                 </div>
               </div>
 
-              {/* Payment Details */}
-              <div className="border rounded-lg p-4 space-y-3">
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Payment</h4>
+              {/* Payment */}
+              <div className="border rounded-lg p-3 space-y-2">
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Payment</h4>
                 <div className="space-y-1">
-                  <Label className="text-xs">Payment Method</Label>
+                  <Label className="text-[11px]">Method</Label>
                   <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="credit_card">Credit Card</SelectItem>
                       <SelectItem value="debit">Debit</SelectItem>
@@ -826,41 +803,35 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Payment Date</Label>
-                  <Input
-                    type="date"
-                    value={paymentDate}
-                    onChange={e => setPaymentDate(e.target.value)}
-                    className="h-8 text-xs"
-                  />
+                  <Label className="text-[11px]">Date</Label>
+                  <Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className="h-8 text-xs" />
                 </div>
+              </div>
+
+              {/* What happens */}
+              <div className="border border-dashed rounded-lg p-3 bg-muted/10 space-y-1">
+                <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">On Import</h4>
+                <ul className="text-[11px] text-muted-foreground space-y-0.5">
+                  <li>• Purchase Order (auto-received)</li>
+                  <li>• Goods Received Note</li>
+                  <li>• Repair parts inventory upsert</li>
+                  <li>• AP entry (marked paid)</li>
+                  <li>• Journal: Dr. Inventory + Tax / Cr. Cash</li>
+                </ul>
               </div>
             </div>
 
-            {/* Company selector warning */}
-            {!selectedCompany && (
-              <div className="flex items-center gap-2 text-sm text-destructive p-3 border border-destructive/30 rounded-md bg-destructive/5">
+            {!importCompany && (
+              <div className="flex items-center gap-2 text-sm text-destructive p-2.5 border border-destructive/30 rounded-md bg-destructive/5">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
-                <span>Please select a specific company (VES or TGW) from the sidebar before importing. "All Companies" is not supported.</span>
+                <span>Select a company above to continue.</span>
               </div>
             )}
 
-            {/* What will happen */}
-            <div className="bg-muted/20 border border-dashed rounded-lg p-3">
-              <p className="text-xs font-medium mb-1.5">On import, the system will automatically:</p>
-              <div className="grid grid-cols-2 gap-1 text-[11px] text-muted-foreground">
-                <span>• Create Purchase Order (received)</span>
-                <span>• Create Goods Received Note</span>
-                <span>• Upsert repair parts inventory</span>
-                <span>• Post AP entry (marked paid)</span>
-                <span>• Post journal entries (Dr. Inventory + Tax / Cr. AP → Cash)</span>
-              </div>
-            </div>
-
             {invoice.items.length === 0 && (
-              <div className="flex items-center gap-2 text-sm text-destructive p-3 border border-destructive/30 rounded-md">
+              <div className="flex items-center gap-2 text-sm text-destructive p-2.5 border border-destructive/30 rounded-md">
                 <AlertTriangle className="h-4 w-4" />
-                No items to import. Please re-upload the file.
+                No items found. Please re-upload the file.
               </div>
             )}
           </div>
@@ -909,10 +880,10 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
               <Button variant="outline" onClick={() => reset()}>Re-upload</Button>
               <Button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleImport(); }}
-                disabled={importing || !invoice?.items.length || !selectedCompany}
+                disabled={importing || !invoice?.items.length || !importCompany}
               >
                 <CheckCircle className="h-4 w-4 mr-1.5" />
-                {!selectedCompany ? 'Select a Company First' : `Import ${invoice?.items.length || 0} Parts`}
+                {!importCompany ? 'Select a Company' : `Import ${invoice?.items.length || 0} Parts`}
               </Button>
             </>
           )}
