@@ -362,8 +362,8 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
     setStep('processing');
 
     try {
-      const companyCode = selectedCompany.code || 'XX';
-      const companyId = selectedCompany.id;
+      const companyCode = importCompany.code || 'XX';
+      const companyId = importCompany.id;
       const isVES = companyCode === 'VES';
 
       // 1. Create/find MobileSentrix supplier
