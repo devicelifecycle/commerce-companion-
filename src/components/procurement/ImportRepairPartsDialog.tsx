@@ -96,7 +96,7 @@ function cellToNumber(cell: ExcelJS.Cell): number {
 
 export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: ImportRepairPartsDialogProps) {
   const { user } = useAuth();
-  const { selectedCompany } = useCompany();
+  const { selectedCompany, companies } = useCompany();
   const [step, setStep] = useState<Step>('upload');
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -105,6 +105,14 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
   const [paymentMethod, setPaymentMethod] = useState('credit_card');
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
   const [result, setResult] = useState<{ poNumber: string; grnNumber: string; itemCount: number } | null>(null);
+  const [dialogCompanyId, setDialogCompanyId] = useState<string>(selectedCompany?.id || '');
+
+  // The company to use: dialog override or sidebar selection
+  const importCompany = companies.find(c => c.id === dialogCompanyId) || selectedCompany;
+
+  // Sync when sidebar company changes
+  const companyIdForSync = selectedCompany?.id;
+  useEffect(() => { if (companyIdForSync) setDialogCompanyId(companyIdForSync); }, [companyIdForSync]);
 
   const reset = () => {
     setStep('upload');
