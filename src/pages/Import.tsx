@@ -298,24 +298,90 @@ export default function Import() {
       });
       if (error) throw error;
 
-      // AP creation for credit-based payment methods
+      // Accounting for the purchase
       const costPrice = parseFloat(manualForm.cost_price);
       const paymentMethod = manualForm.payment_method;
-      if (!['cash', 'credit_card', 'debit_card'].includes(paymentMethod)) {
-        const supplier = suppliers.find(s => s.id === manualForm.supplier_id);
-        await supabase.from('accounts_payable').insert({
-          vendor_name: supplier?.name || 'Unknown Supplier',
-          original_amount: costPrice,
-          bill_date: manualForm.purchase_date,
-          due_date: new Date(new Date(manualForm.purchase_date).getTime() + 30 * 86400000).toISOString().split('T')[0],
-          description: `Manual device: ${normalizedBrand} ${normalizedModel}`,
-          category: 'inventory_purchase',
-          company_id: targetCompany.id,
-          status: 'outstanding',
+      const supplier = suppliers.find(s => s.id === manualForm.supplier_id);
+      const supplierName = supplier?.name || 'Unknown Supplier';
+      const isVES = targetCompany.code === 'VES';
+
+      // Determine if this is an immediate payment
+      const isImmediatePayment = ['cash', 'credit_card', 'debit_card', 'wire', 'e_transfer', 'e-transfer'].includes(paymentMethod);
+
+      // Create AP record for all purchases
+      const { data: apRecord, error: apErr } = await supabase.from('accounts_payable').insert({
+        vendor_name: supplierName,
+        vendor_id: manualForm.supplier_id || null,
+        original_amount: costPrice,
+        paid_amount: isImmediatePayment ? costPrice : 0,
+        bill_date: manualForm.purchase_date,
+        due_date: isImmediatePayment
+          ? manualForm.purchase_date
+          : new Date(new Date(manualForm.purchase_date).getTime() + 30 * 86400000).toISOString().split('T')[0],
+        description: `Manual device: ${normalizedBrand} ${normalizedModel}`,
+        category: 'inventory_purchase',
+        company_id: targetCompany.id,
+        status: isImmediatePayment ? 'paid' : 'outstanding',
+        created_by: user?.id,
+      }).select('id').single();
+      if (apErr) {
+        console.error('AP creation failed:', apErr);
+        toast.error('Device added but AP entry failed: ' + apErr.message);
+      }
+
+      // Journal Entry: Dr. Inventory / Cr. AP
+      try {
+        const { createPurchaseJournalEntry } = await import('@/lib/accounting/journalAutomation');
+        await createPurchaseJournalEntry({
+          companyId: targetCompany.id,
+          purchaseId: apRecord?.id || crypto.randomUUID(),
+          receiveDate: manualForm.purchase_date,
+          supplierName,
+          poNumber: `MANUAL-${sku}`,
+          unitCost: costPrice,
+          gstHstAmount: 0,
+          qstAmount: 0,
+          totalAmount: costPrice,
+          deviceDescription: `${normalizedBrand} ${normalizedModel}`,
+          isVES,
+        });
+      } catch (jeErr) {
+        console.error('Purchase JE failed:', jeErr);
+      }
+
+      // If immediate payment, record AP payment + Dr. AP / Cr. Cash JE
+      if (isImmediatePayment && apRecord) {
+        await supabase.from('ap_payments').insert({
+          accounts_payable_id: apRecord.id,
+          amount: costPrice,
+          payment_date: manualForm.purchase_date,
+          payment_method: paymentMethod,
+          notes: `Immediate payment — manual device purchase`,
           created_by: user?.id,
         });
+
+        try {
+          const { createPaymentMadeJournalEntry } = await import('@/lib/accounting/journalAutomation');
+          await createPaymentMadeJournalEntry({
+            companyId: targetCompany.id,
+            paymentDate: manualForm.purchase_date,
+            amount: costPrice,
+            referenceId: apRecord.id,
+            supplierName,
+            isVES,
+          });
+        } catch (jeErr) {
+          console.error('Payment JE failed:', jeErr);
+        }
+        toast.info('Purchase recorded with immediate payment — AP settled');
+      } else if (apRecord) {
         toast.info('Accounts Payable record created for this purchase');
       }
+
+      // Emit refetch for financials
+      const { emitRefetch } = await import('@/hooks/useDataRefetch');
+      emitRefetch('financials');
+      emitRefetch('dashboard');
 
       toast.success(`${normalizedBrand} ${normalizedModel} added to ${targetCompany.name} inventory (SKU: ${sku})`);
       setManualForm({
