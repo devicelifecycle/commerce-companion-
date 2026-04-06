@@ -1,0 +1,2 @@
+ALTER TABLE public.accounts_payable DROP CONSTRAINT accounts_payable_status_check;
+ALTER TABLE public.accounts_payable ADD CONSTRAINT accounts_payable_status_check CHECK (status = ANY (ARRAY['unpaid'::text, 'partial'::text, 'paid'::text, 'overdue'::text, 'void'::text, 'outstanding'::text]));
