@@ -912,12 +912,12 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
                 disabled={importing || !invoice?.items.length || !selectedCompany}
               >
                 <CheckCircle className="h-4 w-4 mr-1.5" />
-                Import {invoice?.items.length || 0} Parts
+                {!selectedCompany ? 'Select a Company First' : `Import ${invoice?.items.length || 0} Parts`}
               </Button>
             </>
           )}
           {step === 'complete' && (
-            <Button onClick={() => { handleClose(false); onSuccess(); }}>Done</Button>
+            <Button type="button" onClick={() => { handleClose(false); onSuccess(); }}>Done</Button>
           )}
         </DialogFooter>
       </DialogContent>
