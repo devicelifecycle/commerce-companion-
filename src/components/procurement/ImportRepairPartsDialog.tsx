@@ -837,6 +837,14 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
               </div>
             </div>
 
+            {/* Company selector warning */}
+            {!selectedCompany && (
+              <div className="flex items-center gap-2 text-sm text-destructive p-3 border border-destructive/30 rounded-md bg-destructive/5">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>Please select a specific company (VES or TGW) from the sidebar before importing. "All Companies" is not supported.</span>
+              </div>
+            )}
+
             {/* What will happen */}
             <div className="bg-muted/20 border border-dashed rounded-lg p-3">
               <p className="text-xs font-medium mb-1.5">On import, the system will automatically:</p>
@@ -904,12 +912,12 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
                 disabled={importing || !invoice?.items.length || !selectedCompany}
               >
                 <CheckCircle className="h-4 w-4 mr-1.5" />
-                Import {invoice?.items.length || 0} Parts
+                {!selectedCompany ? 'Select a Company First' : `Import ${invoice?.items.length || 0} Parts`}
               </Button>
             </>
           )}
           {step === 'complete' && (
-            <Button onClick={() => { handleClose(false); onSuccess(); }}>Done</Button>
+            <Button type="button" onClick={() => { handleClose(false); onSuccess(); }}>Done</Button>
           )}
         </DialogFooter>
       </DialogContent>
