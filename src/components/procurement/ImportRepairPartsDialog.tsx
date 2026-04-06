@@ -893,13 +893,17 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
         )}
 
         <DialogFooter>
+          {step === 'upload' && (
+            <Button variant="outline" onClick={() => handleClose(false)}>Cancel</Button>
+          )}
           {step === 'review' && (
             <>
               <Button variant="outline" onClick={() => reset()}>Re-upload</Button>
               <Button
-                onClick={handleImport}
-                disabled={importing || !invoice?.items.length}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleImport(); }}
+                disabled={importing || !invoice?.items.length || !selectedCompany}
               >
+                <CheckCircle className="h-4 w-4 mr-1.5" />
                 Import {invoice?.items.length || 0} Parts
               </Button>
             </>
