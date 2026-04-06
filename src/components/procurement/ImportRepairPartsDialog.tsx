@@ -684,7 +684,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
                       <SelectValue placeholder="Select company..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {companies.filter(c => c.code !== 'ALL').map(c => (
+                      {companies.filter(c => (c.code as string) !== 'ALL').map(c => (
                         <SelectItem key={c.id} value={c.id}>{c.name} ({c.code})</SelectItem>
                       ))}
                     </SelectContent>
