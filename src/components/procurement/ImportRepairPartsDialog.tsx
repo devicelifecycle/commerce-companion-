@@ -599,7 +599,12 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-4xl max-h-[85vh] overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+        onFocusOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
@@ -639,153 +644,172 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
         )}
 
         {step === 'review' && invoice && (
-          <div className="space-y-4">
-            {/* Invoice header info */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="rounded-md border p-3">
-                <p className="text-xs text-muted-foreground">Order #</p>
-                <Input
-                  value={invoice.invoice_number}
-                  onChange={e => updateInvoiceField('invoice_number', e.target.value)}
-                  className="h-7 text-sm font-semibold mt-1 p-1"
-                />
+          <div className="space-y-5">
+            {/* Invoice Summary Card */}
+            <div className="bg-muted/30 border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Invoice Details
+                </h3>
+                <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
+                  {invoice.items.length} items
+                </Badge>
               </div>
-              <div className="rounded-md border p-3">
-                <p className="text-xs text-muted-foreground">Order Date</p>
-                <Input
-                  type="date"
-                  value={invoice.invoice_date}
-                  onChange={e => updateInvoiceField('invoice_date', e.target.value)}
-                  className="h-7 text-sm font-semibold mt-1 p-1"
-                />
-              </div>
-              <div className="rounded-md border p-3">
-                <p className="text-xs text-muted-foreground">Items</p>
-                <p className="text-sm font-semibold mt-1">{invoice.items.length}</p>
-              </div>
-              <div className="rounded-md border p-3">
-                <p className="text-xs text-muted-foreground">Grand Total</p>
-                <p className="text-sm font-semibold mt-1">{fmtCurrency(invoice.total)}</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">Order #</p>
+                  <Input
+                    value={invoice.invoice_number}
+                    onChange={e => updateInvoiceField('invoice_number', e.target.value)}
+                    className="h-8 text-sm font-semibold"
+                  />
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">Order Date</p>
+                  <Input
+                    type="date"
+                    value={invoice.invoice_date}
+                    onChange={e => updateInvoiceField('invoice_date', e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">Supplier</p>
+                  <p className="text-sm font-medium mt-1.5">MobileSentrix</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-0.5">Grand Total</p>
+                  <p className="text-lg font-bold text-primary mt-0.5">{fmtCurrency(invoice.total)}</p>
+                </div>
               </div>
             </div>
 
             {invoice.payment_method_from_file && (
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-xs">
-                  Paid via: {invoice.payment_method_from_file}
+                  Detected payment: {invoice.payment_method_from_file}
                 </Badge>
               </div>
             )}
 
-            {/* Line items preview */}
-            <div className="max-h-[280px] overflow-y-auto border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[120px]">SKU</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="w-[110px]">Category</TableHead>
-                    <TableHead className="w-[60px] text-right">Qty</TableHead>
-                    <TableHead className="w-[90px] text-right">Unit Cost</TableHead>
-                    <TableHead className="w-[90px] text-right">Subtotal</TableHead>
-                    <TableHead className="w-[40px]" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invoice.items.map((item, idx) => (
-                    <TableRow key={idx}>
-                      <TableCell>
-                        <Input
-                          value={item.sku}
-                          onChange={e => updateItem(idx, 'sku', e.target.value)}
-                          className="h-7 text-xs font-mono"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          value={item.name}
-                          onChange={e => updateItem(idx, 'name', e.target.value)}
-                          className="h-7 text-xs"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Select value={item.category} onValueChange={v => updateItem(idx, 'category', v)}>
-                          <SelectTrigger className="h-7 text-xs">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {PART_CATEGORIES.map(c => (
-                              <SelectItem key={c} value={c} className="capitalize text-xs">
-                                {c.replace('_', ' ')}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          value={item.quantity}
-                          onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 0)}
-                          className="h-7 text-xs text-right w-[50px] ml-auto"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={item.unit_cost}
-                          onChange={e => updateItem(idx, 'unit_cost', parseFloat(e.target.value) || 0)}
-                          className="h-7 text-xs text-right w-[80px] ml-auto"
-                        />
-                      </TableCell>
-                      <TableCell className="text-right text-xs font-mono">
-                        {fmtCurrency(item.unit_cost * item.quantity)}
-                      </TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(idx)}>
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </Button>
-                      </TableCell>
+            {/* Line items table */}
+            <div>
+              <h3 className="text-sm font-semibold mb-2">Line Items</h3>
+              <div className="max-h-[260px] overflow-y-auto border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="w-[120px] text-[11px]">SKU</TableHead>
+                      <TableHead className="text-[11px]">Description</TableHead>
+                      <TableHead className="w-[110px] text-[11px]">Category</TableHead>
+                      <TableHead className="w-[60px] text-right text-[11px]">Qty</TableHead>
+                      <TableHead className="w-[90px] text-right text-[11px]">Unit Cost</TableHead>
+                      <TableHead className="w-[90px] text-right text-[11px]">Subtotal</TableHead>
+                      <TableHead className="w-[40px]" />
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {invoice.items.map((item, idx) => (
+                      <TableRow key={idx} className="hover:bg-muted/20">
+                        <TableCell>
+                          <Input
+                            value={item.sku}
+                            onChange={e => updateItem(idx, 'sku', e.target.value)}
+                            className="h-7 text-xs font-mono"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            value={item.name}
+                            onChange={e => updateItem(idx, 'name', e.target.value)}
+                            className="h-7 text-xs"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Select value={item.category} onValueChange={v => updateItem(idx, 'category', v)}>
+                            <SelectTrigger className="h-7 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {PART_CATEGORIES.map(c => (
+                                <SelectItem key={c} value={c} className="capitalize text-xs">
+                                  {c.replace('_', ' ')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input
+                            type="number"
+                            value={item.quantity}
+                            onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 0)}
+                            className="h-7 text-xs text-right w-[50px] ml-auto"
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={item.unit_cost}
+                            onChange={e => updateItem(idx, 'unit_cost', parseFloat(e.target.value) || 0)}
+                            className="h-7 text-xs text-right w-[80px] ml-auto"
+                          />
+                        </TableCell>
+                        <TableCell className="text-right text-xs font-mono text-muted-foreground">
+                          {fmtCurrency(item.unit_cost * item.quantity)}
+                        </TableCell>
+                        <TableCell>
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(idx)}>
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
 
-            {/* Totals + payment */}
-            <div className="grid grid-cols-2 gap-4 border-t pt-3">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center text-xs">
+            {/* Totals + Payment side by side */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Financial Summary */}
+              <div className="border rounded-lg p-4 space-y-2">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Financial Summary</h4>
+                <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span>{fmtCurrency(invoice.subtotal)}</span>
+                  <span className="font-medium">{fmtCurrency(invoice.subtotal)}</span>
                 </div>
-                <div className="flex justify-between items-center text-xs">
+                <div className="flex justify-between items-center text-sm">
                   <span className="text-muted-foreground">Shipping</span>
                   <Input
                     type="number"
                     step="0.01"
                     value={invoice.shipping_cost}
                     onChange={e => updateInvoiceField('shipping_cost', parseFloat(e.target.value) || 0)}
-                    className="h-6 text-xs text-right w-[80px]"
+                    className="h-7 text-xs text-right w-[90px]"
                   />
                 </div>
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-muted-foreground">HST/GST (13%)</span>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-muted-foreground">HST/GST</span>
                   <Input
                     type="number"
                     step="0.01"
                     value={invoice.gst_hst_amount}
                     onChange={e => updateInvoiceField('gst_hst_amount', parseFloat(e.target.value) || 0)}
-                    className="h-6 text-xs text-right w-[80px]"
+                    className="h-7 text-xs text-right w-[90px]"
                   />
                 </div>
-                <div className="flex justify-between text-sm font-semibold border-t pt-1">
+                <div className="flex justify-between text-sm font-bold border-t pt-2 mt-2">
                   <span>Grand Total</span>
-                  <span>{fmtCurrency(invoice.total)}</span>
+                  <span className="text-primary">{fmtCurrency(invoice.total)}</span>
                 </div>
               </div>
-              <div className="space-y-3">
+
+              {/* Payment Details */}
+              <div className="border rounded-lg p-4 space-y-3">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Payment</h4>
                 <div className="space-y-1">
                   <Label className="text-xs">Payment Method</Label>
                   <Select value={paymentMethod} onValueChange={setPaymentMethod}>
@@ -813,6 +837,18 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
               </div>
             </div>
 
+            {/* What will happen */}
+            <div className="bg-muted/20 border border-dashed rounded-lg p-3">
+              <p className="text-xs font-medium mb-1.5">On import, the system will automatically:</p>
+              <div className="grid grid-cols-2 gap-1 text-[11px] text-muted-foreground">
+                <span>• Create Purchase Order (received)</span>
+                <span>• Create Goods Received Note</span>
+                <span>• Upsert repair parts inventory</span>
+                <span>• Post AP entry (marked paid)</span>
+                <span>• Post journal entries (Dr. Inventory + Tax / Cr. AP → Cash)</span>
+              </div>
+            </div>
+
             {invoice.items.length === 0 && (
               <div className="flex items-center gap-2 text-sm text-destructive p-3 border border-destructive/30 rounded-md">
                 <AlertTriangle className="h-4 w-4" />
@@ -831,22 +867,24 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
 
         {step === 'complete' && result && (
           <div className="flex flex-col items-center gap-4 py-6">
-            <CheckCircle className="h-12 w-12 text-[hsl(var(--success))]" />
+            <div className="h-14 w-14 rounded-full bg-[hsl(var(--success)/.15)] flex items-center justify-center">
+              <CheckCircle className="h-8 w-8 text-[hsl(var(--success))]" />
+            </div>
             <div className="text-center space-y-1">
-              <p className="font-semibold">Import Complete</p>
-              <p className="text-sm text-muted-foreground">{result.itemCount} repair parts imported</p>
+              <p className="text-lg font-semibold">Import Complete</p>
+              <p className="text-sm text-muted-foreground">{result.itemCount} repair parts imported successfully</p>
             </div>
             <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-              <div className="border rounded-md p-3 text-center">
-                <p className="text-xs text-muted-foreground">Purchase Order</p>
-                <p className="text-sm font-mono font-semibold">{result.poNumber}</p>
+              <div className="border rounded-lg p-3 text-center bg-muted/20">
+                <p className="text-[11px] text-muted-foreground">Purchase Order</p>
+                <p className="text-sm font-mono font-semibold mt-0.5">{result.poNumber}</p>
               </div>
-              <div className="border rounded-md p-3 text-center">
-                <p className="text-xs text-muted-foreground">GRN</p>
-                <p className="text-sm font-mono font-semibold">{result.grnNumber}</p>
+              <div className="border rounded-lg p-3 text-center bg-muted/20">
+                <p className="text-[11px] text-muted-foreground">GRN</p>
+                <p className="text-sm font-mono font-semibold mt-0.5">{result.grnNumber}</p>
               </div>
             </div>
-            <div className="text-xs text-muted-foreground text-center space-y-0.5">
+            <div className="text-xs text-muted-foreground text-center space-y-0.5 bg-muted/10 border rounded-lg p-3 w-full max-w-sm">
               <p>✓ AP entry created & marked as paid</p>
               <p>✓ Journal entries posted (Inventory + GST/HST → AP → Cash)</p>
               <p>✓ Repair parts inventory updated</p>
@@ -855,13 +893,17 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
         )}
 
         <DialogFooter>
+          {step === 'upload' && (
+            <Button variant="outline" onClick={() => handleClose(false)}>Cancel</Button>
+          )}
           {step === 'review' && (
             <>
               <Button variant="outline" onClick={() => reset()}>Re-upload</Button>
               <Button
-                onClick={handleImport}
-                disabled={importing || !invoice?.items.length}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleImport(); }}
+                disabled={importing || !invoice?.items.length || !selectedCompany}
               >
+                <CheckCircle className="h-4 w-4 mr-1.5" />
                 Import {invoice?.items.length || 0} Parts
               </Button>
             </>
