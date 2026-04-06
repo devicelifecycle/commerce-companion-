@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
@@ -226,13 +227,44 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
     setSavingManualCost(true);
     try {
       const costValue = manualCostAmount ? parseFloat(manualCostAmount) : null;
+      // First, reverse any existing COGS entries for this sale
+      const { data: existingCOGS } = await supabase
+        .from('journal_entries')
+        .select('id')
+        .eq('reference_id', sale.id)
+        .eq('reference_type', 'sale')
+        .ilike('description', 'COGS%');
+      if (existingCOGS && existingCOGS.length > 0) {
+        for (const entry of existingCOGS) {
+          await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', entry.id);
+          await supabase.from('journal_entries').delete().eq('id', entry.id);
+        }
+      }
+
+      // Update the sale — set back to revenue_only so the edge function will create COGS
       const { error } = await supabase.from('sales').update({
         manual_cost: costValue,
         manual_cost_description: manualCostDesc || null,
-        accounting_status: costValue ? 'fully_processed' : 'revenue_only',
+        accounting_status: costValue ? 'revenue_only' : 'revenue_only',
       } as any).eq('id', sale.id);
       if (error) throw error;
-      toast.success(costValue ? 'Manual cost saved — profit updated' : 'Manual cost cleared');
+
+      // Trigger the accounting edge function to create proper COGS journal entries
+      if (costValue && costValue > 0) {
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          await supabase.functions.invoke('process-sale-accounting', {
+            body: { sale_ids: [sale.id] },
+            headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
+          });
+        } catch (accErr: any) {
+          console.error('Accounting trigger error:', accErr);
+          toast.error('Cost saved but accounting entries failed — re-run accounting from Financials');
+        }
+      }
+
+      toast.success(costValue ? 'Manual cost saved — COGS posted to P&L' : 'Manual cost cleared');
+      emitRefetch('sales');
       onSaleUpdated?.();
     } catch (error: any) {
       toast.error(error.message || 'Failed to save manual cost');
@@ -244,6 +276,20 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const handleClearManualCost = async () => {
     setSavingManualCost(true);
     try {
+      // Reverse any existing COGS entries for this sale
+      const { data: existingCOGS } = await supabase
+        .from('journal_entries')
+        .select('id')
+        .eq('reference_id', sale.id)
+        .eq('reference_type', 'sale')
+        .ilike('description', 'COGS%');
+      if (existingCOGS && existingCOGS.length > 0) {
+        for (const entry of existingCOGS) {
+          await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', entry.id);
+          await supabase.from('journal_entries').delete().eq('id', entry.id);
+        }
+      }
+
       const { error } = await supabase.from('sales').update({
         manual_cost: null,
         manual_cost_description: null,
@@ -252,7 +298,8 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
       if (error) throw error;
       setManualCostAmount('');
       setManualCostDesc('');
-      toast.success('Manual cost cleared');
+      toast.success('Manual cost cleared — COGS entries reversed');
+      emitRefetch('sales');
       onSaleUpdated?.();
     } catch (error: any) {
       toast.error(error.message || 'Failed to clear manual cost');
