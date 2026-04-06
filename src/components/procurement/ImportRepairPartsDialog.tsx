@@ -880,10 +880,10 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
               <Button variant="outline" onClick={() => reset()}>Re-upload</Button>
               <Button
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleImport(); }}
-                disabled={importing || !invoice?.items.length || !selectedCompany}
+                disabled={importing || !invoice?.items.length || !importCompany}
               >
                 <CheckCircle className="h-4 w-4 mr-1.5" />
-                {!selectedCompany ? 'Select a Company First' : `Import ${invoice?.items.length || 0} Parts`}
+                {!importCompany ? 'Select a Company' : `Import ${invoice?.items.length || 0} Parts`}
               </Button>
             </>
           )}
