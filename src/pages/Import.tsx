@@ -940,26 +940,44 @@ export default function Import() {
         const dueDate = new Date();
         dueDate.setDate(dueDate.getDate() + 30);
 
-        const { data: apRecord, error: apError } = await supabase.from('accounts_payable').insert({
+        const apInsertPayload = {
           company_id: batchInfo.company_id,
           vendor_name: draft.supplierName,
-          vendor_id: draft.supplierId,
           bill_number: draft.invoiceNumber || null,
           bill_date: new Date().toISOString().split('T')[0],
-          due_date: dueDate.toISOString().split('T')[0],
+          due_date: (isPaid && draft.paymentDate) ? draft.paymentDate : dueDate.toISOString().split('T')[0],
           original_amount: invoiceTotal,
-          paid_amount: isPaid ? invoiceTotal : 0,
           gst_hst_amount: totalTax,
           pst_amount: 0,
           category: 'inventory_purchase',
           description: `Inventory purchase — ${draft.items.length} devices`,
-          status: isPaid ? 'paid' : 'outstanding',
           created_by: user?.id,
-        }).select('id').single();
+        };
+
+        const { data: apRecord, error: apError } = await supabase
+          .from('accounts_payable')
+          .insert(apInsertPayload)
+          .select('id')
+          .single();
 
         if (apError) {
-          console.error('AP creation failed:', apError);
-          toast.error(`AP creation failed for ${draft.supplierName}: ${apError.message}`);
+          console.error('AP creation failed:', apError, apInsertPayload);
+          throw new Error(`AP creation failed for ${draft.supplierName}: ${apError.message}`);
+        }
+
+        if (isPaid) {
+          const { error: apStatusError } = await supabase
+            .from('accounts_payable')
+            .update({
+              paid_amount: invoiceTotal,
+              status: 'paid',
+            })
+            .eq('id', apRecord.id);
+
+          if (apStatusError) {
+            console.error('AP payment status update failed:', apStatusError);
+            throw new Error(`AP payment update failed for ${draft.supplierName}: ${apStatusError.message}`);
+          }
         }
 
         // If paid immediately, record AP payment, JE, and mark PO as paid
