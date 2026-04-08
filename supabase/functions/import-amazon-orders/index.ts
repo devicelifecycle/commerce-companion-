@@ -100,7 +100,7 @@ async function upsertCustomer(
     if (customerEmail) {
       const { data } = await supabase
         .from("customers")
-        .select("id, total_spent, total_purchases")
+        .select("id")
         .eq("email", customerEmail)
         .eq("company_id", companyId)
         .maybeSingle();
@@ -110,7 +110,7 @@ async function upsertCustomer(
     if (!existingCustomer) {
       const { data } = await supabase
         .from("customers")
-        .select("id, total_spent, total_purchases")
+        .select("id")
         .eq("name", customerName)
         .eq("company_id", companyId)
         .maybeSingle();
@@ -118,19 +118,13 @@ async function upsertCustomer(
     }
 
     if (existingCustomer) {
-      const updates: any = {
-        total_spent: (existingCustomer.total_spent || 0) + saleAmount,
-        total_purchases: (existingCustomer.total_purchases || 0) + 1,
-      };
+      const updates: any = {};
       if (customerEmail) updates.email = customerEmail;
       if (customerPhone) updates.phone = customerPhone;
       if (customerAddress) updates.address = customerAddress;
-
-      await supabase
-        .from("customers")
-        .update(updates)
-        .eq("id", existingCustomer.id);
-
+      if (Object.keys(updates).length > 0) {
+        await supabase.from("customers").update(updates).eq("id", existingCustomer.id);
+      }
       return existingCustomer.id;
     } else {
       const { data: newCustomer, error } = await supabase
@@ -142,8 +136,6 @@ async function upsertCustomer(
           address: customerAddress,
           company_id: companyId,
           marketplace_source: marketplace,
-          total_spent: saleAmount,
-          total_purchases: 1,
         })
         .select("id")
         .single();
