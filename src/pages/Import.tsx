@@ -306,7 +306,7 @@ export default function Import() {
       const isVES = targetCompany.code === 'VES';
 
       // Determine if this is an immediate payment
-      const isImmediatePayment = ['cash', 'credit_card', 'debit_card', 'wire', 'e_transfer', 'e-transfer'].includes(paymentMethod);
+      const isImmediatePayment = ['cash', 'credit_card', 'debit_card', 'wire_transfer', 'e_transfer', 'wire', 'e-transfer'].includes(paymentMethod);
 
       // Create AP record for all purchases
       const { data: apRecord, error: apErr } = await supabase.from('accounts_payable').insert({
@@ -1292,16 +1292,19 @@ export default function Import() {
                         <SelectValue placeholder="How was this acquired?" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="cash">Cash (paid immediately)</SelectItem>
-                        <SelectItem value="credit_card">Credit Card (paid immediately)</SelectItem>
-                        <SelectItem value="debit_card">Debit Card (paid immediately)</SelectItem>
-                        <SelectItem value="credit">On Credit (creates AP)</SelectItem>
-                        <SelectItem value="wire_transfer">Wire Transfer (creates AP)</SelectItem>
-                        <SelectItem value="e_transfer">E-Transfer (creates AP)</SelectItem>
+                        <SelectItem value="cash">Cash (settled immediately)</SelectItem>
+                        <SelectItem value="credit_card">Credit Card (settled immediately)</SelectItem>
+                        <SelectItem value="debit_card">Debit Card (settled immediately)</SelectItem>
+                        <SelectItem value="wire_transfer">Wire Transfer (settled immediately)</SelectItem>
+                        <SelectItem value="e_transfer">E-Transfer (settled immediately)</SelectItem>
+                        <SelectItem value="credit">On Credit (creates AP obligation)</SelectItem>
                       </SelectContent>
                     </Select>
-                    {manualForm.payment_method && !['cash', 'credit_card', 'debit_card'].includes(manualForm.payment_method) && (
+                    {manualForm.payment_method === 'credit' && (
                       <p className="text-xs text-muted-foreground">An Accounts Payable record will be auto-created</p>
+                    )}
+                    {manualForm.payment_method && manualForm.payment_method !== 'credit' && (
+                      <p className="text-xs text-muted-foreground">AP created & settled immediately — journal entries posted</p>
                     )}
                   </div>
                 </div>
