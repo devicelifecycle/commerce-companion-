@@ -676,289 +676,155 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
             Import MobileSentrix Invoice
           </DialogTitle>
           <DialogDescription>
-            Upload a MobileSentrix export, review the parsed invoice, and import the repair parts with the matching procurement and accounting records.
+            Upload an XLS/XLSX or CSV export from MobileSentrix to import repair parts with full accounting.
           </DialogDescription>
         </DialogHeader>
 
         {step === 'upload' && (
-          <div className="grid gap-4 py-4 lg:grid-cols-[1.4fr_0.9fr]">
-            <div className="rounded-xl border-2 border-dashed border-border bg-muted/20 p-6">
+          <div className="space-y-4 py-4">
+            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
               {parsing ? (
-                <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 text-center">
+                <div className="flex flex-col items-center gap-3">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Parsing MobileSentrix export…</p>
-                    <p className="text-xs text-muted-foreground">Reading line items, dates, taxes, and payment details.</p>
-                  </div>
+                  <p className="text-sm text-muted-foreground">Parsing file...</p>
                 </div>
               ) : (
-                <label className="flex min-h-[260px] cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border border-border/60 bg-background px-6 py-10 text-center transition-colors hover:border-primary/40 hover:bg-muted/30">
-                  <FileText className="h-11 w-11 text-muted-foreground" />
-                  <div className="space-y-1.5">
-                    <p className="text-base font-semibold">Drop or choose a MobileSentrix export</p>
-                    <p className="text-sm text-muted-foreground">Supports XLS, XLSX, and CSV files.</p>
+                <label className="cursor-pointer flex flex-col items-center gap-3">
+                  <FileText className="h-10 w-10 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Drop or click to upload MobileSentrix export</p>
+                    <p className="text-xs text-muted-foreground mt-1">Supports XLS, XLSX, CSV</p>
                   </div>
-                  <Input
-                    type="file"
-                    className="hidden"
-                    accept=".xls,.xlsx,.csv"
-                    onChange={handleFileSelect}
-                  />
-                  <Button type="button" variant="outline" size="sm">Choose File</Button>
+                  <Input type="file" className="hidden" accept=".xls,.xlsx,.csv" onChange={handleFileSelect} />
+                  <Button type="button" variant="outline" size="sm" className="mt-2">Choose File</Button>
                 </label>
               )}
-            </div>
-
-            <div className="grid gap-4">
-              <div className="rounded-xl border bg-muted/10 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">What gets created</p>
-                <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                  <li>• Purchase order marked as received</li>
-                  <li>• Goods received note</li>
-                  <li>• Repair parts inventory updates</li>
-                  <li>• Paid accounts payable bill</li>
-                  <li>• Journal entries for inventory, tax, AP, and cash</li>
-                </ul>
-              </div>
-
-              <div className="rounded-xl border bg-background p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Before you import</p>
-                <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                  <li>• Confirm the company inside this dialog</li>
-                  <li>• Review SKUs, categories, and quantities</li>
-                  <li>• Adjust shipping or tax directly if needed</li>
-                </ul>
-              </div>
             </div>
           </div>
         )}
 
         {step === 'review' && invoice && (
-          <div className="space-y-5">
-            <div className="grid gap-4 xl:grid-cols-[1.65fr_1fr]">
-              <div className="rounded-xl border bg-muted/20 p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Import review</p>
-                    <h3 className="text-xl font-semibold">MobileSentrix purchase summary</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Review the parsed invoice details before the repair parts inventory and accounting records are posted.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {file && (
-                      <Badge variant="secondary" className="max-w-full truncate" title={file.name}>
-                        {file.name}
-                      </Badge>
-                    )}
-                    {invoice.payment_method_from_file && (
-                      <Badge variant="outline" className="text-xs">
-                        Detected: {invoice.payment_method_from_file}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="space-y-2 rounded-lg border bg-background p-3">
-                    <Label className="text-[11px] text-muted-foreground">Order #</Label>
-                    <Input
-                      value={invoice.invoice_number}
-                      onChange={e => updateInvoiceField('invoice_number', e.target.value)}
-                      className="h-9 text-sm font-semibold"
-                    />
-                  </div>
-
-                  <div className="space-y-2 rounded-lg border bg-background p-3">
-                    <Label className="text-[11px] text-muted-foreground">Order Date</Label>
-                    <Input
-                      type="date"
-                      value={invoice.invoice_date}
-                      onChange={e => updateInvoiceField('invoice_date', e.target.value)}
-                      className="h-9 text-sm"
-                    />
-                  </div>
-
-                  <div className="space-y-2 rounded-lg border bg-background p-3">
-                    <Label className="text-[11px] text-muted-foreground">Supplier</Label>
-                    <div className="flex h-9 items-center text-sm font-medium">{MOBILE_SENTRIX_NAME}</div>
-                  </div>
-
-                  <div className="space-y-2 rounded-lg border bg-background p-3">
-                    <Label className="text-[11px] text-muted-foreground">Import To</Label>
-                    <Select value={dialogCompanyId} onValueChange={setDialogCompanyId}>
-                      <SelectTrigger className="h-9 text-sm font-semibold">
-                        <SelectValue placeholder="Select company..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {companies.filter(c => (c.code as string) !== 'ALL').map(c => (
-                          <SelectItem key={c.id} value={c.id}>{c.name} ({c.code})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+          <div className="space-y-4">
+            {/* Header fields — single row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Order #</Label>
+                <Input value={invoice.invoice_number} onChange={e => updateInvoiceField('invoice_number', e.target.value)} className="h-8 text-sm font-semibold" />
               </div>
-
-              <div className="space-y-4">
-                <div className="rounded-xl border bg-background p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Snapshot</p>
-                  <div className="mt-3 grid grid-cols-2 gap-3">
-                    <div className="rounded-lg border bg-muted/20 p-3">
-                      <p className="text-[11px] text-muted-foreground">Invoice total</p>
-                      <p className="mt-1 text-lg font-semibold text-primary">{fmtCurrency(invoice.total)}</p>
-                    </div>
-                    <div className="rounded-lg border bg-muted/20 p-3">
-                      <p className="text-[11px] text-muted-foreground">Line items</p>
-                      <p className="mt-1 text-lg font-semibold">{invoiceMetrics?.lineCount ?? 0}</p>
-                    </div>
-                    <div className="rounded-lg border bg-muted/20 p-3">
-                      <p className="text-[11px] text-muted-foreground">Units</p>
-                      <p className="mt-1 text-lg font-semibold">{invoiceMetrics?.unitCount ?? 0}</p>
-                    </div>
-                    <div className="rounded-lg border bg-muted/20 p-3">
-                      <p className="text-[11px] text-muted-foreground">Categories</p>
-                      <p className="mt-1 text-lg font-semibold">{invoiceMetrics?.categoryCount ?? 0}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border bg-background p-4 space-y-3">
-                  <div>
-                    <h4 className="text-sm font-semibold">Payment</h4>
-                    <p className="text-xs text-muted-foreground">This import records the bill as paid on the date below.</p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-[11px] text-muted-foreground">Method</Label>
-                    <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                      <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="credit_card">Credit Card</SelectItem>
-                        <SelectItem value="debit">Debit</SelectItem>
-                        <SelectItem value="e_transfer">E-Transfer</SelectItem>
-                        <SelectItem value="wire">Wire / Bank Transfer</SelectItem>
-                        <SelectItem value="paypal">PayPal</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-[11px] text-muted-foreground">Payment date</Label>
-                    <Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className="h-9 text-sm" />
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-dashed bg-muted/10 p-4">
-                  <h4 className="text-sm font-semibold">Import output</h4>
-                  <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                    <li>• Purchase order marked as received</li>
-                    <li>• Goods received note</li>
-                    <li>• Repair parts inventory updates</li>
-                    <li>• Accounts payable bill recorded as paid</li>
-                    <li>• Journal entries for inventory, tax, AP, and cash</li>
-                  </ul>
-                </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Order Date</Label>
+                <Input type="date" value={invoice.invoice_date} onChange={e => updateInvoiceField('invoice_date', e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Supplier</Label>
+                <div className="flex h-8 items-center text-sm font-medium">{MOBILE_SENTRIX_NAME}</div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Import To</Label>
+                <Select value={dialogCompanyId} onValueChange={setDialogCompanyId}>
+                  <SelectTrigger className="h-8 text-sm font-semibold"><SelectValue placeholder="Select company..." /></SelectTrigger>
+                  <SelectContent>
+                    {companies.filter(c => (c.code as string) !== 'ALL').map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name} ({c.code})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            <div className="grid gap-4 xl:grid-cols-[1.65fr_1fr]">
-              <div className="overflow-hidden rounded-xl border bg-background">
-                <div className="flex flex-col gap-1 border-b bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <h4 className="text-sm font-semibold">Line items</h4>
-                    <p className="text-xs text-muted-foreground">Update any SKU, description, category, quantity, or unit cost before importing.</p>
-                  </div>
-                  <Badge variant="secondary">{invoice.items.length} items</Badge>
-                </div>
-
-                <div className="max-h-[420px] overflow-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/20 text-[11px]">
-                        <TableHead className="w-[130px]">SKU</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead className="w-[130px]">Category</TableHead>
-                        <TableHead className="w-[74px] text-right">Qty</TableHead>
-                        <TableHead className="w-[110px] text-right">Unit</TableHead>
-                        <TableHead className="w-[110px] text-right">Line total</TableHead>
-                        <TableHead className="w-[44px]" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {invoice.items.map((item, idx) => (
-                        <TableRow key={idx} className="hover:bg-muted/10">
-                          <TableCell className="p-1.5 align-top">
-                            <Input value={item.sku} onChange={e => updateItem(idx, 'sku', e.target.value)} className="h-8 text-xs font-mono" />
-                          </TableCell>
-                          <TableCell className="p-1.5 align-top">
-                            <Input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="h-8 text-xs" />
-                          </TableCell>
-                          <TableCell className="p-1.5 align-top">
-                            <Select value={item.category} onValueChange={v => updateItem(idx, 'category', v)}>
-                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {PART_CATEGORIES.map(c => (
-                                  <SelectItem key={c} value={c} className="capitalize text-xs">{c.replace('_', ' ')}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell className="p-1.5 align-top text-right">
-                            <Input type="number" value={item.quantity} onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 0)} className="ml-auto h-8 w-[56px] text-right text-xs" />
-                          </TableCell>
-                          <TableCell className="p-1.5 align-top text-right">
-                            <Input type="number" step="0.01" value={item.unit_cost} onChange={e => updateItem(idx, 'unit_cost', parseFloat(e.target.value) || 0)} className="ml-auto h-8 w-[92px] text-right text-xs" />
-                          </TableCell>
-                          <TableCell className="p-1.5 align-middle text-right text-xs font-mono text-muted-foreground">
-                            {fmtCurrency(item.unit_cost * item.quantity)}
-                          </TableCell>
-                          <TableCell className="p-1.5 align-top">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeItem(idx)}>
-                              <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+            {/* Full-width line items table */}
+            <div className="border rounded-lg overflow-hidden">
+              <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b">
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Line Items ({invoice.items.length})</span>
+                {file && <Badge variant="secondary" className="text-xs truncate max-w-[200px]">{file.name}</Badge>}
               </div>
+              <div className="max-h-[340px] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="text-[11px]">
+                      <TableHead className="w-[100px]">SKU</TableHead>
+                      <TableHead className="min-w-[250px]">Description</TableHead>
+                      <TableHead className="w-[110px]">Category</TableHead>
+                      <TableHead className="w-[60px] text-right">Qty</TableHead>
+                      <TableHead className="w-[80px] text-right">Unit $</TableHead>
+                      <TableHead className="w-[80px] text-right">Line $</TableHead>
+                      <TableHead className="w-[36px]" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoice.items.map((item, idx) => (
+                      <TableRow key={idx} className="hover:bg-muted/10">
+                        <TableCell className="p-1.5">
+                          <Input value={item.sku} onChange={e => updateItem(idx, 'sku', e.target.value)} className="h-7 text-xs font-mono" />
+                        </TableCell>
+                        <TableCell className="p-1.5">
+                          <Input value={item.name} onChange={e => updateItem(idx, 'name', e.target.value)} className="h-7 text-xs" />
+                        </TableCell>
+                        <TableCell className="p-1.5">
+                          <Select value={item.category} onValueChange={v => updateItem(idx, 'category', v)}>
+                            <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              {PART_CATEGORIES.map(c => (
+                                <SelectItem key={c} value={c} className="capitalize text-xs">{c.replace('_', ' ')}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="p-1.5 text-right">
+                          <Input type="number" value={item.quantity} onChange={e => updateItem(idx, 'quantity', parseInt(e.target.value) || 0)} className="h-7 text-xs text-right w-[50px] ml-auto" />
+                        </TableCell>
+                        <TableCell className="p-1.5 text-right">
+                          <Input type="number" step="0.01" value={item.unit_cost} onChange={e => updateItem(idx, 'unit_cost', parseFloat(e.target.value) || 0)} className="h-7 text-xs text-right w-[70px] ml-auto" />
+                        </TableCell>
+                        <TableCell className="p-1.5 text-right text-xs font-mono text-muted-foreground">
+                          {fmtCurrency(item.unit_cost * item.quantity)}
+                        </TableCell>
+                        <TableCell className="p-1">
+                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(idx)}>
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
 
-              <div className="space-y-4">
-                <div className="rounded-xl border bg-background p-4">
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-semibold">Charges</h4>
-                    <p className="text-xs text-muted-foreground">No sliders — edit shipping or tax directly if the parsed values need a quick adjustment.</p>
-                  </div>
-
-                  <div className="mt-4 grid gap-3">
-                    <div className="rounded-lg border bg-muted/20 p-3">
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-sm text-muted-foreground">Items subtotal</span>
-                        <span className="text-base font-semibold">{fmtCurrency(invoice.subtotal)}</span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 rounded-lg border p-3">
-                      <Label className="text-[11px] text-muted-foreground">Shipping</Label>
-                      <Input type="number" step="0.01" value={invoice.shipping_cost} onChange={e => updateInvoiceField('shipping_cost', parseFloat(e.target.value) || 0)} className="h-9 text-right text-sm" />
-                    </div>
-
-                    <div className="space-y-2 rounded-lg border p-3">
-                      <Label className="text-[11px] text-muted-foreground">GST / HST</Label>
-                      <Input type="number" step="0.01" value={invoice.gst_hst_amount} onChange={e => updateInvoiceField('gst_hst_amount', parseFloat(e.target.value) || 0)} className="h-9 text-right text-sm" />
-                    </div>
-
-                    <div className="rounded-lg border bg-muted/20 p-3">
-                      <div className="flex items-center justify-between gap-4">
-                        <span className="text-sm font-semibold">Total</span>
-                        <span className="text-lg font-semibold text-primary">{fmtCurrency(invoice.total)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+            {/* Totals + Payment — single row */}
+            <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 items-end">
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Subtotal</Label>
+                <div className="h-8 flex items-center text-sm font-medium">{fmtCurrency(invoice.subtotal)}</div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Shipping</Label>
+                <Input type="number" step="0.01" value={invoice.shipping_cost} onChange={e => updateInvoiceField('shipping_cost', parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">GST/HST</Label>
+                <Input type="number" step="0.01" value={invoice.gst_hst_amount} onChange={e => updateInvoiceField('gst_hst_amount', parseFloat(e.target.value) || 0)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Total</Label>
+                <div className="h-8 flex items-center text-sm font-bold text-primary">{fmtCurrency(invoice.total)}</div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Payment Method</Label>
+                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="credit_card">Credit Card</SelectItem>
+                    <SelectItem value="debit">Debit</SelectItem>
+                    <SelectItem value="e_transfer">E-Transfer</SelectItem>
+                    <SelectItem value="wire">Wire / Bank Transfer</SelectItem>
+                    <SelectItem value="paypal">PayPal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Payment Date</Label>
+                <Input type="date" value={paymentDate} onChange={e => setPaymentDate(e.target.value)} className="h-8 text-sm" />
               </div>
             </div>
 
