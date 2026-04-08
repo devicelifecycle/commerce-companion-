@@ -15,8 +15,7 @@ async function upsertCustomer(
   customerPhone: string | null,
   customerAddress: string | null,
   companyId: string,
-  marketplace: string,
-  saleAmount: number
+  marketplace: string
 ): Promise<string | null> {
   if (!customerName) return null;
   try {
