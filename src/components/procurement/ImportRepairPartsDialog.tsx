@@ -676,59 +676,29 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
             Import MobileSentrix Invoice
           </DialogTitle>
           <DialogDescription>
-            Upload a MobileSentrix export, review the parsed invoice, and import the repair parts with the matching procurement and accounting records.
+            Upload an XLS/XLSX or CSV export from MobileSentrix to import repair parts with full accounting.
           </DialogDescription>
         </DialogHeader>
 
         {step === 'upload' && (
-          <div className="grid gap-4 py-4 lg:grid-cols-[1.4fr_0.9fr]">
-            <div className="rounded-xl border-2 border-dashed border-border bg-muted/20 p-6">
+          <div className="space-y-4 py-4">
+            <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
               {parsing ? (
-                <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 text-center">
+                <div className="flex flex-col items-center gap-3">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Parsing MobileSentrix export…</p>
-                    <p className="text-xs text-muted-foreground">Reading line items, dates, taxes, and payment details.</p>
-                  </div>
+                  <p className="text-sm text-muted-foreground">Parsing file...</p>
                 </div>
               ) : (
-                <label className="flex min-h-[260px] cursor-pointer flex-col items-center justify-center gap-4 rounded-lg border border-border/60 bg-background px-6 py-10 text-center transition-colors hover:border-primary/40 hover:bg-muted/30">
-                  <FileText className="h-11 w-11 text-muted-foreground" />
-                  <div className="space-y-1.5">
-                    <p className="text-base font-semibold">Drop or choose a MobileSentrix export</p>
-                    <p className="text-sm text-muted-foreground">Supports XLS, XLSX, and CSV files.</p>
+                <label className="cursor-pointer flex flex-col items-center gap-3">
+                  <FileText className="h-10 w-10 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Drop or click to upload MobileSentrix export</p>
+                    <p className="text-xs text-muted-foreground mt-1">Supports XLS, XLSX, CSV</p>
                   </div>
-                  <Input
-                    type="file"
-                    className="hidden"
-                    accept=".xls,.xlsx,.csv"
-                    onChange={handleFileSelect}
-                  />
-                  <Button type="button" variant="outline" size="sm">Choose File</Button>
+                  <Input type="file" className="hidden" accept=".xls,.xlsx,.csv" onChange={handleFileSelect} />
+                  <Button type="button" variant="outline" size="sm" className="mt-2">Choose File</Button>
                 </label>
               )}
-            </div>
-
-            <div className="grid gap-4">
-              <div className="rounded-xl border bg-muted/10 p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">What gets created</p>
-                <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                  <li>• Purchase order marked as received</li>
-                  <li>• Goods received note</li>
-                  <li>• Repair parts inventory updates</li>
-                  <li>• Paid accounts payable bill</li>
-                  <li>• Journal entries for inventory, tax, AP, and cash</li>
-                </ul>
-              </div>
-
-              <div className="rounded-xl border bg-background p-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Before you import</p>
-                <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-                  <li>• Confirm the company inside this dialog</li>
-                  <li>• Review SKUs, categories, and quantities</li>
-                  <li>• Adjust shipping or tax directly if needed</li>
-                </ul>
-              </div>
             </div>
           </div>
         )}
