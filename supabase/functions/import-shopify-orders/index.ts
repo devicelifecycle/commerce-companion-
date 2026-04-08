@@ -15,8 +15,7 @@ async function upsertCustomer(
   customerPhone: string | null,
   customerAddress: string | null,
   companyId: string,
-  marketplace: string,
-  saleAmount: number
+  marketplace: string
 ): Promise<string | null> {
   if (!customerName) return null;
   try {
@@ -24,7 +23,7 @@ async function upsertCustomer(
     if (customerEmail) {
       const { data } = await supabase
         .from("customers")
-        .select("id, total_spent, total_purchases")
+        .select("id")
         .eq("email", customerEmail)
         .eq("company_id", companyId)
         .maybeSingle();
@@ -33,21 +32,20 @@ async function upsertCustomer(
     if (!existingCustomer) {
       const { data } = await supabase
         .from("customers")
-        .select("id, total_spent, total_purchases")
+        .select("id")
         .eq("name", customerName)
         .eq("company_id", companyId)
         .maybeSingle();
       existingCustomer = data;
     }
     if (existingCustomer) {
-      const updates: any = {
-        total_spent: (existingCustomer.total_spent || 0) + saleAmount,
-        total_purchases: (existingCustomer.total_purchases || 0) + 1,
-      };
+      const updates: any = {};
       if (customerEmail) updates.email = customerEmail;
       if (customerPhone) updates.phone = customerPhone;
       if (customerAddress) updates.address = customerAddress;
-      await supabase.from("customers").update(updates).eq("id", existingCustomer.id);
+      if (Object.keys(updates).length > 0) {
+        await supabase.from("customers").update(updates).eq("id", existingCustomer.id);
+      }
       return existingCustomer.id;
     } else {
       const { data: newCustomer, error } = await supabase
@@ -59,8 +57,6 @@ async function upsertCustomer(
           address: customerAddress,
           company_id: companyId,
           marketplace_source: marketplace,
-          total_spent: saleAmount,
-          total_purchases: 1,
         })
         .select("id")
         .single();
@@ -333,7 +329,7 @@ serve(async (req) => {
           }
 
           await supabase.from("sales").update(updates).eq("id", existingOrder.id);
-          await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "shopify", 0);
+          await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "shopify");
           skippedOrders.push(orderNumber);
           continue;
         }
@@ -357,7 +353,7 @@ serve(async (req) => {
         const customerEmail = order.customer?.email || order.email || null;
         const customerPhone = order.customer?.phone || order.shipping_address?.phone || null;
 
-        const customerId = await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "shopify", salePrice);
+        const customerId = await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "shopify");
 
         const lineItemsStr = order.line_items?.map((item: any) => `${item.name} (x${item.quantity})`).join(", ") || "";
         const province = order.shipping_address?.province_code || order.billing_address?.province_code || null;

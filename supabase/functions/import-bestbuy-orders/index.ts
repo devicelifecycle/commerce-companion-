@@ -84,18 +84,16 @@ async function upsertCustomer(
   customerPhone: string | null,
   customerAddress: string | null,
   companyId: string,
-  marketplace: string,
-  saleAmount: number
+  marketplace: string
 ): Promise<string | null> {
   if (!customerName) return null;
 
   try {
-    // Try to find existing customer by email first, then by name
     let existingCustomer = null;
     if (customerEmail) {
       const { data } = await supabase
         .from("customers")
-        .select("id, total_spent, total_purchases")
+        .select("id")
         .eq("email", customerEmail)
         .eq("company_id", companyId)
         .maybeSingle();
@@ -105,7 +103,7 @@ async function upsertCustomer(
     if (!existingCustomer) {
       const { data } = await supabase
         .from("customers")
-        .select("id, total_spent, total_purchases")
+        .select("id")
         .eq("name", customerName)
         .eq("company_id", companyId)
         .maybeSingle();
@@ -113,23 +111,15 @@ async function upsertCustomer(
     }
 
     if (existingCustomer) {
-      // Update existing customer
-      const updates: any = {
-        total_spent: (existingCustomer.total_spent || 0) + saleAmount,
-        total_purchases: (existingCustomer.total_purchases || 0) + 1,
-      };
+      const updates: any = {};
       if (customerEmail) updates.email = customerEmail;
       if (customerPhone) updates.phone = customerPhone;
       if (customerAddress) updates.address = customerAddress;
-
-      await supabase
-        .from("customers")
-        .update(updates)
-        .eq("id", existingCustomer.id);
-
+      if (Object.keys(updates).length > 0) {
+        await supabase.from("customers").update(updates).eq("id", existingCustomer.id);
+      }
       return existingCustomer.id;
     } else {
-      // Create new customer
       const { data: newCustomer, error } = await supabase
         .from("customers")
         .insert({
@@ -139,8 +129,6 @@ async function upsertCustomer(
           address: customerAddress,
           company_id: companyId,
           marketplace_source: marketplace,
-          total_spent: saleAmount,
-          total_purchases: 1,
         })
         .select("id")
         .single();
@@ -456,8 +444,7 @@ serve(async (req) => {
             customerPhone,
             shippingAddress,
             companyId,
-            "bestbuy",
-            0
+            "bestbuy"
           );
           skippedOrders.push(orderNumber);
           continue;
@@ -471,8 +458,7 @@ serve(async (req) => {
           customerPhone,
           shippingAddress,
           companyId,
-          "bestbuy",
-          0 // Will be updated per line item below if new
+          "bestbuy"
         );
 
         // Process each line item as a sale
@@ -552,8 +538,7 @@ serve(async (req) => {
             customerPhone,
             shippingAddress,
             companyId,
-            "bestbuy",
-            salePrice
+            "bestbuy"
           );
 
           // Store raw Best Buy marketplace status

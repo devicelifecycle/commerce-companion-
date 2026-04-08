@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
-import { Users, Plus, Search, Edit2, Trash2, Mail, DollarSign, X, Calendar } from 'lucide-react';
+import { Users, Plus, Search, Edit2, Trash2, Mail, X, Calendar } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { format } from 'date-fns';
 import { useTableSelection } from '@/hooks/useTableSelection';
@@ -78,8 +78,6 @@ interface Customer {
   channel: string | null;
   notes: string | null;
   marketplace_source: string | null;
-  total_purchases: number | null;
-  total_spent: number | null;
   company_id: string | null;
   created_at: string;
   updated_at: string;
@@ -163,7 +161,6 @@ export default function Customers() {
   const stats = useMemo(() => ({
     total: customers.length,
     withEmail: customers.filter(c => c.email).length,
-    totalSpent: customers.reduce((sum, c) => sum + (c.total_spent || 0), 0),
   }), [customers]);
 
   const openCreate = () => {
@@ -298,14 +295,6 @@ export default function Customers() {
                 <p className="text-2xl font-bold">{stats.withEmail}</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="pt-4 pb-3 px-4">
-                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                  <DollarSign className="h-3.5 w-3.5" /> Lifetime Revenue
-                </div>
-                <p className="text-2xl font-bold">{fmtCurrency(stats.totalSpent)}</p>
-              </CardContent>
-            </Card>
           </div>
 
           {/* Search & Table */}
@@ -369,7 +358,6 @@ export default function Customers() {
                         <TableHead>Phone</TableHead>
                         <TableHead>Channel</TableHead>
                         <TableHead>Added</TableHead>
-                        <TableHead className="text-right">Total Spent</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -398,7 +386,6 @@ export default function Customers() {
                           <TableCell className="text-sm text-muted-foreground">
                             {format(new Date(c.created_at), 'MMM d, yyyy')}
                           </TableCell>
-                          <TableCell className="text-right text-sm">{fmtCurrency(c.total_spent || 0)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
                               <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(c)}>
