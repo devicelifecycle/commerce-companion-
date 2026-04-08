@@ -88,7 +88,6 @@ async function upsertCustomer(
   customerAddress: string | null,
   companyId: string,
   marketplace: string,
-  saleAmount: number,
   structuredAddress?: { street_address: string | null; city: string | null; province: string | null; postal_code: string | null; country: string | null }
 ): Promise<string | null> {
   if (!customerName) return null;
@@ -261,7 +260,6 @@ Deno.serve(async (req) => {
         shippingAddress,
         companyId,
         "shopify",
-        totalPrice,
         structuredAddr
       );
     }

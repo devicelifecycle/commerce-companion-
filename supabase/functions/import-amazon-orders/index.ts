@@ -90,8 +90,7 @@ async function upsertCustomer(
   customerPhone: string | null,
   customerAddress: string | null,
   companyId: string,
-  marketplace: string,
-  saleAmount: number
+  marketplace: string
 ): Promise<string | null> {
   if (!customerName) return null;
 
@@ -348,7 +347,7 @@ serve(async (req) => {
           updates.fulfillment_status = mapAmazonToFulfillment(order.OrderStatus);
 
           await supabase.from("sales").update(updates).eq("order_number", orderNumber);
-          await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "amazon", 0);
+          await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "amazon");
           skippedOrders.push(orderNumber);
           continue;
         }
@@ -419,8 +418,7 @@ serve(async (req) => {
           customerPhone,
           shippingAddress,
           companyId,
-          "amazon",
-          totalSalePrice
+          "amazon"
         );
 
         // Store raw Amazon status

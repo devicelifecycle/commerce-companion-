@@ -110,8 +110,7 @@ async function upsertCustomer(
   buyerEmail: string | null,
   buyerPhone: string | null,
   shippingAddress: string | null,
-  companyId: string,
-  saleAmount: number
+  companyId: string
 ): Promise<string | null> {
   if (!buyerName) return null;
 
@@ -120,7 +119,7 @@ async function upsertCustomer(
     if (buyerEmail) {
       const { data } = await supabase
         .from("customers")
-        .select("id, total_spent, total_purchases")
+        .select("id")
         .eq("email", buyerEmail)
         .eq("company_id", companyId)
         .maybeSingle();
@@ -130,7 +129,7 @@ async function upsertCustomer(
     if (!existing) {
       const { data } = await supabase
         .from("customers")
-        .select("id, total_spent, total_purchases")
+        .select("id")
         .eq("name", buyerName)
         .eq("company_id", companyId)
         .maybeSingle();
@@ -138,15 +137,13 @@ async function upsertCustomer(
     }
 
     if (existing) {
-      const updates: any = {
-        total_spent: (existing.total_spent || 0) + saleAmount,
-        total_purchases: (existing.total_purchases || 0) + 1,
-      };
+      const updates: any = {};
       if (buyerEmail) updates.email = buyerEmail;
       if (buyerPhone) updates.phone = buyerPhone;
       if (shippingAddress) updates.address = shippingAddress;
-
-      await supabase.from("customers").update(updates).eq("id", existing.id);
+      if (Object.keys(updates).length > 0) {
+        await supabase.from("customers").update(updates).eq("id", existing.id);
+      }
       return existing.id;
     } else {
       const { data: newCust, error } = await supabase
@@ -158,8 +155,6 @@ async function upsertCustomer(
           address: shippingAddress,
           company_id: companyId,
           marketplace_source: "temu",
-          total_spent: saleAmount,
-          total_purchases: 1,
         })
         .select("id")
         .single();
@@ -283,7 +278,7 @@ async function handleOrder(supabase: any, order: TemuOrderEvent, companyId: stri
   // Upsert customer
   const customerId = await upsertCustomer(
     supabase, customerName, customerEmail, customerPhone,
-    shippingAddress, companyId, totalPrice
+    shippingAddress, companyId
   );
 
   // Check for duplicate order

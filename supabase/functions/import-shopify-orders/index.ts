@@ -329,7 +329,7 @@ serve(async (req) => {
           }
 
           await supabase.from("sales").update(updates).eq("id", existingOrder.id);
-          await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "shopify", 0);
+          await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "shopify");
           skippedOrders.push(orderNumber);
           continue;
         }
@@ -353,7 +353,7 @@ serve(async (req) => {
         const customerEmail = order.customer?.email || order.email || null;
         const customerPhone = order.customer?.phone || order.shipping_address?.phone || null;
 
-        const customerId = await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "shopify", salePrice);
+        const customerId = await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "shopify");
 
         const lineItemsStr = order.line_items?.map((item: any) => `${item.name} (x${item.quantity})`).join(", ") || "";
         const province = order.shipping_address?.province_code || order.billing_address?.province_code || null;
