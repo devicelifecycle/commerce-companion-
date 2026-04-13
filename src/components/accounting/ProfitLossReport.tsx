@@ -27,7 +27,6 @@ interface PLData {
     bestbuy: number;
     shopify: number;
     intercompany: number;
-    invoiceSales: number;
     otherRevenue: number;
     total: number;
   };
@@ -133,7 +132,7 @@ export function ProfitLossReport({ companyView }: Props) {
       if (error) throw error;
 
       const pl: PLData = {
-        revenue: { amazon: 0, bestbuy: 0, shopify: 0, intercompany: 0, invoiceSales: 0, otherRevenue: 0, total: 0 },
+        revenue: { amazon: 0, bestbuy: 0, shopify: 0, intercompany: 0, otherRevenue: 0, total: 0 },
         taxCollected: 0,
         cogs: 0,
         grossProfit: 0,
