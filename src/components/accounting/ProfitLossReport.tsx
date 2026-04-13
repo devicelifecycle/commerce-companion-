@@ -27,7 +27,6 @@ interface PLData {
     bestbuy: number;
     shopify: number;
     intercompany: number;
-    invoiceSales: number;
     otherRevenue: number;
     total: number;
   };
@@ -133,7 +132,7 @@ export function ProfitLossReport({ companyView }: Props) {
       if (error) throw error;
 
       const pl: PLData = {
-        revenue: { amazon: 0, bestbuy: 0, shopify: 0, intercompany: 0, invoiceSales: 0, otherRevenue: 0, total: 0 },
+        revenue: { amazon: 0, bestbuy: 0, shopify: 0, intercompany: 0, otherRevenue: 0, total: 0 },
         taxCollected: 0,
         cogs: 0,
         grossProfit: 0,
@@ -165,7 +164,7 @@ export function ProfitLossReport({ companyView }: Props) {
         else if (code === '4100') pl.revenue.bestbuy += credit - debit;
         else if (code === '4101') pl.revenue.shopify += credit - debit;
         else if (code === '4300') pl.revenue.intercompany += credit - debit;
-        else if (code === '4400' || code === '4401') pl.revenue.invoiceSales += credit - debit;
+        else if (code === '4400' || code === '4401') pl.revenue.otherRevenue += credit - debit;
         else if (code.startsWith('42')) pl.taxCollected += credit - debit;
 
         // Catch-all: any 4xxx revenue not explicitly handled
@@ -223,7 +222,7 @@ export function ProfitLossReport({ companyView }: Props) {
       const isConsolidated = !effectiveCompany;
       const intercompanyElimination = isConsolidated ? pl.revenue.intercompany : 0;
       pl.revenue.total = pl.revenue.amazon + pl.revenue.bestbuy + pl.revenue.shopify
-        + (isConsolidated ? 0 : pl.revenue.intercompany) + pl.revenue.invoiceSales + pl.revenue.otherRevenue;
+        + (isConsolidated ? 0 : pl.revenue.intercompany) + pl.revenue.otherRevenue;
       pl.grossProfit = pl.revenue.total - pl.cogs;
       pl.grossMargin = pl.revenue.total > 0 ? (pl.grossProfit / pl.revenue.total) * 100 : 0;
 
@@ -269,7 +268,6 @@ export function ProfitLossReport({ companyView }: Props) {
       `Sales - Amazon,${plData.revenue.amazon.toFixed(2)}`,
       `Sales - BestBuy,${plData.revenue.bestbuy.toFixed(2)}`,
       `Sales - Shopify,${plData.revenue.shopify.toFixed(2)}`,
-      `Direct / Invoice Sales,${plData.revenue.invoiceSales.toFixed(2)}`,
       `Inter-company,${plData.revenue.intercompany.toFixed(2)}`,
       ...(plData.revenue.otherRevenue > 0 ? [`Other Revenue,${plData.revenue.otherRevenue.toFixed(2)}`] : []),
       `Total Revenue,${plData.revenue.total.toFixed(2)}`,
@@ -464,12 +462,6 @@ export function ProfitLossReport({ companyView }: Props) {
                     <span>Sales - Shopify</span>
                     <span>{formatCurrency(plData.revenue.shopify)}</span>
                   </div>
-                  {plData.revenue.invoiceSales !== 0 && (
-                    <div className="flex justify-between">
-                      <span>Direct / Invoice Sales</span>
-                      <span>{formatCurrency(plData.revenue.invoiceSales)}</span>
-                    </div>
-                  )}
                   {plData.revenue.intercompany > 0 && (
                     <div className="flex justify-between">
                       <span>Inter-company Revenue</span>
