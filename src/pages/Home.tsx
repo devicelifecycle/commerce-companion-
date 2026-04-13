@@ -12,7 +12,7 @@ import {
   ArrowRight, CheckCircle, FileText, Package,
   Receipt, Building2, Coins, AlertTriangle,
   Zap, ShoppingCart, Upload, Users,
-  BarChart3, Layers, RefreshCw, Globe, Truck
+  BarChart3, Layers, RefreshCw, Globe, Truck, Search
 } from 'lucide-react';
 
 export default function Home() {
@@ -32,6 +32,19 @@ export default function Home() {
           <p className="text-muted-foreground mt-2 text-sm max-w-2xl mx-auto">
             Accrual-Basis Accounting • IFRS Compliant • FIFO Inventory • Multi-Company (Virtual eShop & Tech Genius Warehouse)
           </p>
+          {/* Search bar that opens Command Palette */}
+          <button
+            onClick={() => {
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
+            }}
+            className="mt-4 mx-auto flex items-center gap-2 w-full max-w-md px-4 py-2.5 rounded-lg border border-border/50 bg-muted/30 text-muted-foreground text-sm hover:bg-muted/50 hover:border-primary/40 transition-colors"
+          >
+            <Search className="h-4 w-4" />
+            <span>Search pages, actions, inventory...</span>
+            <kbd className="ml-auto inline-flex h-5 items-center gap-0.5 rounded border border-border/50 bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+              ⌘K
+            </kbd>
+          </button>
           <div className="flex items-center justify-center gap-2 mt-3">
             <Badge variant="outline" className="text-xs border-primary/40 text-primary">Automated Bookkeeping</Badge>
             <Badge variant="outline" className="text-xs border-secondary/40 text-secondary">Canadian Tax Compliant</Badge>
