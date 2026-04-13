@@ -165,7 +165,7 @@ export function ProfitLossReport({ companyView }: Props) {
         else if (code === '4100') pl.revenue.bestbuy += credit - debit;
         else if (code === '4101') pl.revenue.shopify += credit - debit;
         else if (code === '4300') pl.revenue.intercompany += credit - debit;
-        else if (code === '4400' || code === '4401') pl.revenue.invoiceSales += credit - debit;
+        else if (code === '4400' || code === '4401') pl.revenue.otherRevenue += credit - debit;
         else if (code.startsWith('42')) pl.taxCollected += credit - debit;
 
         // Catch-all: any 4xxx revenue not explicitly handled
