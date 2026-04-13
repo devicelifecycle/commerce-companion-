@@ -269,7 +269,6 @@ export function ProfitLossReport({ companyView }: Props) {
       `Sales - Amazon,${plData.revenue.amazon.toFixed(2)}`,
       `Sales - BestBuy,${plData.revenue.bestbuy.toFixed(2)}`,
       `Sales - Shopify,${plData.revenue.shopify.toFixed(2)}`,
-      `Other Revenue,${plData.revenue.otherRevenue.toFixed(2)}`,
       `Inter-company,${plData.revenue.intercompany.toFixed(2)}`,
       ...(plData.revenue.otherRevenue > 0 ? [`Other Revenue,${plData.revenue.otherRevenue.toFixed(2)}`] : []),
       `Total Revenue,${plData.revenue.total.toFixed(2)}`,
