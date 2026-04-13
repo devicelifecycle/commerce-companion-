@@ -12,7 +12,7 @@ import {
   ArrowRight, CheckCircle, FileText, Package,
   Receipt, Building2, Coins, AlertTriangle,
   Zap, ShoppingCart, Upload, Users,
-  BarChart3, Layers, RefreshCw, Globe, Truck
+  BarChart3, Layers, RefreshCw, Globe, Truck, Search
 } from 'lucide-react';
 
 export default function Home() {
