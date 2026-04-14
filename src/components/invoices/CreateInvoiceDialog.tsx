@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -9,9 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { emitRefetch } from '@/hooks/useDataRefetch';
-import { Plus, Trash2, Search, Package, PenLine, Building2 } from 'lucide-react';
+import { Plus, Trash2, Search, PenLine, Smartphone, Package, Wrench } from 'lucide-react';
 import { format } from 'date-fns';
 import { toTitleCase } from '@/lib/utils';
 import { CustomerAutoComplete } from './CustomerAutoComplete';
@@ -22,6 +23,8 @@ type TaxTreatment = 'hst' | 'gst' | 'zero_rated' | 'tax_inclusive';
 interface LineItem {
   id: string;
   type: 'inventory' | 'manual';
+  source_type?: 'device' | 'product' | 'repair_part';
+  source_id: string | null;
   device_id: string | null;
   description: string;
   quantity: number;
@@ -29,17 +32,14 @@ interface LineItem {
   tax_treatment: TaxTreatment;
 }
 
-interface InventoryDevice {
+interface InventoryItem {
   id: string;
-  brand: string;
-  model: string;
-  storage: string | null;
-  color: string | null;
+  source: 'device' | 'product' | 'repair_part';
+  label: string;
+  sublabel: string;
+  price: number;
+  qty?: number;
   sku: string | null;
-  cost_price: number;
-  sale_price: number | null;
-  status: string;
-  condition: string;
 }
 
 const TAX_RATES: Record<TaxTreatment, { label: string; rate: number; description: string }> = {
@@ -53,6 +53,18 @@ function generateId() {
   return Math.random().toString(36).substring(2, 9);
 }
 
+const SOURCE_ICONS: Record<string, React.ReactNode> = {
+  device: <Smartphone className="h-3 w-3" />,
+  product: <Package className="h-3 w-3" />,
+  repair_part: <Wrench className="h-3 w-3" />,
+};
+
+const SOURCE_LABELS: Record<string, string> = {
+  device: 'Device',
+  product: 'Product',
+  repair_part: 'Part',
+};
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -63,10 +75,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
   const { user } = useAuth();
   const { selectedCompany, accessibleCompanies } = useCompany();
 
-  // Company selection for invoice
   const [invoiceCompanyId, setInvoiceCompanyId] = useState<string>('');
-
-  // Customer
   const [customerName, setCustomerName] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -75,54 +84,92 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
   const [dueDays, setDueDays] = useState('30');
   const [notes, setNotes] = useState('');
 
-  // Pre-select company when dialog opens or selectedCompany changes
   useEffect(() => {
     if (open && selectedCompany && !invoiceCompanyId) {
       setInvoiceCompanyId(selectedCompany.id);
     }
   }, [open, selectedCompany]);
 
-  // Line items
+  // Line items — default to inventory type
   const [lineItems, setLineItems] = useState<LineItem[]>([
-    { id: generateId(), type: 'manual', device_id: null, description: '', quantity: 1, unit_price: 0, tax_treatment: 'hst' },
+    { id: generateId(), type: 'inventory', source_type: undefined, source_id: null, device_id: null, description: '', quantity: 1, unit_price: 0, tax_treatment: 'hst' },
   ]);
 
-  // Inventory search
-  const [devices, setDevices] = useState<InventoryDevice[]>([]);
+  // Unified inventory search
+  const [allInventory, setAllInventory] = useState<InventoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchingLineId, setSearchingLineId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const fetchAllInventory = useCallback(async () => {
+    if (!invoiceCompanyId) return;
+
+    const [devicesRes, productsRes, partsRes] = await Promise.all([
+      supabase
+        .from('devices')
+        .select('id, brand, model, storage, color, sku, cost_price, sale_price, status, condition, imei')
+        .eq('status', 'in_stock')
+        .eq('company_id', invoiceCompanyId)
+        .order('brand')
+        .limit(500),
+      supabase
+        .from('products')
+        .select('id, name, sku, cost_price, sale_price, quantity_on_hand, unit_of_measure')
+        .eq('company_id', invoiceCompanyId)
+        .eq('status', 'active')
+        .gt('quantity_on_hand', 0)
+        .order('name')
+        .limit(200),
+      supabase
+        .from('repair_parts')
+        .select('id, part_name, part_number, unit_cost, selling_price, quantity_in_stock')
+        .eq('company_id', invoiceCompanyId)
+        .gt('quantity_in_stock', 0)
+        .order('part_name')
+        .limit(200),
+    ]);
+
+    const items: InventoryItem[] = [];
+
+    (devicesRes.data || []).forEach((d: any) => {
+      const label = `${d.brand} ${d.model}${d.storage ? ` ${d.storage}` : ''}${d.color ? ` (${d.color})` : ''}`;
+      const sublabel = [d.imei && `IMEI: ${d.imei}`, d.sku && `SKU: ${d.sku}`, d.condition].filter(Boolean).join(' · ');
+      items.push({ id: d.id, source: 'device', label, sublabel, price: Number(d.sale_price || d.cost_price), sku: d.sku });
+    });
+
+    (productsRes.data || []).forEach((p: any) => {
+      const sublabel = [p.sku && `SKU: ${p.sku}`, `Qty: ${p.quantity_on_hand}`, p.unit_of_measure].filter(Boolean).join(' · ');
+      items.push({ id: p.id, source: 'product', label: p.name, sublabel, price: Number(p.sale_price || p.cost_price), qty: p.quantity_on_hand, sku: p.sku });
+    });
+
+    (partsRes.data || []).forEach((r: any) => {
+      const sublabel = [r.part_number && `P/N: ${r.part_number}`, `Qty: ${r.quantity_in_stock}`].filter(Boolean).join(' · ');
+      items.push({ id: r.id, source: 'repair_part', label: r.part_name, sublabel, price: Number(r.selling_price || r.unit_cost), qty: r.quantity_in_stock, sku: r.part_number });
+    });
+
+    setAllInventory(items);
+  }, [invoiceCompanyId]);
+
   useEffect(() => {
-    if (open) fetchDevices();
-  }, [open, invoiceCompanyId]);
+    if (open) fetchAllInventory();
+  }, [open, fetchAllInventory]);
 
-  const fetchDevices = async () => {
-    let query = supabase
-      .from('devices')
-      .select('id, brand, model, storage, color, sku, cost_price, sale_price, status, condition')
-      .eq('status', 'in_stock')
-      .order('brand');
-    if (invoiceCompanyId) query = query.eq('company_id', invoiceCompanyId);
-    const { data } = await query;
-    if (data) setDevices(data as InventoryDevice[]);
-  };
-
-  const filteredDevices = useMemo(() => {
-    if (!searchQuery.trim()) return devices.slice(0, 20);
+  const filteredInventory = useMemo(() => {
+    const usedIds = new Set(lineItems.filter(li => li.source_id).map(li => li.source_id));
+    const available = allInventory.filter(i => !usedIds.has(i.id));
+    if (!searchQuery.trim()) return available.slice(0, 30);
     const q = searchQuery.toLowerCase();
-    return devices.filter(d =>
-      `${d.brand} ${d.model} ${d.storage || ''} ${d.sku || ''}`.toLowerCase().includes(q)
-    ).slice(0, 20);
-  }, [devices, searchQuery]);
+    return available.filter(i =>
+      i.label.toLowerCase().includes(q) ||
+      i.sublabel.toLowerCase().includes(q) ||
+      i.sku?.toLowerCase().includes(q)
+    ).slice(0, 30);
+  }, [allInventory, searchQuery, lineItems]);
 
   const addLineItem = (type: 'inventory' | 'manual') => {
     setLineItems(prev => [...prev, {
-      id: generateId(), type, device_id: null, description: '', quantity: 1, unit_price: 0, tax_treatment: 'hst',
+      id: generateId(), type, source_type: undefined, source_id: null, device_id: null, description: '', quantity: 1, unit_price: 0, tax_treatment: 'hst',
     }]);
-    if (type === 'inventory') {
-      setSearchingLineId(lineItems.length.toString()); // will be updated
-    }
   };
 
   const updateLine = (id: string, updates: Partial<LineItem>) => {
@@ -134,12 +181,14 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
     setLineItems(prev => prev.filter(li => li.id !== id));
   };
 
-  const selectDevice = (lineId: string, device: InventoryDevice) => {
+  const selectInventoryItem = (lineId: string, item: InventoryItem) => {
     updateLine(lineId, {
       type: 'inventory',
-      device_id: device.id,
-      description: `${device.brand} ${device.model}${device.storage ? ` ${device.storage}` : ''}${device.color ? ` (${device.color})` : ''}`,
-      unit_price: Number(device.sale_price || device.cost_price),
+      source_type: item.source,
+      source_id: item.id,
+      device_id: item.source === 'device' ? item.id : null,
+      description: item.label,
+      unit_price: item.price,
     });
     setSearchingLineId(null);
     setSearchQuery('');
@@ -155,7 +204,6 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
       const taxInfo = TAX_RATES[li.tax_treatment];
 
       if (li.tax_treatment === 'tax_inclusive') {
-        // Price includes tax — extract it
         const preTax = lineTotal / (1 + taxInfo.rate);
         subtotal += preTax;
         totalTax += lineTotal - preTax;
@@ -177,7 +225,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
     setDueDays('30');
     setNotes('');
     setInvoiceCompanyId(selectedCompany?.id || '');
-    setLineItems([{ id: generateId(), type: 'manual', device_id: null, description: '', quantity: 1, unit_price: 0, tax_treatment: 'hst' }]);
+    setLineItems([{ id: generateId(), type: 'inventory', source_type: undefined, source_id: null, device_id: null, description: '', quantity: 1, unit_price: 0, tax_treatment: 'hst' }]);
     setSearchingLineId(null);
     setSearchQuery('');
   };
@@ -359,7 +407,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company *</Label>
-              <Select value={invoiceCompanyId} onValueChange={(v) => { setInvoiceCompanyId(v); setDevices([]); }}>
+              <Select value={invoiceCompanyId} onValueChange={(v) => { setInvoiceCompanyId(v); setAllInventory([]); }}>
                 <SelectTrigger className="h-10">
                   <SelectValue placeholder="Select company" />
                 </SelectTrigger>
@@ -434,10 +482,10 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Items</h3>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => addLineItem('inventory')}>
-                  <Package className="h-3.5 w-3.5" /> Inventory
+                  <Plus className="h-3.5 w-3.5" /> Add Item
                 </Button>
-                <Button type="button" variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => addLineItem('manual')}>
-                  <Plus className="h-3.5 w-3.5" /> Custom
+                <Button type="button" variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={() => addLineItem('manual')}>
+                  <PenLine className="h-3.5 w-3.5" /> Custom
                 </Button>
               </div>
             </div>
@@ -470,44 +518,56 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
                   >
                     {/* Description */}
                     <div className="px-2 py-1.5">
-                      {li.type === 'inventory' && !li.device_id ? (
+                      {li.type === 'inventory' && !li.source_id ? (
                         <div className="relative">
                           <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
                           <Input
                             className="pl-7 h-8 text-xs border-dashed"
-                            value={searchQuery}
+                            value={searchingLineId === li.id ? searchQuery : ''}
                             onChange={e => { setSearchQuery(e.target.value); setSearchingLineId(li.id); }}
                             onFocus={() => setSearchingLineId(li.id)}
-                            placeholder="Search inventory..."
+                            placeholder="Search devices, products, parts..."
                             autoFocus
                           />
                           {searchingLineId === li.id && (
-                            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-2xl max-h-48 overflow-y-auto">
-                              {filteredDevices.length === 0 ? (
-                                <div className="p-3 text-xs text-muted-foreground text-center">No matching devices</div>
+                            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-2xl max-h-56 overflow-y-auto">
+                              {filteredInventory.length === 0 ? (
+                                <div className="p-3 text-xs text-muted-foreground text-center">No matching inventory items</div>
                               ) : (
-                                filteredDevices.map(d => (
+                                filteredInventory.map(item => (
                                   <button
-                                    key={d.id}
+                                    key={`${item.source}-${item.id}`}
                                     type="button"
-                                    className="w-full text-left px-3 py-2 text-xs hover:bg-muted/50 flex justify-between items-center transition-colors"
-                                    onClick={() => selectDevice(li.id, d)}
+                                    className="w-full text-left px-3 py-2 text-xs hover:bg-muted/50 flex items-center gap-2 transition-colors"
+                                    onClick={() => selectInventoryItem(li.id, item)}
                                   >
-                                    <span className="font-medium">{d.brand} {d.model} {d.storage || ''}</span>
-                                    <span className="text-muted-foreground">{formatCurrency(Number(d.sale_price || d.cost_price))}</span>
+                                    <span className="text-muted-foreground shrink-0">{SOURCE_ICONS[item.source]}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="font-medium truncate">{item.label}</span>
+                                        <Badge variant="secondary" className="text-[9px] shrink-0 px-1 py-0">{SOURCE_LABELS[item.source]}</Badge>
+                                      </div>
+                                      <div className="text-[10px] text-muted-foreground truncate">{item.sublabel}</div>
+                                    </div>
+                                    <span className="text-muted-foreground font-mono shrink-0">{formatCurrency(item.price)}</span>
                                   </button>
                                 ))
                               )}
                             </div>
                           )}
                         </div>
+                      ) : li.type === 'inventory' && li.source_id ? (
+                        <div className="flex items-center gap-1.5 h-8 px-1">
+                          <span className="text-muted-foreground">{li.source_type && SOURCE_ICONS[li.source_type]}</span>
+                          <span className="text-xs font-medium truncate">{li.description}</span>
+                          {li.source_type && <Badge variant="outline" className="text-[9px] shrink-0 px-1 py-0">{SOURCE_LABELS[li.source_type]}</Badge>}
+                        </div>
                       ) : (
                         <Input
                           className="h-8 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1"
                           value={li.description}
                           onChange={e => updateLine(li.id, { description: e.target.value })}
-                          placeholder="Item description"
-                          readOnly={li.type === 'inventory' && !!li.device_id}
+                          placeholder="Type item description..."
                         />
                       )}
                     </div>
