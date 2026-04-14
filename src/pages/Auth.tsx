@@ -195,7 +195,7 @@ export default function Auth() {
                 <p className="text-muted-foreground text-sm mt-1.5">Sign in to your account</p>
               </div>
 
-              <form onSubmit={handleLogin} className="space-y-5">
+              <form onSubmit={handleLogin} autoComplete="off" className="space-y-5">
                 <div className="space-y-2">
                   <Label htmlFor="login-email" className="text-foreground/80 text-sm">Email</Label>
                   <div className="relative group">
