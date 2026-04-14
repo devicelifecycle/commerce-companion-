@@ -122,10 +122,10 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
         .limit(200),
       supabase
         .from('repair_parts')
-        .select('id, part_name, part_number, unit_cost, selling_price, quantity_in_stock')
+        .select('id, name, sku, unit_cost, quantity_on_hand')
         .eq('company_id', invoiceCompanyId)
-        .gt('quantity_in_stock', 0)
-        .order('part_name')
+        .gt('quantity_on_hand', 0)
+        .order('name')
         .limit(200),
     ]);
 
