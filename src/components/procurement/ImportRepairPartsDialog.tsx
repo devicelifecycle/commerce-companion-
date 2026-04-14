@@ -70,15 +70,20 @@ function recalculateInvoiceAmounts(invoice: ParsedInvoice): ParsedInvoice {
 }
 
 async function ensureMobileSentrixSupplier(companyId: string): Promise<string> {
-  const { data: existingSupplier, error: supplierLookupError } = await supabase
+  // Check for existing supplier in this company OR shared (null company_id)
+  const { data: existingSuppliers, error: supplierLookupError } = await supabase
     .from('suppliers')
-    .select('id')
-    .eq('company_id', companyId)
+    .select('id, company_id')
     .ilike('name', MOBILE_SENTRIX_NAME)
-    .maybeSingle();
+    .or(`company_id.eq.${companyId},company_id.is.null`);
 
   if (supplierLookupError) throw supplierLookupError;
-  if (existingSupplier) return existingSupplier.id;
+
+  // Prefer company-specific, fall back to shared
+  const companyMatch = existingSuppliers?.find(s => s.company_id === companyId);
+  const sharedMatch = existingSuppliers?.find(s => s.company_id === null);
+  if (companyMatch) return companyMatch.id;
+  if (sharedMatch) return sharedMatch.id;
 
   const { data: newSupplier, error: supplierInsertError } = await supabase
     .from('suppliers')
@@ -96,15 +101,19 @@ async function ensureMobileSentrixSupplier(companyId: string): Promise<string> {
 }
 
 async function ensureMobileSentrixVendor(companyId: string): Promise<string> {
-  const { data: existingVendor, error: vendorLookupError } = await supabase
+  // Check for existing vendor in this company OR shared (null company_id)
+  const { data: existingVendors, error: vendorLookupError } = await supabase
     .from('vendors')
-    .select('id')
-    .eq('company_id', companyId)
+    .select('id, company_id')
     .ilike('name', MOBILE_SENTRIX_NAME)
-    .maybeSingle();
+    .or(`company_id.eq.${companyId},company_id.is.null`);
 
   if (vendorLookupError) throw vendorLookupError;
-  if (existingVendor) return existingVendor.id;
+
+  const companyMatch = existingVendors?.find(v => v.company_id === companyId);
+  const sharedMatch = existingVendors?.find(v => v.company_id === null);
+  if (companyMatch) return companyMatch.id;
+  if (sharedMatch) return sharedMatch.id;
 
   const { data: newVendor, error: vendorInsertError } = await supabase
     .from('vendors')
