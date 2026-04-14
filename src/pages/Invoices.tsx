@@ -1141,6 +1141,7 @@ export default function Invoices() {
                           <TableHead className="text-xs">Method</TableHead>
                           <TableHead className="text-xs text-right">Amount</TableHead>
                           <TableHead className="text-xs">Notes</TableHead>
+                          <TableHead className="text-xs w-[40px]" />
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1150,6 +1151,27 @@ export default function Invoices() {
                             <TableCell className="text-xs">{p.payment_method || '—'}</TableCell>
                             <TableCell className="text-xs text-right font-semibold text-success">{formatCurrency(Number(p.amount))}</TableCell>
                             <TableCell className="text-xs text-muted-foreground">{p.notes || '—'}</TableCell>
+                            <TableCell className="text-xs">
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive/60 hover:text-destructive">
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Payment?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will remove the {formatCurrency(Number(p.amount))} payment and reverse its journal entry. The invoice balance will be restored.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deletePayment(p)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
