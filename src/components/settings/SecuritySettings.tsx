@@ -97,25 +97,6 @@ export function SecuritySettings() {
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
-            {/* 2FA Status */}
-            <div className="flex items-center justify-between p-4 rounded-lg border">
-              <div className="flex items-center gap-3">
-                {mfaEnabled ? <CheckCircle2 className="h-5 w-5 text-green-500" /> : <AlertTriangle className="h-5 w-5 text-yellow-500" />}
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium">Two-Factor Authentication</p>
-                    {!loading && <Badge variant={mfaEnabled ? 'default' : 'destructive'} className="text-xs">{mfaEnabled ? 'Enabled' : 'Not Set Up'}</Badge>}
-                  </div>
-                  <p className="text-sm text-muted-foreground">{mfaEnabled ? 'Your account is protected with an authenticator app' : 'Required for all team members'}</p>
-                </div>
-              </div>
-              {mfaEnabled ? (
-                <Button variant="outline" onClick={handleResetMfa}>Reset 2FA</Button>
-              ) : (
-                <Button variant="outline" onClick={() => navigate('/mfa-enroll')}>Set Up Now</Button>
-              )}
-            </div>
-
             {/* Password */}
             <div className="flex items-center justify-between p-4 rounded-lg border">
               <div>

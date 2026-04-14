@@ -195,7 +195,7 @@ export default function Auth() {
                 <p className="text-muted-foreground text-sm mt-1.5">Sign in to your account</p>
               </div>
 
-              <form onSubmit={handleLogin} className="space-y-5">
+              <form onSubmit={handleLogin} autoComplete="off" className="space-y-5">
                 <div className="space-y-2">
                   <Label htmlFor="login-email" className="text-foreground/80 text-sm">Email</Label>
                   <div className="relative group">
@@ -206,6 +206,7 @@ export default function Auth() {
                       placeholder="you@company.com"
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
+                      autoComplete="off"
                       className="pl-11 h-12 bg-muted/15 border-border/40 focus:border-primary/60 focus:bg-muted/25 focus:ring-2 focus:ring-primary/10 transition-all duration-200 rounded-xl select-text cursor-text"
                     />
                   </div>
@@ -222,6 +223,7 @@ export default function Auth() {
                       placeholder="••••••••"
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
+                      autoComplete="new-password"
                       className="pl-11 h-12 bg-muted/15 border-border/40 focus:border-primary/60 focus:bg-muted/25 focus:ring-2 focus:ring-primary/10 transition-all duration-200 rounded-xl select-text cursor-text"
                     />
                   </div>
