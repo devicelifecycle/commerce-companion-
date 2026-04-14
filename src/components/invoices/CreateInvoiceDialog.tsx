@@ -143,8 +143,8 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
     });
 
     (partsRes.data || []).forEach((r: any) => {
-      const sublabel = [r.part_number && `P/N: ${r.part_number}`, `Qty: ${r.quantity_in_stock}`].filter(Boolean).join(' · ');
-      items.push({ id: r.id, source: 'repair_part', label: r.part_name, sublabel, price: Number(r.selling_price || r.unit_cost), qty: r.quantity_in_stock, sku: r.part_number });
+      const sublabel = [r.sku && `SKU: ${r.sku}`, `Qty: ${r.quantity_on_hand}`].filter(Boolean).join(' · ');
+      items.push({ id: r.id, source: 'repair_part', label: r.name, sublabel, price: Number(r.unit_cost), qty: r.quantity_on_hand, sku: r.sku });
     });
 
     setAllInventory(items);
