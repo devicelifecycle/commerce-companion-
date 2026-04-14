@@ -122,10 +122,10 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
         .limit(200),
       supabase
         .from('repair_parts')
-        .select('id, part_name, part_number, unit_cost, selling_price, quantity_in_stock')
+        .select('id, name, sku, unit_cost, quantity_on_hand')
         .eq('company_id', invoiceCompanyId)
-        .gt('quantity_in_stock', 0)
-        .order('part_name')
+        .gt('quantity_on_hand', 0)
+        .order('name')
         .limit(200),
     ]);
 
@@ -143,8 +143,8 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
     });
 
     (partsRes.data || []).forEach((r: any) => {
-      const sublabel = [r.part_number && `P/N: ${r.part_number}`, `Qty: ${r.quantity_in_stock}`].filter(Boolean).join(' · ');
-      items.push({ id: r.id, source: 'repair_part', label: r.part_name, sublabel, price: Number(r.selling_price || r.unit_cost), qty: r.quantity_in_stock, sku: r.part_number });
+      const sublabel = [r.sku && `SKU: ${r.sku}`, `Qty: ${r.quantity_on_hand}`].filter(Boolean).join(' · ');
+      items.push({ id: r.id, source: 'repair_part', label: r.name, sublabel, price: Number(r.unit_cost), qty: r.quantity_on_hand, sku: r.sku });
     });
 
     setAllInventory(items);
