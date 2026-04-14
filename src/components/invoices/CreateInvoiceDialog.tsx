@@ -225,7 +225,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
     setDueDays('30');
     setNotes('');
     setInvoiceCompanyId(selectedCompany?.id || '');
-    setLineItems([{ id: generateId(), type: 'manual', device_id: null, description: '', quantity: 1, unit_price: 0, tax_treatment: 'hst' }]);
+    setLineItems([{ id: generateId(), type: 'inventory', source_type: undefined, source_id: null, device_id: null, description: '', quantity: 1, unit_price: 0, tax_treatment: 'hst' }]);
     setSearchingLineId(null);
     setSearchQuery('');
   };
@@ -407,7 +407,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company *</Label>
-              <Select value={invoiceCompanyId} onValueChange={(v) => { setInvoiceCompanyId(v); setDevices([]); }}>
+              <Select value={invoiceCompanyId} onValueChange={(v) => { setInvoiceCompanyId(v); setAllInventory([]); }}>
                 <SelectTrigger className="h-10">
                   <SelectValue placeholder="Select company" />
                 </SelectTrigger>
@@ -482,10 +482,10 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Items</h3>
               <div className="flex gap-2">
                 <Button type="button" variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => addLineItem('inventory')}>
-                  <Package className="h-3.5 w-3.5" /> Inventory
+                  <Plus className="h-3.5 w-3.5" /> Add Item
                 </Button>
-                <Button type="button" variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => addLineItem('manual')}>
-                  <Plus className="h-3.5 w-3.5" /> Custom
+                <Button type="button" variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={() => addLineItem('manual')}>
+                  <PenLine className="h-3.5 w-3.5" /> Custom
                 </Button>
               </div>
             </div>
@@ -518,44 +518,56 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
                   >
                     {/* Description */}
                     <div className="px-2 py-1.5">
-                      {li.type === 'inventory' && !li.device_id ? (
+                      {li.type === 'inventory' && !li.source_id ? (
                         <div className="relative">
                           <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
                           <Input
                             className="pl-7 h-8 text-xs border-dashed"
-                            value={searchQuery}
+                            value={searchingLineId === li.id ? searchQuery : ''}
                             onChange={e => { setSearchQuery(e.target.value); setSearchingLineId(li.id); }}
                             onFocus={() => setSearchingLineId(li.id)}
-                            placeholder="Search inventory..."
+                            placeholder="Search devices, products, parts..."
                             autoFocus
                           />
                           {searchingLineId === li.id && (
-                            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-2xl max-h-48 overflow-y-auto">
-                              {filteredDevices.length === 0 ? (
-                                <div className="p-3 text-xs text-muted-foreground text-center">No matching devices</div>
+                            <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-2xl max-h-56 overflow-y-auto">
+                              {filteredInventory.length === 0 ? (
+                                <div className="p-3 text-xs text-muted-foreground text-center">No matching inventory items</div>
                               ) : (
-                                filteredDevices.map(d => (
+                                filteredInventory.map(item => (
                                   <button
-                                    key={d.id}
+                                    key={`${item.source}-${item.id}`}
                                     type="button"
-                                    className="w-full text-left px-3 py-2 text-xs hover:bg-muted/50 flex justify-between items-center transition-colors"
-                                    onClick={() => selectDevice(li.id, d)}
+                                    className="w-full text-left px-3 py-2 text-xs hover:bg-muted/50 flex items-center gap-2 transition-colors"
+                                    onClick={() => selectInventoryItem(li.id, item)}
                                   >
-                                    <span className="font-medium">{d.brand} {d.model} {d.storage || ''}</span>
-                                    <span className="text-muted-foreground">{formatCurrency(Number(d.sale_price || d.cost_price))}</span>
+                                    <span className="text-muted-foreground shrink-0">{SOURCE_ICONS[item.source]}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="font-medium truncate">{item.label}</span>
+                                        <Badge variant="secondary" className="text-[9px] shrink-0 px-1 py-0">{SOURCE_LABELS[item.source]}</Badge>
+                                      </div>
+                                      <div className="text-[10px] text-muted-foreground truncate">{item.sublabel}</div>
+                                    </div>
+                                    <span className="text-muted-foreground font-mono shrink-0">{formatCurrency(item.price)}</span>
                                   </button>
                                 ))
                               )}
                             </div>
                           )}
                         </div>
+                      ) : li.type === 'inventory' && li.source_id ? (
+                        <div className="flex items-center gap-1.5 h-8 px-1">
+                          <span className="text-muted-foreground">{li.source_type && SOURCE_ICONS[li.source_type]}</span>
+                          <span className="text-xs font-medium truncate">{li.description}</span>
+                          {li.source_type && <Badge variant="outline" className="text-[9px] shrink-0 px-1 py-0">{SOURCE_LABELS[li.source_type]}</Badge>}
+                        </div>
                       ) : (
                         <Input
                           className="h-8 text-xs border-0 bg-transparent shadow-none focus-visible:ring-1 px-1"
                           value={li.description}
                           onChange={e => updateLine(li.id, { description: e.target.value })}
-                          placeholder="Item description"
-                          readOnly={li.type === 'inventory' && !!li.device_id}
+                          placeholder="Type item description..."
                         />
                       )}
                     </div>
