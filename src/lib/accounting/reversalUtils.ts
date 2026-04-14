@@ -22,6 +22,35 @@ export async function reverseJournalEntries(referenceId: string): Promise<number
 
   const entryIds = entries.map(e => e.id);
 
+  // Reverse account balances BEFORE deleting lines
+  for (const je of entries) {
+    const { data: lines } = await supabase
+      .from('journal_entry_lines')
+      .select('account_id, debit_amount, credit_amount')
+      .eq('journal_entry_id', je.id);
+
+    if (lines) {
+      for (const line of lines) {
+        const { data: account } = await supabase
+          .from('chart_of_accounts')
+          .select('current_balance, normal_balance')
+          .eq('id', line.account_id)
+          .single();
+
+        if (account) {
+          const debit = Number(line.debit_amount || 0);
+          const credit = Number(line.credit_amount || 0);
+          const current = Number(account.current_balance || 0);
+          // Reverse: subtract what was originally added
+          const newBal = account.normal_balance === 'debit'
+            ? current - debit + credit
+            : current - credit + debit;
+          await supabase.from('chart_of_accounts').update({ current_balance: newBal }).eq('id', line.account_id);
+        }
+      }
+    }
+  }
+
   const { error: linesError } = await supabase.from('journal_entry_lines').delete().in('journal_entry_id', entryIds);
   if (linesError) {
     console.error('Failed to delete journal entry lines:', linesError);
