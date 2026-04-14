@@ -710,6 +710,69 @@ export default function Invoices() {
     }
   };
 
+  const deletePayment = async (payment: ARPayment) => {
+    if (!viewInvoice || !viewAR) return;
+    try {
+      // Delete the payment record
+      const { error: delErr } = await supabase.from('ar_payments').delete().eq('id', payment.id);
+      if (delErr) throw delErr;
+
+      // Recalculate totals from remaining payments
+      const remainingPayments = viewPayments.filter(p => p.id !== payment.id);
+      const newTotalPaid = remainingPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+      const originalAmount = Number(viewAR.original_amount || viewInvoice.total);
+      const newBalance = Math.max(0, originalAmount - newTotalPaid);
+      const newStatus = newTotalPaid <= 0 ? 'outstanding' : newBalance <= 0.01 ? 'paid' : 'partial';
+
+      // Update AR record
+      await supabase.from('accounts_receivable').update({
+        paid_amount: newTotalPaid,
+        status: newStatus,
+      }).eq('id', viewAR.id);
+
+      // Update invoice status
+      const invoiceStatus = newTotalPaid <= 0 ? 'sent' : newBalance <= 0.01 ? 'paid' : 'partially_paid';
+      await supabase.from('invoices').update({
+        status: invoiceStatus as any,
+        paid_date: invoiceStatus === 'paid' ? payment.payment_date : null,
+      }).eq('id', viewInvoice.id);
+
+      // Reverse journal entry for this payment
+      try {
+        const companyCode = getCompanyCode(viewInvoice.company_id);
+        const isVES = companyCode === 'VES';
+        const cashAccount = isVES ? '1000' : '1001';
+        const arAccount = isVES ? '1050' : '1051';
+        const { createAutoJournalEntry, getAccountIdByCode } = await import('@/lib/accounting/journalAutomation');
+        const [cashAccId, arAccId] = await Promise.all([
+          getAccountIdByCode(viewInvoice.company_id!, cashAccount),
+          getAccountIdByCode(viewInvoice.company_id!, arAccount),
+        ]);
+        if (cashAccId && arAccId) {
+          await createAutoJournalEntry({
+            companyId: viewInvoice.company_id!,
+            entryDate: new Date().toISOString().split('T')[0],
+            description: `Payment reversal - Invoice ${viewInvoice.invoice_number}`,
+            referenceType: 'payment_received',
+            referenceId: viewInvoice.id,
+            lines: [
+              { accountCode: arAccount, accountId: arAccId, description: `AR restored - Invoice ${viewInvoice.invoice_number}`, debitAmount: Number(payment.amount), creditAmount: 0 },
+              { accountCode: cashAccount, accountId: cashAccId, description: `Cash reversal - Invoice ${viewInvoice.invoice_number}`, debitAmount: 0, creditAmount: Number(payment.amount) },
+            ],
+          });
+        }
+      } catch (jeErr) {
+        console.error('Payment reversal journal entry failed:', jeErr);
+      }
+
+      toast.success(`Payment of ${formatCurrency(Number(payment.amount))} deleted`);
+      await refreshDetailView(viewInvoice.id);
+    } catch (err) {
+      console.error('Delete payment error:', err);
+      toast.error('Failed to delete payment');
+    }
+  };
+
   const cancelInvoice = async (id: string) => {
     try {
       const invoice = invoices.find(i => i.id === id);
