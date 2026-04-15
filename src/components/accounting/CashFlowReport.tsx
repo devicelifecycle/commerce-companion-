@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Download, Printer, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Printer, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { format, startOfMonth } from 'date-fns';
 
 interface CashFlowData {
@@ -16,7 +16,6 @@ interface CashFlowData {
     marketplacePayouts: number;
     expensesPaid: number;
     apPayments: number;
-    taxPayments: number;
     netOperating: number;
   };
   investing: {
@@ -57,32 +56,36 @@ export function CashFlowReport({ companyView }: Props) {
     try {
       const companyFilter = effectiveCompany?.id;
 
-      // Sales collected (AR payments received)
-      let arPayQ = supabase
+      // AR payments received
+      const arPayRes = await supabase
         .from('ar_payments')
-        .select('amount, accounts_receivable!inner(company_id)')
+        .select('amount')
         .gte('payment_date', startDate)
         .lte('payment_date', endDate);
 
       // Marketplace payouts received
       let payoutQ = supabase
         .from('marketplace_payouts')
-        .select('total_amount, company_id')
+        .select('net_payout, company_id')
         .gte('payout_date', startDate)
         .lte('payout_date', endDate)
-        .eq('status', 'processed');
+        .eq('reconciliation_status', 'matched');
+      if (companyFilter) payoutQ = payoutQ.eq('company_id', companyFilter);
+      const payoutRes = await payoutQ;
 
       // Expenses paid
       let expenseQ = supabase
         .from('expenses')
-        .select('total_amount, company_id')
+        .select('amount, total_amount, company_id')
         .gte('expense_date', startDate)
         .lte('expense_date', endDate);
+      if (companyFilter) expenseQ = expenseQ.eq('company_id', companyFilter);
+      const expenseRes = await expenseQ;
 
       // AP payments
-      let apPaymentQ = supabase
+      const apPayRes = await supabase
         .from('ap_payments')
-        .select('amount, accounts_payable!inner(company_id)')
+        .select('amount')
         .gte('payment_date', startDate)
         .lte('payment_date', endDate);
 
@@ -92,6 +95,8 @@ export function CashFlowReport({ companyView }: Props) {
         .select('cost_price, company_id')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
+      if (companyFilter) deviceQ = deviceQ.eq('company_id', companyFilter);
+      const deviceRes = await deviceQ;
 
       // Repair parts purchased
       let partsQ = supabase
@@ -99,39 +104,20 @@ export function CashFlowReport({ companyView }: Props) {
         .select('total_cost, company_id')
         .gte('created_at', startDate)
         .lte('created_at', endDate);
+      if (companyFilter) partsQ = partsQ.eq('company_id', companyFilter);
+      const partsRes = await partsQ;
 
       // Intercompany transfers
-      let transferQ = supabase
+      const transferRes = await supabase
         .from('inventory_transfers')
         .select('transfer_price, from_company_id, to_company_id')
         .gte('transfer_date', startDate)
         .lte('transfer_date', endDate);
 
-      if (companyFilter) {
-        payoutQ = payoutQ.eq('company_id', companyFilter);
-        expenseQ = expenseQ.eq('company_id', companyFilter);
-        deviceQ = deviceQ.eq('company_id', companyFilter);
-        partsQ = partsQ.eq('company_id', companyFilter);
-      }
-
-      const [arPayRes, payoutRes, expenseRes, apPayRes, deviceRes, partsRes, transferRes] = await Promise.all([
-        arPayQ, payoutQ, expenseQ, apPaymentQ, deviceRes = deviceQ, partsQ, transferQ,
-      ]);
-
-      const salesCollected = (arPayRes.data || []).reduce((s, r) => {
-        if (companyFilter && (r as any).accounts_receivable?.company_id !== companyFilter) return s;
-        return s + (r.amount || 0);
-      }, 0);
-
-      const marketplacePayouts = (payoutRes.data || []).reduce((s, r) => s + (r.total_amount || 0), 0);
-
+      const salesCollected = (arPayRes.data || []).reduce((s, r) => s + (r.amount || 0), 0);
+      const marketplacePayouts = (payoutRes.data || []).reduce((s, r) => s + (r.net_payout || 0), 0);
       const expensesPaid = (expenseRes.data || []).reduce((s, r) => s + (r.total_amount || r.amount || 0), 0);
-
-      const apPayments = (apPayRes.data || []).reduce((s, r) => {
-        if (companyFilter && (r as any).accounts_payable?.company_id !== companyFilter) return s;
-        return s + (r.amount || 0);
-      }, 0);
-
+      const apPayments = (apPayRes.data || []).reduce((s, r) => s + (r.amount || 0), 0);
       const inventoryPurchases = (deviceRes.data || []).reduce((s, r) => s + (r.cost_price || 0), 0);
       const repairParts = (partsRes.data || []).reduce((s, r) => s + (r.total_cost || 0), 0);
 
@@ -155,23 +141,12 @@ export function CashFlowReport({ companyView }: Props) {
 
       const netOperating = salesCollected + marketplacePayouts - expensesPaid - apPayments;
       const netInvesting = -(inventoryPurchases + repairParts);
-      const netFinancing = (companyFilter ? transfersIn - transfersOut : 0);
+      const netFinancing = companyFilter ? transfersIn - transfersOut : 0;
       const netChange = netOperating + netInvesting + netFinancing;
 
       setData({
-        operating: {
-          salesCollected,
-          marketplacePayouts,
-          expensesPaid,
-          apPayments,
-          taxPayments: 0,
-          netOperating,
-        },
-        investing: {
-          inventoryPurchases,
-          repairParts,
-          netInvesting,
-        },
+        operating: { salesCollected, marketplacePayouts, expensesPaid, apPayments, netOperating },
+        investing: { inventoryPurchases, repairParts, netInvesting },
         financing: {
           intercompanyTransfersIn: companyFilter ? transfersIn : 0,
           intercompanyTransfersOut: companyFilter ? transfersOut : 0,
@@ -189,7 +164,7 @@ export function CashFlowReport({ companyView }: Props) {
   }, [startDate, endDate, effectiveCompany?.id, companies]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-  useDataRefetch(fetchData, ['sales', 'expenses', 'payouts']);
+  useDataRefetch(['sales', 'expenses', 'payouts'], fetchData);
 
   const fmt = (n: number) => {
     const abs = Math.abs(n);
@@ -235,11 +210,9 @@ export function CashFlowReport({ companyView }: Props) {
             </CardTitle>
             <CardDescription>Cash movements by operating, investing & financing activities</CardDescription>
           </div>
-          <div className="flex gap-1.5">
-            <Button variant="outline" size="sm" onClick={() => window.print()}>
-              <Printer className="h-3.5 w-3.5 mr-1" /> Print
-            </Button>
-          </div>
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <Printer className="h-3.5 w-3.5 mr-1" /> Print
+          </Button>
         </div>
         <div className="flex items-end gap-3 mt-2">
           <div className="space-y-1">
@@ -260,7 +233,6 @@ export function CashFlowReport({ companyView }: Props) {
           <div className="py-12 text-center text-muted-foreground text-sm">No data available</div>
         ) : (
           <div className="space-y-5">
-            {/* Operating */}
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Operating Activities</h3>
               <LineItem label="AR Collections" value={data.operating.salesCollected} indent />
@@ -272,7 +244,6 @@ export function CashFlowReport({ companyView }: Props) {
 
             <Separator />
 
-            {/* Investing */}
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Investing Activities</h3>
               <LineItem label="Inventory Purchases" value={-data.investing.inventoryPurchases} indent />
@@ -294,7 +265,6 @@ export function CashFlowReport({ companyView }: Props) {
 
             <Separator className="border-2" />
 
-            {/* Summary */}
             <div className="bg-muted/30 rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Opening Cash (estimated)</span>

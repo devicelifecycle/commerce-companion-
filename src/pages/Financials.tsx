@@ -10,6 +10,7 @@ import { getCompanyDisplayName } from '@/lib/companyNames';
 // Statements
 import { ProfitLossReport } from '@/components/accounting/ProfitLossReport';
 import { BalanceSheetReport } from '@/components/accounting/BalanceSheetReport';
+import { CashFlowReport } from '@/components/accounting/CashFlowReport';
 
 // Ledger & Accounts
 import { ChartOfAccounts } from '@/components/accounting/ChartOfAccounts';
