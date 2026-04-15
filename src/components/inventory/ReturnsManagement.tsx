@@ -290,9 +290,6 @@ export function ReturnsManagement() {
       : activeTab === 'purchase' ? r.return_type === 'purchase_return'
       : activeTab === 'sales' ? r.return_type === 'sales_return'
       : activeTab === 'pending' ? ['pending', 'approved'].includes(r.status)
-      : activeTab === 'adjustments' ? r.resolution_type === 'adjustment'
-      : activeTab === 'exchanges' ? r.resolution_type === 'exchange'
-      : activeTab === 'repairs' ? r.resolution_type === 'repair'
       : activeTab === 'flagged' ? r.marketplace_initiated === true
       : true;
     if (!matchTab) return false;
@@ -395,15 +392,6 @@ export function ReturnsManagement() {
             </TabsTrigger>
             <TabsTrigger value="sales">
               Customer ({returns.filter(r => r.return_type === 'sales_return').length})
-            </TabsTrigger>
-            <TabsTrigger value="adjustments">
-              Adjustments ({returns.filter(r => r.resolution_type === 'adjustment').length})
-            </TabsTrigger>
-            <TabsTrigger value="exchanges">
-              Exchanges ({returns.filter(r => r.resolution_type === 'exchange').length})
-            </TabsTrigger>
-            <TabsTrigger value="repairs">
-              Repairs ({returns.filter(r => r.resolution_type === 'repair').length})
             </TabsTrigger>
             <TabsTrigger value="pending">
               Pending ({returns.filter(r => ['pending', 'approved'].includes(r.status)).length})
