@@ -82,8 +82,9 @@ export function ReturnsManagement() {
         .from('return_authorizations')
         .select(`
           *,
-          device:devices(brand, model, imei),
-          supplier:suppliers(name)
+          device:devices(brand, model, imei, storage, color),
+          supplier:suppliers(name),
+          sale:sales(order_number, marketplace, sale_price)
         `)
         .order('created_at', { ascending: false });
 
