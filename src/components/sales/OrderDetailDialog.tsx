@@ -778,8 +778,70 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
             </>
           )}
 
+          {/* Refund / Return Details */}
+          {returnData && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <RotateCcw className="h-3.5 w-3.5" /> Refund / Return Details
+                </h4>
+                <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2 text-sm">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                    <div>
+                      <span className="text-muted-foreground text-xs">RMA #</span>
+                      <p className="font-mono text-xs font-medium">{returnData.rma_number}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Status</span>
+                      <p className="capitalize font-medium">{returnData.status}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Resolution</span>
+                      <p className="capitalize font-medium">{returnData.resolution_type}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Refund Date</span>
+                      <p className="font-medium">{returnData.refund_date ? formatDate(returnData.refund_date) : '—'}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Refund Amount</span>
+                      <p className="font-medium text-destructive">{formatCurrency(Number(returnData.refund_amount || 0))}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Tax Refunded</span>
+                      <p className="font-medium text-destructive">{formatCurrency(Number(returnData.tax_refunded || 0))}</p>
+                    </div>
+                  </div>
+                  {returnData.reason && (
+                    <div>
+                      <span className="text-muted-foreground text-xs">Reason</span>
+                      <p className="text-sm">{returnData.reason}</p>
+                    </div>
+                  )}
+                  {returnData.notes && (
+                    <div>
+                      <span className="text-muted-foreground text-xs">Notes</span>
+                      <p className="text-sm">{returnData.notes}</p>
+                    </div>
+                  )}
+                  <div className="pt-1 border-t border-destructive/10">
+                    <span className="text-muted-foreground text-xs">Accounting</span>
+                    <p className="text-xs">
+                      {returnData.accounting_status === 'processed' ? (
+                        <Badge variant="outline" className="text-[10px] px-1.5 text-emerald-500 border-emerald-500/30">Journal entries posted</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] px-1.5 text-amber-500 border-amber-500/30">Pending</Badge>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
           {/* Return Action */}
-          {!hasReturn && (
+          {!hasReturn && !returnData && (
             <>
               <Separator />
               <Button
