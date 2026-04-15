@@ -443,7 +443,22 @@ export default function Sales() {
           </div>
         </div>
 
-        
+        {/* Accounting Status Alert */}
+        {showAccountingAlert && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-warning/40 bg-warning/5">
+            <AlertCircle className="h-4 w-4 text-warning shrink-0" />
+            <div className="text-sm">
+              <span className="font-medium text-warning">Accounting attention needed: </span>
+              <span className="text-muted-foreground">
+                {unprocessedCount > 0 && <>{unprocessedCount} unprocessed (no accounting entries)</>}
+                {unprocessedCount > 0 && revenueOnlyCount > 0 && ' · '}
+                {revenueOnlyCount > 0 && <>{revenueOnlyCount} revenue-only (no device linked for COGS)</>}
+              </span>
+            </div>
+          </div>
+        )}
+
+
         <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
           {isSuperAdmin && (
             <Button
