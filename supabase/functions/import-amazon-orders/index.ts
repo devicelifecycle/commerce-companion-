@@ -300,6 +300,18 @@ serve(async (req) => {
         'IsBusinessOrder', 'IsPrime', 'IsGlobalExpressEnabled',
         'LastUpdateDate', 'EarliestShipDate', 'LatestShipDate',
         'EarliestDeliveryDate', 'LatestDeliveryDate',
+        // Standard SP-API fields (non-critical, safe to ignore)
+        'OrderType', 'IsPremiumOrder', 'HasRegulatedItems', 'IsReplacementOrder',
+        'IsSoldByAB', 'IsISPU', 'IsAccessPointOrder', 'SellerOrderId',
+        'ShipmentServiceLevelCategory', 'DefaultShipFromLocationAddress',
+        'DefaultShipFromLocationAddress.Name', 'DefaultShipFromLocationAddress.AddressLine1',
+        'DefaultShipFromLocationAddress.AddressLine2', 'DefaultShipFromLocationAddress.City',
+        'DefaultShipFromLocationAddress.StateOrRegion', 'DefaultShipFromLocationAddress.PostalCode',
+        'DefaultShipFromLocationAddress.CountryCode', 'DefaultShipFromLocationAddress.Phone',
+        'AutomatedShippingSettings', 'AutomatedShippingSettings.HasAutomatedShippingSettings',
+        'AutomatedShippingSettings.AutomatedCarrier', 'AutomatedShippingSettings.AutomatedShipMethod',
+        'HasAutomatedShippingSettings', 'EasyShipShipmentStatus',
+        'ElectronicInvoiceStatus', 'IsEstimatedShipDateSet',
       ];
       const schemaResult = validateSchema(sampleOrder, amzExpectedFields, amzKnownPaths);
       if (!schemaResult.valid) {
