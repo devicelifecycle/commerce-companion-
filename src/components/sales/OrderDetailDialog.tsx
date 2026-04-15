@@ -137,6 +137,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const [savingManualCost, setSavingManualCost] = useState(false);
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [returnData, setReturnData] = useState<any>(null);
 
   useEffect(() => {
     setLocalProvince(sale.shipping_province || null);
