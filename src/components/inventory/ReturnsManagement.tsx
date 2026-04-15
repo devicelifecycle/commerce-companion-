@@ -396,15 +396,6 @@ export function ReturnsManagement() {
             <TabsTrigger value="sales">
               Customer ({returns.filter(r => r.return_type === 'sales_return').length})
             </TabsTrigger>
-            <TabsTrigger value="adjustments">
-              Adjustments ({returns.filter(r => r.resolution_type === 'adjustment').length})
-            </TabsTrigger>
-            <TabsTrigger value="exchanges">
-              Exchanges ({returns.filter(r => r.resolution_type === 'exchange').length})
-            </TabsTrigger>
-            <TabsTrigger value="repairs">
-              Repairs ({returns.filter(r => r.resolution_type === 'repair').length})
-            </TabsTrigger>
             <TabsTrigger value="pending">
               Pending ({returns.filter(r => ['pending', 'approved'].includes(r.status)).length})
             </TabsTrigger>
