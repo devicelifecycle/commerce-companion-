@@ -187,7 +187,7 @@ export default function Sales() {
       const { error: deviceError } = await supabase.from('devices').update({ status: 'in_stock' as any, sale_price: null }).eq('id', deviceId);
       if (deviceError) throw deviceError;
 
-      // Reverse COGS journal entries for this sale
+      // Reverse COGS journal entries for this sale (properly reverses account balances)
       const { data: cogsEntries } = await supabase
         .from('journal_entries')
         .select('id')
@@ -196,14 +196,43 @@ export default function Sales() {
         .ilike('description', 'COGS%');
 
       if (cogsEntries && cogsEntries.length > 0) {
-        const entryIds = cogsEntries.map(e => e.id);
-        // Delete lines first, then entries (reverse balance updates would be ideal but complex)
-        await supabase.from('journal_entry_lines').delete().in('journal_entry_id', entryIds);
-        await supabase.from('journal_entries').delete().in('id', entryIds);
+        for (const entry of cogsEntries) {
+          // Use the centralized reversal utility which properly reverses account balances
+          const { reverseJournalEntries } = await import('@/lib/accounting/reversalUtils');
+          // reverseJournalEntries works by reference_id, so we reverse each entry individually
+          const { data: lines } = await supabase
+            .from('journal_entry_lines')
+            .select('account_id, debit_amount, credit_amount')
+            .eq('journal_entry_id', entry.id);
+
+          if (lines) {
+            for (const line of lines) {
+              const { data: account } = await supabase
+                .from('chart_of_accounts')
+                .select('current_balance, normal_balance')
+                .eq('id', line.account_id)
+                .single();
+
+              if (account) {
+                const debit = Number(line.debit_amount || 0);
+                const credit = Number(line.credit_amount || 0);
+                const current = Number(account.current_balance || 0);
+                const newBal = account.normal_balance === 'debit'
+                  ? current - debit + credit
+                  : current - credit + debit;
+                await supabase.from('chart_of_accounts').update({ current_balance: newBal }).eq('id', line.account_id);
+              }
+            }
+          }
+
+          await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', entry.id);
+          await supabase.from('journal_entries').delete().eq('id', entry.id);
+        }
       }
 
-      toast.success('Device unlinked — COGS entries reversed');
+      toast.success('Device unlinked — COGS entries & account balances reversed');
       fetchSales();
+      emitRefetch('financials');
     } catch (error: any) {
       toast.error(error.message || 'Failed to unlink device');
     }
@@ -358,6 +387,11 @@ export default function Sales() {
     );
   }
 
+  // Calculate unprocessed/revenue-only counts from allSales
+  const unprocessedCount = sales.filter(s => s.accounting_status === 'unprocessed').length;
+  const revenueOnlyCount = sales.filter(s => s.accounting_status === 'revenue_only').length;
+  const showAccountingAlert = (unprocessedCount > 0 || revenueOnlyCount > 0) && isSuperAdmin;
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
@@ -409,7 +443,22 @@ export default function Sales() {
           </div>
         </div>
 
-        
+        {/* Accounting Status Alert */}
+        {showAccountingAlert && (
+          <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-warning/40 bg-warning/5">
+            <AlertCircle className="h-4 w-4 text-warning shrink-0" />
+            <div className="text-sm">
+              <span className="font-medium text-warning">Accounting attention needed: </span>
+              <span className="text-muted-foreground">
+                {unprocessedCount > 0 && <>{unprocessedCount} unprocessed (no accounting entries)</>}
+                {unprocessedCount > 0 && revenueOnlyCount > 0 && ' · '}
+                {revenueOnlyCount > 0 && <>{revenueOnlyCount} revenue-only (no device linked for COGS)</>}
+              </span>
+            </div>
+          </div>
+        )}
+
+
         <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
           {isSuperAdmin && (
             <Button
