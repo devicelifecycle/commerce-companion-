@@ -290,9 +290,6 @@ export function ReturnsManagement() {
       : activeTab === 'purchase' ? r.return_type === 'purchase_return'
       : activeTab === 'sales' ? r.return_type === 'sales_return'
       : activeTab === 'pending' ? ['pending', 'approved'].includes(r.status)
-      : activeTab === 'adjustments' ? r.resolution_type === 'adjustment'
-      : activeTab === 'exchanges' ? r.resolution_type === 'exchange'
-      : activeTab === 'repairs' ? r.resolution_type === 'repair'
       : activeTab === 'flagged' ? r.marketplace_initiated === true
       : true;
     if (!matchTab) return false;
