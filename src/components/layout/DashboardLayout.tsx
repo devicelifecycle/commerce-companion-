@@ -41,6 +41,7 @@ const PAGE_TITLES: Record<string, string> = {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const location = useLocation();
   useGlobalShortcuts();
+  useIdleTimeout();
   const pageTitle = PAGE_TITLES[location.pathname] || 'Warehouse';
 
   return (
