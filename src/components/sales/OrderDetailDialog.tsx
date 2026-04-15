@@ -145,10 +145,12 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
     setManualCostDesc(sale.manual_cost_description || '');
   }, [sale.shipping_province, sale.id, sale.manual_cost]);
 
-  // Fetch sale_items when dialog opens
+  // Fetch sale_items and return data when dialog opens
   useEffect(() => {
     if (!open) return;
     setLoadingItems(true);
+    setReturnData(null);
+    
     supabase
       .from('sale_items')
       .select('id, description, sku, quantity, unit_price, cost_price, total, imei, device_id, product_id')
@@ -157,6 +159,18 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
       .then(({ data }) => {
         setSaleItems((data || []) as SaleItem[]);
         setLoadingItems(false);
+      });
+
+    // Fetch return/refund data
+    supabase
+      .from('return_authorizations')
+      .select('*')
+      .eq('sale_id', sale.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        setReturnData(data);
       });
   }, [open, sale.id]);
 
