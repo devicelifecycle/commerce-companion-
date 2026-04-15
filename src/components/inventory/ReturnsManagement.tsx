@@ -551,147 +551,251 @@ export function ReturnsManagement() {
       onSuccess={fetchData}
     />
 
-    {/* RMA Detail Dialog with Timeline */}
+    {/* RMA Detail Dialog — Redesigned */}
     <Dialog open={!!viewingRma} onOpenChange={(open) => !open && setViewingRma(null)}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden">
         {viewingRma && (
           <>
-            <DialogHeader>
-              <DialogTitle className="flex items-center justify-between">
-                <span className="font-mono flex items-center gap-2">
-                  {viewingRma.marketplace_initiated && (
-                    <AlertCircle className="h-4 w-4 text-destructive" />
-                  )}
-                  {viewingRma.rma_number}
-                </span>
-                <div className="flex gap-2">
+            {/* Header band */}
+            <div className="bg-muted/30 border-b border-border/50 px-6 py-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    {viewingRma.marketplace_initiated && (
+                      <AlertCircle className="h-4 w-4 text-destructive" />
+                    )}
+                    <span className="font-mono text-lg font-semibold">{viewingRma.rma_number}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Badge variant="outline" className="text-xs">
+                      {viewingRma.return_type === 'purchase_return' ? 'Supplier Return' : 'Customer Return'}
+                    </Badge>
+                    {viewingRma.sale?.order_number && (
+                      <span className="flex items-center gap-1">
+                        <ShoppingCart className="h-3 w-3" />
+                        Order <span className="font-mono font-medium text-foreground">{viewingRma.sale.order_number}</span>
+                      </span>
+                    )}
+                    {viewingRma.sale?.marketplace && (
+                      <Badge variant="outline" className="text-xs capitalize">{viewingRma.sale.marketplace}</Badge>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
                   {getResolutionBadge(viewingRma.resolution_type)}
                   {getStatusBadge(viewingRma.status)}
                 </div>
-              </DialogTitle>
+              </div>
               <DialogDescription className="sr-only">Details for {viewingRma.rma_number}</DialogDescription>
-            </DialogHeader>
-
-            {viewingRma.marketplace_initiated && (
-              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-destructive">Marketplace-Initiated</p>
-                  <p className="text-xs text-muted-foreground">This refund was initiated by the marketplace (A-to-Z claim, chargeback, etc.). Please review and verify.</p>
-                </div>
-              </div>
-            )}
-
-            {/* Timeline */}
-            <div className="py-4">
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Progress Timeline</h4>
-              <div className="flex items-center justify-between relative">
-                <div className="absolute top-4 left-6 right-6 h-0.5 bg-border" />
-                {getRmaTimeline(viewingRma).map((step, i) => {
-                  const StepIcon = step.icon;
-                  return (
-                    <div key={i} className="flex flex-col items-center gap-1.5 relative z-10">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
-                        step.status === 'done' ? 'bg-primary border-primary text-primary-foreground' :
-                        step.status === 'current' ? 'bg-background border-primary text-primary animate-pulse' :
-                        'bg-muted border-border text-muted-foreground'
-                      }`}>
-                        <StepIcon className="h-3.5 w-3.5" />
-                      </div>
-                      <span className={`text-[10px] font-medium ${step.status === 'done' ? 'text-foreground' : 'text-muted-foreground'}`}>
-                        {step.label}
-                      </span>
-                      {step.date && (
-                        <span className="text-[9px] text-muted-foreground">
-                          {format(new Date(step.date), 'MMM d')}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
             </div>
 
-            <div className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-muted-foreground text-xs">Type</p>
-                  <p className="font-medium">{viewingRma.return_type === 'purchase_return' ? 'To Supplier' : 'From Customer'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Date</p>
-                  <p className="font-medium">{format(new Date(viewingRma.return_date), 'MMM d, yyyy')}</p>
-                </div>
-                {viewingRma.customer_name && (
+            <div className="max-h-[65vh] overflow-y-auto">
+              {/* Marketplace flag alert */}
+              {viewingRma.marketplace_initiated && (
+                <div className="mx-6 mt-4 bg-destructive/10 border border-destructive/20 rounded-lg p-3 flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-muted-foreground text-xs">Customer</p>
-                    <p className="font-medium">{viewingRma.customer_name}</p>
+                    <p className="text-sm font-medium text-destructive">Marketplace-Initiated</p>
+                    <p className="text-xs text-muted-foreground">This refund was forced by the marketplace (A-to-Z claim, chargeback, etc.).</p>
                   </div>
-                )}
-                {viewingRma.supplier && (
+                </div>
+              )}
+
+              {/* Timeline */}
+              <div className="px-6 py-4 border-b border-border/30">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Progress</h4>
+                <div className="flex items-center justify-between relative">
+                  <div className="absolute top-4 left-6 right-6 h-0.5 bg-border" />
+                  {getRmaTimeline(viewingRma).map((step, i) => {
+                    const StepIcon = step.icon;
+                    return (
+                      <div key={i} className="flex flex-col items-center gap-1.5 relative z-10">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                          step.status === 'done' ? 'bg-primary border-primary text-primary-foreground' :
+                          step.status === 'current' ? 'bg-background border-primary text-primary animate-pulse' :
+                          'bg-muted border-border text-muted-foreground'
+                        }`}>
+                          <StepIcon className="h-3.5 w-3.5" />
+                        </div>
+                        <span className={`text-[10px] font-medium ${step.status === 'done' ? 'text-foreground' : 'text-muted-foreground'}`}>
+                          {step.label}
+                        </span>
+                        {step.date && (
+                          <span className="text-[9px] text-muted-foreground">
+                            {format(new Date(step.date), 'MMM d')}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Two-column content */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-border/30">
+                {/* Left: Item & Details */}
+                <div className="px-6 py-4 space-y-4">
+                  {/* Device info */}
+                  {viewingRma.device && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Device</h4>
+                      <div className="bg-muted/30 border border-border/40 rounded-lg p-3">
+                        <p className="font-semibold text-sm">{viewingRma.device.brand} {viewingRma.device.model}</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground">
+                          {viewingRma.device.storage && <span>{viewingRma.device.storage}</span>}
+                          {viewingRma.device.color && <span>{viewingRma.device.color}</span>}
+                          {viewingRma.device.imei && <span className="font-mono">IMEI: {viewingRma.device.imei}</span>}
+                        </div>
+                        {viewingRma.device_condition_on_return && (
+                          <div className="mt-2">{getConditionBadge(viewingRma.device_condition_on_return)}</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Customer / Supplier */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {viewingRma.customer_name && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Customer</p>
+                        <p className="text-sm font-medium mt-0.5">{viewingRma.customer_name}</p>
+                      </div>
+                    )}
+                    {viewingRma.supplier && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Supplier</p>
+                        <p className="text-sm font-medium mt-0.5">{viewingRma.supplier.name}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Created</p>
+                      <p className="text-sm font-medium mt-0.5">{format(new Date(viewingRma.created_at), 'MMM d, yyyy h:mm a')}</p>
+                    </div>
+                    {viewingRma.refund_date && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Resolved</p>
+                        <p className="text-sm font-medium mt-0.5">{format(new Date(viewingRma.refund_date), 'MMM d, yyyy')}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Reason */}
                   <div>
-                    <p className="text-muted-foreground text-xs">Supplier</p>
-                    <p className="font-medium">{viewingRma.supplier.name}</p>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Reason</h4>
+                    <p className="text-sm font-medium">{viewingRma.reason}</p>
+                    {viewingRma.refund_reason_detail && (
+                      <p className="text-xs text-muted-foreground mt-1">{viewingRma.refund_reason_detail}</p>
+                    )}
                   </div>
-                )}
-              </div>
 
-              {viewingRma.device && (
-                <div className="bg-muted/30 border border-border/40 rounded-lg p-3">
-                  <p className="font-semibold">{viewingRma.device.brand} {viewingRma.device.model}</p>
-                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                    {viewingRma.device.imei && <span className="font-mono">IMEI: {viewingRma.device.imei}</span>}
-                    {viewingRma.device_condition_on_return && getConditionBadge(viewingRma.device_condition_on_return)}
+                  {/* Tracking */}
+                  {viewingRma.outbound_tracking_number && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Tracking</h4>
+                      <p className="font-mono text-sm">{viewingRma.outbound_tracking_number}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right: Financials & Notes */}
+                <div className="px-6 py-4 space-y-4">
+                  <div>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Financials</h4>
+                    <div className="bg-muted/30 border border-border/40 rounded-lg divide-y divide-border/30">
+                      <div className="flex justify-between items-center px-3 py-2">
+                        <span className="text-xs text-muted-foreground">Original Sale</span>
+                        <span className="text-sm font-medium">{formatCurrency(viewingRma.original_cost)}</span>
+                      </div>
+                      <div className="flex justify-between items-center px-3 py-2">
+                        <span className="text-xs text-muted-foreground">
+                          {viewingRma.resolution_type === 'adjustment' ? 'Credit Issued' : 'Refund Amount'}
+                        </span>
+                        <span className="text-sm font-semibold text-destructive">
+                          -{formatCurrency(viewingRma.refund_amount)}
+                        </span>
+                      </div>
+                      {(viewingRma.tax_refunded != null && viewingRma.tax_refunded > 0) && (
+                        <div className="flex justify-between items-center px-3 py-2">
+                          <span className="text-xs text-muted-foreground">Tax Refunded</span>
+                          <span className="text-sm font-medium text-destructive">
+                            -{formatCurrency(viewingRma.tax_refunded)}
+                          </span>
+                        </div>
+                      )}
+                      {(viewingRma.refund_amount != null && viewingRma.original_cost != null && viewingRma.original_cost > 0) && (
+                        <div className="flex justify-between items-center px-3 py-2 bg-muted/20">
+                          <span className="text-xs text-muted-foreground">Refund %</span>
+                          <span className="text-sm font-medium">
+                            {((viewingRma.refund_amount / viewingRma.original_cost) * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-muted-foreground text-xs">Original Amount</p>
-                  <p className="font-medium">{formatCurrency(viewingRma.original_cost)}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">
-                    {viewingRma.resolution_type === 'adjustment' ? 'Credit Amount' : 'Refund Amount'}
-                  </p>
-                  <p className="font-medium">{formatCurrency(viewingRma.refund_amount)}</p>
+                  {/* Repair notes */}
+                  {viewingRma.repair_notes && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Repair Notes</h4>
+                      <p className="text-sm bg-amber-500/5 border border-amber-500/20 rounded-lg p-2.5">{viewingRma.repair_notes}</p>
+                    </div>
+                  )}
+
+                  {/* General notes */}
+                  {viewingRma.notes && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Notes</h4>
+                      <p className="text-sm">{viewingRma.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Open duration */}
+                  {!['refunded', 'completed', 'cancelled'].includes(viewingRma.status) && (
+                    <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
+                      differenceInDays(new Date(), new Date(viewingRma.created_at)) > 7
+                        ? 'bg-destructive/10 text-destructive'
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      <Clock className="h-3.5 w-3.5" />
+                      Open for {differenceInDays(new Date(), new Date(viewingRma.created_at))} days
+                    </div>
+                  )}
+
+                  {/* Actions for supplier returns */}
+                  {viewingRma.return_type === 'purchase_return' && !['refunded', 'completed', 'cancelled'].includes(viewingRma.status) && (
+                    <div>
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Actions</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {viewingRma.status === 'pending' && (
+                          <>
+                            <Button size="sm" onClick={() => { updateStatus(viewingRma.id, 'approved'); setViewingRma(null); }}>
+                              <CheckCircle className="h-4 w-4 mr-1" /> Approve
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => { updateStatus(viewingRma.id, 'cancelled'); setViewingRma(null); }}>
+                              <XCircle className="h-4 w-4 mr-1" /> Cancel
+                            </Button>
+                          </>
+                        )}
+                        {viewingRma.status === 'approved' && (
+                          <Button size="sm" onClick={() => { updateStatus(viewingRma.id, 'shipped'); setViewingRma(null); }}>
+                            <Truck className="h-4 w-4 mr-1" /> Mark Shipped
+                          </Button>
+                        )}
+                        {['shipped', 'received'].includes(viewingRma.status) && viewingRma.resolution_type === 'refund' && (
+                          <Button size="sm" onClick={() => { updateStatus(viewingRma.id, 'refunded'); setViewingRma(null); }}>
+                            <DollarSign className="h-4 w-4 mr-1" /> Mark Refunded
+                          </Button>
+                        )}
+                        {['shipped', 'received'].includes(viewingRma.status) && viewingRma.resolution_type !== 'refund' && (
+                          <Button size="sm" onClick={() => { updateStatus(viewingRma.id, 'completed'); setViewingRma(null); }}>
+                            <CheckCircle className="h-4 w-4 mr-1" /> Mark Complete
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
-
-              <div>
-                <p className="text-muted-foreground text-xs">Reason</p>
-                <p className="font-medium">{viewingRma.reason}</p>
-                {(viewingRma as any).refund_reason_detail && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{(viewingRma as any).refund_reason_detail}</p>
-                )}
-              </div>
-
-              {viewingRma.outbound_tracking_number && (
-                <div>
-                  <p className="text-muted-foreground text-xs">Tracking Number</p>
-                  <p className="font-mono text-sm">{viewingRma.outbound_tracking_number}</p>
-                </div>
-              )}
-
-              {(viewingRma.notes || viewingRma.repair_notes) && (
-                <div>
-                  <p className="text-muted-foreground text-xs">Notes</p>
-                  <p className="text-sm">{viewingRma.notes}</p>
-                  {viewingRma.repair_notes && <p className="text-sm mt-1">🔧 {viewingRma.repair_notes}</p>}
-                </div>
-              )}
-
-              {!['refunded', 'completed', 'cancelled'].includes(viewingRma.status) && (
-                <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg ${
-                  differenceInDays(new Date(), new Date(viewingRma.created_at)) > 7
-                    ? 'bg-destructive/10 text-destructive'
-                    : 'bg-muted text-muted-foreground'
-                }`}>
-                  <Clock className="h-3.5 w-3.5" />
-                  Open for {differenceInDays(new Date(), new Date(viewingRma.created_at))} days
-                </div>
-              )}
             </div>
           </>
         )}
