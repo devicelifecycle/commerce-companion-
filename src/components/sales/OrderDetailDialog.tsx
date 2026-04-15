@@ -13,12 +13,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { MarketplaceBadge, FulfillmentBadge, MarketplaceStatusBadge } from '@/components/ui/status-badge';
-import { Package, User, MapPin, DollarSign, Calendar, FileText, RotateCcw, Link, Unlink, AlertTriangle, Wrench, ShoppingCart, Hash } from 'lucide-react';
+import {
+  Package, User, MapPin, DollarSign, Calendar, FileText, RotateCcw,
+  Link, Unlink, AlertTriangle, Wrench, ShoppingCart, Hash, Building2,
+  Clock, CreditCard, TrendingUp, TrendingDown, Copy, ExternalLink,
+  ChevronRight, Receipt, Truck,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DeviceSearchCombobox } from '@/components/inventory/DeviceSearchCombobox';
 import { ProductSearchCombobox } from '@/components/inventory/ProductSearchCombobox';
 import { toast } from 'sonner';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { useCompany } from '@/contexts/CompanyContext';
 
 const PROVINCES = [
   { code: 'AB', name: 'Alberta' },
@@ -64,6 +71,7 @@ interface Sale {
   is_multi_item?: boolean | null;
   item_count?: number | null;
   subtotal?: number | null;
+  created_at?: string;
   devices?: {
     brand: string;
     model: string;
@@ -124,6 +132,15 @@ function extractProvinceFromAddress(address: string | null): string | null {
   return null;
 }
 
+function InfoRow({ label, value, icon, mono, className }: { label: string; value: React.ReactNode; icon?: React.ReactNode; mono?: boolean; className?: string }) {
+  return (
+    <div className={className}>
+      <p className="text-[11px] text-muted-foreground flex items-center gap-1 mb-0.5">{icon}{label}</p>
+      <p className={`text-sm font-medium ${mono ? 'font-mono' : ''}`}>{value || '—'}</p>
+    </div>
+  );
+}
+
 export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, hasReturn, onSaleUpdated }: OrderDetailDialogProps) {
   const [showLinkDevice, setShowLinkDevice] = useState(false);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
@@ -138,6 +155,9 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const [saleItems, setSaleItems] = useState<SaleItem[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
   const [returnData, setReturnData] = useState<any>(null);
+  const [companyName, setCompanyName] = useState<string>('');
+
+  const { companies } = useCompany();
 
   useEffect(() => {
     setLocalProvince(sale.shipping_province || null);
@@ -145,12 +165,18 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
     setManualCostDesc(sale.manual_cost_description || '');
   }, [sale.shipping_province, sale.id, sale.manual_cost]);
 
-  // Fetch sale_items and return data when dialog opens
+  useEffect(() => {
+    if (sale.company_id && companies.length > 0) {
+      const c = companies.find(c => c.id === sale.company_id);
+      setCompanyName(c?.name || '');
+    }
+  }, [sale.company_id, companies]);
+
   useEffect(() => {
     if (!open) return;
     setLoadingItems(true);
     setReturnData(null);
-    
+
     supabase
       .from('sale_items')
       .select('id, description, sku, quantity, unit_price, cost_price, total, imei, device_id, product_id')
@@ -161,7 +187,6 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
         setLoadingItems(false);
       });
 
-    // Fetch return/refund data
     supabase
       .from('return_authorizations')
       .select('*')
@@ -242,7 +267,6 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
     setSavingManualCost(true);
     try {
       const costValue = manualCostAmount ? parseFloat(manualCostAmount) : null;
-      // First, reverse any existing COGS entries for this sale
       const { data: existingCOGS } = await supabase
         .from('journal_entries')
         .select('id')
@@ -256,7 +280,6 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
         }
       }
 
-      // Update the sale — set back to revenue_only so the edge function will create COGS
       const { error } = await supabase.from('sales').update({
         manual_cost: costValue,
         manual_cost_description: manualCostDesc || null,
@@ -264,7 +287,6 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
       } as any).eq('id', sale.id);
       if (error) throw error;
 
-      // Trigger the accounting edge function to create proper COGS journal entries
       if (costValue && costValue > 0) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
@@ -291,7 +313,6 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const handleClearManualCost = async () => {
     setSavingManualCost(true);
     try {
-      // Reverse any existing COGS entries for this sale
       const { data: existingCOGS } = await supabase
         .from('journal_entries')
         .select('id')
@@ -327,7 +348,10 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
 
   const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+    new Date(dateString).toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+
+  const formatDateTime = (dateString: string) =>
+    new Date(dateString).toLocaleString('en-CA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
   const costPrice = sale.devices?.cost_price ?? sale.manual_cost ?? 0;
   const hasCost = !!(sale.devices?.cost_price || sale.manual_cost);
@@ -335,6 +359,8 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const totalDeductions = sale.shipping_cost + sale.marketplace_fees + sale.tax_amount;
   const netRevenue = grossRevenue - totalDeductions;
   const profit = sale.profit ?? (netRevenue - costPrice);
+  const profitMargin = grossRevenue > 0 ? ((profit / grossRevenue) * 100) : 0;
+  const isMultiItem = sale.is_multi_item || (sale.item_count && sale.item_count > 1) || saleItems.length > 1;
 
   const handleLinkDevice = async () => {
     if (!selectedDeviceId && !selectedProductId) return;
@@ -424,441 +450,417 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
     }
   };
 
-  const isMultiItem = sale.is_multi_item || (sale.item_count && sale.item_count > 1) || saleItems.length > 1;
+  const handleCopyOrderNumber = () => {
+    navigator.clipboard.writeText(sale.order_number);
+    toast.success('Order number copied');
+  };
+
+  const provinceName = PROVINCES.find(p => p.code === localProvince)?.name || localProvince;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span>Order {sale.order_number}</span>
-              {isMultiItem && (
-                <Badge variant="secondary" className="text-[10px] px-1.5">
-                  {sale.item_count || saleItems.length} items
-                </Badge>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <MarketplaceBadge marketplace={sale.marketplace as any} />
-              {hasReturn && (
-                <Badge variant="outline" className="text-destructive border-destructive/50">
-                  <RotateCcw className="h-3 w-3 mr-1" />
-                  Returned
-                </Badge>
-              )}
-            </div>
-          </DialogTitle>
-          <DialogDescription className="sr-only">Details for order {sale.order_number}</DialogDescription>
-        </DialogHeader>
+      <DialogContent className="max-w-4xl p-0 gap-0 overflow-hidden">
+        <DialogDescription className="sr-only">Details for order {sale.order_number}</DialogDescription>
 
-        <div className="space-y-4">
-          {/* Status Row */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <MarketplaceStatusBadge marketplace={sale.marketplace as any} marketplaceStatus={sale.marketplace_status} />
-            <FulfillmentBadge status={(sale.fulfillment_status || 'received') as any} />
-            {sale.accounting_status && (
-              <Badge variant="outline" className="text-xs capitalize">{sale.accounting_status.replace('_', ' ')}</Badge>
-            )}
-            <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1">
+        {/* ── Header ── */}
+        <div className="border-b border-border/60 bg-muted/20 px-6 py-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-lg font-bold flex items-center gap-2 flex-wrap">
+                <span className="truncate">{sale.order_number}</span>
+                <button onClick={handleCopyOrderNumber} className="text-muted-foreground hover:text-foreground transition-colors">
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+                {isMultiItem && (
+                  <Badge variant="secondary" className="text-[10px] px-1.5 font-normal">
+                    {sale.item_count || saleItems.length} items
+                  </Badge>
+                )}
+              </DialogTitle>
+              {sale.product_title && (
+                <p className="text-sm text-muted-foreground mt-1 truncate">{sale.product_title}</p>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <MarketplaceBadge marketplace={sale.marketplace as any} />
+              <MarketplaceStatusBadge marketplace={sale.marketplace} marketplaceStatus={sale.marketplace_status} />
+              <FulfillmentBadge status={(sale.fulfillment_status || 'received') as any} />
+            </div>
+          </div>
+
+          {/* Quick stats bar */}
+          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground flex-wrap">
+            <span className="flex items-center gap-1">
               <Calendar className="h-3 w-3" />
               {formatDate(sale.sale_date)}
             </span>
+            {companyName && (
+              <span className="flex items-center gap-1">
+                <Building2 className="h-3 w-3" />
+                {companyName}
+              </span>
+            )}
+            {sale.marketplace_sku && (
+              <span className="flex items-center gap-1 font-mono">
+                <Hash className="h-3 w-3" />
+                {sale.marketplace_sku}
+              </span>
+            )}
+            {sale.accounting_status && (
+              <Badge variant="outline" className="text-[10px] px-1.5 h-5 capitalize font-normal">
+                {sale.accounting_status.replace(/_/g, ' ')}
+              </Badge>
+            )}
+            {hasReturn && (
+              <Badge variant="outline" className="text-[10px] px-1.5 h-5 text-destructive border-destructive/40">
+                <RotateCcw className="h-2.5 w-2.5 mr-0.5" />
+                Returned
+              </Badge>
+            )}
           </div>
+        </div>
 
-          <Separator />
+        {/* ── Body — two columns ── */}
+        <ScrollArea className="max-h-[calc(85vh-160px)]">
+          <div className="grid grid-cols-1 lg:grid-cols-5 divide-y lg:divide-y-0 lg:divide-x divide-border/50">
 
-          {/* Marketplace Listing Info */}
-          {(sale.product_title || sale.marketplace_sku) && (
-            <>
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <ShoppingCart className="h-3.5 w-3.5" /> Marketplace Listing
-                </h4>
-                <div className="bg-muted/30 border border-border/40 rounded-lg p-3 text-sm space-y-1">
-                  {sale.product_title && (
-                    <p className="font-medium leading-snug">{sale.product_title}</p>
-                  )}
-                  {sale.marketplace_sku && (
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Hash className="h-3 w-3" />
-                      <span className="font-mono">{sale.marketplace_sku}</span>
-                    </p>
-                  )}
-                </div>
-              </div>
-              <Separator />
-            </>
-          )}
+            {/* LEFT COLUMN — 3/5 */}
+            <div className="lg:col-span-3 p-5 space-y-5">
 
-          {/* Line Items (multi-item orders) */}
-          {saleItems.length > 0 && (
-            <>
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Package className="h-3.5 w-3.5" /> Order Items ({saleItems.length})
-                </h4>
-                <div className="border border-border/40 rounded-lg overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-muted/40 text-xs text-muted-foreground">
-                        <th className="text-left px-3 py-1.5 font-medium">Item</th>
-                        <th className="text-right px-3 py-1.5 font-medium w-12">Qty</th>
-                        <th className="text-right px-3 py-1.5 font-medium w-24">Unit Price</th>
-                        <th className="text-right px-3 py-1.5 font-medium w-24">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {saleItems.map((item) => (
-                        <tr key={item.id} className="border-t border-border/30">
-                          <td className="px-3 py-2">
-                            <p className="font-medium leading-tight">{item.description}</p>
-                            <div className="flex gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                              {item.sku && <span className="font-mono">SKU: {item.sku}</span>}
-                              {item.imei && <span className="font-mono">IMEI: {item.imei}</span>}
-                            </div>
-                          </td>
-                          <td className="px-3 py-2 text-right tabular-nums">{item.quantity}</td>
-                          <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(item.unit_price)}</td>
-                          <td className="px-3 py-2 text-right tabular-nums font-medium">{formatCurrency(item.total)}</td>
+              {/* Line Items */}
+              {saleItems.length > 0 && (
+                <section>
+                  <SectionTitle icon={<Package className="h-3.5 w-3.5" />} title={`Order Items (${saleItems.length})`} />
+                  <div className="border border-border/40 rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-muted/40 text-[11px] text-muted-foreground uppercase tracking-wider">
+                          <th className="text-left px-3 py-2 font-medium">Item</th>
+                          <th className="text-right px-3 py-2 font-medium w-10">Qty</th>
+                          <th className="text-right px-3 py-2 font-medium w-20">Price</th>
+                          <th className="text-right px-3 py-2 font-medium w-20">Total</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <Separator />
-            </>
-          )}
-
-          {/* Customer Info */}
-          <div>
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5" /> Customer
-            </h4>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <div>
-                <p className="text-muted-foreground text-xs">Name</p>
-                <p className="font-medium">{sale.customer_name || '—'}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground text-xs">Email</p>
-                <p className="font-medium truncate">{sale.customer_email || '—'}</p>
-              </div>
-              {sale.shipping_address && (
-                <div className="col-span-2">
-                  <p className="text-muted-foreground text-xs flex items-center gap-1"><MapPin className="h-3 w-3" /> Shipping Address</p>
-                  <p className="font-medium">{sale.shipping_address}</p>
-                </div>
+                      </thead>
+                      <tbody>
+                        {saleItems.map((item) => (
+                          <tr key={item.id} className="border-t border-border/30">
+                            <td className="px-3 py-2">
+                              <p className="font-medium leading-tight text-sm">{item.description}</p>
+                              <div className="flex gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                                {item.sku && <span className="font-mono">SKU: {item.sku}</span>}
+                                {item.imei && <span className="font-mono">IMEI: {item.imei}</span>}
+                                {item.cost_price != null && <span>Cost: {formatCurrency(item.cost_price)}</span>}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-right tabular-nums">{item.quantity}</td>
+                            <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(item.unit_price)}</td>
+                            <td className="px-3 py-2 text-right tabular-nums font-medium">{formatCurrency(item.total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
               )}
-              <div className="col-span-2">
-                <p className="text-muted-foreground text-xs flex items-center gap-1 mb-1">
-                  <MapPin className="h-3 w-3" /> Shipping Province (for tax)
-                  {!localProvince && !suggestedProvince && (
-                    <span className="inline-flex items-center gap-0.5 text-destructive ml-1">
-                      <AlertTriangle className="h-3 w-3" /> Not set
-                    </span>
-                  )}
-                  {!localProvince && suggestedProvince && (
-                    <span className="inline-flex items-center gap-0.5 text-amber-500 ml-1 text-[10px]">
-                      Detected: {suggestedProvince} —
-                      <button
-                        className="underline font-medium hover:text-foreground"
-                        onClick={() => handleProvinceChange(suggestedProvince)}
-                        disabled={savingProvince}
-                      >
-                        Apply
-                      </button>
-                    </span>
-                  )}
-                </p>
-                <Select
-                  value={localProvince || 'none'}
-                  onValueChange={(v) => { if (v !== 'none') handleProvinceChange(v); }}
-                  disabled={savingProvince}
-                >
-                  <SelectTrigger className="h-8 text-sm w-[220px]">
-                    <SelectValue placeholder="Select province" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Select province…</SelectItem>
-                    {PROVINCES.map(p => (
-                      <SelectItem key={p.code} value={p.code}>{p.code} — {p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
 
-          <Separator />
-
-          {/* Device / Linked Item */}
-          <div>
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <Package className="h-3.5 w-3.5" /> Linked Inventory & Cost
-            </h4>
-            {sale.devices ? (
-              <div className="bg-muted/30 border border-border/40 rounded-lg p-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold">{sale.devices.brand} {sale.devices.model}</p>
-                    <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                      {sale.devices.imei && <span className="font-mono">IMEI: {sale.devices.imei}</span>}
-                      {sale.devices.storage && <span>{sale.devices.storage}</span>}
-                      {sale.devices.color && <span>{sale.devices.color}</span>}
-                      {sale.devices.condition && <span className="capitalize">{sale.devices.condition}</span>}
+              {/* Linked Inventory & Cost */}
+              <section>
+                <SectionTitle icon={<Package className="h-3.5 w-3.5" />} title="Linked Inventory & Cost" />
+                {sale.devices ? (
+                  <div className="bg-muted/20 border border-border/40 rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm">{sale.devices.brand} {sale.devices.model}</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[11px] text-muted-foreground">
+                          {sale.devices.imei && <span className="font-mono">IMEI: {sale.devices.imei}</span>}
+                          {sale.devices.storage && <span>{sale.devices.storage}</span>}
+                          {sale.devices.color && <span>{sale.devices.color}</span>}
+                          {sale.devices.condition && <span className="capitalize">{sale.devices.condition}</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-sm font-semibold tabular-nums">{formatCurrency(costPrice)}</span>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={handleUnlinkDevice} disabled={linking}>
+                          <Unlink className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-muted-foreground">Cost: {formatCurrency(costPrice)}</p>
-                    <Button variant="ghost" size="sm" onClick={handleUnlinkDevice} disabled={linking} className="text-destructive hover:text-destructive">
-                      <Unlink className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : sale.manual_cost ? (
-              <div className="bg-muted/30 border border-border/40 rounded-lg p-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold flex items-center gap-1.5">
-                      <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
-                      Manual Cost Entry
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">{sale.manual_cost_description || 'Direct cost (labour, services, etc.)'}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-muted-foreground">Cost: {formatCurrency(sale.manual_cost)}</p>
-                    <Button variant="ghost" size="sm" onClick={handleClearManualCost} disabled={savingManualCost} className="text-destructive hover:text-destructive">
-                      <Unlink className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-muted/20 border border-border/40 rounded-lg p-3">
-                {showLinkDevice ? (
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">Link an item or enter a manual cost</p>
-                    <Tabs value={linkType} onValueChange={(v) => { setLinkType(v as any); setSelectedDeviceId(null); setSelectedProductId(null); }}>
-                      <TabsList className="w-full">
-                        <TabsTrigger value="device" className="flex-1">Device</TabsTrigger>
-                        <TabsTrigger value="product" className="flex-1">Product</TabsTrigger>
-                        <TabsTrigger value="manual" className="flex-1">Manual Cost</TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="device" className="mt-2">
-                        <DeviceSearchCombobox
-                          value={selectedDeviceId}
-                          onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
-                          companyId={sale.company_id || undefined}
-                        />
-                      </TabsContent>
-                      <TabsContent value="product" className="mt-2">
-                        <ProductSearchCombobox
-                          value={selectedProductId}
-                          onSelect={(product) => setSelectedProductId(product?.id ?? null)}
-                          companyId={sale.company_id || undefined}
-                        />
-                      </TabsContent>
-                      <TabsContent value="manual" className="mt-2 space-y-3">
-                        <div>
-                          <Label className="text-xs">Cost Amount</Label>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="e.g. 50.00"
-                            value={manualCostAmount}
-                            onChange={(e) => setManualCostAmount(e.target.value)}
-                          />
-                        </div>
-                        <div>
-                          <Label className="text-xs">Description</Label>
-                          <Textarea
-                            placeholder="e.g. 2 hours labour @ $25/hr, service fee, parts..."
-                            value={manualCostDesc}
-                            onChange={(e) => setManualCostDesc(e.target.value)}
-                            rows={2}
-                          />
-                        </div>
-                      </TabsContent>
-                    </Tabs>
-                    <div className="flex gap-2 justify-end">
-                      <Button variant="ghost" size="sm" onClick={() => { setShowLinkDevice(false); setSelectedDeviceId(null); setSelectedProductId(null); }}>Cancel</Button>
-                      {linkType === 'manual' ? (
-                        <Button size="sm" onClick={handleSaveManualCost} disabled={!manualCostAmount || savingManualCost}>
-                          {savingManualCost ? 'Saving...' : 'Save Cost'}
+                ) : sale.manual_cost ? (
+                  <div className="bg-muted/20 border border-border/40 rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-sm flex items-center gap-1.5">
+                          <Wrench className="h-3.5 w-3.5 text-muted-foreground" />
+                          Manual Cost Entry
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{sale.manual_cost_description || 'Direct cost (labour, services, etc.)'}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className="text-sm font-semibold tabular-nums">{formatCurrency(sale.manual_cost)}</span>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={handleClearManualCost} disabled={savingManualCost}>
+                          <Unlink className="h-3.5 w-3.5" />
                         </Button>
-                      ) : (
-                        <Button size="sm" onClick={handleLinkDevice} disabled={(!selectedDeviceId && !selectedProductId) || linking}>
-                          {linking ? 'Linking...' : 'Confirm Link'}
-                        </Button>
-                      )}
+                      </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">No inventory item linked</p>
-                    <Button variant="outline" size="sm" onClick={() => setShowLinkDevice(true)}>
-                      <Link className="h-3.5 w-3.5 mr-1.5" />
-                      Link / Add Cost
-                    </Button>
+                  <div className="bg-muted/10 border border-dashed border-border/50 rounded-lg p-3">
+                    {showLinkDevice ? (
+                      <div className="space-y-3">
+                        <Tabs value={linkType} onValueChange={(v) => { setLinkType(v as any); setSelectedDeviceId(null); setSelectedProductId(null); }}>
+                          <TabsList className="w-full h-8">
+                            <TabsTrigger value="device" className="flex-1 text-xs">Device</TabsTrigger>
+                            <TabsTrigger value="product" className="flex-1 text-xs">Product</TabsTrigger>
+                            <TabsTrigger value="manual" className="flex-1 text-xs">Manual Cost</TabsTrigger>
+                          </TabsList>
+                          <TabsContent value="device" className="mt-2">
+                            <DeviceSearchCombobox
+                              value={selectedDeviceId}
+                              onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
+                              companyId={sale.company_id || undefined}
+                            />
+                          </TabsContent>
+                          <TabsContent value="product" className="mt-2">
+                            <ProductSearchCombobox
+                              value={selectedProductId}
+                              onSelect={(product) => setSelectedProductId(product?.id ?? null)}
+                              companyId={sale.company_id || undefined}
+                            />
+                          </TabsContent>
+                          <TabsContent value="manual" className="mt-2 space-y-2">
+                            <div>
+                              <Label className="text-xs">Cost Amount</Label>
+                              <Input type="number" step="0.01" placeholder="e.g. 50.00" value={manualCostAmount} onChange={(e) => setManualCostAmount(e.target.value)} className="h-8" />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Description</Label>
+                              <Textarea placeholder="e.g. 2 hours labour @ $25/hr" value={manualCostDesc} onChange={(e) => setManualCostDesc(e.target.value)} rows={2} />
+                            </div>
+                          </TabsContent>
+                        </Tabs>
+                        <div className="flex gap-2 justify-end">
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setShowLinkDevice(false); setSelectedDeviceId(null); setSelectedProductId(null); }}>Cancel</Button>
+                          {linkType === 'manual' ? (
+                            <Button size="sm" className="h-7 text-xs" onClick={handleSaveManualCost} disabled={!manualCostAmount || savingManualCost}>
+                              {savingManualCost ? 'Saving...' : 'Save Cost'}
+                            </Button>
+                          ) : (
+                            <Button size="sm" className="h-7 text-xs" onClick={handleLinkDevice} disabled={(!selectedDeviceId && !selectedProductId) || linking}>
+                              {linking ? 'Linking...' : 'Confirm Link'}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm text-muted-foreground">No inventory item linked</p>
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setShowLinkDevice(true)}>
+                          <Link className="h-3 w-3 mr-1" />
+                          Link / Add Cost
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            )}
-          </div>
+              </section>
 
-          <Separator />
-
-          {/* Financial Breakdown */}
-          <div>
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-              <DollarSign className="h-3.5 w-3.5" /> Financial Breakdown
-            </h4>
-            <div className="space-y-1.5 text-sm">
-              {sale.subtotal != null && sale.subtotal !== sale.sale_price && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span className="font-medium tabular-nums">{formatCurrency(sale.subtotal)}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Sale Price (total charged)</span>
-                <span className="font-medium tabular-nums">{formatCurrency(grossRevenue)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Shipping Cost</span>
-                <span className="text-destructive tabular-nums">-{formatCurrency(sale.shipping_cost)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Marketplace Fees</span>
-                <span className="text-destructive tabular-nums">-{formatCurrency(sale.marketplace_fees)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">
-                  Tax {sale.is_marketplace_remitted ? '(marketplace remits)' : '(you remit)'}
-                </span>
-                <span className="text-destructive tabular-nums">-{formatCurrency(sale.tax_amount)}</span>
-              </div>
-              <Separator className="my-1" />
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Net Revenue</span>
-                <span className="font-medium tabular-nums">{formatCurrency(netRevenue)}</span>
-              </div>
-              {hasCost && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    {sale.devices ? 'Cost of Goods (COGS)' : 'Direct Cost'}
-                    {sale.manual_cost && !sale.devices && (
-                      <span className="text-xs ml-1">({sale.manual_cost_description || 'manual'})</span>
+              {/* Refund / Return */}
+              {returnData && (
+                <section>
+                  <SectionTitle icon={<RotateCcw className="h-3.5 w-3.5" />} title="Refund / Return" />
+                  <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <InfoRow label="RMA #" value={returnData.rma_number} mono />
+                      <InfoRow label="Status" value={<span className="capitalize">{returnData.status}</span>} />
+                      <InfoRow label="Resolution" value={<span className="capitalize">{returnData.resolution_type}</span>} />
+                      <InfoRow label="Refund Amount" value={<span className="text-destructive font-semibold">{formatCurrency(Number(returnData.refund_amount || 0))}</span>} />
+                      <InfoRow label="Tax Refunded" value={<span className="text-destructive">{formatCurrency(Number(returnData.tax_refunded || 0))}</span>} />
+                      <InfoRow label="Refund Date" value={returnData.refund_date ? formatDate(returnData.refund_date) : '—'} />
+                    </div>
+                    {returnData.reason && (
+                      <div>
+                        <p className="text-[11px] text-muted-foreground mb-0.5">Reason</p>
+                        <p className="text-sm">{returnData.reason}</p>
+                      </div>
                     )}
-                  </span>
-                  <span className="text-destructive tabular-nums">-{formatCurrency(costPrice)}</span>
-                </div>
-              )}
-              <Separator className="my-1" />
-              <div className="flex justify-between text-base font-bold">
-                <span>Profit / Loss</span>
-                <span className={profit >= 0 ? 'text-[hsl(var(--success))]' : 'text-destructive'}>
-                  {formatCurrency(profit)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Notes */}
-          {sale.notes && (
-            <>
-              <Separator />
-              <div>
-                <p className="text-muted-foreground text-xs flex items-center gap-1 mb-1"><FileText className="h-3 w-3" /> Notes</p>
-                <p className="text-sm">{sale.notes}</p>
-              </div>
-            </>
-          )}
-
-          {/* Refund / Return Details */}
-          {returnData && (
-            <>
-              <Separator />
-              <div>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <RotateCcw className="h-3.5 w-3.5" /> Refund / Return Details
-                </h4>
-                <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3 space-y-2 text-sm">
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                    <div>
-                      <span className="text-muted-foreground text-xs">RMA #</span>
-                      <p className="font-mono text-xs font-medium">{returnData.rma_number}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground text-xs">Status</span>
-                      <p className="capitalize font-medium">{returnData.status}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground text-xs">Resolution</span>
-                      <p className="capitalize font-medium">{returnData.resolution_type}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground text-xs">Refund Date</span>
-                      <p className="font-medium">{returnData.refund_date ? formatDate(returnData.refund_date) : '—'}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground text-xs">Refund Amount</span>
-                      <p className="font-medium text-destructive">{formatCurrency(Number(returnData.refund_amount || 0))}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground text-xs">Tax Refunded</span>
-                      <p className="font-medium text-destructive">{formatCurrency(Number(returnData.tax_refunded || 0))}</p>
+                    {returnData.notes && (
+                      <div>
+                        <p className="text-[11px] text-muted-foreground mb-0.5">Notes</p>
+                        <p className="text-sm">{returnData.notes}</p>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 pt-1 border-t border-destructive/10">
+                      <span className="text-[11px] text-muted-foreground">Accounting:</span>
+                      {returnData.accounting_status === 'processed' ? (
+                        <Badge variant="outline" className="text-[10px] px-1.5 h-5 text-emerald-500 border-emerald-500/30">JE Posted</Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] px-1.5 h-5 text-amber-500 border-amber-500/30">Pending</Badge>
+                      )}
                     </div>
                   </div>
-                  {returnData.reason && (
+                </section>
+              )}
+
+              {/* Notes */}
+              {sale.notes && (
+                <section>
+                  <SectionTitle icon={<FileText className="h-3.5 w-3.5" />} title="Notes" />
+                  <p className="text-sm text-muted-foreground leading-relaxed bg-muted/20 border border-border/30 rounded-lg p-3">{sale.notes}</p>
+                </section>
+              )}
+            </div>
+
+            {/* RIGHT COLUMN — 2/5 */}
+            <div className="lg:col-span-2 p-5 space-y-5 bg-muted/5">
+
+              {/* Financial Summary */}
+              <section>
+                <SectionTitle icon={<DollarSign className="h-3.5 w-3.5" />} title="Financial Summary" />
+                <div className="space-y-2 text-sm">
+                  {sale.subtotal != null && sale.subtotal !== sale.sale_price && (
+                    <FinancialRow label="Subtotal" value={formatCurrency(sale.subtotal)} />
+                  )}
+                  <FinancialRow label="Sale Price" value={formatCurrency(grossRevenue)} bold />
+                  <FinancialRow label="Shipping" value={`-${formatCurrency(sale.shipping_cost)}`} negative />
+                  <FinancialRow label="Marketplace Fees" value={`-${formatCurrency(sale.marketplace_fees)}`} negative />
+                  <FinancialRow
+                    label={`Tax ${sale.is_marketplace_remitted ? '(mkt remits)' : '(you remit)'}`}
+                    value={`-${formatCurrency(sale.tax_amount)}`}
+                    negative
+                  />
+                  <Separator className="my-1.5" />
+                  <FinancialRow label="Net Revenue" value={formatCurrency(netRevenue)} bold />
+                  {hasCost && (
+                    <FinancialRow
+                      label={sale.devices ? 'COGS' : 'Direct Cost'}
+                      value={`-${formatCurrency(costPrice)}`}
+                      negative
+                    />
+                  )}
+                  <Separator className="my-1.5" />
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="font-bold text-base">Profit / Loss</span>
+                    <div className="text-right">
+                      <span className={`font-bold text-base tabular-nums ${profit >= 0 ? 'text-[hsl(var(--success))]' : 'text-destructive'}`}>
+                        {formatCurrency(profit)}
+                      </span>
+                      <p className={`text-[10px] flex items-center justify-end gap-0.5 ${profit >= 0 ? 'text-[hsl(var(--success))]' : 'text-destructive'}`}>
+                        {profit >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                        {profitMargin.toFixed(1)}% margin
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <Separator />
+
+              {/* Customer & Shipping */}
+              <section>
+                <SectionTitle icon={<User className="h-3.5 w-3.5" />} title="Customer" />
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-2">
+                    <InfoRow label="Name" value={sale.customer_name} />
+                    <InfoRow label="Email" value={sale.customer_email ? <span className="truncate block">{sale.customer_email}</span> : '—'} />
+                  </div>
+                  {sale.shipping_address && (
                     <div>
-                      <span className="text-muted-foreground text-xs">Reason</span>
-                      <p className="text-sm">{returnData.reason}</p>
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1 mb-0.5">
+                        <Truck className="h-3 w-3" /> Shipping Address
+                      </p>
+                      <p className="text-sm font-medium leading-snug">{sale.shipping_address}</p>
                     </div>
                   )}
-                  {returnData.notes && (
-                    <div>
-                      <span className="text-muted-foreground text-xs">Notes</span>
-                      <p className="text-sm">{returnData.notes}</p>
-                    </div>
-                  )}
-                  <div className="pt-1 border-t border-destructive/10">
-                    <span className="text-muted-foreground text-xs">Accounting</span>
-                    <p className="text-xs">
-                      {returnData.accounting_status === 'processed' ? (
-                        <Badge variant="outline" className="text-[10px] px-1.5 text-emerald-500 border-emerald-500/30">Journal entries posted</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px] px-1.5 text-amber-500 border-amber-500/30">Pending</Badge>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1 mb-1">
+                      <MapPin className="h-3 w-3" /> Province (tax)
+                      {!localProvince && !suggestedProvince && (
+                        <span className="inline-flex items-center gap-0.5 text-destructive ml-1">
+                          <AlertTriangle className="h-3 w-3" /> Not set
+                        </span>
+                      )}
+                      {!localProvince && suggestedProvince && (
+                        <span className="inline-flex items-center gap-0.5 text-amber-500 ml-1 text-[10px]">
+                          Detected: {suggestedProvince} —
+                          <button className="underline font-medium hover:text-foreground" onClick={() => handleProvinceChange(suggestedProvince)} disabled={savingProvince}>Apply</button>
+                        </span>
                       )}
                     </p>
+                    <Select
+                      value={localProvince || 'none'}
+                      onValueChange={(v) => { if (v !== 'none') handleProvinceChange(v); }}
+                      disabled={savingProvince}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Select province" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Select province…</SelectItem>
+                        {PROVINCES.map(p => (
+                          <SelectItem key={p.code} value={p.code}>{p.code} — {p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-              </div>
-            </>
-          )}
+              </section>
 
-          {/* Return Action */}
-          {!hasReturn && !returnData && (
-            <>
               <Separator />
-              <Button
-                variant="outline"
-                className="w-full text-destructive hover:text-destructive"
-                onClick={() => {
-                  onOpenChange(false);
-                  onInitiateReturn();
-                }}
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Initiate Return
-              </Button>
-            </>
-          )}
-        </div>
+
+              {/* Order Meta */}
+              <section>
+                <SectionTitle icon={<Receipt className="h-3.5 w-3.5" />} title="Order Details" />
+                <div className="grid grid-cols-2 gap-2">
+                  <InfoRow label="Order Date" value={formatDate(sale.sale_date)} />
+                  <InfoRow label="Marketplace" value={<span className="capitalize">{sale.marketplace}</span>} />
+                  <InfoRow label="Fulfillment" value={<span className="capitalize">{sale.fulfillment_status || 'Unknown'}</span>} />
+                  <InfoRow label="Province" value={provinceName || '—'} />
+                  {sale.created_at && (
+                    <InfoRow className="col-span-2" label="Imported At" value={formatDateTime(sale.created_at)} icon={<Clock className="h-3 w-3" />} />
+                  )}
+                </div>
+              </section>
+
+              {/* Actions */}
+              {!hasReturn && !returnData && (
+                <>
+                  <Separator />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full text-destructive hover:text-destructive h-8 text-xs"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onInitiateReturn();
+                    }}
+                  >
+                    <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                    Initiate Return / Refund
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
+  return (
+    <h4 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+      {icon} {title}
+    </h4>
+  );
+}
+
+function FinancialRow({ label, value, bold, negative }: { label: string; value: string; bold?: boolean; negative?: boolean }) {
+  return (
+    <div className="flex justify-between items-center">
+      <span className={`text-muted-foreground ${bold ? 'font-medium text-foreground' : ''}`}>{label}</span>
+      <span className={`tabular-nums ${bold ? 'font-semibold' : ''} ${negative ? 'text-destructive/80' : ''}`}>{value}</span>
+    </div>
   );
 }
