@@ -387,6 +387,11 @@ export default function Sales() {
     );
   }
 
+  // Calculate unprocessed/revenue-only counts from allSales
+  const unprocessedCount = sales.filter(s => s.accounting_status === 'unprocessed').length;
+  const revenueOnlyCount = sales.filter(s => s.accounting_status === 'revenue_only').length;
+  const showAccountingAlert = (unprocessedCount > 0 || revenueOnlyCount > 0) && isAdmin;
+
   return (
     <DashboardLayout>
       <div className="space-y-6 animate-fade-in">
