@@ -10,6 +10,7 @@ import { getCompanyDisplayName } from '@/lib/companyNames';
 // Statements
 import { ProfitLossReport } from '@/components/accounting/ProfitLossReport';
 import { BalanceSheetReport } from '@/components/accounting/BalanceSheetReport';
+import { CashFlowReport } from '@/components/accounting/CashFlowReport';
 
 // Ledger & Accounts
 import { ChartOfAccounts } from '@/components/accounting/ChartOfAccounts';
@@ -48,11 +49,11 @@ import {
   TrendingUp, ArrowLeftRight, Receipt,
   Scale, CheckSquare, Calculator, FileText, LayoutDashboard,
   Warehouse, Banknote, Wallet, BookOpen, ClipboardCheck,
-  Building2, Lock, Package, Link2, PackageSearch,
+  Building2, Lock, Package, Link2, PackageSearch, Coins,
 } from 'lucide-react';
 
 type SubView =
-  | 'pl' | 'balance-sheet'
+  | 'pl' | 'balance-sheet' | 'cash-flow'
   | 'chart-of-accounts' | 'journal-entries' | 'trial-balance'
   | 'reconciliation' | 'payouts' | 'fba-reconciliation'
   | 'ap' | 'ar'
@@ -70,6 +71,7 @@ const SECTIONS = [
     views: [
       { value: 'pl' as SubView, label: 'Profit & Loss', icon: TrendingUp },
       { value: 'balance-sheet' as SubView, label: 'Balance Sheet', icon: Scale },
+      { value: 'cash-flow' as SubView, label: 'Cash Flow', icon: Coins },
     ],
   },
   {
@@ -240,6 +242,7 @@ export default function Financials() {
           <div className="min-h-[400px]">
             {subView === 'pl' && <ProfitLossReport companyView={companyView} />}
             {subView === 'balance-sheet' && <BalanceSheetReport companyView={companyView} />}
+            {subView === 'cash-flow' && <CashFlowReport companyView={companyView} />}
 
             {subView === 'chart-of-accounts' && <ChartOfAccounts />}
             {subView === 'journal-entries' && <JournalEntries />}
