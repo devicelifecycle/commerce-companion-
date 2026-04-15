@@ -129,7 +129,6 @@ serve(async (req) => {
     const companyId = rma.company_id;
     const returnDate = rma.refund_date || new Date().toISOString().split("T")[0];
     const refundAmount = Number(rma.refund_amount || rma.original_cost || 0);
-    // Use tax_refunded from RMA, or fall back to original sale's tax_amount
     let taxRefunded = Number(rma.tax_refunded || 0);
 
     if (rma.return_type === "sales_return" && rma.sale_id) {
@@ -142,9 +141,14 @@ serve(async (req) => {
 
       if (!sale) throw new Error("Original sale not found");
 
-      // If tax_refunded wasn't explicitly set, use original sale's tax
-      if (taxRefunded === 0 && Number(sale.tax_amount || 0) > 0) {
-        taxRefunded = Number(sale.tax_amount);
+      // Always calculate proportional tax refund based on the effective tax rate
+      // e.g. if sale was $225.99 with $26.16 HST (13%), a $25 refund gets $25 * (26.16/225.99) ≈ $2.89 tax refund
+      const originalSalePrice = Number(sale.sale_price || 0);
+      const originalTax = Number(sale.tax_amount || 0);
+      if (taxRefunded === 0 && originalTax > 0 && originalSalePrice > 0) {
+        const taxRate = originalTax / originalSalePrice;
+        taxRefunded = Math.round(refundAmount * taxRate * 100) / 100;
+        console.log(`Proportional tax refund: $${refundAmount} × ${(taxRate * 100).toFixed(2)}% = $${taxRefunded}`);
       }
 
       const codes = ACCOUNT_MAP[sale.marketplace] || ACCOUNT_MAP["other"];
