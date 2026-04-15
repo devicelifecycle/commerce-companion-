@@ -53,8 +53,10 @@ interface ReturnAuthorization {
   company_id: string | null;
   marketplace_initiated?: boolean;
   refund_reason_detail?: string | null;
-  device?: { brand: string; model: string; imei: string | null };
+  created_by?: string | null;
+  device?: { brand: string; model: string; imei: string | null; storage: string | null; color: string | null };
   supplier?: { name: string };
+  sale?: { order_number: string; marketplace: string | null; sale_price: number | null };
 }
 
 export function ReturnsManagement() {
