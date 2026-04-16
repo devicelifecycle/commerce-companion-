@@ -26,6 +26,7 @@ import {
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { format } from 'date-fns';
 import { toTitleCase } from '@/lib/utils';
+import { ActivityFooter } from '@/components/activity/ActivityFooter';
 
 interface Invoice {
   id: string;
@@ -1382,6 +1383,8 @@ export default function Invoices() {
           })()}
         </DialogContent>
       </Dialog>
+
+      <ActivityFooter module="Invoices" tableNames={['invoices', 'invoice_items', 'accounts_receivable', 'ar_payments']} />
     </DashboardLayout>
     </PermissionGuard>
   );

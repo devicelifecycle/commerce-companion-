@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDataRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
+import { useAuditLog } from '@/hooks/useAuditLog';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { PermissionGuard } from '@/components/layout/PermissionGuard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,6 +22,7 @@ import { format } from 'date-fns';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
 import { toTitleCase } from '@/lib/utils';
+import { ActivityFooter } from '@/components/activity/ActivityFooter';
 
 const CHANNELS = ['Shopify', 'Amazon', 'Walmart', 'BestBuy', 'Temu', 'eBay', 'In-Store', 'Other'] as const;
 
@@ -94,6 +96,7 @@ interface SaleRecord {
 
 export default function Customers() {
   const { selectedCompany } = useCompany();
+  const { logCreate, logUpdate, logDelete } = useAuditLog();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -215,10 +218,12 @@ export default function Customers() {
     if (editing) {
       const { error } = await supabase.from('customers').update(payload as any).eq('id', editing.id);
       if (error) { toast.error('Failed to update customer'); return; }
+      logUpdate('customers', editing.id, editing, payload, `Updated customer "${payload.name}"`);
       toast.success('Customer updated');
     } else {
-      const { error } = await supabase.from('customers').insert(payload as any);
+      const { data, error } = await supabase.from('customers').insert(payload as any).select().single();
       if (error) { toast.error('Failed to create customer'); return; }
+      if (data) logCreate('customers', data.id, payload, `Created customer "${payload.name}"`);
       toast.success('Customer created');
     }
 
@@ -230,6 +235,7 @@ export default function Customers() {
     if (!deleting) return;
     const { error } = await supabase.from('customers').delete().eq('id', deleting.id);
     if (error) { toast.error('Failed to delete customer'); return; }
+    logDelete('customers', deleting.id, deleting, `Deleted customer "${deleting.name}"`);
     toast.success('Customer deleted');
     setDeleting(null);
     fetchCustomers();
@@ -239,6 +245,7 @@ export default function Customers() {
     const ids = [...selection.selectedIds];
     const { error } = await supabase.from('customers').delete().in('id', ids);
     if (error) { toast.error('Failed to delete customers'); return; }
+    for (const id of ids) logDelete('customers', id, null, 'Bulk customer deletion');
     toast.success(`${ids.length} customer(s) deleted`);
     selection.clear();
     fetchCustomers();
@@ -418,6 +425,8 @@ export default function Customers() {
               },
             ]}
           />
+
+          <ActivityFooter module="Customers" tableNames={['customers']} />
         </div>
 
         {/* Create / Edit Dialog */}

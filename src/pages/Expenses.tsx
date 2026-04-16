@@ -47,6 +47,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { format } from 'date-fns';
+import { ActivityFooter } from '@/components/activity/ActivityFooter';
 
 interface Expense {
   id: string;
@@ -491,6 +492,8 @@ export default function Expenses() {
             { label: 'Delete', icon: <Trash2 className="h-4 w-4 mr-1" />, onClick: handleBulkDelete, variant: 'destructive' as const },
           ]}
         />
+
+        <ActivityFooter module="Expenses" tableNames={['expenses', 'expense_refunds']} />
       </div>
     </DashboardLayout>
     </PermissionGuard>
