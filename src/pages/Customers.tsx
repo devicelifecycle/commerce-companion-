@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';
 import { toTitleCase } from '@/lib/utils';
+import { ActivityFooter } from '@/components/activity/ActivityFooter';
 
 const CHANNELS = ['Shopify', 'Amazon', 'Walmart', 'BestBuy', 'Temu', 'eBay', 'In-Store', 'Other'] as const;
 

@@ -26,6 +26,7 @@ import {
 import { CreateInvoiceDialog } from '@/components/invoices/CreateInvoiceDialog';
 import { format } from 'date-fns';
 import { toTitleCase } from '@/lib/utils';
+import { ActivityFooter } from '@/components/activity/ActivityFooter';
 
 interface Invoice {
   id: string;

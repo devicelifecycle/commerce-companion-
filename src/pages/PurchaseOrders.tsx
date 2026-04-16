@@ -28,6 +28,7 @@ import {
 import { CreatePurchaseOrderDialog } from '@/components/procurement/CreatePurchaseOrderDialog';
 import { ReceivePODialog } from '@/components/procurement/ReceivePODialog';
 import { ImportRepairPartsDialog } from '@/components/procurement/ImportRepairPartsDialog';
+import { ActivityFooter } from '@/components/activity/ActivityFooter';
 import { PODetailDialog } from '@/components/procurement/PODetailDialog';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { BatchActionBar } from '@/components/ui/batch-action-bar';

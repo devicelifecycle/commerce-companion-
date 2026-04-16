@@ -29,7 +29,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Plus, Package, Trash2, Edit2, Info } from 'lucide-react';
-
+import { ActivityFooter } from '@/components/activity/ActivityFooter';
 
 interface Supplier {
   id: string;
