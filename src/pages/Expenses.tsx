@@ -492,6 +492,8 @@ export default function Expenses() {
             { label: 'Delete', icon: <Trash2 className="h-4 w-4 mr-1" />, onClick: handleBulkDelete, variant: 'destructive' as const },
           ]}
         />
+
+        <ActivityFooter module="Expenses" tableNames={['expenses', 'expense_refunds']} />
       </div>
     </DashboardLayout>
     </PermissionGuard>
