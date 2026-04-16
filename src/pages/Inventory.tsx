@@ -35,6 +35,7 @@ import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ActivityFooter } from '@/components/activity/ActivityFooter';
 
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -414,6 +415,8 @@ export default function Inventory() {
             </TabsContent>
           )}
         </Tabs>
+
+        <ActivityFooter module="Inventory" tableNames={['devices', 'inventory_transfers', 'device_repairs', 'device_refurbishment_tasks', 'device_refurbishment_parts']} />
 
         
 

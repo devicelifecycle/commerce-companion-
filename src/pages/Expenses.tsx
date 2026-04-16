@@ -47,6 +47,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { format } from 'date-fns';
+import { ActivityFooter } from '@/components/activity/ActivityFooter';
 
 interface Expense {
   id: string;
