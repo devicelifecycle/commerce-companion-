@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getCompanyDisplayName } from '@/lib/companyNames';
+import { ActivityFooter } from '@/components/activity/ActivityFooter';
 
 type Marketplace = 'shopify' | 'amazon' | 'bestbuy' | 'other';
 type FulfillmentStatus = 'received' | 'pending' | 'shipped' | 'delivered' | 'cancelled';
@@ -788,6 +789,10 @@ export default function Sales() {
           ] : []),
         ]}
       />
+
+      <div className="px-6 pb-6">
+        <ActivityFooter module="Sales" tableNames={['sales', 'sale_items']} />
+      </div>
     </DashboardLayout>
   );
 }
