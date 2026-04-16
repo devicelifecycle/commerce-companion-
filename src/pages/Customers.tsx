@@ -419,6 +419,8 @@ export default function Customers() {
               },
             ]}
           />
+
+          <ActivityFooter module="Customers" tableNames={['customers']} />
         </div>
 
         {/* Create / Edit Dialog */}

@@ -508,6 +508,8 @@ export default function Suppliers() {
             <SupplierForm onSubmit={handleUpdateSupplier} submitLabel="Update Supplier" />
           </DialogContent>
         </Dialog>
+
+        <ActivityFooter module="Suppliers" tableNames={['suppliers']} />
       </div>
     </DashboardLayout>
     </PermissionGuard>

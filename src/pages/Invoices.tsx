@@ -1383,6 +1383,8 @@ export default function Invoices() {
           })()}
         </DialogContent>
       </Dialog>
+
+      <ActivityFooter module="Invoices" tableNames={['invoices', 'invoice_items', 'accounts_receivable', 'ar_payments']} />
     </DashboardLayout>
     </PermissionGuard>
   );
