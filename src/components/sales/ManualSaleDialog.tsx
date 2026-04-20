@@ -139,6 +139,7 @@ function newLineItem(): LineItem {
     cost_price: 0,
     manual_cost: 0,
     manual_cost_note: '',
+    tax_treatment: 'standard',
     tax_amount: 0,
     item_type: 'manual',
   };
