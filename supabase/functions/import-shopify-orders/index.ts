@@ -539,24 +539,25 @@ serve(async (req) => {
       metadata: { total_from_api: orders.length, voided: cancelledOrders.length },
     });
 
-    // Trigger accounting only for non-voided newly imported orders
+    // Trigger accounting only for non-voided newly imported orders.
+    // Fire-and-forget: do NOT await — the accounting processor scans all
+    // unprocessed sales globally and can exceed the 150s edge function
+    // idle timeout. Let it run async; results are visible in its own logs.
     let accountingResult = null;
     if (importedOrders.length > 0) {
-      try {
-        const accountingUrl = `${SUPABASE_URL}/functions/v1/process-sale-accounting`;
-        const accountingResponse = await fetch(accountingUrl, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({}),
-        });
-        accountingResult = await accountingResponse.json();
-        console.log("Accounting processor result:", accountingResult);
-      } catch (accError: any) {
-        console.error("Accounting processor error:", accError.message);
-      }
+      const accountingUrl = `${SUPABASE_URL}/functions/v1/process-sale-accounting`;
+      fetch(accountingUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      }).catch((accError: any) => {
+        console.error("Accounting processor error:", accError?.message);
+      });
+      console.log("Accounting processor triggered (async)");
+      accountingResult = { triggered: true, async: true };
     }
 
     return new Response(
