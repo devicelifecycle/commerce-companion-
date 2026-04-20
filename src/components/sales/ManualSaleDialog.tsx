@@ -265,8 +265,33 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
     .filter(li => li.device_id)
     .map(li => li.device_id as string);
 
+  const shippingProvince = form.watch('shipping_province') || 'ON';
+
+  // Auto-recompute per-line tax whenever province / qty / price / treatment changes
+  useEffect(() => {
+    setLineItems(prev => {
+      let changed = false;
+      const next = prev.map(li => {
+        const { tax } = computeLineTax(li.tax_treatment, shippingProvince, li.quantity, li.unit_price);
+        if (Math.abs(tax - (li.tax_amount || 0)) > 0.005) {
+          changed = true;
+          return { ...li, tax_amount: tax };
+        }
+        return li;
+      });
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shippingProvince, lineItems.map(l => `${l.id}:${l.quantity}:${l.unit_price}:${l.tax_treatment}`).join('|')]);
+
   // --- Totals ---
-  const subtotal = lineItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+  const subtotal = lineItems.reduce((sum, item) => {
+    // For tax_included items, the entered unit_price already contains tax — strip it for revenue subtotal
+    if (item.tax_treatment === 'tax_included') {
+      return sum + (item.quantity * item.unit_price - (item.tax_amount || 0));
+    }
+    return sum + item.quantity * item.unit_price;
+  }, 0);
   const totalTax = lineItems.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
   const shippingCost = Number(form.watch('shipping_cost')) || 0;
   const marketplaceFees = Number(form.watch('marketplace_fees')) || 0;
