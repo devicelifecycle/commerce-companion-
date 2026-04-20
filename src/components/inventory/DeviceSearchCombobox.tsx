@@ -27,7 +27,8 @@ interface DeviceSearchComboboxProps {
   value?: string | null;
   onSelect: (device: DeviceOption | null) => void;
   companyId?: string;
-  statusFilter?: string;
+  /** Single status, array of statuses, or null/'all' to disable status filter. */
+  statusFilter?: string | string[] | null;
   excludeIds?: string[];
   placeholder?: string;
   disabled?: boolean;
