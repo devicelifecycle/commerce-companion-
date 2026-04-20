@@ -666,7 +666,10 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
 
               <div className="space-y-3">
                 {lineItems.map((item, index) => {
-                  const lineSubtotal = item.quantity * item.unit_price;
+                  const grossLine = item.quantity * item.unit_price;
+                  const lineSubtotal = item.tax_treatment === 'tax_included'
+                    ? grossLine - (item.tax_amount || 0)
+                    : grossLine;
                   const lineCost = item.item_type === 'manual' ? item.manual_cost : item.cost_price * item.quantity;
                   const lineProfit = lineSubtotal - lineCost;
                   const isCostMissing = item.description && item.unit_price > 0 &&
