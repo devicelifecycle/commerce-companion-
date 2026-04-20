@@ -668,35 +668,47 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                         </div>
                       </div>
 
-                      {/* Description / qty / price / tax */}
-                      <div className="grid grid-cols-12 gap-2">
-                        <div className="col-span-5">
-                          <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Description</label>
-                          <Input
-                            placeholder="Item description"
-                            value={item.description}
-                            onChange={(e) => updateLineItem(item.id, { description: e.target.value })}
-                          />
-                        </div>
-                        <div className="col-span-1">
-                          <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Qty</label>
-                          <Input type="number" min={1} value={item.quantity}
-                            onChange={(e) => updateLineItem(item.id, { quantity: parseInt(e.target.value) || 1 })} />
-                        </div>
-                        <div className="col-span-2">
-                          <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Unit Price</label>
-                          <Input type="number" step="0.01" value={item.unit_price || ''}
-                            onChange={(e) => updateLineItem(item.id, { unit_price: parseFloat(e.target.value) || 0 })} />
-                        </div>
-                        <div className="col-span-2">
-                          <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Tax</label>
-                          <Input type="number" step="0.01" value={item.tax_amount || ''}
-                            onChange={(e) => updateLineItem(item.id, { tax_amount: parseFloat(e.target.value) || 0 })} />
-                        </div>
-                        <div className="col-span-2 flex items-end justify-end">
-                          <p className="text-sm font-mono font-semibold pb-2">{formatCurrency(lineSubtotal)}</p>
-                        </div>
-                      </div>
+              {/* Description / qty / sale price / tax */}
+              <div className="grid grid-cols-12 gap-2">
+                <div className="col-span-5">
+                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Description</label>
+                  <Input
+                    placeholder="Item description"
+                    value={item.description}
+                    onChange={(e) => updateLineItem(item.id, { description: e.target.value })}
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Qty</label>
+                  <Input type="number" min={1} value={item.quantity}
+                    onChange={(e) => updateLineItem(item.id, { quantity: parseInt(e.target.value) || 1 })} />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Sale Price *</label>
+                  <Input type="number" step="0.01" placeholder="0.00" value={item.unit_price || ''}
+                    onChange={(e) => updateLineItem(item.id, { unit_price: parseFloat(e.target.value) || 0 })} />
+                  <span className="text-[9px] text-muted-foreground">what customer paid</span>
+                </div>
+                <div className="col-span-2">
+                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Tax</label>
+                  <Input type="number" step="0.01" value={item.tax_amount || ''}
+                    onChange={(e) => updateLineItem(item.id, { tax_amount: parseFloat(e.target.value) || 0 })} />
+                </div>
+                <div className="col-span-2 flex items-end justify-end">
+                  <p className="text-sm font-mono font-semibold pb-2">{formatCurrency(lineSubtotal)}</p>
+                </div>
+              </div>
+
+              {/* Show linked inventory cost as info (this is the COGS) */}
+              {(item.item_type === 'device' || item.item_type === 'product') && item.cost_price > 0 && (
+                <div className="rounded-md bg-background border px-3 py-2 flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <Package className="h-3.5 w-3.5" />
+                    Inventory cost (this becomes the COGS):
+                  </span>
+                  <span className="font-mono font-medium">{formatCurrency(item.cost_price)} × {item.quantity} = {formatCurrency(item.cost_price * item.quantity)}</span>
+                </div>
+              )}
 
                       {/* Manual cost section — only when no inventory is linked */}
                       {item.item_type === 'manual' && (
