@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { emitRefetch } from '@/hooks/useDataRefetch';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,7 +48,8 @@ interface LineItem {
   cost_price: number;          // resolved cost (device/product cost OR manual cost)
   manual_cost: number;         // manual COGS when no inventory link (e.g., labour/services)
   manual_cost_note: string;    // description of what the manual cost is
-  tax_amount: number;
+  tax_treatment: 'standard' | 'zero_rated' | 'tax_included' | 'exempt';
+  tax_amount: number;          // computed
   item_type: 'device' | 'product' | 'manual';
 }
 
@@ -60,6 +61,43 @@ const PROVINCES = [
   { code: 'ON', name: 'Ontario' }, { code: 'PE', name: 'Prince Edward Island' },
   { code: 'QC', name: 'Quebec' }, { code: 'SK', name: 'Saskatchewan' }, { code: 'YT', name: 'Yukon' },
 ];
+
+// Combined sales tax rate by province (GST + HST/PST/QST)
+const PROVINCE_TAX_RATES: Record<string, number> = {
+  AB: 0.05, BC: 0.12, MB: 0.12, NB: 0.15, NL: 0.15, NS: 0.15,
+  NT: 0.05, NU: 0.05, ON: 0.13, PE: 0.15, QC: 0.14975, SK: 0.11, YT: 0.05,
+};
+
+function computeLineTax(
+  treatment: LineItem['tax_treatment'],
+  province: string,
+  qty: number,
+  unitPrice: number,
+): { tax: number; netUnitPrice: number } {
+  const gross = qty * unitPrice;
+  const rate = PROVINCE_TAX_RATES[province] ?? 0;
+  switch (treatment) {
+    case 'zero_rated':
+    case 'exempt':
+      return { tax: 0, netUnitPrice: unitPrice };
+    case 'tax_included': {
+      // Price entered already includes tax — extract it
+      const net = gross / (1 + rate);
+      const tax = gross - net;
+      return { tax: +tax.toFixed(2), netUnitPrice: qty > 0 ? +(net / qty).toFixed(4) : unitPrice };
+    }
+    case 'standard':
+    default:
+      return { tax: +(gross * rate).toFixed(2), netUnitPrice: unitPrice };
+  }
+}
+
+const TAX_TREATMENTS = [
+  { value: 'standard', label: 'Standard (add tax)' },
+  { value: 'tax_included', label: 'Tax Included in Price' },
+  { value: 'zero_rated', label: 'Zero-rated (0%)' },
+  { value: 'exempt', label: 'Exempt' },
+] as const;
 
 const PRESET_MARKETPLACES = [
   { value: 'ebay', label: 'eBay' },
@@ -101,6 +139,7 @@ function newLineItem(): LineItem {
     cost_price: 0,
     manual_cost: 0,
     manual_cost_note: '',
+    tax_treatment: 'standard',
     tax_amount: 0,
     item_type: 'manual',
   };
@@ -226,8 +265,33 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
     .filter(li => li.device_id)
     .map(li => li.device_id as string);
 
+  const shippingProvince = form.watch('shipping_province') || 'ON';
+
+  // Auto-recompute per-line tax whenever province / qty / price / treatment changes
+  useEffect(() => {
+    setLineItems(prev => {
+      let changed = false;
+      const next = prev.map(li => {
+        const { tax } = computeLineTax(li.tax_treatment, shippingProvince, li.quantity, li.unit_price);
+        if (Math.abs(tax - (li.tax_amount || 0)) > 0.005) {
+          changed = true;
+          return { ...li, tax_amount: tax };
+        }
+        return li;
+      });
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shippingProvince, lineItems.map(l => `${l.id}:${l.quantity}:${l.unit_price}:${l.tax_treatment}`).join('|')]);
+
   // --- Totals ---
-  const subtotal = lineItems.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+  const subtotal = lineItems.reduce((sum, item) => {
+    // For tax_included items, the entered unit_price already contains tax — strip it for revenue subtotal
+    if (item.tax_treatment === 'tax_included') {
+      return sum + (item.quantity * item.unit_price - (item.tax_amount || 0));
+    }
+    return sum + item.quantity * item.unit_price;
+  }, 0);
   const totalTax = lineItems.reduce((sum, item) => sum + (item.tax_amount || 0), 0);
   const shippingCost = Number(form.watch('shipping_cost')) || 0;
   const marketplaceFees = Number(form.watch('marketplace_fees')) || 0;
@@ -602,7 +666,10 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
 
               <div className="space-y-3">
                 {lineItems.map((item, index) => {
-                  const lineSubtotal = item.quantity * item.unit_price;
+                  const grossLine = item.quantity * item.unit_price;
+                  const lineSubtotal = item.tax_treatment === 'tax_included'
+                    ? grossLine - (item.tax_amount || 0)
+                    : grossLine;
                   const lineCost = item.item_type === 'manual' ? item.manual_cost : item.cost_price * item.quantity;
                   const lineProfit = lineSubtotal - lineCost;
                   const isCostMissing = item.description && item.unit_price > 0 &&
@@ -666,20 +733,33 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                             <Receipt className="h-3.5 w-3.5" />
                             REVENUE — What customer paid
                           </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Sale Price (per unit) *</label>
-                              <Input type="number" step="0.01" placeholder="0.00" value={item.unit_price || ''}
-                                onChange={(e) => updateLineItem(item.id, { unit_price: parseFloat(e.target.value) || 0 })} />
-                            </div>
-                            <div>
-                              <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Tax</label>
-                              <Input type="number" step="0.01" value={item.tax_amount || ''}
-                                onChange={(e) => updateLineItem(item.id, { tax_amount: parseFloat(e.target.value) || 0 })} />
-                            </div>
+                          <div>
+                            <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">
+                              {item.tax_treatment === 'tax_included' ? 'Sale Price (incl. tax) *' : 'Sale Price (per unit) *'}
+                            </label>
+                            <Input type="number" step="0.01" placeholder="0.00" value={item.unit_price || ''}
+                              onChange={(e) => updateLineItem(item.id, { unit_price: parseFloat(e.target.value) || 0 })} />
+                          </div>
+                          <div>
+                            <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Tax Treatment</label>
+                            <Select
+                              value={item.tax_treatment}
+                              onValueChange={(v) => updateLineItem(item.id, { tax_treatment: v as LineItem['tax_treatment'] })}
+                            >
+                              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {TAX_TREATMENTS.map(t => (
+                                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              Auto-calc for {shippingProvince} ({((PROVINCE_TAX_RATES[shippingProvince] ?? 0) * 100).toFixed(2)}%)
+                              {' · '}Tax: <span className="font-mono">{formatCurrency(item.tax_amount || 0)}</span>
+                            </p>
                           </div>
                           <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20 text-xs">
-                            <span className="text-muted-foreground">Line revenue:</span>
+                            <span className="text-muted-foreground">Line revenue (net):</span>
                             <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">{formatCurrency(lineSubtotal)}</span>
                           </div>
                         </div>
@@ -706,6 +786,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                                 value={item.device_id}
                                 onSelect={(device) => handleDeviceSelect(item.id, device)}
                                 companyId={effectiveCompanyId}
+                                statusFilter={['in_stock', 'reserved', 'hold_for_refurbishment']}
                                 excludeIds={linkedDeviceIds.filter(id => id !== item.device_id)}
                                 disabled={!!item.product_id}
                               />
