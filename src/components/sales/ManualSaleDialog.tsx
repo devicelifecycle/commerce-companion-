@@ -689,9 +689,33 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                           "rounded-md border-2 p-3 space-y-2",
                           isCostMissing ? "border-amber-500/40 bg-amber-500/5" : "border-blue-500/30 bg-blue-500/5"
                         )}>
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 dark:text-blue-400">
-                            <Package className="h-3.5 w-3.5" />
-                            COGS — Your cost for this item
+                          <div className="flex items-center justify-between text-xs font-semibold text-blue-700 dark:text-blue-400">
+                            <span className="flex items-center gap-1.5">
+                              <Package className="h-3.5 w-3.5" />
+                              COGS — Your cost for this item
+                            </span>
+                          </div>
+
+                          {/* Inventory link search — always visible so user can attach/swap */}
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] uppercase tracking-wide text-muted-foreground block">
+                              Link inventory (IMEI / SKU / name)
+                            </label>
+                            <div className="grid grid-cols-2 gap-1.5">
+                              <DeviceSearchCombobox
+                                value={item.device_id}
+                                onSelect={(device) => handleDeviceSelect(item.id, device)}
+                                companyId={effectiveCompanyId}
+                                excludeIds={linkedDeviceIds.filter(id => id !== item.device_id)}
+                                disabled={!!item.product_id}
+                              />
+                              <ProductSearchCombobox
+                                value={item.product_id}
+                                onSelect={(product) => handleProductSelect(item.id, product)}
+                                companyId={effectiveCompanyId}
+                                disabled={!!item.device_id}
+                              />
+                            </div>
                           </div>
 
                           {(item.item_type === 'device' || item.item_type === 'product') ? (
