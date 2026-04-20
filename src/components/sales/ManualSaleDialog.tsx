@@ -641,117 +641,111 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                         )}
                       </div>
 
-                      {/* Inventory search row */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1">
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                            Link Device (IMEI / SKU / Name)
-                          </span>
-                          <DeviceSearchCombobox
-                            value={item.device_id}
-                            onSelect={(device) => handleDeviceSelect(item.id, device)}
-                            companyId={effectiveCompanyId}
-                            excludeIds={linkedDeviceIds.filter(id => id !== item.device_id)}
-                            disabled={!!item.product_id}
+                      {/* Description + quantity */}
+                      <div className="grid grid-cols-12 gap-2">
+                        <div className="col-span-10">
+                          <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Description</label>
+                          <Input
+                            placeholder="Item description"
+                            value={item.description}
+                            onChange={(e) => updateLineItem(item.id, { description: e.target.value })}
                           />
                         </div>
-                        <div className="space-y-1">
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                            Or Link Product
-                          </span>
-                          <ProductSearchCombobox
-                            value={item.product_id}
-                            onSelect={(product) => handleProductSelect(item.id, product)}
-                            companyId={effectiveCompanyId}
-                            disabled={!!item.device_id}
-                          />
+                        <div className="col-span-2">
+                          <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Qty</label>
+                          <Input type="number" min={1} value={item.quantity}
+                            onChange={(e) => updateLineItem(item.id, { quantity: parseInt(e.target.value) || 1 })} />
                         </div>
                       </div>
 
-              {/* Description / qty / sale price / tax */}
-              <div className="grid grid-cols-12 gap-2">
-                <div className="col-span-5">
-                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Description</label>
-                  <Input
-                    placeholder="Item description"
-                    value={item.description}
-                    onChange={(e) => updateLineItem(item.id, { description: e.target.value })}
-                  />
-                </div>
-                <div className="col-span-1">
-                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Qty</label>
-                  <Input type="number" min={1} value={item.quantity}
-                    onChange={(e) => updateLineItem(item.id, { quantity: parseInt(e.target.value) || 1 })} />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Sale Price *</label>
-                  <Input type="number" step="0.01" placeholder="0.00" value={item.unit_price || ''}
-                    onChange={(e) => updateLineItem(item.id, { unit_price: parseFloat(e.target.value) || 0 })} />
-                  <span className="text-[9px] text-muted-foreground">what customer paid</span>
-                </div>
-                <div className="col-span-2">
-                  <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Tax</label>
-                  <Input type="number" step="0.01" value={item.tax_amount || ''}
-                    onChange={(e) => updateLineItem(item.id, { tax_amount: parseFloat(e.target.value) || 0 })} />
-                </div>
-                <div className="col-span-2 flex items-end justify-end">
-                  <p className="text-sm font-mono font-semibold pb-2">{formatCurrency(lineSubtotal)}</p>
-                </div>
-              </div>
-
-              {/* Show linked inventory cost as info (this is the COGS) */}
-              {(item.item_type === 'device' || item.item_type === 'product') && item.cost_price > 0 && (
-                <div className="rounded-md bg-background border px-3 py-2 flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground flex items-center gap-1.5">
-                    <Package className="h-3.5 w-3.5" />
-                    Inventory cost (this becomes the COGS):
-                  </span>
-                  <span className="font-mono font-medium">{formatCurrency(item.cost_price)} × {item.quantity} = {formatCurrency(item.cost_price * item.quantity)}</span>
-                </div>
-              )}
-
-                      {/* Manual cost section — only when no inventory is linked */}
-                      {item.item_type === 'manual' && (
-                        <div className="rounded-md bg-background border p-2 space-y-2">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Wrench className="h-3.5 w-3.5" />
-                            <span className="font-medium">Manual cost</span>
-                            <span>— for labour, services, or items not in inventory. This becomes the COGS.</span>
+                      {/* === Two-column REVENUE vs COGS layout === */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* LEFT: Revenue (Sale Price) */}
+                        <div className="rounded-md border-2 border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                            <Receipt className="h-3.5 w-3.5" />
+                            REVENUE — What customer paid
                           </div>
-                          <div className="grid grid-cols-12 gap-2">
-                            <div className="col-span-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Sale Price (per unit) *</label>
+                              <Input type="number" step="0.01" placeholder="0.00" value={item.unit_price || ''}
+                                onChange={(e) => updateLineItem(item.id, { unit_price: parseFloat(e.target.value) || 0 })} />
+                            </div>
+                            <div>
+                              <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Tax</label>
+                              <Input type="number" step="0.01" value={item.tax_amount || ''}
+                                onChange={(e) => updateLineItem(item.id, { tax_amount: parseFloat(e.target.value) || 0 })} />
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20 text-xs">
+                            <span className="text-muted-foreground">Line revenue:</span>
+                            <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">{formatCurrency(lineSubtotal)}</span>
+                          </div>
+                        </div>
+
+                        {/* RIGHT: COGS (Cost) */}
+                        <div className={cn(
+                          "rounded-md border-2 p-3 space-y-2",
+                          isCostMissing ? "border-amber-500/40 bg-amber-500/5" : "border-blue-500/30 bg-blue-500/5"
+                        )}>
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 dark:text-blue-400">
+                            <Package className="h-3.5 w-3.5" />
+                            COGS — Your cost for this item
+                          </div>
+
+                          {(item.item_type === 'device' || item.item_type === 'product') ? (
+                            <div className="space-y-1.5">
+                              <p className="text-[11px] text-muted-foreground">
+                                Pulled from linked {item.item_type === 'device' ? 'device' : 'product'} inventory:
+                              </p>
+                              <div className="rounded bg-background px-2 py-1.5 text-xs font-mono">
+                                {formatCurrency(item.cost_price)} × {item.quantity} = <span className="font-semibold">{formatCurrency(item.cost_price * item.quantity)}</span>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground italic">
+                                Inventory will be reduced and COGS booked automatically.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="space-y-1.5">
+                              <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                                <Wrench className="h-3 w-3" />
+                                Manual cost (labour, services, or non-inventory):
+                              </p>
                               <Input
                                 type="number" step="0.01" placeholder="Cost amount"
                                 value={item.manual_cost || ''}
                                 onChange={(e) => updateLineItem(item.id, { manual_cost: parseFloat(e.target.value) || 0 })}
                               />
-                            </div>
-                            <div className="col-span-9">
                               <Input
-                                placeholder="What is this cost? (e.g., 2 hrs labour, packaging materials)"
+                                placeholder="What is this cost? (e.g., 2 hrs labour)"
                                 value={item.manual_cost_note}
                                 onChange={(e) => updateLineItem(item.id, { manual_cost_note: e.target.value })}
+                                className="text-xs"
                               />
+                              {isCostMissing && (
+                                <p className="text-[11px] text-amber-600 dark:text-amber-400">
+                                  ⚠ No COGS set — link inventory above or enter a manual cost.
+                                </p>
+                              )}
                             </div>
-                          </div>
-                          {isCostMissing && (
-                            <p className="text-[11px] text-amber-600 dark:text-amber-400">
-                              ⚠ No COGS set — accounting will record revenue only, not profit.
-                            </p>
                           )}
-                        </div>
-                      )}
 
-                      {/* Per-line P&L preview */}
+                          <div className="flex items-center justify-between pt-1 border-t border-blue-500/20 text-xs">
+                            <span className="text-muted-foreground">Line cost:</span>
+                            <span className="font-mono font-semibold">{formatCurrency(lineCost)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Per-line profit */}
                       {lineSubtotal > 0 && (
-                        <div className="flex items-center justify-end gap-4 text-[11px] text-muted-foreground border-t pt-2">
-                          <span>Cost: <span className="font-mono">{formatCurrency(lineCost)}</span></span>
-                          <span>Profit:
-                            <span className={cn(
-                              "font-mono ml-1",
-                              lineProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
-                            )}>{formatCurrency(lineProfit)}</span>
-                          </span>
+                        <div className="flex items-center justify-end gap-2 text-xs border-t pt-2">
+                          <span className="text-muted-foreground">Line profit:</span>
+                          <span className={cn(
+                            "font-mono font-semibold",
+                            lineProfit >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"
+                          )}>{formatCurrency(lineProfit)}</span>
                         </div>
                       )}
                     </div>
