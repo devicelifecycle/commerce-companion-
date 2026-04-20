@@ -48,7 +48,8 @@ interface LineItem {
   cost_price: number;          // resolved cost (device/product cost OR manual cost)
   manual_cost: number;         // manual COGS when no inventory link (e.g., labour/services)
   manual_cost_note: string;    // description of what the manual cost is
-  tax_amount: number;
+  tax_treatment: 'standard' | 'zero_rated' | 'tax_included' | 'exempt';
+  tax_amount: number;          // computed
   item_type: 'device' | 'product' | 'manual';
 }
 
@@ -60,6 +61,43 @@ const PROVINCES = [
   { code: 'ON', name: 'Ontario' }, { code: 'PE', name: 'Prince Edward Island' },
   { code: 'QC', name: 'Quebec' }, { code: 'SK', name: 'Saskatchewan' }, { code: 'YT', name: 'Yukon' },
 ];
+
+// Combined sales tax rate by province (GST + HST/PST/QST)
+const PROVINCE_TAX_RATES: Record<string, number> = {
+  AB: 0.05, BC: 0.12, MB: 0.12, NB: 0.15, NL: 0.15, NS: 0.15,
+  NT: 0.05, NU: 0.05, ON: 0.13, PE: 0.15, QC: 0.14975, SK: 0.11, YT: 0.05,
+};
+
+function computeLineTax(
+  treatment: LineItem['tax_treatment'],
+  province: string,
+  qty: number,
+  unitPrice: number,
+): { tax: number; netUnitPrice: number } {
+  const gross = qty * unitPrice;
+  const rate = PROVINCE_TAX_RATES[province] ?? 0;
+  switch (treatment) {
+    case 'zero_rated':
+    case 'exempt':
+      return { tax: 0, netUnitPrice: unitPrice };
+    case 'tax_included': {
+      // Price entered already includes tax — extract it
+      const net = gross / (1 + rate);
+      const tax = gross - net;
+      return { tax: +tax.toFixed(2), netUnitPrice: qty > 0 ? +(net / qty).toFixed(4) : unitPrice };
+    }
+    case 'standard':
+    default:
+      return { tax: +(gross * rate).toFixed(2), netUnitPrice: unitPrice };
+  }
+}
+
+const TAX_TREATMENTS = [
+  { value: 'standard', label: 'Standard (add tax)' },
+  { value: 'tax_included', label: 'Tax Included in Price' },
+  { value: 'zero_rated', label: 'Zero-rated (0%)' },
+  { value: 'exempt', label: 'Exempt' },
+] as const;
 
 const PRESET_MARKETPLACES = [
   { value: 'ebay', label: 'eBay' },
