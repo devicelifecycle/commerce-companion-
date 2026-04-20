@@ -63,8 +63,14 @@ export function DeviceSearchCombobox({
         .eq('company_id', effectiveCompanyId)
         .order('brand');
 
-      if (statusFilter) {
-        query = query.eq('status', statusFilter as any);
+      if (statusFilter && statusFilter !== 'all') {
+        if (Array.isArray(statusFilter)) {
+          if (statusFilter.length > 0) {
+            query = query.in('status', statusFilter as any);
+          }
+        } else {
+          query = query.eq('status', statusFilter as any);
+        }
       }
 
       const { data, error } = await query.limit(500);
