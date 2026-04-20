@@ -182,7 +182,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
         description: `${device.brand} ${device.model}${device.storage ? ` ${device.storage}` : ''}${device.color ? ` (${device.color})` : ''}`,
         cost_price: device.cost_price,
         // Preserve user-entered sale price; only suggest device.sale_price if they haven't typed one
-        unit_price: existing && existing.unit_price > 0 ? existing.unit_price : (device.sale_price || 0),
+        unit_price: existing && existing.unit_price > 0 ? existing.unit_price : ((device as any).sale_price || 0),
         manual_cost: 0,
         manual_cost_note: '',
       });
