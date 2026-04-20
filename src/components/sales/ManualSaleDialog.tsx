@@ -172,6 +172,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
 
   const handleDeviceSelect = (lineId: string, device: DeviceOption | null) => {
     if (device) {
+      const existing = lineItems.find(li => li.id === lineId);
       updateLineItem(lineId, {
         device_id: device.id,
         device,
@@ -180,7 +181,8 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
         item_type: 'device',
         description: `${device.brand} ${device.model}${device.storage ? ` ${device.storage}` : ''}${device.color ? ` (${device.color})` : ''}`,
         cost_price: device.cost_price,
-        unit_price: device.cost_price,
+        // Preserve user-entered sale price; only suggest device.sale_price if they haven't typed one
+        unit_price: existing && existing.unit_price > 0 ? existing.unit_price : (device.sale_price || 0),
         manual_cost: 0,
         manual_cost_note: '',
       });
@@ -196,6 +198,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
 
   const handleProductSelect = (lineId: string, product: ProductOption | null) => {
     if (product) {
+      const existing = lineItems.find(li => li.id === lineId);
       updateLineItem(lineId, {
         product_id: product.id,
         product,
@@ -204,7 +207,8 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
         item_type: 'product',
         description: product.name,
         cost_price: product.cost_price,
-        unit_price: product.sale_price || product.cost_price,
+        // Preserve user-entered sale price; only suggest product.sale_price if they haven't typed one
+        unit_price: existing && existing.unit_price > 0 ? existing.unit_price : (product.sale_price || 0),
         manual_cost: 0,
         manual_cost_note: '',
       });
