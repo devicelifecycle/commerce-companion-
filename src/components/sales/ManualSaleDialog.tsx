@@ -733,20 +733,33 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
                             <Receipt className="h-3.5 w-3.5" />
                             REVENUE — What customer paid
                           </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Sale Price (per unit) *</label>
-                              <Input type="number" step="0.01" placeholder="0.00" value={item.unit_price || ''}
-                                onChange={(e) => updateLineItem(item.id, { unit_price: parseFloat(e.target.value) || 0 })} />
-                            </div>
-                            <div>
-                              <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Tax</label>
-                              <Input type="number" step="0.01" value={item.tax_amount || ''}
-                                onChange={(e) => updateLineItem(item.id, { tax_amount: parseFloat(e.target.value) || 0 })} />
-                            </div>
+                          <div>
+                            <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">
+                              {item.tax_treatment === 'tax_included' ? 'Sale Price (incl. tax) *' : 'Sale Price (per unit) *'}
+                            </label>
+                            <Input type="number" step="0.01" placeholder="0.00" value={item.unit_price || ''}
+                              onChange={(e) => updateLineItem(item.id, { unit_price: parseFloat(e.target.value) || 0 })} />
+                          </div>
+                          <div>
+                            <label className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1 block">Tax Treatment</label>
+                            <Select
+                              value={item.tax_treatment}
+                              onValueChange={(v) => updateLineItem(item.id, { tax_treatment: v as LineItem['tax_treatment'] })}
+                            >
+                              <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {TAX_TREATMENTS.map(t => (
+                                  <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              Auto-calc for {shippingProvince} ({((PROVINCE_TAX_RATES[shippingProvince] ?? 0) * 100).toFixed(2)}%)
+                              {' · '}Tax: <span className="font-mono">{formatCurrency(item.tax_amount || 0)}</span>
+                            </p>
                           </div>
                           <div className="flex items-center justify-between pt-1 border-t border-emerald-500/20 text-xs">
-                            <span className="text-muted-foreground">Line revenue:</span>
+                            <span className="text-muted-foreground">Line revenue (net):</span>
                             <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">{formatCurrency(lineSubtotal)}</span>
                           </div>
                         </div>
