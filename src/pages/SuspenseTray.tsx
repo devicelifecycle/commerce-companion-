@@ -132,12 +132,43 @@ export default function SuspenseTray() {
   const handleAutoResolve = async () => {
     setResolving(true);
     try {
+      // Snapshot before
+      const before = new Map(sales.map(s => [s.id, { status: s.accounting_status, reason: s.review_reason }]));
+
       const { data, error } = await supabase.functions.invoke('auto-resolve-sales', { body: {} });
       if (error) throw error;
       toast({
         title: 'Auto-resolve complete',
         description: `Scanned ${data?.scanned ?? 0} • Province fixed: ${data?.province_fixed ?? 0} • Devices linked: ${data?.device_linked ?? 0}`,
       });
+
+      // Re-fetch fresh sales to compute per-order log
+      let q = supabase
+        .from('sales')
+        .select('id, order_number, accounting_status, review_reason')
+        .in('accounting_status', ['ready_to_post', 'pending_review', 'needs_review'])
+        .order('sale_date', { ascending: false })
+        .limit(500);
+      if (selectedCompanyId) q = q.eq('company_id', selectedCompanyId);
+      const { data: after } = await q;
+
+      const now = new Date().toISOString();
+      const log: typeof resolveLog = [];
+      (after || []).forEach((s: any) => {
+        const prev = before.get(s.id);
+        const changed = !prev || prev.status !== s.accounting_status || prev.reason !== s.review_reason;
+        if (!changed) return;
+        log.push({
+          order: s.order_number,
+          status: s.accounting_status,
+          reason: s.review_reason || (s.accounting_status === 'ready_to_post' ? 'All 4 gates passed (price, province, cost basis, fees)' : '—'),
+          at: now,
+        });
+      });
+      // Newest first, cap to 200
+      setResolveLog(prev => [...log, ...prev].slice(0, 200));
+      setLastRunAt(now);
+
       await loadSales();
     } catch (e: any) {
       toast({ title: 'Auto-resolve failed', description: e.message, variant: 'destructive' });
