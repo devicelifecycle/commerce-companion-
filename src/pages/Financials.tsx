@@ -269,6 +269,7 @@ export default function Financials() {
             {subView === 'unaccounted' && <UnaccountedMarketplaceData companyFilter={companyView === 'consolidated' ? null : companyView} />}
 
             {subView === 'accounting-trail' && <AccountingAuditTrail companyView={companyView} />}
+            {subView === 'sales-audit' && <SalesAccountingAudit companyView={companyView} />}
             {subView === 'year-end-closing' && <YearEndClosing />}
           </div>
         </div>
