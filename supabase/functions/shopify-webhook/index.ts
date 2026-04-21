@@ -264,88 +264,76 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Process each line item as a separate sale
+    // === Pull EXACT financial data from Shopify webhook payload ===
+    const totalPrice = parseFloat(order.total_price || "0");
+    const subtotalPrice = parseFloat(order.subtotal_price || "0");
+    const totalTax = parseFloat(order.total_tax || "0");
+    const totalShippingRevenue = parseFloat(order.total_shipping_price_set?.shop_money?.amount || "0");
+
+    // Tax rate & title from tax_lines
+    let orderTaxRate: number | null = null;
+    let orderTaxTitle: string | null = null;
+    if (Array.isArray((order as any).tax_lines) && (order as any).tax_lines.length > 0) {
+      orderTaxTitle = (order as any).tax_lines.map((t: any) => t.title).filter(Boolean).join('+') || null;
+      orderTaxRate = subtotalPrice > 0 ? parseFloat((totalTax / subtotalPrice).toFixed(4)) : null;
+    }
+
+    // Process each line item as a separate sale, allocating proportionally
     const salesInserts = [];
+    const totalItems = order.line_items.reduce((sum, i) => sum + i.quantity, 0);
+
     for (const item of order.line_items) {
       // Try to find matching device with multiple fallback strategies
       let deviceId = null;
       if (item.sku) {
-        // Strategy 1: Match by IMEI
         const { data: deviceByImei } = await supabase
-          .from("devices")
-          .select("id")
-          .eq("imei", item.sku)
-          .eq("status", "in_stock")
-          .maybeSingle();
+          .from("devices").select("id").eq("imei", item.sku).eq("status", "in_stock").maybeSingle();
+        if (deviceByImei) deviceId = deviceByImei.id;
 
-        if (deviceByImei) {
-          deviceId = deviceByImei.id;
-          console.log(`Matched device ${deviceByImei.id} by IMEI for SKU ${item.sku}`);
-        }
-
-        // Strategy 2: Match by SKU field
         if (!deviceId) {
           const { data: deviceBySku } = await supabase
-            .from("devices")
-            .select("id")
-            .eq("sku", item.sku)
-            .eq("status", "in_stock")
-            .maybeSingle();
-
-          if (deviceBySku) {
-            deviceId = deviceBySku.id;
-            console.log(`Matched device ${deviceBySku.id} by SKU for ${item.sku}`);
-          }
+            .from("devices").select("id").eq("sku", item.sku).eq("status", "in_stock").maybeSingle();
+          if (deviceBySku) deviceId = deviceBySku.id;
         }
 
-        // Strategy 3: Match by model from product title
         if (!deviceId && item.title) {
           const { data: deviceByModel } = await supabase
-            .from("devices")
-            .select("id")
+            .from("devices").select("id")
             .ilike("model", `%${item.title.split(" ").slice(0, 3).join(" ")}%`)
-            .eq("status", "in_stock")
-            .limit(1)
-            .maybeSingle();
-
-          if (deviceByModel) {
-            deviceId = deviceByModel.id;
-            console.log(`Matched device ${deviceByModel.id} by model for "${item.title}"`);
-          }
-        }
-
-        if (!deviceId) {
-          console.log(`No in-stock device found for SKU: ${item.sku}`);
+            .eq("status", "in_stock").limit(1).maybeSingle();
+          if (deviceByModel) deviceId = deviceByModel.id;
         }
       }
 
-      // Calculate shipping cost per item (divide by total items)
-      const totalItems = order.line_items.reduce((sum, i) => sum + i.quantity, 0);
-      const shippingTotal = parseFloat(order.total_shipping_price_set?.shop_money?.amount || "0");
-      const shippingPerItem = shippingTotal / totalItems;
+      // Allocate shipping revenue proportionally per item
+      const shippingPerItem = totalItems > 0 ? totalShippingRevenue * (item.quantity / totalItems) : 0;
+      const itemPrice = parseFloat(item.price) * item.quantity;
 
-      // Estimate marketplace fees (Shopify typically 2.9% + $0.30 for Shopify Payments)
-      const itemPrice = parseFloat(item.price);
-      const estimatedFees = (itemPrice * 0.029) + 0.30;
+      // Allocate tax proportionally based on item subtotal share
+      const taxPerItem = subtotalPrice > 0 ? (itemPrice / subtotalPrice) * totalTax : 0;
 
-      // Tax per item (proportional)
-      const totalTax = parseFloat(order.total_tax || "0");
-      const subtotal = parseFloat(order.subtotal_price || "0");
-      const taxPerItem = subtotal > 0 ? (itemPrice / subtotal) * totalTax : 0;
+      // Per-item sale_price = items + allocated shipping + allocated tax
+      const itemSalePrice = parseFloat((itemPrice + shippingPerItem + taxPerItem).toFixed(2));
 
+      // Fees from balance transactions are NOT available in webhook payload — leave null
+      // The scheduled importer will fill these in on next sync.
       salesInserts.push({
         order_number: `SHOP-${order.order_number}-${item.id}`,
         device_id: deviceId,
         marketplace: "shopify" as const,
-        sale_price: itemPrice,
-        shipping_cost: shippingPerItem,
-        marketplace_fees: estimatedFees,
-        tax_amount: taxPerItem,
+        sale_price: itemSalePrice,
+        subtotal: parseFloat(itemPrice.toFixed(2)),
+        shipping_cost: 0,                                       // Our cost (unknown)
+        shipping_revenue: parseFloat(shippingPerItem.toFixed(2)), // Customer-paid shipping
+        marketplace_fees: 0,                                    // Will be backfilled by importer
+        tax_amount: parseFloat(taxPerItem.toFixed(2)),
+        tax_rate: orderTaxRate,
+        tax_title: orderTaxTitle,
         sale_date: order.created_at,
         customer_name: customerName,
         customer_email: customerEmail,
         shipping_address: shippingAddress,
-        notes: `Shopify Order #${order.order_number} | Item: ${item.title}`,
+        notes: `Shopify Order #${order.order_number} | Item: ${item.title} | Tax: ${orderTaxTitle || 'none'}`,
         company_id: companyId,
         customer_id: customerId,
       });
