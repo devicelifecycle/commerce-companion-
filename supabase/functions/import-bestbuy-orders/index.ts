@@ -739,13 +739,13 @@ serve(async (req) => {
         }
       } catch (orderError: any) {
         console.error(`Error processing order ${order.commercial_id}:`, orderError);
-        errors.push(`BBY-${order.commercial_id}: ${orderError.message}`);
+        errors.push(`${orderPrefix}${order.commercial_id}: ${orderError.message}`);
       }
     }
 
-    console.log(`Import complete: ${importedOrders.length} imported, ${skippedOrders.length} skipped, ${errors.length} errors`);
+    console.log(`[${account.companyCode}] Import complete: ${importedOrders.length} imported, ${skippedOrders.length} skipped, ${errors.length} errors`);
 
-    // Log sync result
+    // Log sync result per-account
     const syncStatus = errors.length > 0 ? (importedOrders.length > 0 ? 'partial' : 'failure') : 'success';
     await supabase.from("sync_logs").insert({
       marketplace: "bestbuy",
@@ -758,8 +758,21 @@ serve(async (req) => {
       records_errored: errors.length,
       error_message: errors.length > 0 ? errors.join("; ") : null,
       sync_type: "scheduled",
-      metadata: { total_from_api: orders.length, total_count: totalCount },
+      metadata: { total_from_api: orders.length, total_count: totalCount, marketplace_account: marketplaceAccount },
     });
+
+    // Aggregate
+    allImported.push(...importedOrders);
+    allSkipped.push(...skippedOrders);
+    allErrors.push(...errors);
+    perAccountResults.push({
+      account: marketplaceAccount,
+      company: account.companyCode,
+      imported: importedOrders.length,
+      skipped: skippedOrders.length,
+      errors: errors.length,
+    });
+    } // end per-account loop
 
     // Suspense Pipeline: NO auto-posting. Human approves in Suspense Tray.
     const accountingResult: any = { queued: false, note: "Suspense pipeline — no auto-post" };
