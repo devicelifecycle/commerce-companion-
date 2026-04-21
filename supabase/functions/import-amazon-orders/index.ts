@@ -520,7 +520,8 @@ serve(async (req) => {
           marketplace_status: amazonMarketplaceStatus,
           fulfillment_status: fulfillmentStatus,
           is_marketplace_remitted: true,
-          accounting_status: "unprocessed",
+          // $0-sale guard: quarantine zero-priced orders for manual review (no journal entries posted)
+          accounting_status: (Number(totalSalePrice) || 0) <= 0 ? "needs_review" : "unprocessed",
           product_title: orderItems.length > 0 ? orderItems[0].Title : null,
           marketplace_sku: orderItems.length > 0 ? (orderItems[0].SellerSKU || orderItems[0].ASIN) : null,
           item_count: orderItems.reduce((sum: number, i: any) => sum + (i.QuantityOrdered || 1), 0),

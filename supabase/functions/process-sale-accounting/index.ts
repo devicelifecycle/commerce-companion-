@@ -318,6 +318,18 @@ serve(async (req) => {
 
     for (const sale of sales) {
       try {
+        // $0-sale guard: never auto-post journal entries for zero-priced orders.
+        // Quarantine as 'needs_review' until a human confirms the price/intent.
+        const guardSalePrice = Number(sale.sale_price) || 0;
+        if (guardSalePrice <= 0) {
+          await supabase
+            .from("sales")
+            .update({ accounting_status: "needs_review" })
+            .eq("id", sale.id);
+          errors.push(`${sale.order_number}: $0 sale quarantined — set price and re-process`);
+          continue;
+        }
+
         const accounts = await getAccounts(sale.company_id, sale.marketplace);
         if (!accounts || !accounts.ar || !accounts.revenue) {
           errors.push(`${sale.order_number}: Missing chart of accounts for ${sale.marketplace}`);

@@ -651,7 +651,8 @@ serve(async (req) => {
             marketplace_status: lineItemStatus,
             fulfillment_status: fulfillmentStatus,
             is_marketplace_remitted: false, // Best Buy pays us the tax — we remit to CRA ourselves
-            accounting_status: "unprocessed",
+            // $0-sale guard: quarantine zero-priced orders for manual review (no journal entries posted)
+            accounting_status: (Number(salePrice) || 0) <= 0 ? "needs_review" : "unprocessed",
             product_title: lineItem.product_title || null,
             marketplace_sku: lineItem.offer_sku || null,
             subtotal: salePrice,
