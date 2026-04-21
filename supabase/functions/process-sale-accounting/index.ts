@@ -202,27 +202,38 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     let saleIds: string[] | null = null;
+    let mode: "post" | "check_gates" = "post";
     try {
       const body = await req.json();
       saleIds = body?.sale_ids || null;
+      // mode=check_gates: only evaluate gates and update status, do NOT create journal entries
+      // mode=post (default): create journal entries for orders explicitly listed in sale_ids
+      mode = body?.mode === "check_gates" ? "check_gates" : "post";
     } catch {
-      // No body — process all unaccounted
+      // No body — default to gate-check mode (safe; no auto-posting)
+      mode = "check_gates";
     }
 
-    // Find sales that need accounting processing
-    // Phase 1 fix: process ALL sales, not just ones with device_id
-    // - 'unprocessed' sales get revenue/AR entries (with or without device)
-    // - 'revenue_only' sales with a device_id now linked get COGS entries added
+    // Suspense pipeline statuses we operate on:
+    //   pending_review  — newly imported, gates not yet checked
+    //   needs_review    — failed a gate, waiting for human
+    //   ready_to_post   — passed all gates, waiting for human "Post" click
+    // We NEVER auto-touch fully_processed or voided.
     let salesQuery = supabase
       .from("sales")
       .select(
-        "id, order_number, marketplace, sale_price, subtotal, shipping_cost, shipping_revenue, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost"
+        "id, order_number, marketplace, sale_price, subtotal, shipping_cost, shipping_revenue, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost, shipping_province"
       )
-      .in("accounting_status", ["unprocessed", "revenue_only"])
-      .not("accounting_status", "eq", "voided");
+      .in("accounting_status", ["pending_review", "needs_review", "ready_to_post"]);
 
     if (saleIds && saleIds.length > 0) {
       salesQuery = salesQuery.in("id", saleIds);
+    } else if (mode === "post") {
+      // Safety: never bulk-post without explicit sale_ids
+      return new Response(
+        JSON.stringify({ success: false, error: "mode=post requires explicit sale_ids" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const { data: sales, error: salesError } = await salesQuery;
