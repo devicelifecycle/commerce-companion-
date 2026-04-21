@@ -37,6 +37,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
 
 interface MarketplaceBadgeProps {
   marketplace: MarketplaceType;
+  account?: string | null;
   className?: string;
 }
 
@@ -47,7 +48,13 @@ const marketplaceLabels: Record<MarketplaceType, string> = {
   other: 'Other',
 };
 
-export function MarketplaceBadge({ marketplace, className }: MarketplaceBadgeProps) {
+const accountLabels: Record<string, string> = {
+  bestbuy_tgw: 'Best Buy · TGW',
+  bestbuy_ves: 'Best Buy · VES',
+};
+
+export function MarketplaceBadge({ marketplace, account, className }: MarketplaceBadgeProps) {
+  const label = (account && accountLabels[account]) || marketplaceLabels[marketplace];
   return (
     <span
       className={cn(
@@ -59,7 +66,7 @@ export function MarketplaceBadge({ marketplace, className }: MarketplaceBadgePro
         className
       )}
     >
-      {marketplaceLabels[marketplace]}
+      {label}
     </span>
   );
 }
