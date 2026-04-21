@@ -60,7 +60,7 @@ type SubView =
   | 'ap' | 'ar'
   | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing' | 'tax-reconciliation'
   | 'cost-devices'
-  | 'accounting-trail'
+  | 'accounting-trail' | 'sales-audit'
   | 'year-end-closing'
   | 'relationships' | 'unaccounted';
 
