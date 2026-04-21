@@ -774,46 +774,21 @@ serve(async (req) => {
     });
     } // end per-account loop
 
-    // Suspense Pipeline: NO auto-posting. Human approves in Suspense Tray.
+    // Suspense Pipeline: NO auto-posting. Human approves in Pending tab.
     const accountingResult: any = { queued: false, note: "Suspense pipeline — no auto-post" };
-    if (false && importedOrders.length > 0) {
-      try {
-        const accountingUrl = `${SUPABASE_URL}/functions/v1/process-sale-accounting`;
-        const newSaleIds = importedOrders.map((o: any) => o.id).filter(Boolean);
-        const accountingPromise = fetch(accountingUrl, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(newSaleIds.length > 0 ? { sale_ids: newSaleIds } : {}),
-        })
-          .then((r) => r.json())
-          .then((r) => console.log("Accounting result:", r))
-          .catch((e) => console.error("Accounting error:", e?.message));
-        // @ts-ignore - EdgeRuntime is available in Supabase edge runtime
-        if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
-          // @ts-ignore
-          EdgeRuntime.waitUntil(accountingPromise);
-        }
-        accountingResult = { queued: true, sale_count: newSaleIds.length };
-      } catch (accError: any) {
-        console.error("Accounting trigger error:", accError.message);
-      }
-    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        company: "TGW",
-        imported: importedOrders.length,
-        skipped: skippedOrders.length,
-        errors: errors.length,
+        accounts: perAccountResults,
+        imported: allImported.length,
+        skipped: allSkipped.length,
+        errors: allErrors.length,
         accounting: accountingResult,
         details: {
-          imported: importedOrders,
-          skipped: skippedOrders,
-          errors: errors,
+          imported: allImported,
+          skipped: allSkipped,
+          errors: allErrors,
         },
       }),
       {
