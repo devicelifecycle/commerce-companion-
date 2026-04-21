@@ -532,8 +532,8 @@ serve(async (req) => {
         }
 
         // === Entry 2: COGS (device linked OR manual_cost provided) ===
-        let newStatus = "revenue_only";
-        const manualCost = Number(sale.manual_cost || 0);
+        // Gates already verified cost basis exists, so post should always reach fully_processed.
+        let newStatus = "fully_processed";
         
         if (device && device.cost > 0 && !salesWithCOGS.has(sale.id)) {
           if (accounts.cogs && accounts.inventory) {
@@ -602,10 +602,14 @@ serve(async (req) => {
           newStatus = "fully_processed";
         }
 
-        // Update accounting_status
+        // Update accounting_status + stamp posted timestamp
         await supabase
           .from("sales")
-          .update({ accounting_status: newStatus })
+          .update({
+            accounting_status: newStatus,
+            review_reason: null,
+            posted_at: newStatus === "fully_processed" ? new Date().toISOString() : null,
+          })
           .eq("id", sale.id);
 
         processed.push(sale.order_number);
