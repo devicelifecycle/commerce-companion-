@@ -514,7 +514,8 @@ serve(async (req) => {
           marketplace_status: shopifyMarketplaceStatus,
           fulfillment_status: fulfillmentStatus,
           is_marketplace_remitted: false,
-          accounting_status: voided ? "voided" : "unprocessed",
+          // $0-sale guard: quarantine zero-priced orders for manual review (no journal entries posted)
+          accounting_status: voided ? "voided" : ((Number(salePrice) || 0) <= 0 ? "needs_review" : "unprocessed"),
           product_title: order.line_items?.length > 0 ? order.line_items[0].name : null,
           marketplace_sku: order.line_items?.length > 0 ? (order.line_items[0].sku || null) : null,
           item_count: order.line_items?.reduce((sum: number, i: any) => sum + (i.quantity || 1), 0) || 1,
