@@ -27,6 +27,7 @@ export interface SaleRecord {
   company_id: string | null;
   fulfillment_status: string | null;
   marketplace_status: string | null;
+  marketplace_account?: string | null;
   is_marketplace_remitted?: boolean;
   accounting_status?: string | null;
   product_title?: string | null;
@@ -77,7 +78,13 @@ export function useSalesQuery({ companyFilter, marketplaceFilter, statusFilter, 
       }
 
       if (marketplaceFilter !== 'all') {
-        query = query.eq('marketplace', marketplaceFilter as any);
+        // Supports composite values like 'bestbuy:tgw' (marketplace + account)
+        if (marketplaceFilter.includes(':')) {
+          const [mp, suffix] = marketplaceFilter.split(':');
+          query = query.eq('marketplace', mp as any).eq('marketplace_account', `${mp}_${suffix}`);
+        } else {
+          query = query.eq('marketplace', marketplaceFilter as any);
+        }
       }
 
       if (statusFilter !== 'all') {
