@@ -365,6 +365,7 @@ export function SalesAccountingAudit({ companyView }: Props) {
                   totalPages: Math.ceil(filtered.length / PAGE_SIZE),
                 }}
                 onPageChange={(p) => setPage(p + 1)}
+                onPageSizeChange={() => {}}
               />
             )}
           </>
