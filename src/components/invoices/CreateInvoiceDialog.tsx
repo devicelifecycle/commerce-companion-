@@ -446,7 +446,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company *</Label>
-              <Select value={invoiceCompanyId} onValueChange={(v) => { setInvoiceCompanyId(v); setAllInventory([]); }}>
+              <Select value={invoiceCompanyId} onValueChange={(v) => { setInvoiceCompanyId(v); setSearchResults([]); }}>
                 <SelectTrigger className="h-10">
                   <SelectValue placeholder="Select company" />
                 </SelectTrigger>
