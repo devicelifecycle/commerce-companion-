@@ -306,6 +306,77 @@ export default function SuspenseTray() {
             )}
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
+            <div className="flex items-center gap-2">
+              <ScrollText className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-base">Auto-resolve Activity Log</CardTitle>
+              <Badge variant="outline" className="text-xs">{resolveLog.length}</Badge>
+            </div>
+            <div className="flex items-center gap-2">
+              {lastRunAt && (
+                <span className="text-xs text-muted-foreground">
+                  Last run: {new Date(lastRunAt).toLocaleString()}
+                </span>
+              )}
+              {resolveLog.length > 0 && (
+                <Button size="sm" variant="ghost" onClick={() => setResolveLog([])}>
+                  Clear
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {resolveLog.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                Click <span className="font-medium">Auto-resolve</span> above to see per-order gate results here.
+                Only orders whose status or reason changed are logged.
+              </div>
+            ) : (
+              <ScrollArea className="h-[320px] pr-4">
+                <div className="space-y-2">
+                  {resolveLog.map((entry, idx) => {
+                    const isReady = entry.status === 'ready_to_post';
+                    const isNeeds = entry.status === 'needs_review';
+                    const Icon = isReady ? CheckCircle2 : isNeeds ? AlertTriangle : Clock;
+                    const tone = isReady ? 'text-emerald-500' : isNeeds ? 'text-red-500' : 'text-amber-500';
+                    return (
+                      <div
+                        key={`${entry.order}-${idx}`}
+                        className="flex items-start gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors border border-border/50"
+                      >
+                        <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${tone}`} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              onClick={() => navigate(`/orders?order=${entry.order}`)}
+                              className="font-mono text-xs font-medium hover:underline"
+                            >
+                              {entry.order}
+                            </button>
+                            <Badge
+                              variant={isReady ? 'default' : isNeeds ? 'destructive' : 'secondary'}
+                              className="text-[10px]"
+                            >
+                              {entry.status.replace(/_/g, ' ')}
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground ml-auto tabular-nums">
+                              {new Date(entry.at).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 break-words">
+                            {entry.reason}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </DashboardLayout>
   );
