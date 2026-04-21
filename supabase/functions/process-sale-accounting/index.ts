@@ -26,6 +26,7 @@ const ACCOUNT_MAP: Record<string, Record<string, string>> = {
   amazon: {
     ar: "1050",
     revenue: "4000",
+    shippingRevenue: "4002",
     taxCollected: "4200",
     fees: "6000",
     shipping: "6100",
@@ -35,6 +36,7 @@ const ACCOUNT_MAP: Record<string, Record<string, string>> = {
   bestbuy: {
     ar: "1051",
     revenue: "4100",
+    shippingRevenue: "4103",
     taxCollected: "4201",
     fees: "6001",
     shipping: "6101",
@@ -44,6 +46,7 @@ const ACCOUNT_MAP: Record<string, Record<string, string>> = {
   shopify: {
     ar: "1051",
     revenue: "4101",
+    shippingRevenue: "4102",
     taxCollected: "4201",
     fees: "6001",
     shipping: "6101",
@@ -54,6 +57,7 @@ const ACCOUNT_MAP: Record<string, Record<string, string>> = {
   other: {
     ar: "1051",
     revenue: "4101",
+    shippingRevenue: "4102",
     taxCollected: "4201",
     fees: "6001",
     shipping: "6101",
@@ -212,7 +216,7 @@ serve(async (req) => {
     let salesQuery = supabase
       .from("sales")
       .select(
-        "id, order_number, marketplace, sale_price, shipping_cost, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost"
+        "id, order_number, marketplace, sale_price, subtotal, shipping_cost, shipping_revenue, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost"
       )
       .in("accounting_status", ["unprocessed", "revenue_only"])
       .not("accounting_status", "eq", "voided");
@@ -283,10 +287,11 @@ serve(async (req) => {
 
       const codes = ACCOUNT_MAP[marketplace] || ACCOUNT_MAP["other"];
 
-      const [arId, revenueId, taxId, feesId, shippingId, cogsId, inventoryId] =
+      const [arId, revenueId, shippingRevenueId, taxId, feesId, shippingId, cogsId, inventoryId] =
         await Promise.all([
           getAccountId(supabase, companyId, codes.ar),
           getAccountId(supabase, companyId, codes.revenue),
+          getAccountId(supabase, companyId, codes.shippingRevenue),
           getAccountId(supabase, companyId, codes.taxCollected),
           getAccountId(supabase, companyId, codes.fees),
           getAccountId(supabase, companyId, codes.shipping),
@@ -297,6 +302,7 @@ serve(async (req) => {
       const result = {
         ar: arId,
         revenue: revenueId,
+        shippingRevenue: shippingRevenueId,
         taxCollected: taxId,
         fees: feesId,
         shipping: shippingId,
@@ -320,9 +326,16 @@ serve(async (req) => {
 
         const salePrice = Number(sale.sale_price);
         const fees = Number(sale.marketplace_fees || 0);
-        const shipping = Number(sale.shipping_cost || 0);
+        const shippingCost = Number(sale.shipping_cost || 0);   // What WE paid to ship (expense)
+        const shippingRevenue = Number((sale as any).shipping_revenue || 0); // What customer paid us
         const tax = Number(sale.tax_amount || 0);
-        const settlementAmount = salePrice - fees + tax - shipping;
+        const subtotalRaw = Number((sale as any).subtotal || 0);
+        // Items revenue = subtotal if available, else derive: total - shipping_revenue - tax
+        const itemsRevenue = subtotalRaw > 0
+          ? subtotalRaw
+          : Math.max(0, salePrice - shippingRevenue - tax);
+        // Settlement = what marketplace owes us = gross - fees (- our shipping costs if any)
+        const settlementAmount = salePrice - fees - shippingCost;
         const saleDate = sale.sale_date
           ? new Date(sale.sale_date).toISOString().split("T")[0]
           : new Date().toISOString().split("T")[0];
@@ -333,7 +346,6 @@ serve(async (req) => {
         // Check for cross-company device linkage
         if (device && device.companyId && device.companyId !== sale.company_id) {
           console.log(`Cross-company detected: Device ${sale.device_id} belongs to ${device.companyId}, sale is for ${sale.company_id}`);
-          // Auto-create intercompany transfer
           try {
             const icUrl = `${SUPABASE_URL}/functions/v1/process-intercompany-accounting`;
             await fetch(icUrl, {
@@ -359,6 +371,7 @@ serve(async (req) => {
         if (!salesWithRevenue.has(sale.id)) {
           const revenueLines: JournalLine[] = [];
 
+          // Dr AR (net settlement after fees)
           revenueLines.push({
             account_id: accounts.ar!,
             description: `Receivable from ${sale.marketplace} - ${sale.order_number}`,
@@ -366,6 +379,7 @@ serve(async (req) => {
             credit_amount: 0,
           });
 
+          // Dr Marketplace Fees (expense)
           if (fees > 0 && accounts.fees) {
             revenueLines.push({
               account_id: accounts.fees,
@@ -375,22 +389,35 @@ serve(async (req) => {
             });
           }
 
-          if (shipping > 0 && accounts.shipping) {
+          // Dr Shipping Costs (only if WE actually paid for shipping — expense)
+          if (shippingCost > 0 && accounts.shipping) {
             revenueLines.push({
               account_id: accounts.shipping,
-              description: `Shipping cost - ${sale.order_number}`,
-              debit_amount: shipping,
+              description: `Shipping cost paid - ${sale.order_number}`,
+              debit_amount: shippingCost,
               credit_amount: 0,
             });
           }
 
+          // Cr Sales Revenue (items only)
           revenueLines.push({
             account_id: accounts.revenue!,
             description: `Sale - ${deviceDesc} - ${sale.order_number}`,
             debit_amount: 0,
-            credit_amount: salePrice,
+            credit_amount: itemsRevenue,
           });
 
+          // Cr Shipping Revenue (customer-paid shipping is income)
+          if (shippingRevenue > 0 && accounts.shippingRevenue) {
+            revenueLines.push({
+              account_id: accounts.shippingRevenue,
+              description: `Shipping charged to customer - ${sale.order_number}`,
+              debit_amount: 0,
+              credit_amount: shippingRevenue,
+            });
+          }
+
+          // Cr Tax Collected (liability)
           if (tax > 0 && accounts.taxCollected) {
             revenueLines.push({
               account_id: accounts.taxCollected,
