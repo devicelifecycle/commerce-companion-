@@ -43,6 +43,11 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { getCompanyDisplayName } from '@/lib/companyNames';
 import { ActivityFooter } from '@/components/activity/ActivityFooter';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { PendingOrdersTab } from '@/components/sales/PendingOrdersTab';
+import { PageGuide } from '@/components/guides/PageGuide';
+import { CheckCircle2, ClipboardCheck, Send, Inbox } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 
 type Marketplace = 'shopify' | 'amazon' | 'bestbuy' | 'other';
 type FulfillmentStatus = 'received' | 'pending' | 'shipped' | 'delivered' | 'cancelled';
