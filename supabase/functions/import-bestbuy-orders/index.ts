@@ -651,8 +651,11 @@ serve(async (req) => {
             marketplace_status: lineItemStatus,
             fulfillment_status: fulfillmentStatus,
             is_marketplace_remitted: false, // Best Buy pays us the tax — we remit to CRA ourselves
-            // $0-sale guard: quarantine zero-priced orders for manual review (no journal entries posted)
-            accounting_status: (Number(salePrice) || 0) <= 0 ? "needs_review" : "unprocessed",
+            // Suspense Pipeline: imports start as pending_review (no journal entries until human posts).
+            accounting_status: (Number(salePrice) || 0) <= 0 ? "needs_review" : "pending_review",
+            review_reason: (Number(salePrice) || 0) <= 0
+              ? "Zero sale price — confirm and update before posting"
+              : (!provinceCode ? "Customer province missing — tax cannot be calculated" : null),
             product_title: lineItem.product_title || null,
             marketplace_sku: lineItem.offer_sku || null,
             subtotal: salePrice,
@@ -709,9 +712,9 @@ serve(async (req) => {
       metadata: { total_from_api: orders.length, total_count: totalCount },
     });
 
-    // Trigger accounting processor (fire-and-forget — avoids 150s idle timeout when backlog is large)
-    let accountingResult: any = { queued: false };
-    if (importedOrders.length > 0) {
+    // Suspense Pipeline: NO auto-posting. Human approves in Suspense Tray.
+    const accountingResult: any = { queued: false, note: "Suspense pipeline — no auto-post" };
+    if (false && importedOrders.length > 0) {
       try {
         const accountingUrl = `${SUPABASE_URL}/functions/v1/process-sale-accounting`;
         const newSaleIds = importedOrders.map((o: any) => o.id).filter(Boolean);
