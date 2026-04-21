@@ -26,6 +26,7 @@ const ACCOUNT_MAP: Record<string, Record<string, string>> = {
   amazon: {
     ar: "1050",
     revenue: "4000",
+    shippingRevenue: "4002",
     taxCollected: "4200",
     fees: "6000",
     shipping: "6100",
@@ -35,6 +36,7 @@ const ACCOUNT_MAP: Record<string, Record<string, string>> = {
   bestbuy: {
     ar: "1051",
     revenue: "4100",
+    shippingRevenue: "4103",
     taxCollected: "4201",
     fees: "6001",
     shipping: "6101",
@@ -44,6 +46,7 @@ const ACCOUNT_MAP: Record<string, Record<string, string>> = {
   shopify: {
     ar: "1051",
     revenue: "4101",
+    shippingRevenue: "4102",
     taxCollected: "4201",
     fees: "6001",
     shipping: "6101",
@@ -54,6 +57,7 @@ const ACCOUNT_MAP: Record<string, Record<string, string>> = {
   other: {
     ar: "1051",
     revenue: "4101",
+    shippingRevenue: "4102",
     taxCollected: "4201",
     fees: "6001",
     shipping: "6101",
