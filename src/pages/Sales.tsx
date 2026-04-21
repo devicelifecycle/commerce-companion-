@@ -70,6 +70,23 @@ export default function Sales() {
   const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [returningSale, setReturningSale] = useState<Sale | null>(null);
   const [showManualSale, setShowManualSale] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<'posted' | 'pending'>(
+    searchParams.get('tab') === 'pending' ? 'pending' : 'posted'
+  );
+  const [pendingTotalCount, setPendingTotalCount] = useState(0);
+
+  useEffect(() => {
+    if (searchParams.get('tab') === 'pending') setActiveTab('pending');
+  }, [searchParams]);
+
+  const handleTabChange = (val: string) => {
+    setActiveTab(val as 'posted' | 'pending');
+    const next = new URLSearchParams(searchParams);
+    if (val === 'pending') next.set('tab', 'pending');
+    else next.delete('tab');
+    setSearchParams(next, { replace: true });
+  };
 
   const canManageSales = hasPermission('sales_manage', 'edit');
   const canViewSales = hasPermission('sales_view', 'view');
