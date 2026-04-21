@@ -329,17 +329,55 @@ serve(async (req) => {
 
     for (const sale of sales) {
       try {
-        // $0-sale guard: never auto-post journal entries for zero-priced orders.
-        // Quarantine as 'needs_review' until a human confirms the price/intent.
+        // ============================================================
+        // GATE EVALUATION — runs in BOTH modes
+        // ============================================================
         const guardSalePrice = Number(sale.sale_price) || 0;
-        if (guardSalePrice <= 0) {
+        const manualCost = Number(sale.manual_cost || 0);
+        const device = sale.device_id ? deviceMap[sale.device_id] : null;
+        const province = (sale as any).shipping_province as string | null;
+        const fees = Number(sale.marketplace_fees || 0);
+        const isMarketplaceSale = ["amazon", "bestbuy", "shopify", "temu"].includes(sale.marketplace);
+
+        const failedGates: string[] = [];
+        // Gate 1: price > 0
+        if (guardSalePrice <= 0) failedGates.push("Zero sale price");
+        // Gate 2: province resolved (only for non-Amazon — Amazon is marketplace-remitted)
+        if (sale.marketplace !== "amazon" && !province) failedGates.push("Missing shipping province (tax cannot be calculated)");
+        // Gate 3: cost basis (linked device OR manual_cost)
+        if (!device && manualCost <= 0) failedGates.push("No linked device and no manual cost");
+        // Gate 4: marketplace orders need fees populated (amount can be 0 if truly no fees, but field must be defined)
+        if (isMarketplaceSale && sale.marketplace_fees === null) failedGates.push("Marketplace fees not yet populated");
+
+        if (failedGates.length > 0) {
+          // Quarantine — never post
           await supabase
             .from("sales")
-            .update({ accounting_status: "needs_review" })
+            .update({
+              accounting_status: "needs_review",
+              review_reason: failedGates.join("; "),
+            })
             .eq("id", sale.id);
-          errors.push(`${sale.order_number}: $0 sale quarantined — set price and re-process`);
+          if (mode === "post") {
+            errors.push(`${sale.order_number}: gates failed — ${failedGates.join(", ")}`);
+          }
           continue;
         }
+
+        // Gates passed
+        if (mode === "check_gates") {
+          // Move to ready_to_post (waiting for human click)
+          if (sale.accounting_status !== "ready_to_post") {
+            await supabase
+              .from("sales")
+              .update({ accounting_status: "ready_to_post", review_reason: null })
+              .eq("id", sale.id);
+          }
+          processed.push(sale.order_number);
+          continue;
+        }
+
+        // mode === "post" — proceed to write journal entries below
 
         const accounts = await getAccounts(sale.company_id, sale.marketplace);
         if (!accounts || !accounts.ar || !accounts.revenue) {
