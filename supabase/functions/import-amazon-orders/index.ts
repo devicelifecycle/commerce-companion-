@@ -552,23 +552,32 @@ serve(async (req) => {
       metadata: { total_from_api: orders.length },
     });
 
-    // Trigger accounting processor for newly imported sales
-    let accountingResult = null;
+    // Trigger accounting processor for newly imported sales (fire-and-forget to avoid 150s timeout)
+    let accountingResult: any = { queued: false };
     if (importedOrders.length > 0) {
       try {
         const accountingUrl = `${SUPABASE_URL}/functions/v1/process-sale-accounting`;
-        const accountingResponse = await fetch(accountingUrl, {
+        const newSaleIds = importedOrders.map((o: any) => o.id).filter(Boolean);
+        // Don't await — fire-and-forget. EdgeRuntime.waitUntil keeps the worker alive after response.
+        const accountingPromise = fetch(accountingUrl, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({}),
-        });
-        accountingResult = await accountingResponse.json();
-        console.log("Accounting processor result:", accountingResult);
+          body: JSON.stringify(newSaleIds.length > 0 ? { sale_ids: newSaleIds } : {}),
+        })
+          .then((r) => r.json())
+          .then((r) => console.log("Accounting result:", r))
+          .catch((e) => console.error("Accounting error:", e?.message));
+        // @ts-ignore - EdgeRuntime is available in Supabase edge runtime
+        if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
+          // @ts-ignore
+          EdgeRuntime.waitUntil(accountingPromise);
+        }
+        accountingResult = { queued: true, sale_count: newSaleIds.length };
       } catch (accError: any) {
-        console.error("Accounting processor error:", accError.message);
+        console.error("Accounting trigger error:", accError.message);
       }
     }
 
