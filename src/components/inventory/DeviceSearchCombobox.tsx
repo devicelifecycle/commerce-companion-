@@ -53,15 +53,14 @@ export function DeviceSearchCombobox({
 
   const effectiveCompanyId = companyId || selectedCompany?.id;
 
-  const loadDevices = useCallback(async () => {
+  const loadDevices = useCallback(async (term: string) => {
     if (!effectiveCompanyId) return;
     setLoading(true);
     try {
       let query = supabase
         .from('devices')
         .select('id, brand, model, imei, sku, storage, color, cost_price, status, company_id, supplier_invoice_number, condition')
-        .eq('company_id', effectiveCompanyId)
-        .order('brand');
+        .eq('company_id', effectiveCompanyId);
 
       if (statusFilter && statusFilter !== 'all') {
         if (Array.isArray(statusFilter)) {
@@ -73,7 +72,18 @@ export function DeviceSearchCombobox({
         }
       }
 
-      const { data, error } = await query.limit(500);
+      const t = term.trim();
+      if (t.length > 0) {
+        const like = `%${t}%`;
+        query = query.or(
+          `brand.ilike.${like},model.ilike.${like},imei.ilike.${like},sku.ilike.${like},color.ilike.${like},storage.ilike.${like},supplier_invoice_number.ilike.${like}`
+        );
+        query = query.limit(50);
+      } else {
+        query = query.order('created_at', { ascending: false }).limit(25);
+      }
+
+      const { data, error } = await query;
       if (!error && data) {
         setDevices(data as DeviceOption[]);
       }
@@ -82,29 +92,17 @@ export function DeviceSearchCombobox({
     }
   }, [effectiveCompanyId, statusFilter]);
 
+  // Debounced server-side search whenever the popover is open or the term changes
   useEffect(() => {
-    if (open) {
-      loadDevices();
-    }
-  }, [open, loadDevices]);
+    if (!open) return;
+    const handle = setTimeout(() => loadDevices(search), 200);
+    return () => clearTimeout(handle);
+  }, [open, search, loadDevices]);
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return devices.filter(d => !excludeIds.includes(d.id));
-    const s = search.toLowerCase();
-    return devices.filter(d => {
-      if (excludeIds.includes(d.id)) return false;
-      return (
-        d.imei?.toLowerCase().includes(s) ||
-        d.sku?.toLowerCase().includes(s) ||
-        d.brand.toLowerCase().includes(s) ||
-        d.model.toLowerCase().includes(s) ||
-        `${d.brand} ${d.model}`.toLowerCase().includes(s) ||
-        d.supplier_invoice_number?.toLowerCase().includes(s) ||
-        d.storage?.toLowerCase().includes(s) ||
-        d.color?.toLowerCase().includes(s)
-      );
-    });
-  }, [devices, search, excludeIds]);
+  const filtered = useMemo(
+    () => devices.filter(d => !excludeIds.includes(d.id)),
+    [devices, excludeIds]
+  );
 
   const selectedDevice = devices.find(d => d.id === value);
 
