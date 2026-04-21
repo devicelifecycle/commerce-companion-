@@ -388,10 +388,13 @@ export default function Sales() {
     );
   }
 
-  // Calculate unprocessed/revenue-only counts from allSales
-  const unprocessedCount = sales.filter(s => s.accounting_status === 'unprocessed').length;
-  const revenueOnlyCount = sales.filter(s => s.accounting_status === 'revenue_only').length;
-  const showAccountingAlert = (unprocessedCount > 0 || revenueOnlyCount > 0) && isSuperAdmin;
+  // Suspense pipeline counts — show banner when orders are waiting in tray
+  const pendingReviewCount = sales.filter(s => s.accounting_status === 'pending_review').length;
+  const readyToPostCount = sales.filter(s => s.accounting_status === 'ready_to_post').length;
+  const needsReviewCount = sales.filter(s => s.accounting_status === 'needs_review').length;
+  const showAccountingAlert = (pendingReviewCount + readyToPostCount + needsReviewCount) > 0 && isSuperAdmin;
+  const unprocessedCount = pendingReviewCount + readyToPostCount;
+  const revenueOnlyCount = needsReviewCount;
 
   return (
     <DashboardLayout>
