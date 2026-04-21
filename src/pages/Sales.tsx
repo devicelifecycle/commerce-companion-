@@ -469,20 +469,91 @@ export default function Sales() {
           </div>
         </div>
 
-        {/* Accounting Status Alert */}
-        {showAccountingAlert && (
-          <div className="flex items-center gap-3 px-4 py-3 rounded-lg border border-warning/40 bg-warning/5">
-            <AlertCircle className="h-4 w-4 text-warning shrink-0" />
-            <div className="text-sm">
-              <span className="font-medium text-warning">Accounting attention needed: </span>
-              <span className="text-muted-foreground">
-                {unprocessedCount > 0 && <>{unprocessedCount} unprocessed (no accounting entries)</>}
-                {unprocessedCount > 0 && revenueOnlyCount > 0 && ' · '}
-                {revenueOnlyCount > 0 && <>{revenueOnlyCount} revenue-only (no device linked for COGS)</>}
-              </span>
-            </div>
-          </div>
-        )}
+        {/* Quick guide */}
+        <PageGuide
+          title="How orders flow into your books"
+          sections={[
+            {
+              icon: <Inbox className="h-4 w-4 text-amber-500" />,
+              title: '1. Imported → Pending tab',
+              content: (
+                <p>
+                  New orders from Amazon, Shopify and Best Buy land in the <strong>Pending</strong> tab.
+                  They do <strong>not</strong> hit your P&amp;L, dashboard or financials yet.
+                </p>
+              ),
+            },
+            {
+              icon: <ClipboardCheck className="h-4 w-4 text-primary" />,
+              title: '2. Auto-resolve + 4 gates',
+              content: (
+                <p>
+                  Click <strong>Auto-resolve</strong> to fill missing data (province from postal code, link
+                  device by IMEI/SKU). Each order must pass 4 gates: price &gt; 0, province known,
+                  device or manual cost linked, and fees populated.
+                </p>
+              ),
+            },
+            {
+              icon: <Send className="h-4 w-4 text-emerald-500" />,
+              title: '3. Complete & Post',
+              content: (
+                <p>
+                  Open an order to fix anything missing, then select it and click <strong>Complete &amp; Post</strong>.
+                  Journal entries are written and the order moves to the <strong>Posted</strong> tab and into your reports.
+                </p>
+              ),
+            },
+            {
+              icon: <CheckCircle2 className="h-4 w-4 text-success" />,
+              title: 'Why this exists',
+              content: (
+                <p>
+                  Prevents revenue-only entries (no COGS), wrong-province tax, and orphan accounting.
+                  Nothing is reported until you confirm it's complete.
+                </p>
+              ),
+            },
+          ]}
+        />
+
+        {/* Tabs: Posted vs Pending */}
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+          <TabsList>
+            <TabsTrigger value="posted" className="gap-2">
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              Posted Orders
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="gap-2">
+              <Inbox className="h-3.5 w-3.5" />
+              Pending
+              {pendingTotalCount > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                  {pendingTotalCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pending" className="mt-4">
+            <PendingOrdersTab onCountsChange={setPendingTotalCount} />
+          </TabsContent>
+
+          <TabsContent value="posted" className="mt-4 space-y-6">
+            {showAccountingAlert && (
+              <div
+                className="flex items-center gap-3 px-4 py-3 rounded-lg border border-warning/40 bg-warning/5 cursor-pointer hover:bg-warning/10 transition-colors"
+                onClick={() => handleTabChange('pending')}
+              >
+                <AlertCircle className="h-4 w-4 text-warning shrink-0" />
+                <div className="text-sm flex-1">
+                  <span className="font-medium text-warning">
+                    {pendingReviewCount + readyToPostCount + needsReviewCount} orders waiting in Pending tab
+                  </span>
+                  <span className="text-muted-foreground ml-2">— click to review</span>
+                </div>
+              </div>
+            )}
 
 
         <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
