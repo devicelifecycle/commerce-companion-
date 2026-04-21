@@ -191,27 +191,58 @@ serve(async (req) => {
       }
     }
 
-    const BESTBUY_API_KEY = Deno.env.get("BESTBUY_API_KEY");
+    // Two Best Buy seller accounts: TGW (original) and VES (new).
+    // Backwards-compat: BESTBUY_API_KEY is treated as the TGW key if BESTBUY_TGW_API_KEY isn't set.
+    const BESTBUY_TGW_API_KEY = Deno.env.get("BESTBUY_TGW_API_KEY") || Deno.env.get("BESTBUY_API_KEY");
+    const BESTBUY_VES_API_KEY = Deno.env.get("BESTBUY_VES_API_KEY");
 
-    if (!BESTBUY_API_KEY) {
-      throw new Error("Best Buy API key not configured");
+    if (!BESTBUY_TGW_API_KEY && !BESTBUY_VES_API_KEY) {
+      throw new Error("No Best Buy API keys configured (set BESTBUY_TGW_API_KEY and/or BESTBUY_VES_API_KEY)");
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get TGW company ID (BestBuy is for TGW)
-    const { data: tgwCompany, error: companyError } = await supabase
+    // Resolve company IDs for both accounts
+    const { data: companiesData, error: companiesError } = await supabase
       .from("companies")
-      .select("id")
-      .eq("code", "TGW")
-      .single();
+      .select("id, code")
+      .in("code", ["TGW", "VES"]);
 
-    if (companyError || !tgwCompany) {
-      throw new Error("TGW company not found");
+    if (companiesError || !companiesData?.length) {
+      throw new Error("Could not load TGW/VES companies");
     }
 
-    const companyId = tgwCompany.id;
-    console.log(`Using TGW company ID: ${companyId}`);
+    const tgwCompanyId = companiesData.find((c: any) => c.code === "TGW")?.id;
+    const vesCompanyId = companiesData.find((c: any) => c.code === "VES")?.id;
+
+    if (!tgwCompanyId) throw new Error("TGW company not found");
+
+    // Build the list of accounts to import from (skip any without an API key)
+    const accounts: Array<{
+      apiKey: string;
+      companyId: string;
+      companyCode: string;
+      marketplaceAccount: string;
+    }> = [];
+
+    if (BESTBUY_TGW_API_KEY && tgwCompanyId) {
+      accounts.push({
+        apiKey: BESTBUY_TGW_API_KEY,
+        companyId: tgwCompanyId,
+        companyCode: "TGW",
+        marketplaceAccount: "bestbuy_tgw",
+      });
+    }
+    if (BESTBUY_VES_API_KEY && vesCompanyId) {
+      accounts.push({
+        apiKey: BESTBUY_VES_API_KEY,
+        companyId: vesCompanyId,
+        companyCode: "VES",
+        marketplaceAccount: "bestbuy_ves",
+      });
+    }
+
+    console.log(`Importing from ${accounts.length} Best Buy account(s): ${accounts.map(a => a.companyCode).join(', ')}`);
 
     // Fetch provincial tax rates for tax calculation
     const { data: taxRates, error: taxRatesError } = await supabase
