@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.generate-recurring-expenses]
 verify_jwt = false
+
+[functions.auto-resolve-sales]
+verify_jwt = false

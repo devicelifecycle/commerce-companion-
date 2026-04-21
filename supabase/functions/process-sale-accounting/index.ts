@@ -202,27 +202,38 @@ serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     let saleIds: string[] | null = null;
+    let mode: "post" | "check_gates" = "post";
     try {
       const body = await req.json();
       saleIds = body?.sale_ids || null;
+      // mode=check_gates: only evaluate gates and update status, do NOT create journal entries
+      // mode=post (default): create journal entries for orders explicitly listed in sale_ids
+      mode = body?.mode === "check_gates" ? "check_gates" : "post";
     } catch {
-      // No body — process all unaccounted
+      // No body — default to gate-check mode (safe; no auto-posting)
+      mode = "check_gates";
     }
 
-    // Find sales that need accounting processing
-    // Phase 1 fix: process ALL sales, not just ones with device_id
-    // - 'unprocessed' sales get revenue/AR entries (with or without device)
-    // - 'revenue_only' sales with a device_id now linked get COGS entries added
+    // Suspense pipeline statuses we operate on:
+    //   pending_review  — newly imported, gates not yet checked
+    //   needs_review    — failed a gate, waiting for human
+    //   ready_to_post   — passed all gates, waiting for human "Post" click
+    // We NEVER auto-touch fully_processed or voided.
     let salesQuery = supabase
       .from("sales")
       .select(
-        "id, order_number, marketplace, sale_price, subtotal, shipping_cost, shipping_revenue, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost"
+        "id, order_number, marketplace, sale_price, subtotal, shipping_cost, shipping_revenue, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost, shipping_province"
       )
-      .in("accounting_status", ["unprocessed", "revenue_only"])
-      .not("accounting_status", "eq", "voided");
+      .in("accounting_status", ["pending_review", "needs_review", "ready_to_post"]);
 
     if (saleIds && saleIds.length > 0) {
       salesQuery = salesQuery.in("id", saleIds);
+    } else if (mode === "post") {
+      // Safety: never bulk-post without explicit sale_ids
+      return new Response(
+        JSON.stringify({ success: false, error: "mode=post requires explicit sale_ids" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const { data: sales, error: salesError } = await salesQuery;
@@ -318,17 +329,55 @@ serve(async (req) => {
 
     for (const sale of sales) {
       try {
-        // $0-sale guard: never auto-post journal entries for zero-priced orders.
-        // Quarantine as 'needs_review' until a human confirms the price/intent.
+        // ============================================================
+        // GATE EVALUATION — runs in BOTH modes
+        // ============================================================
         const guardSalePrice = Number(sale.sale_price) || 0;
-        if (guardSalePrice <= 0) {
+        const manualCost = Number(sale.manual_cost || 0);
+        const device = sale.device_id ? deviceMap[sale.device_id] : null;
+        const province = (sale as any).shipping_province as string | null;
+        const fees = Number(sale.marketplace_fees || 0);
+        const isMarketplaceSale = ["amazon", "bestbuy", "shopify", "temu"].includes(sale.marketplace);
+
+        const failedGates: string[] = [];
+        // Gate 1: price > 0
+        if (guardSalePrice <= 0) failedGates.push("Zero sale price");
+        // Gate 2: province resolved (only for non-Amazon — Amazon is marketplace-remitted)
+        if (sale.marketplace !== "amazon" && !province) failedGates.push("Missing shipping province (tax cannot be calculated)");
+        // Gate 3: cost basis (linked device OR manual_cost)
+        if (!device && manualCost <= 0) failedGates.push("No linked device and no manual cost");
+        // Gate 4: marketplace orders need fees populated (amount can be 0 if truly no fees, but field must be defined)
+        if (isMarketplaceSale && sale.marketplace_fees === null) failedGates.push("Marketplace fees not yet populated");
+
+        if (failedGates.length > 0) {
+          // Quarantine — never post
           await supabase
             .from("sales")
-            .update({ accounting_status: "needs_review" })
+            .update({
+              accounting_status: "needs_review",
+              review_reason: failedGates.join("; "),
+            })
             .eq("id", sale.id);
-          errors.push(`${sale.order_number}: $0 sale quarantined — set price and re-process`);
+          if (mode === "post") {
+            errors.push(`${sale.order_number}: gates failed — ${failedGates.join(", ")}`);
+          }
           continue;
         }
+
+        // Gates passed
+        if (mode === "check_gates") {
+          // Move to ready_to_post (waiting for human click)
+          if (sale.accounting_status !== "ready_to_post") {
+            await supabase
+              .from("sales")
+              .update({ accounting_status: "ready_to_post", review_reason: null })
+              .eq("id", sale.id);
+          }
+          processed.push(sale.order_number);
+          continue;
+        }
+
+        // mode === "post" — proceed to write journal entries below
 
         const accounts = await getAccounts(sale.company_id, sale.marketplace);
         if (!accounts || !accounts.ar || !accounts.revenue) {
@@ -337,7 +386,6 @@ serve(async (req) => {
         }
 
         const salePrice = Number(sale.sale_price);
-        const fees = Number(sale.marketplace_fees || 0);
         const shippingCost = Number(sale.shipping_cost || 0);   // What WE paid to ship (expense)
         const shippingRevenue = Number((sale as any).shipping_revenue || 0); // What customer paid us
         const tax = Number(sale.tax_amount || 0);
@@ -352,7 +400,6 @@ serve(async (req) => {
           ? new Date(sale.sale_date).toISOString().split("T")[0]
           : new Date().toISOString().split("T")[0];
 
-        const device = sale.device_id ? deviceMap[sale.device_id] : null;
         const deviceDesc = device?.desc || "Unlinked item";
 
         // Check for cross-company device linkage
@@ -485,8 +532,8 @@ serve(async (req) => {
         }
 
         // === Entry 2: COGS (device linked OR manual_cost provided) ===
-        let newStatus = "revenue_only";
-        const manualCost = Number(sale.manual_cost || 0);
+        // Gates already verified cost basis exists, so post should always reach fully_processed.
+        let newStatus = "fully_processed";
         
         if (device && device.cost > 0 && !salesWithCOGS.has(sale.id)) {
           if (accounts.cogs && accounts.inventory) {
@@ -555,10 +602,14 @@ serve(async (req) => {
           newStatus = "fully_processed";
         }
 
-        // Update accounting_status
+        // Update accounting_status + stamp posted timestamp
         await supabase
           .from("sales")
-          .update({ accounting_status: newStatus })
+          .update({
+            accounting_status: newStatus,
+            review_reason: null,
+            posted_at: newStatus === "fully_processed" ? new Date().toISOString() : null,
+          })
           .eq("id", sale.id);
 
         processed.push(sale.order_number);

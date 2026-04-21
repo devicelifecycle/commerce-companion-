@@ -514,8 +514,11 @@ serve(async (req) => {
           marketplace_status: shopifyMarketplaceStatus,
           fulfillment_status: fulfillmentStatus,
           is_marketplace_remitted: false,
-          // $0-sale guard: quarantine zero-priced orders for manual review (no journal entries posted)
-          accounting_status: voided ? "voided" : ((Number(salePrice) || 0) <= 0 ? "needs_review" : "unprocessed"),
+          // Suspense Pipeline: imports land in pending_review (no journal entries until human posts).
+          accounting_status: voided ? "voided" : ((Number(salePrice) || 0) <= 0 ? "needs_review" : "pending_review"),
+          review_reason: voided ? null : ((Number(salePrice) || 0) <= 0
+            ? "Zero sale price — confirm and update before posting"
+            : (!province ? "Customer province missing — tax cannot be calculated" : null)),
           product_title: order.line_items?.length > 0 ? order.line_items[0].name : null,
           marketplace_sku: order.line_items?.length > 0 ? (order.line_items[0].sku || null) : null,
           item_count: order.line_items?.reduce((sum: number, i: any) => sum + (i.quantity || 1), 0) || 1,
@@ -559,22 +562,8 @@ serve(async (req) => {
     // Fire-and-forget: do NOT await — the accounting processor scans all
     // unprocessed sales globally and can exceed the 150s edge function
     // idle timeout. Let it run async; results are visible in its own logs.
-    let accountingResult = null;
-    if (importedOrders.length > 0) {
-      const accountingUrl = `${SUPABASE_URL}/functions/v1/process-sale-accounting`;
-      fetch(accountingUrl, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({}),
-      }).catch((accError: any) => {
-        console.error("Accounting processor error:", accError?.message);
-      });
-      console.log("Accounting processor triggered (async)");
-      accountingResult = { triggered: true, async: true };
-    }
+    // Suspense Pipeline: NO auto-posting. Human approves in Suspense Tray.
+    const accountingResult = { triggered: false, note: "Suspense pipeline — no auto-post" };
 
     return new Response(
       JSON.stringify({

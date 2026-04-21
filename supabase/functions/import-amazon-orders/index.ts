@@ -520,8 +520,11 @@ serve(async (req) => {
           marketplace_status: amazonMarketplaceStatus,
           fulfillment_status: fulfillmentStatus,
           is_marketplace_remitted: true,
-          // $0-sale guard: quarantine zero-priced orders for manual review (no journal entries posted)
-          accounting_status: (Number(totalSalePrice) || 0) <= 0 ? "needs_review" : "unprocessed",
+          // Suspense Pipeline: ALL imports start as pending_review.
+          // Auto-resolve cron + human Suspense Tray decide when to advance to ready_to_post.
+          // Zero-price orders go straight to needs_review with a reason.
+          accounting_status: (Number(totalSalePrice) || 0) <= 0 ? "needs_review" : "pending_review",
+          review_reason: (Number(totalSalePrice) || 0) <= 0 ? "Zero sale price — confirm and update before posting" : null,
           product_title: orderItems.length > 0 ? orderItems[0].Title : null,
           marketplace_sku: orderItems.length > 0 ? (orderItems[0].SellerSKU || orderItems[0].ASIN) : null,
           item_count: orderItems.reduce((sum: number, i: any) => sum + (i.QuantityOrdered || 1), 0),
@@ -560,34 +563,9 @@ serve(async (req) => {
       metadata: { total_from_api: orders.length },
     });
 
-    // Trigger accounting processor for newly imported sales (fire-and-forget to avoid 150s timeout)
-    let accountingResult: any = { queued: false };
-    if (importedOrders.length > 0) {
-      try {
-        const accountingUrl = `${SUPABASE_URL}/functions/v1/process-sale-accounting`;
-        const newSaleIds = importedOrders.map((o: any) => o.id).filter(Boolean);
-        // Don't await — fire-and-forget. EdgeRuntime.waitUntil keeps the worker alive after response.
-        const accountingPromise = fetch(accountingUrl, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(newSaleIds.length > 0 ? { sale_ids: newSaleIds } : {}),
-        })
-          .then((r) => r.json())
-          .then((r) => console.log("Accounting result:", r))
-          .catch((e) => console.error("Accounting error:", e?.message));
-        // @ts-ignore - EdgeRuntime is available in Supabase edge runtime
-        if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
-          // @ts-ignore
-          EdgeRuntime.waitUntil(accountingPromise);
-        }
-        accountingResult = { queued: true, sale_count: newSaleIds.length };
-      } catch (accError: any) {
-        console.error("Accounting trigger error:", accError.message);
-      }
-    }
+    // Suspense Pipeline: NO auto-posting. Imports land in pending_review.
+    // The auto-resolve cron will run gates; human approves in Suspense Tray.
+    const accountingResult = { queued: false, note: "Suspense pipeline — no auto-post" };
 
     return new Response(
       JSON.stringify({
