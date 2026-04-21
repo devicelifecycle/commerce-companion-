@@ -139,6 +139,7 @@ const SECTIONS = [
     icon: ClipboardCheck,
     views: [
       { value: 'accounting-trail' as SubView, label: 'Accounting Trail', icon: ClipboardCheck },
+      { value: 'sales-audit' as SubView, label: 'Sales Audit', icon: CheckSquare },
     ],
   },
   {
