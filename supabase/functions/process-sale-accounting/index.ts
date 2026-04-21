@@ -216,7 +216,7 @@ serve(async (req) => {
     let salesQuery = supabase
       .from("sales")
       .select(
-        "id, order_number, marketplace, sale_price, shipping_cost, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost"
+        "id, order_number, marketplace, sale_price, subtotal, shipping_cost, shipping_revenue, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost"
       )
       .in("accounting_status", ["unprocessed", "revenue_only"])
       .not("accounting_status", "eq", "voided");
