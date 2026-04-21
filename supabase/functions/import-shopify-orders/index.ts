@@ -377,18 +377,32 @@ serve(async (req) => {
         const shopifyMarketplaceStatus = buildShopifyStatus(order);
         const fulfillmentStatus = mapShopifyToFulfillment(order);
 
-        // Calculate marketplace fees from balance transactions (total - net payout)
-        const totalPrice = parseFloat(order.total_price || "0");
-        const balanceTxn = feeMap[String(order.id)];
-        let marketplaceFees = 0;
-        if (balanceTxn) {
-          // Fee from balance transactions = total charged - net received
-          marketplaceFees = balanceTxn.fee;
-        } else {
-          // Fallback: estimate at 2.9% + $0.30
-          marketplaceFees = totalPrice > 0 ? totalPrice * 0.029 + 0.30 : 0;
+        // === Pull EXACT financial data from Shopify API ===
+        // Shopify is the source of truth. NEVER estimate.
+        const totalPrice = parseFloat(order.total_price || "0");          // Gross total customer paid
+        const subtotal = parseFloat(order.subtotal_price || "0");          // Items only (no shipping/tax)
+        const taxAmount = parseFloat(order.total_tax || "0");              // Actual tax collected
+        const shippingRevenue = parseFloat(order.total_shipping_price_set?.shop_money?.amount || "0"); // Customer-paid shipping (income)
+
+        // Tax rate & title from tax_lines (e.g. GST 5%, HST 13%)
+        let taxRate: number | null = null;
+        let taxTitle: string | null = null;
+        if (Array.isArray(order.tax_lines) && order.tax_lines.length > 0) {
+          taxTitle = order.tax_lines.map((t: any) => t.title).filter(Boolean).join('+') || null;
+          // Effective rate against subtotal
+          taxRate = subtotal > 0 ? parseFloat((taxAmount / subtotal).toFixed(4)) : null;
         }
-        marketplaceFees = parseFloat(marketplaceFees.toFixed(2));
+
+        // Fees + payout amount from Shopify Payments balance transactions (real data)
+        const balanceTxn = feeMap[String(order.id)];
+        let marketplaceFees: number | null = null;
+        let payoutAmount: number | null = null;
+        if (balanceTxn) {
+          marketplaceFees = parseFloat(balanceTxn.fee.toFixed(2));
+          payoutAmount = parseFloat(balanceTxn.net.toFixed(2));
+        }
+        // If balance txn missing (e.g. non-Shopify-Payments gateway), leave fees null
+        // so audit view can flag the gap rather than use a fake estimate.
 
         // Check if order already exists
         const { data: existingOrder } = await supabase
@@ -397,26 +411,36 @@ serve(async (req) => {
           .eq("order_number", orderNumber)
           .maybeSingle();
 
-        if (existingOrder) {
-          // === UPDATE existing order ===
-          const customerName = order.customer?.first_name
-            ? `${order.customer.first_name} ${order.customer.last_name || ""}`.trim()
-            : null;
-          const customerEmail = order.customer?.email || order.email || null;
-          const customerPhone = order.customer?.phone || order.shipping_address?.phone || null;
-          const shippingAddress = order.shipping_address
-            ? [order.shipping_address.address1, order.shipping_address.address2,
-               `${order.shipping_address.city}, ${order.shipping_address.province} ${order.shipping_address.zip}`,
-               order.shipping_address.country].filter(Boolean).join("\n")
-            : null;
+        const customerName = order.customer?.first_name
+          ? `${order.customer.first_name} ${order.customer.last_name || ""}`.trim()
+          : null;
+        const customerEmail = order.customer?.email || order.email || null;
+        const customerPhone = order.customer?.phone || order.shipping_address?.phone || null;
+        const shippingAddress = order.shipping_address
+          ? [order.shipping_address.address1, order.shipping_address.address2,
+             `${order.shipping_address.city}, ${order.shipping_address.province} ${order.shipping_address.zip}`,
+             order.shipping_address.country].filter(Boolean).join("\n")
+          : null;
+        const province = order.shipping_address?.province_code || order.billing_address?.province_code || null;
+        const lineItemsStr = order.line_items?.map((item: any) => `${item.name} (x${item.quantity})`).join(", ") || "";
+        const notes = `Shopify Order #${order.order_number} | Status: ${shopifyMarketplaceStatus} | Province: ${province || 'N/A'} | Tax: ${taxTitle || 'none'} | ${lineItemsStr}`;
 
+        if (existingOrder) {
+          // === UPDATE existing order with FULL refresh from Shopify API ===
           const updates: any = {
             marketplace_status: shopifyMarketplaceStatus,
             fulfillment_status: fulfillmentStatus,
-            // Fix shipping_cost: customer shipping charges are INCOME (already in total_price), not an expense
-            shipping_cost: 0,
-            // Update fees from balance transactions
-            marketplace_fees: marketplaceFees,
+            sale_price: totalPrice,
+            subtotal,
+            shipping_cost: 0,                 // What we paid to ship (unknown from API)
+            shipping_revenue: shippingRevenue, // What customer paid us
+            tax_amount: taxAmount,
+            tax_rate: taxRate,
+            tax_title: taxTitle,
+            marketplace_fees: marketplaceFees ?? 0,
+            payout_amount: payoutAmount,
+            shipping_province: province,
+            notes,
           };
           if (customerEmail) updates.customer_email = customerEmail;
           if (shippingAddress) updates.shipping_address = shippingAddress;
@@ -439,28 +463,8 @@ serve(async (req) => {
 
         // === INSERT new order ===
         const salePrice = totalPrice;
-        const taxAmount = parseFloat(order.total_tax || "0");
-        // Shipping charged to customer is INCOME, already included in total_price. 
-        // shipping_cost field = our actual cost to ship (unknown from Shopify, set to 0)
-        const shippingCost = 0;
-
-        const shippingAddress = order.shipping_address
-          ? [order.shipping_address.address1, order.shipping_address.address2,
-             `${order.shipping_address.city}, ${order.shipping_address.province} ${order.shipping_address.zip}`,
-             order.shipping_address.country].filter(Boolean).join("\n")
-          : null;
-
-        const customerName = order.customer?.first_name
-          ? `${order.customer.first_name} ${order.customer.last_name || ""}`.trim()
-          : null;
-        const customerEmail = order.customer?.email || order.email || null;
-        const customerPhone = order.customer?.phone || order.shipping_address?.phone || null;
-
+        const shippingCost = 0; // Our cost to ship (not provided by Shopify)
         const customerId = await upsertCustomer(supabase, customerName, customerEmail, customerPhone, shippingAddress, companyId, "shopify");
-
-        const lineItemsStr = order.line_items?.map((item: any) => `${item.name} (x${item.quantity})`).join(", ") || "";
-        const province = order.shipping_address?.province_code || order.billing_address?.province_code || null;
-        const notes = `Shopify Order #${order.order_number} | Status: ${shopifyMarketplaceStatus} | Province: ${province || 'N/A'} | ${lineItemsStr}`;
 
         // Device matching
         let deviceId = null;
