@@ -95,75 +95,115 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
     { id: generateId(), type: 'inventory', source_type: undefined, source_id: null, device_id: null, description: '', quantity: 1, unit_price: 0, tax_treatment: 'hst' },
   ]);
 
-  // Unified inventory search
-  const [allInventory, setAllInventory] = useState<InventoryItem[]>([]);
+  // Server-side inventory search (debounced) — no bulk preload
+  const [searchResults, setSearchResults] = useState<InventoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
   const [searchingLineId, setSearchingLineId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchAllInventory = useCallback(async () => {
-    if (!invoiceCompanyId) return;
-
-    const [devicesRes, productsRes, partsRes] = await Promise.all([
-      supabase
-        .from('devices')
-        .select('id, brand, model, storage, color, sku, cost_price, sale_price, status, condition, imei')
-        // Include sellable inventory: in_stock, refurb pipeline (often invoiced before refurb completes), and reserved
-        .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment'] as any)
-        .eq('company_id', invoiceCompanyId)
-        .order('brand')
-        .limit(1000),
-      supabase
-        .from('products')
-        .select('id, name, sku, cost_price, sale_price, quantity_on_hand, unit_of_measure')
-        .eq('company_id', invoiceCompanyId)
-        .eq('status', 'active')
-        .order('name')
-        .limit(500),
-      supabase
-        .from('repair_parts')
-        .select('id, name, sku, unit_cost, quantity_on_hand')
-        .eq('company_id', invoiceCompanyId)
-        .order('name')
-        .limit(500),
-    ]);
-
-    const items: InventoryItem[] = [];
-
-    (devicesRes.data || []).forEach((d: any) => {
-      const label = `${d.brand} ${d.model}${d.storage ? ` ${d.storage}` : ''}${d.color ? ` (${d.color})` : ''}`;
-      const sublabel = [d.imei && `IMEI: ${d.imei}`, d.sku && `SKU: ${d.sku}`, d.condition].filter(Boolean).join(' · ');
-      items.push({ id: d.id, source: 'device', label, sublabel, price: Number(d.sale_price || d.cost_price), sku: d.sku });
-    });
-
-    (productsRes.data || []).forEach((p: any) => {
-      const sublabel = [p.sku && `SKU: ${p.sku}`, `Qty: ${p.quantity_on_hand}`, p.unit_of_measure].filter(Boolean).join(' · ');
-      items.push({ id: p.id, source: 'product', label: p.name, sublabel, price: Number(p.sale_price || p.cost_price), qty: p.quantity_on_hand, sku: p.sku });
-    });
-
-    (partsRes.data || []).forEach((r: any) => {
-      const sublabel = [r.sku && `SKU: ${r.sku}`, `Qty: ${r.quantity_on_hand}`].filter(Boolean).join(' · ');
-      items.push({ id: r.id, source: 'repair_part', label: r.name, sublabel, price: Number(r.unit_cost), qty: r.quantity_on_hand, sku: r.sku });
-    });
-
-    setAllInventory(items);
-  }, [invoiceCompanyId]);
-
+  // Debounced server-side search across devices, products, repair_parts
   useEffect(() => {
-    if (open) fetchAllInventory();
-  }, [open, fetchAllInventory]);
+    if (!invoiceCompanyId || searchingLineId === null) return;
+
+    const handle = setTimeout(async () => {
+      const q = searchQuery.trim();
+      setSearching(true);
+      try {
+        const items: InventoryItem[] = [];
+
+        if (q.length === 0) {
+          // No query — show a small recent slice per source so the panel isn't empty
+          const [devicesRes, productsRes, partsRes] = await Promise.all([
+            supabase
+              .from('devices')
+              .select('id, brand, model, storage, color, sku, cost_price, sale_price, condition, imei')
+              .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment'] as any)
+              .eq('company_id', invoiceCompanyId)
+              .order('created_at', { ascending: false })
+              .limit(15),
+            supabase
+              .from('products')
+              .select('id, name, sku, cost_price, sale_price, quantity_on_hand, unit_of_measure')
+              .eq('company_id', invoiceCompanyId)
+              .eq('status', 'active')
+              .order('name')
+              .limit(10),
+            supabase
+              .from('repair_parts')
+              .select('id, name, sku, unit_cost, quantity_on_hand')
+              .eq('company_id', invoiceCompanyId)
+              .order('name')
+              .limit(10),
+          ]);
+
+          (devicesRes.data || []).forEach((d: any) => {
+            const label = `${d.brand} ${d.model}${d.storage ? ` ${d.storage}` : ''}${d.color ? ` (${d.color})` : ''}`;
+            const sublabel = [d.imei && `IMEI: ${d.imei}`, d.sku && `SKU: ${d.sku}`, d.condition].filter(Boolean).join(' · ');
+            items.push({ id: d.id, source: 'device', label, sublabel, price: Number(d.sale_price || d.cost_price), sku: d.sku });
+          });
+          (productsRes.data || []).forEach((p: any) => {
+            const sublabel = [p.sku && `SKU: ${p.sku}`, `Qty: ${p.quantity_on_hand}`, p.unit_of_measure].filter(Boolean).join(' · ');
+            items.push({ id: p.id, source: 'product', label: p.name, sublabel, price: Number(p.sale_price || p.cost_price), qty: p.quantity_on_hand, sku: p.sku });
+          });
+          (partsRes.data || []).forEach((r: any) => {
+            const sublabel = [r.sku && `SKU: ${r.sku}`, `Qty: ${r.quantity_on_hand}`].filter(Boolean).join(' · ');
+            items.push({ id: r.id, source: 'repair_part', label: r.name, sublabel, price: Number(r.unit_cost), qty: r.quantity_on_hand, sku: r.sku });
+          });
+        } else {
+          // Server-side ilike search on each table — covers brand/model/imei/sku/name
+          const term = `%${q}%`;
+          const [devicesRes, productsRes, partsRes] = await Promise.all([
+            supabase
+              .from('devices')
+              .select('id, brand, model, storage, color, sku, cost_price, sale_price, condition, imei')
+              .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment'] as any)
+              .eq('company_id', invoiceCompanyId)
+              .or(`brand.ilike.${term},model.ilike.${term},imei.ilike.${term},sku.ilike.${term},color.ilike.${term},storage.ilike.${term}`)
+              .limit(25),
+            supabase
+              .from('products')
+              .select('id, name, sku, barcode, cost_price, sale_price, quantity_on_hand, unit_of_measure')
+              .eq('company_id', invoiceCompanyId)
+              .eq('status', 'active')
+              .or(`name.ilike.${term},sku.ilike.${term},barcode.ilike.${term}`)
+              .limit(15),
+            supabase
+              .from('repair_parts')
+              .select('id, name, sku, unit_cost, quantity_on_hand')
+              .eq('company_id', invoiceCompanyId)
+              .or(`name.ilike.${term},sku.ilike.${term}`)
+              .limit(15),
+          ]);
+
+          (devicesRes.data || []).forEach((d: any) => {
+            const label = `${d.brand} ${d.model}${d.storage ? ` ${d.storage}` : ''}${d.color ? ` (${d.color})` : ''}`;
+            const sublabel = [d.imei && `IMEI: ${d.imei}`, d.sku && `SKU: ${d.sku}`, d.condition].filter(Boolean).join(' · ');
+            items.push({ id: d.id, source: 'device', label, sublabel, price: Number(d.sale_price || d.cost_price), sku: d.sku });
+          });
+          (productsRes.data || []).forEach((p: any) => {
+            const sublabel = [p.sku && `SKU: ${p.sku}`, `Qty: ${p.quantity_on_hand}`, p.unit_of_measure].filter(Boolean).join(' · ');
+            items.push({ id: p.id, source: 'product', label: p.name, sublabel, price: Number(p.sale_price || p.cost_price), qty: p.quantity_on_hand, sku: p.sku });
+          });
+          (partsRes.data || []).forEach((r: any) => {
+            const sublabel = [r.sku && `SKU: ${r.sku}`, `Qty: ${r.quantity_on_hand}`].filter(Boolean).join(' · ');
+            items.push({ id: r.id, source: 'repair_part', label: r.name, sublabel, price: Number(r.unit_cost), qty: r.quantity_on_hand, sku: r.sku });
+          });
+        }
+
+        setSearchResults(items);
+      } finally {
+        setSearching(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(handle);
+  }, [invoiceCompanyId, searchQuery, searchingLineId]);
 
   const filteredInventory = useMemo(() => {
     const usedIds = new Set(lineItems.filter(li => li.source_id).map(li => li.source_id));
-    const available = allInventory.filter(i => !usedIds.has(i.id));
-    if (!searchQuery.trim()) return available.slice(0, 30);
-    const q = searchQuery.toLowerCase();
-    return available.filter(i =>
-      i.label.toLowerCase().includes(q) ||
-      i.sublabel.toLowerCase().includes(q) ||
-      i.sku?.toLowerCase().includes(q)
-    ).slice(0, 30);
-  }, [allInventory, searchQuery, lineItems]);
+    return searchResults.filter(i => !usedIds.has(i.id));
+  }, [searchResults, lineItems]);
 
   const addLineItem = (type: 'inventory' | 'manual') => {
     setLineItems(prev => [...prev, {
