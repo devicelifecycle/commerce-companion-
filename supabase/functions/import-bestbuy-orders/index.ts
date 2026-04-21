@@ -444,7 +444,7 @@ serve(async (req) => {
 
     for (const order of orders) {
       try {
-        const orderNumber = `BBY-${order.commercial_id}`;
+        const orderNumber = `${orderPrefix}${order.commercial_id}`;
         
         // Check if order already exists
         const { data: existingOrder } = await supabase
@@ -499,7 +499,7 @@ serve(async (req) => {
 
           // Also update all line-item sales for this order with product info per line
           for (const lineItem of order.order_lines) {
-            const lineOrderNumber = `BBY-${order.commercial_id}-${lineItem.order_line_id}`;
+            const lineOrderNumber = `${orderPrefix}${order.commercial_id}-${lineItem.order_line_id}`;
             const lineUpdates: any = { 
               marketplace_status: bbyStatus,
               fulfillment_status: mapBestBuyToFulfillment(order.order_state),
