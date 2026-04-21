@@ -358,11 +358,13 @@ export function SalesAccountingAudit({ companyView }: Props) {
             </div>
             {filtered.length > PAGE_SIZE && (
               <DataTablePagination
-                currentPage={page}
-                totalPages={Math.ceil(filtered.length / PAGE_SIZE)}
-                pageSize={PAGE_SIZE}
-                totalItems={filtered.length}
-                onPageChange={setPage}
+                pagination={{
+                  page: page - 1,
+                  pageSize: PAGE_SIZE,
+                  totalCount: filtered.length,
+                  totalPages: Math.ceil(filtered.length / PAGE_SIZE),
+                }}
+                onPageChange={(p) => setPage(p + 1)}
               />
             )}
           </>
