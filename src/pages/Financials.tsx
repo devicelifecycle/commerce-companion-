@@ -37,6 +37,7 @@ import { CostLedgerPanel } from '@/components/financials/CostLedgerPanel';
 
 // Accounting Audit Trail
 import { AccountingAuditTrail } from '@/components/financials/AccountingAuditTrail';
+import { SalesAccountingAudit } from '@/components/financials/SalesAccountingAudit';
 
 // Year-End Closing
 import { YearEndClosing } from '@/components/accounting/YearEndClosing';
@@ -59,7 +60,7 @@ type SubView =
   | 'ap' | 'ar'
   | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing' | 'tax-reconciliation'
   | 'cost-devices'
-  | 'accounting-trail'
+  | 'accounting-trail' | 'sales-audit'
   | 'year-end-closing'
   | 'relationships' | 'unaccounted';
 
@@ -138,6 +139,7 @@ const SECTIONS = [
     icon: ClipboardCheck,
     views: [
       { value: 'accounting-trail' as SubView, label: 'Accounting Trail', icon: ClipboardCheck },
+      { value: 'sales-audit' as SubView, label: 'Sales Audit', icon: CheckSquare },
     ],
   },
   {
@@ -267,6 +269,7 @@ export default function Financials() {
             {subView === 'unaccounted' && <UnaccountedMarketplaceData companyFilter={companyView === 'consolidated' ? null : companyView} />}
 
             {subView === 'accounting-trail' && <AccountingAuditTrail companyView={companyView} />}
+            {subView === 'sales-audit' && <SalesAccountingAudit companyView={companyView} />}
             {subView === 'year-end-closing' && <YearEndClosing />}
           </div>
         </div>
