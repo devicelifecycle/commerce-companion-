@@ -543,7 +543,7 @@ serve(async (req) => {
 
         // Process each line item as a sale
         for (const lineItem of order.order_lines) {
-          const lineOrderNumber = `BBY-${order.commercial_id}-${lineItem.order_line_id}`;
+          const lineOrderNumber = `${orderPrefix}${order.commercial_id}-${lineItem.order_line_id}`;
           
           // Check if this specific line item already exists
           const { data: existingLineOrder } = await supabase
