@@ -3121,6 +3121,7 @@ export type Database = {
           customer_name: string | null
           device_id: string | null
           fulfillment_status: string | null
+          gates_checked_at: string | null
           id: string
           is_marketplace_remitted: boolean | null
           is_multi_item: boolean | null
@@ -3134,8 +3135,13 @@ export type Database = {
           notes: string | null
           order_number: string
           payout_amount: number | null
+          posted_at: string | null
+          posted_by: string | null
           product_title: string | null
           profit: number | null
+          province_inferred: boolean | null
+          ready_to_post_at: string | null
+          review_reason: string | null
           sale_date: string
           sale_price: number
           shipping_address: string | null
@@ -3158,6 +3164,7 @@ export type Database = {
           customer_name?: string | null
           device_id?: string | null
           fulfillment_status?: string | null
+          gates_checked_at?: string | null
           id?: string
           is_marketplace_remitted?: boolean | null
           is_multi_item?: boolean | null
@@ -3171,8 +3178,13 @@ export type Database = {
           notes?: string | null
           order_number: string
           payout_amount?: number | null
+          posted_at?: string | null
+          posted_by?: string | null
           product_title?: string | null
           profit?: number | null
+          province_inferred?: boolean | null
+          ready_to_post_at?: string | null
+          review_reason?: string | null
           sale_date?: string
           sale_price: number
           shipping_address?: string | null
@@ -3195,6 +3207,7 @@ export type Database = {
           customer_name?: string | null
           device_id?: string | null
           fulfillment_status?: string | null
+          gates_checked_at?: string | null
           id?: string
           is_marketplace_remitted?: boolean | null
           is_multi_item?: boolean | null
@@ -3208,8 +3221,13 @@ export type Database = {
           notes?: string | null
           order_number?: string
           payout_amount?: number | null
+          posted_at?: string | null
+          posted_by?: string | null
           product_title?: string | null
           profit?: number | null
+          province_inferred?: boolean | null
+          ready_to_post_at?: string | null
+          review_reason?: string | null
           sale_date?: string
           sale_price?: number
           shipping_address?: string | null
