@@ -37,6 +37,7 @@ import { CostLedgerPanel } from '@/components/financials/CostLedgerPanel';
 
 // Accounting Audit Trail
 import { AccountingAuditTrail } from '@/components/financials/AccountingAuditTrail';
+import { SalesAccountingAudit } from '@/components/financials/SalesAccountingAudit';
 
 // Year-End Closing
 import { YearEndClosing } from '@/components/accounting/YearEndClosing';
