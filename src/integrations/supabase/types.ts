@@ -3133,6 +3133,7 @@ export type Database = {
           marketplace_status: string | null
           notes: string | null
           order_number: string
+          payout_amount: number | null
           product_title: string | null
           profit: number | null
           sale_date: string
@@ -3140,8 +3141,11 @@ export type Database = {
           shipping_address: string | null
           shipping_cost: number | null
           shipping_province: string | null
+          shipping_revenue: number | null
           subtotal: number | null
           tax_amount: number | null
+          tax_rate: number | null
+          tax_title: string | null
           updated_at: string
         }
         Insert: {
@@ -3166,6 +3170,7 @@ export type Database = {
           marketplace_status?: string | null
           notes?: string | null
           order_number: string
+          payout_amount?: number | null
           product_title?: string | null
           profit?: number | null
           sale_date?: string
@@ -3173,8 +3178,11 @@ export type Database = {
           shipping_address?: string | null
           shipping_cost?: number | null
           shipping_province?: string | null
+          shipping_revenue?: number | null
           subtotal?: number | null
           tax_amount?: number | null
+          tax_rate?: number | null
+          tax_title?: string | null
           updated_at?: string
         }
         Update: {
@@ -3199,6 +3207,7 @@ export type Database = {
           marketplace_status?: string | null
           notes?: string | null
           order_number?: string
+          payout_amount?: number | null
           product_title?: string | null
           profit?: number | null
           sale_date?: string
@@ -3206,8 +3215,11 @@ export type Database = {
           shipping_address?: string | null
           shipping_cost?: number | null
           shipping_province?: string | null
+          shipping_revenue?: number | null
           subtotal?: number | null
           tax_amount?: number | null
+          tax_rate?: number | null
+          tax_title?: string | null
           updated_at?: string
         }
         Relationships: [
