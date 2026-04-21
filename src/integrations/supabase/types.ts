@@ -1951,6 +1951,7 @@ export type Database = {
           gross_amount: number
           id: string
           marketplace: string
+          marketplace_account: string | null
           net_payout: number
           payout_date: string
           payout_id: string
@@ -1977,6 +1978,7 @@ export type Database = {
           gross_amount?: number
           id?: string
           marketplace: string
+          marketplace_account?: string | null
           net_payout?: number
           payout_date: string
           payout_id: string
@@ -2003,6 +2005,7 @@ export type Database = {
           gross_amount?: number
           id?: string
           marketplace?: string
+          marketplace_account?: string | null
           net_payout?: number
           payout_date?: string
           payout_id?: string
@@ -3129,6 +3132,7 @@ export type Database = {
           manual_cost: number | null
           manual_cost_description: string | null
           marketplace: Database["public"]["Enums"]["marketplace"]
+          marketplace_account: string | null
           marketplace_fees: number | null
           marketplace_sku: string | null
           marketplace_status: string | null
@@ -3172,6 +3176,7 @@ export type Database = {
           manual_cost?: number | null
           manual_cost_description?: string | null
           marketplace: Database["public"]["Enums"]["marketplace"]
+          marketplace_account?: string | null
           marketplace_fees?: number | null
           marketplace_sku?: string | null
           marketplace_status?: string | null
@@ -3215,6 +3220,7 @@ export type Database = {
           manual_cost?: number | null
           manual_cost_description?: string | null
           marketplace?: Database["public"]["Enums"]["marketplace"]
+          marketplace_account?: string | null
           marketplace_fees?: number | null
           marketplace_sku?: string | null
           marketplace_status?: string | null
