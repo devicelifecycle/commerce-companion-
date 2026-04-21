@@ -832,6 +832,8 @@ export default function Sales() {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+        </Tabs>
 
       </div>
 
