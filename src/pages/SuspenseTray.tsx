@@ -40,7 +40,8 @@ const STATUS_TABS = [
 export default function SuspenseTray() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { selectedCompanyId } = useCompany();
+  const { selectedCompany } = useCompany();
+  const selectedCompanyId = selectedCompany?.id || null;
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<string>('ready_to_post');
