@@ -73,6 +73,11 @@ export const REVENUE_ACCOUNTS: AccountDefinition[] = [
   { code: '4000', name: 'Sales Revenue - Amazon - VES', type: 'revenue', subtype: 'Sales Revenue', normalBalance: 'credit', company: 'VES', description: 'VES Amazon sales' },
   { code: '4100', name: 'Sales Revenue - BestBuy - TGW', type: 'revenue', subtype: 'Sales Revenue', normalBalance: 'credit', company: 'TGW', description: 'TGW BestBuy sales' },
   { code: '4101', name: 'Sales Revenue - Shopify - TGW', type: 'revenue', subtype: 'Sales Revenue', normalBalance: 'credit', company: 'TGW', description: 'TGW Shopify sales' },
+
+  // Shipping Revenue by Marketplace (separate line for accurate P&L)
+  { code: '4002', name: 'Shipping Revenue - Amazon - VES', type: 'revenue', subtype: 'Sales Revenue', normalBalance: 'credit', company: 'VES', description: 'VES Amazon shipping charged to customer' },
+  { code: '4102', name: 'Shipping Revenue - Shopify - TGW', type: 'revenue', subtype: 'Sales Revenue', normalBalance: 'credit', company: 'TGW', description: 'TGW Shopify shipping charged to customer' },
+  { code: '4103', name: 'Shipping Revenue - BestBuy - TGW', type: 'revenue', subtype: 'Sales Revenue', normalBalance: 'credit', company: 'TGW', description: 'TGW BestBuy shipping charged to customer' },
   
   // Tax Collected (memo accounts - flow through)
   { code: '4200', name: 'Tax Collected on Sales - VES', type: 'revenue', subtype: 'Tax Revenue', normalBalance: 'credit', company: 'VES', description: 'VES tax collected (marketplace remits)' },
