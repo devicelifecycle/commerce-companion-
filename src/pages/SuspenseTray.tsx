@@ -51,6 +51,13 @@ export default function SuspenseTray() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [posting, setPosting] = useState(false);
   const [resolving, setResolving] = useState(false);
+  const [resolveLog, setResolveLog] = useState<Array<{
+    order: string;
+    status: string;
+    reason: string;
+    at: string;
+  }>>([]);
+  const [lastRunAt, setLastRunAt] = useState<string | null>(null);
 
   const loadSales = async () => {
     setLoading(true);
