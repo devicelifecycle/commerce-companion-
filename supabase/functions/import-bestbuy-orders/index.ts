@@ -309,6 +309,23 @@ serve(async (req) => {
     defaultStart.setDate(defaultStart.getDate() - 7);
     const startDate = body.startDate ? new Date(body.startDate).toISOString() : defaultStart.toISOString();
 
+    // Aggregate totals across all accounts
+    const allImported: string[] = [];
+    const allSkipped: string[] = [];
+    const allErrors: string[] = [];
+    const perAccountResults: Array<{ account: string; company: string; imported: number; skipped: number; errors: number }> = [];
+
+    // Loop through each Best Buy seller account (TGW, VES)
+    for (const account of accounts) {
+      const BESTBUY_API_KEY = account.apiKey;
+      const companyId = account.companyId;
+      const marketplaceAccount = account.marketplaceAccount;
+      // Use account-specific order_number prefix to prevent commercial_id collisions
+      // across two seller accounts. TGW keeps the legacy 'BBY-' prefix for backwards
+      // compatibility with existing data; VES uses 'BBY-VES-'.
+      const orderPrefix = account.companyCode === "TGW" ? "BBY-" : `BBY-${account.companyCode}-`;
+      console.log(`\n=== Importing for ${account.companyCode} (${marketplaceAccount}) ===`);
+
     console.log(`Fetching Best Buy Canada orders since ${startDate}`);
 
     // Best Buy Canada uses Mirakl platform — paginated fetch
