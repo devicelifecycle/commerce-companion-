@@ -160,6 +160,13 @@ async function upsertCustomer(
         .single();
 
       if (error) {
+        if ((error as any).code === "23505") {
+          const { data: recovered } = await supabase
+            .from("customers").select("id")
+            .eq("company_id", companyId).ilike("name", buyerName)
+            .limit(1).maybeSingle();
+          return recovered?.id || null;
+        }
         console.error("Error creating customer:", error);
         return null;
       }
