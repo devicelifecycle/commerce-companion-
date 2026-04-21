@@ -191,27 +191,58 @@ serve(async (req) => {
       }
     }
 
-    const BESTBUY_API_KEY = Deno.env.get("BESTBUY_API_KEY");
+    // Two Best Buy seller accounts: TGW (original) and VES (new).
+    // Backwards-compat: BESTBUY_API_KEY is treated as the TGW key if BESTBUY_TGW_API_KEY isn't set.
+    const BESTBUY_TGW_API_KEY = Deno.env.get("BESTBUY_TGW_API_KEY") || Deno.env.get("BESTBUY_API_KEY");
+    const BESTBUY_VES_API_KEY = Deno.env.get("BESTBUY_VES_API_KEY");
 
-    if (!BESTBUY_API_KEY) {
-      throw new Error("Best Buy API key not configured");
+    if (!BESTBUY_TGW_API_KEY && !BESTBUY_VES_API_KEY) {
+      throw new Error("No Best Buy API keys configured (set BESTBUY_TGW_API_KEY and/or BESTBUY_VES_API_KEY)");
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get TGW company ID (BestBuy is for TGW)
-    const { data: tgwCompany, error: companyError } = await supabase
+    // Resolve company IDs for both accounts
+    const { data: companiesData, error: companiesError } = await supabase
       .from("companies")
-      .select("id")
-      .eq("code", "TGW")
-      .single();
+      .select("id, code")
+      .in("code", ["TGW", "VES"]);
 
-    if (companyError || !tgwCompany) {
-      throw new Error("TGW company not found");
+    if (companiesError || !companiesData?.length) {
+      throw new Error("Could not load TGW/VES companies");
     }
 
-    const companyId = tgwCompany.id;
-    console.log(`Using TGW company ID: ${companyId}`);
+    const tgwCompanyId = companiesData.find((c: any) => c.code === "TGW")?.id;
+    const vesCompanyId = companiesData.find((c: any) => c.code === "VES")?.id;
+
+    if (!tgwCompanyId) throw new Error("TGW company not found");
+
+    // Build the list of accounts to import from (skip any without an API key)
+    const accounts: Array<{
+      apiKey: string;
+      companyId: string;
+      companyCode: string;
+      marketplaceAccount: string;
+    }> = [];
+
+    if (BESTBUY_TGW_API_KEY && tgwCompanyId) {
+      accounts.push({
+        apiKey: BESTBUY_TGW_API_KEY,
+        companyId: tgwCompanyId,
+        companyCode: "TGW",
+        marketplaceAccount: "bestbuy_tgw",
+      });
+    }
+    if (BESTBUY_VES_API_KEY && vesCompanyId) {
+      accounts.push({
+        apiKey: BESTBUY_VES_API_KEY,
+        companyId: vesCompanyId,
+        companyCode: "VES",
+        marketplaceAccount: "bestbuy_ves",
+      });
+    }
+
+    console.log(`Importing from ${accounts.length} Best Buy account(s): ${accounts.map(a => a.companyCode).join(', ')}`);
 
     // Fetch provincial tax rates for tax calculation
     const { data: taxRates, error: taxRatesError } = await supabase
@@ -277,6 +308,23 @@ serve(async (req) => {
     const defaultStart = new Date();
     defaultStart.setDate(defaultStart.getDate() - 7);
     const startDate = body.startDate ? new Date(body.startDate).toISOString() : defaultStart.toISOString();
+
+    // Aggregate totals across all accounts
+    const allImported: string[] = [];
+    const allSkipped: string[] = [];
+    const allErrors: string[] = [];
+    const perAccountResults: Array<{ account: string; company: string; imported: number; skipped: number; errors: number }> = [];
+
+    // Loop through each Best Buy seller account (TGW, VES)
+    for (const account of accounts) {
+      const BESTBUY_API_KEY = account.apiKey;
+      const companyId = account.companyId;
+      const marketplaceAccount = account.marketplaceAccount;
+      // Use account-specific order_number prefix to prevent commercial_id collisions
+      // across two seller accounts. TGW keeps the legacy 'BBY-' prefix for backwards
+      // compatibility with existing data; VES uses 'BBY-VES-'.
+      const orderPrefix = account.companyCode === "TGW" ? "BBY-" : `BBY-${account.companyCode}-`;
+      console.log(`\n=== Importing for ${account.companyCode} (${marketplaceAccount}) ===`);
 
     console.log(`Fetching Best Buy Canada orders since ${startDate}`);
 
@@ -396,7 +444,7 @@ serve(async (req) => {
 
     for (const order of orders) {
       try {
-        const orderNumber = `BBY-${order.commercial_id}`;
+        const orderNumber = `${orderPrefix}${order.commercial_id}`;
         
         // Check if order already exists
         const { data: existingOrder } = await supabase
@@ -451,7 +499,7 @@ serve(async (req) => {
 
           // Also update all line-item sales for this order with product info per line
           for (const lineItem of order.order_lines) {
-            const lineOrderNumber = `BBY-${order.commercial_id}-${lineItem.order_line_id}`;
+            const lineOrderNumber = `${orderPrefix}${order.commercial_id}-${lineItem.order_line_id}`;
             const lineUpdates: any = { 
               marketplace_status: bbyStatus,
               fulfillment_status: mapBestBuyToFulfillment(order.order_state),
@@ -495,7 +543,7 @@ serve(async (req) => {
 
         // Process each line item as a sale
         for (const lineItem of order.order_lines) {
-          const lineOrderNumber = `BBY-${order.commercial_id}-${lineItem.order_line_id}`;
+          const lineOrderNumber = `${orderPrefix}${order.commercial_id}-${lineItem.order_line_id}`;
           
           // Check if this specific line item already exists
           const { data: existingLineOrder } = await supabase
@@ -635,6 +683,7 @@ serve(async (req) => {
           const { data: insertedSale, error: insertError } = await supabase.from("sales").insert({
             order_number: lineOrderNumber,
             marketplace: "bestbuy",
+            marketplace_account: marketplaceAccount,
             sale_price: salePrice,
             shipping_cost: shippingCost,
             marketplace_fees: parseFloat(totalFees.toFixed(2)),
@@ -690,13 +739,13 @@ serve(async (req) => {
         }
       } catch (orderError: any) {
         console.error(`Error processing order ${order.commercial_id}:`, orderError);
-        errors.push(`BBY-${order.commercial_id}: ${orderError.message}`);
+        errors.push(`${orderPrefix}${order.commercial_id}: ${orderError.message}`);
       }
     }
 
-    console.log(`Import complete: ${importedOrders.length} imported, ${skippedOrders.length} skipped, ${errors.length} errors`);
+    console.log(`[${account.companyCode}] Import complete: ${importedOrders.length} imported, ${skippedOrders.length} skipped, ${errors.length} errors`);
 
-    // Log sync result
+    // Log sync result per-account
     const syncStatus = errors.length > 0 ? (importedOrders.length > 0 ? 'partial' : 'failure') : 'success';
     await supabase.from("sync_logs").insert({
       marketplace: "bestbuy",
@@ -709,49 +758,37 @@ serve(async (req) => {
       records_errored: errors.length,
       error_message: errors.length > 0 ? errors.join("; ") : null,
       sync_type: "scheduled",
-      metadata: { total_from_api: orders.length, total_count: totalCount },
+      metadata: { total_from_api: orders.length, total_count: totalCount, marketplace_account: marketplaceAccount },
     });
 
-    // Suspense Pipeline: NO auto-posting. Human approves in Suspense Tray.
+    // Aggregate
+    allImported.push(...importedOrders);
+    allSkipped.push(...skippedOrders);
+    allErrors.push(...errors);
+    perAccountResults.push({
+      account: marketplaceAccount,
+      company: account.companyCode,
+      imported: importedOrders.length,
+      skipped: skippedOrders.length,
+      errors: errors.length,
+    });
+    } // end per-account loop
+
+    // Suspense Pipeline: NO auto-posting. Human approves in Pending tab.
     const accountingResult: any = { queued: false, note: "Suspense pipeline — no auto-post" };
-    if (false && importedOrders.length > 0) {
-      try {
-        const accountingUrl = `${SUPABASE_URL}/functions/v1/process-sale-accounting`;
-        const newSaleIds = importedOrders.map((o: any) => o.id).filter(Boolean);
-        const accountingPromise = fetch(accountingUrl, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(newSaleIds.length > 0 ? { sale_ids: newSaleIds } : {}),
-        })
-          .then((r) => r.json())
-          .then((r) => console.log("Accounting result:", r))
-          .catch((e) => console.error("Accounting error:", e?.message));
-        // @ts-ignore - EdgeRuntime is available in Supabase edge runtime
-        if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) {
-          // @ts-ignore
-          EdgeRuntime.waitUntil(accountingPromise);
-        }
-        accountingResult = { queued: true, sale_count: newSaleIds.length };
-      } catch (accError: any) {
-        console.error("Accounting trigger error:", accError.message);
-      }
-    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        company: "TGW",
-        imported: importedOrders.length,
-        skipped: skippedOrders.length,
-        errors: errors.length,
+        accounts: perAccountResults,
+        imported: allImported.length,
+        skipped: allSkipped.length,
+        errors: allErrors.length,
         accounting: accountingResult,
         details: {
-          imported: importedOrders,
-          skipped: skippedOrders,
-          errors: errors,
+          imported: allImported,
+          skipped: allSkipped,
+          errors: allErrors,
         },
       }),
       {

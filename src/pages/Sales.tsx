@@ -128,17 +128,21 @@ export default function Sales() {
     return comp?.code || null;
   }, [companyFilter, companies]);
 
-  // Contextual marketplace options
+  // Contextual marketplace options — Best Buy is split by company account
   const marketplaceOptions = useMemo(() => {
-    if (selectedCompanyCode === 'VES') return [{ value: 'amazon', label: 'Amazon' }];
+    if (selectedCompanyCode === 'VES') return [
+      { value: 'amazon', label: 'Amazon' },
+      { value: 'bestbuy:ves', label: 'Best Buy — VES' },
+    ];
     if (selectedCompanyCode === 'TGW') return [
       { value: 'shopify', label: 'Shopify' },
-      { value: 'bestbuy', label: 'Best Buy' },
+      { value: 'bestbuy:tgw', label: 'Best Buy — TGW' },
     ];
     return [
       { value: 'amazon', label: 'Amazon' },
       { value: 'shopify', label: 'Shopify' },
-      { value: 'bestbuy', label: 'Best Buy' },
+      { value: 'bestbuy:tgw', label: 'Best Buy — TGW' },
+      { value: 'bestbuy:ves', label: 'Best Buy — VES' },
       { value: 'other', label: 'Other' },
     ];
   }, [selectedCompanyCode]);
@@ -447,7 +451,7 @@ export default function Sales() {
                       Import from Shopify (TGW)
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleImport('bestbuy')} disabled={importingFrom !== null}>
-                      Import from Best Buy (TGW)
+                      Import from Best Buy (TGW + VES)
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleImport('amazon')} disabled={importingFrom !== null}>
                       Import from Amazon (VES)
@@ -707,7 +711,7 @@ export default function Sales() {
                           </div>
                         </TableCell>
                         <TableCell className="px-2">
-                          <MarketplaceBadge marketplace={sale.marketplace} />
+                          <MarketplaceBadge marketplace={sale.marketplace} account={sale.marketplace_account} />
                         </TableCell>
                         <TableCell className="px-2">
                           {sale.shipping_province ? (
