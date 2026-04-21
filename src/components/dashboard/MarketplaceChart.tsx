@@ -8,8 +8,21 @@ import { subMonths, startOfMonth } from 'date-fns';
 interface MarketplaceData { name: string; value: number; count: number; color: string; }
 
 const MARKETPLACE_COLORS: Record<string, string> = {
-  shopify: 'hsl(var(--shopify))', amazon: 'hsl(var(--amazon))',
-  bestbuy: 'hsl(var(--bestbuy))', other: 'hsl(var(--muted-foreground))',
+  shopify: 'hsl(var(--shopify))',
+  amazon: 'hsl(var(--amazon))',
+  bestbuy: 'hsl(var(--bestbuy))',
+  bestbuy_tgw: 'hsl(var(--bestbuy))',
+  bestbuy_ves: 'hsl(var(--info))',
+  other: 'hsl(var(--muted-foreground))',
+};
+
+const LABELS: Record<string, string> = {
+  shopify: 'Shopify',
+  amazon: 'Amazon',
+  bestbuy: 'Best Buy',
+  bestbuy_tgw: 'Best Buy · TGW',
+  bestbuy_ves: 'Best Buy · VES',
+  other: 'Other',
 };
 
 export function MarketplaceChart() {
@@ -23,20 +36,25 @@ export function MarketplaceChart() {
     setLoading(true);
     try {
       const startDate = startOfMonth(subMonths(new Date(), 2));
-      let query = supabase.from('sales').select('marketplace, sale_price').gte('sale_date', startDate.toISOString());
+      let query = supabase.from('sales').select('marketplace, marketplace_account, sale_price').gte('sale_date', startDate.toISOString());
       if (selectedCompany) query = query.eq('company_id', selectedCompany.id);
       const { data: sales } = await query;
 
       const totals: Record<string, { value: number; count: number }> = {};
       sales?.forEach(sale => {
-        const mp = sale.marketplace || 'other';
-        if (!totals[mp]) totals[mp] = { value: 0, count: 0 };
-        totals[mp].value += Number(sale.sale_price);
-        totals[mp].count++;
+        // Group Best Buy by account; everything else by marketplace
+        const key = (sale.marketplace === 'bestbuy' && sale.marketplace_account)
+          ? sale.marketplace_account
+          : (sale.marketplace || 'other');
+        if (!totals[key]) totals[key] = { value: 0, count: 0 };
+        totals[key].value += Number(sale.sale_price);
+        totals[key].count++;
       });
 
       setData(Object.entries(totals).map(([name, d]) => ({
-        name: name.charAt(0).toUpperCase() + name.slice(1), value: d.value, count: d.count,
+        name: LABELS[name] || name.charAt(0).toUpperCase() + name.slice(1),
+        value: d.value,
+        count: d.count,
         color: MARKETPLACE_COLORS[name] || MARKETPLACE_COLORS.other,
       })).sort((a, b) => b.value - a.value));
     } catch (error) { console.error('Error:', error); } finally { setLoading(false); }
