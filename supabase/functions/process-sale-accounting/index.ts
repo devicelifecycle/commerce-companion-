@@ -287,10 +287,11 @@ serve(async (req) => {
 
       const codes = ACCOUNT_MAP[marketplace] || ACCOUNT_MAP["other"];
 
-      const [arId, revenueId, taxId, feesId, shippingId, cogsId, inventoryId] =
+      const [arId, revenueId, shippingRevenueId, taxId, feesId, shippingId, cogsId, inventoryId] =
         await Promise.all([
           getAccountId(supabase, companyId, codes.ar),
           getAccountId(supabase, companyId, codes.revenue),
+          getAccountId(supabase, companyId, codes.shippingRevenue),
           getAccountId(supabase, companyId, codes.taxCollected),
           getAccountId(supabase, companyId, codes.fees),
           getAccountId(supabase, companyId, codes.shipping),
@@ -301,6 +302,7 @@ serve(async (req) => {
       const result = {
         ar: arId,
         revenue: revenueId,
+        shippingRevenue: shippingRevenueId,
         taxCollected: taxId,
         fees: feesId,
         shipping: shippingId,
