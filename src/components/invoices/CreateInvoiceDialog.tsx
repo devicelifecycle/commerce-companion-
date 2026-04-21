@@ -108,25 +108,24 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
       supabase
         .from('devices')
         .select('id, brand, model, storage, color, sku, cost_price, sale_price, status, condition, imei')
-        .eq('status', 'in_stock')
+        // Include sellable inventory: in_stock, refurb pipeline (often invoiced before refurb completes), and reserved
+        .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment'] as any)
         .eq('company_id', invoiceCompanyId)
         .order('brand')
-        .limit(500),
+        .limit(1000),
       supabase
         .from('products')
         .select('id, name, sku, cost_price, sale_price, quantity_on_hand, unit_of_measure')
         .eq('company_id', invoiceCompanyId)
         .eq('status', 'active')
-        .gt('quantity_on_hand', 0)
         .order('name')
-        .limit(200),
+        .limit(500),
       supabase
         .from('repair_parts')
         .select('id, name, sku, unit_cost, quantity_on_hand')
         .eq('company_id', invoiceCompanyId)
-        .gt('quantity_on_hand', 0)
         .order('name')
-        .limit(200),
+        .limit(500),
     ]);
 
     const items: InventoryItem[] = [];
