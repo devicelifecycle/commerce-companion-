@@ -386,7 +386,6 @@ serve(async (req) => {
         }
 
         const salePrice = Number(sale.sale_price);
-        const fees = Number(sale.marketplace_fees || 0);
         const shippingCost = Number(sale.shipping_cost || 0);   // What WE paid to ship (expense)
         const shippingRevenue = Number((sale as any).shipping_revenue || 0); // What customer paid us
         const tax = Number(sale.tax_amount || 0);
@@ -401,7 +400,6 @@ serve(async (req) => {
           ? new Date(sale.sale_date).toISOString().split("T")[0]
           : new Date().toISOString().split("T")[0];
 
-        const device = sale.device_id ? deviceMap[sale.device_id] : null;
         const deviceDesc = device?.desc || "Unlinked item";
 
         // Check for cross-company device linkage
