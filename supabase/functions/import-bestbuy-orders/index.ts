@@ -683,6 +683,7 @@ serve(async (req) => {
           const { data: insertedSale, error: insertError } = await supabase.from("sales").insert({
             order_number: lineOrderNumber,
             marketplace: "bestbuy",
+            marketplace_account: marketplaceAccount,
             sale_price: salePrice,
             shipping_cost: shippingCost,
             marketplace_fees: parseFloat(totalFees.toFixed(2)),
