@@ -49,18 +49,26 @@ export function ProductSearchCombobox({
 
   const effectiveCompanyId = companyId || selectedCompany?.id;
 
-  const loadProducts = useCallback(async () => {
+  const loadProducts = useCallback(async (term: string) => {
     if (!effectiveCompanyId) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('products')
         .select('id, name, description, sku, barcode, unit_of_measure, cost_price, sale_price, quantity_on_hand, company_id, product_categories(name)')
         .eq('company_id', effectiveCompanyId)
-        .eq('status', 'active')
-        .order('name')
-        .limit(500);
+        .eq('status', 'active');
 
+      const t = term.trim();
+      if (t.length > 0) {
+        const like = `%${t}%`;
+        query = query.or(`name.ilike.${like},sku.ilike.${like},barcode.ilike.${like},description.ilike.${like}`);
+        query = query.limit(50);
+      } else {
+        query = query.order('name').limit(25);
+      }
+
+      const { data, error } = await query;
       if (!error && data) {
         setProducts(data.map((p: any) => ({
           ...p,
@@ -73,22 +81,15 @@ export function ProductSearchCombobox({
   }, [effectiveCompanyId]);
 
   useEffect(() => {
-    if (open) loadProducts();
-  }, [open, loadProducts]);
+    if (!open) return;
+    const handle = setTimeout(() => loadProducts(search), 200);
+    return () => clearTimeout(handle);
+  }, [open, search, loadProducts]);
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return products.filter(p => !excludeIds.includes(p.id));
-    const s = search.toLowerCase();
-    return products.filter(p => {
-      if (excludeIds.includes(p.id)) return false;
-      return (
-        p.name.toLowerCase().includes(s) ||
-        p.sku?.toLowerCase().includes(s) ||
-        p.barcode?.toLowerCase().includes(s) ||
-        p.description?.toLowerCase().includes(s)
-      );
-    });
-  }, [products, search, excludeIds]);
+  const filtered = useMemo(
+    () => products.filter(p => !excludeIds.includes(p.id)),
+    [products, excludeIds]
+  );
 
   const selectedProduct = products.find(p => p.id === value);
 
