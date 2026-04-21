@@ -246,7 +246,7 @@ export default function Import() {
           .ilike('brand', normalizeBrand(manualForm.brand))
           .ilike('model', normalizeModel(manualForm.model));
         if (count && count > 0) {
-          setManualDuplicateWarning(`${count} existing device(s) match "${normalizeBrand(manualForm.brand)} ${normalizeModel(manualForm.model)}" — consider adding this to the Product Catalog (Settings) first`);
+          setManualDuplicateWarning(`${count} existing device(s) match "${normalizeBrand(manualForm.brand)} ${normalizeModel(manualForm.model)}" — verify this isn't a duplicate before adding.`);
         } else {
           setManualDuplicateWarning(null);
         }

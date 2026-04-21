@@ -11,9 +11,8 @@ import { AppSettings } from '@/components/settings/AppSettings';
 import { SecuritySettings } from '@/components/settings/SecuritySettings';
 import { UserManagementTable } from '@/components/team/UserManagementTable';
 import { PermissionsMatrix } from '@/components/team/PermissionsMatrix';
-import { Settings as SettingsIcon, User, Bell, Shield, Building2, Sliders, Plug, Users, Barcode } from 'lucide-react';
+import { Settings as SettingsIcon, User, Bell, Shield, Building2, Sliders, Plug, Users } from 'lucide-react';
 import { ShopifyIntegration } from '@/components/settings/ShopifyIntegration';
-import { ProductCatalog } from '@/components/settings/ProductCatalog';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -40,7 +39,7 @@ export default function Settings() {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-8' : 'grid-cols-7'} lg:w-auto lg:inline-grid`}>
+          <TabsList className={`grid w-full ${isSuperAdmin ? 'grid-cols-7' : 'grid-cols-6'} lg:w-auto lg:inline-grid`}>
             <TabsTrigger value="profile" className="gap-2">
               <User className="h-4 w-4" />
               <span className="hidden sm:inline">Profile</span>
@@ -62,10 +61,6 @@ export default function Settings() {
             <TabsTrigger value="notifications" className="gap-2">
               <Bell className="h-4 w-4" />
               <span className="hidden sm:inline">Notifications</span>
-            </TabsTrigger>
-            <TabsTrigger value="catalog" className="gap-2">
-              <Barcode className="h-4 w-4" />
-              <span className="hidden sm:inline">Products</span>
             </TabsTrigger>
             <TabsTrigger value="app" className="gap-2">
               <Sliders className="h-4 w-4" />
@@ -186,11 +181,6 @@ export default function Settings() {
           {/* Notifications Tab */}
           <TabsContent value="notifications">
             <NotificationPreferences />
-          </TabsContent>
-
-          {/* Product Catalog Tab */}
-          <TabsContent value="catalog">
-            <ProductCatalog />
           </TabsContent>
 
           {/* App Settings Tab */}
