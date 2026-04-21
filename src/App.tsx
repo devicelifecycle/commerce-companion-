@@ -26,6 +26,7 @@ import Returns from "./pages/Returns";
 import IntegrationHealth from "./pages/IntegrationHealth";
 import Customers from "./pages/Customers";
 import ActivityLogPage from "./pages/ActivityLogPage";
+import SuspenseTray from "./pages/SuspenseTray";
 
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
@@ -92,6 +93,7 @@ const App = () => (
               <Route path="/team" element={<Navigate to="/settings" replace />} />
               <Route path="/audit-logs" element={<Navigate to="/activity" replace />} />
               <Route path="/activity" element={<ProtectedRoute><ActivityLogPage /></ProtectedRoute>} />
+              <Route path="/suspense" element={<ProtectedRoute><SuspenseTray /></ProtectedRoute>} />
               <Route path="/integration-health" element={<ProtectedRoute><IntegrationHealth /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/help" element={<ProtectedRoute><HelpAndGuides /></ProtectedRoute>} />
