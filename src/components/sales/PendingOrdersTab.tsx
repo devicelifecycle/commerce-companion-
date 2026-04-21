@@ -383,6 +383,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
           onOpenChange={() => setViewingSale(null)}
           sale={viewingSale}
           hasReturn={false}
+          onInitiateReturn={() => {}}
           onSaleUpdated={() => { loadSales(); emitRefetch('sales'); }}
         />
       )}
