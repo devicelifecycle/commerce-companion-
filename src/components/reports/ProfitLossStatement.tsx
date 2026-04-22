@@ -218,20 +218,22 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
               totalCOGS += amount;
             } else {
               // Map to opex category from account name/code
+              // Use prefix matching so VES (6X00), VES variant (6X01), and TGW variant (6X02) all bucket together
               const code = acct.account_code;
+              const prefix3 = code.substring(0, 3); // e.g. "660" covers 6600/6601/6602
               let cat = 'other';
               if (code.startsWith('60') && acct.account_name.toLowerCase().includes('marketplace')) cat = 'marketplace_fees';
               else if (code.startsWith('61')) cat = 'shipping';
-              else if (code === '6200') cat = 'utilities';
-              else if (code === '6300') cat = 'payroll';
-              else if (code === '6400') cat = 'marketing';
-              else if (code === '6500') cat = 'office';
-              else if (code === '6600') cat = 'professional_services';
-              else if (code === '6700') cat = 'insurance';
-              else if (code === '6800') cat = 'other'; // bank fees
-              else if (code === '6900') cat = 'software';
-              else if (code === '7000') cat = 'utilities';
-              else if (code === '7100') cat = 'other';
+              else if (prefix3 === '620') cat = 'utilities';
+              else if (prefix3 === '630') cat = 'payroll';
+              else if (prefix3 === '640') cat = 'marketing';
+              else if (prefix3 === '650') cat = 'office';
+              else if (prefix3 === '660') cat = 'professional_services';
+              else if (prefix3 === '670') cat = 'insurance';
+              else if (prefix3 === '680') cat = 'other'; // bank fees
+              else if (prefix3 === '690') cat = 'software';
+              else if (prefix3 === '700') cat = 'utilities';
+              else if (prefix3 === '710') cat = 'other';
               operatingExpensesByCategory[cat] = (operatingExpensesByCategory[cat] || 0) + amount;
             }
           }
