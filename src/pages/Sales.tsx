@@ -603,18 +603,8 @@ export default function Sales() {
           <MetricCard title="Delivered" value={metrics.delivered} icon={PackageCheck} iconClassName="bg-emerald-500/10" />
         </div>
 
-        {/* Posted orders list — collapsed by default */}
-        <Collapsible defaultOpen={false}>
-          <CollapsibleTrigger asChild>
-            <Button variant="outline" className="w-full justify-between">
-              <span className="flex items-center gap-2">
-                <ShoppingCart className="h-4 w-4" />
-                Browse posted orders ({pagination.totalCount})
-              </span>
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-3">
+        {/* Posted orders list */}
+        <div>
         {/* Filters & Table */}
         <Card>
           <CardHeader>
@@ -870,8 +860,7 @@ export default function Sales() {
             )}
           </CardContent>
         </Card>
-          </CollapsibleContent>
-        </Collapsible>
+        </div>
           </TabsContent>
         </Tabs>
 

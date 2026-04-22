@@ -375,7 +375,7 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[92vh] p-0 gap-0 flex flex-col">
+      <DialogContent className="max-w-5xl h-[92vh] p-0 gap-0 flex flex-col overflow-hidden">
         {loading || !sale ? (
           <div className="flex items-center justify-center py-24">
             <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
@@ -509,7 +509,7 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
                             value={pendingDeviceId}
                             onSelect={(d) => setPendingDeviceId(d?.id || null)}
                             companyId={sale.company_id || undefined}
-                            statusFilter={['in_stock']}
+                            statusFilter={['in_stock', 'hold_for_refurbishment', 'in_repair', 'refurbished']}
                           />
                           <Button onClick={handleLinkDevice} disabled={!pendingDeviceId || savingLink} size="sm">
                             Link selected device
