@@ -13,7 +13,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { OrderDetailDialog } from '@/components/sales/OrderDetailDialog';
+import { PendingOrderDialog } from '@/components/sales/PendingOrderDialog';
 import { emitRefetch } from '@/hooks/useDataRefetch';
 
 interface SuspenseSale {
@@ -58,7 +58,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
     order: string; status: string; reason: string; at: string;
   }>>([]);
   const [lastRunAt, setLastRunAt] = useState<string | null>(null);
-  const [viewingSale, setViewingSale] = useState<any | null>(null);
+  const [viewingSaleId, setViewingSaleId] = useState<string | null>(null);
 
   const loadSales = async () => {
     setLoading(true);
@@ -178,11 +178,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
     setResolving(false);
   };
 
-  const openSale = async (saleRow: SuspenseSale) => {
-    // OrderDetailDialog expects the richer Sale shape — fetch full record
-    const { data } = await supabase.from('sales').select('*, devices(*)').eq('id', saleRow.id).single();
-    if (data) setViewingSale(data);
-  };
+  const openSale = (saleRow: SuspenseSale) => setViewingSaleId(saleRow.id);
 
   return (
     <div className="space-y-6">
@@ -429,16 +425,12 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
         </CardContent>
       </Card>
 
-      {viewingSale && (
-        <OrderDetailDialog
-          open={!!viewingSale}
-          onOpenChange={() => setViewingSale(null)}
-          sale={viewingSale}
-          hasReturn={false}
-          onInitiateReturn={() => {}}
-          onSaleUpdated={() => { loadSales(); emitRefetch('sales'); }}
-        />
-      )}
+      <PendingOrderDialog
+        open={!!viewingSaleId}
+        onOpenChange={(o) => { if (!o) setViewingSaleId(null); }}
+        saleId={viewingSaleId}
+        onPosted={() => { loadSales(); emitRefetch('sales'); }}
+      />
     </div>
   );
 }

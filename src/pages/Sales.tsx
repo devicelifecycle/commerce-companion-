@@ -44,9 +44,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { getCompanyDisplayName } from '@/lib/companyNames';
 import { ActivityFooter } from '@/components/activity/ActivityFooter';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PendingOrdersTab } from '@/components/sales/PendingOrdersTab';
+import { ReturnsManagement } from '@/components/inventory/ReturnsManagement';
 import { PageGuide } from '@/components/guides/PageGuide';
-import { CheckCircle2, ClipboardCheck, Send, Inbox } from 'lucide-react';
+import { CheckCircle2, ClipboardCheck, Send, Inbox, ChevronDown, RotateCcw as ReturnsIcon, DollarSign, TrendingUp } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
 type Marketplace = 'shopify' | 'amazon' | 'bestbuy' | 'other';
@@ -162,7 +164,9 @@ export default function Sales() {
     const pending = sales.filter(s => s.fulfillment_status === 'pending').length;
     const shipped = sales.filter(s => s.fulfillment_status === 'shipped').length;
     const delivered = sales.filter(s => s.fulfillment_status === 'delivered').length;
-    return { total, received, pending, shipped, delivered };
+    const revenue = sales.reduce((sum, s) => sum + Number(s.sale_price || 0), 0);
+    const profit = sales.reduce((sum, s) => sum + Number(s.profit || 0), 0);
+    return { total, received, pending, shipped, delivered, revenue, profit };
   }, [sales, pagination.totalCount]);
 
   const handleDeleteSale = async (id: string) => {
@@ -590,15 +594,27 @@ export default function Sales() {
           )}
         </div>
 
-        {/* Metrics Strip */}
+        {/* Metrics Strip — summary first */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <MetricCard title="Revenue" value={new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(metrics.revenue)} icon={DollarSign} iconClassName="bg-primary/10" />
+          <MetricCard title="Profit" value={new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(metrics.profit)} icon={TrendingUp} iconClassName="bg-success/10" />
           <MetricCard title="Total Orders" value={metrics.total} icon={ShoppingCart} />
-          <MetricCard title="Received" value={metrics.received} icon={Package} iconClassName="bg-info/10" />
-          <MetricCard title="Pending" value={metrics.pending} icon={Clock} iconClassName="bg-warning/10" />
           <MetricCard title="Shipped" value={metrics.shipped} icon={Truck} iconClassName="bg-success/10" />
           <MetricCard title="Delivered" value={metrics.delivered} icon={PackageCheck} iconClassName="bg-emerald-500/10" />
         </div>
 
+        {/* Posted orders list — collapsed by default */}
+        <Collapsible defaultOpen={false}>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" className="w-full justify-between">
+              <span className="flex items-center gap-2">
+                <ShoppingCart className="h-4 w-4" />
+                Browse posted orders ({pagination.totalCount})
+              </span>
+              <ChevronDown className="h-4 w-4" />
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3">
         {/* Filters & Table */}
         <Card>
           <CardHeader>
@@ -836,6 +852,17 @@ export default function Sales() {
             )}
           </CardContent>
         </Card>
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* Returns Management — primary action area for posted orders */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <ReturnsIcon className="h-4 w-4 text-primary" />
+            <h2 className="text-lg font-semibold">Returns</h2>
+          </div>
+          <ReturnsManagement />
+        </div>
           </TabsContent>
         </Tabs>
 
