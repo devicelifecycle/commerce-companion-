@@ -165,7 +165,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
         log.push({
           order: s.order_number,
           status: s.accounting_status,
-          reason: s.review_reason || (s.accounting_status === 'ready_to_post' ? 'All 4 gates passed (price, province, cost basis, fees)' : '—'),
+          reason: s.review_reason || (s.accounting_status === 'ready_to_post' ? 'All 5 gates passed (price, province, cost basis, fees, line items)' : '—'),
           at: now,
         });
       });
@@ -185,7 +185,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
       {/* Action bar */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-sm text-muted-foreground max-w-2xl">
-          Imported orders sit here until 4 gates pass and you click <strong>Post</strong>. Nothing affects
+          Imported orders sit here until 5 gates pass and you click <strong>Post</strong>. Nothing affects
           the P&amp;L, dashboard, or financial reports until posted.
         </p>
         <div className="flex gap-2 items-center">
@@ -198,7 +198,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
             <PopoverContent className="w-96" align="end">
               <div className="space-y-3">
                 <div>
-                  <p className="font-semibold text-sm">Auto-resolve checks 4 gates</p>
+                  <p className="font-semibold text-sm">Auto-resolve checks 5 gates</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Each imported order must pass these before it can be posted to the General Ledger.
                     Auto-resolve scans every pending order and tries to fill in missing pieces automatically.
@@ -233,9 +233,16 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
                       <p className="text-muted-foreground">Fees captured from the marketplace, or zero confirmed (e.g., Shopify before payout sync).</p>
                     </div>
                   </div>
+                  <div className="flex gap-2">
+                    <span className="font-mono text-primary shrink-0">5.</span>
+                    <div>
+                      <p className="font-medium">Line items complete</p>
+                      <p className="text-muted-foreground">For multi-line orders, every line item must be linked to a device or product, or have a cost price entered.</p>
+                    </div>
+                  </div>
                 </div>
                 <div className="border-t pt-2 text-xs text-muted-foreground">
-                  Orders with all 4 gates green move to <span className="font-medium text-foreground">Ready to Post</span>. The rest stay in Pending Review or Needs Action with a reason.
+                  Orders with all 5 gates green move to <span className="font-medium text-foreground">Ready to Post</span>. The rest stay in Pending Review or Needs Action with a reason.
                 </div>
               </div>
             </PopoverContent>

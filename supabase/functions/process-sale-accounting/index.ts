@@ -289,6 +289,17 @@ serve(async (req) => {
       });
     }
 
+    // Fetch sale_items for multi-line orders — Gate 5 requires every line to have a cost basis
+    const { data: allSaleItems } = await supabase
+      .from("sale_items")
+      .select("sale_id, id, device_id, product_id, cost_price, description")
+      .in("sale_id", allSaleIds);
+    const saleItemsBySale: Record<string, any[]> = {};
+    (allSaleItems || []).forEach((it: any) => {
+      if (!saleItemsBySale[it.sale_id]) saleItemsBySale[it.sale_id] = [];
+      saleItemsBySale[it.sale_id].push(it);
+    });
+
     // Cache account IDs per company
     const accountCache: Record<string, Record<string, string | null>> = {};
 
@@ -348,6 +359,18 @@ serve(async (req) => {
         if (!device && manualCost <= 0) failedGates.push("No linked device and no manual cost");
         // Gate 4: marketplace orders need fees populated (amount can be 0 if truly no fees, but field must be defined)
         if (isMarketplaceSale && sale.marketplace_fees === null) failedGates.push("Marketplace fees not yet populated");
+        // Gate 5: multi-line orders — every sale_item must have a cost basis (device, product, or cost_price)
+        const lineItems = saleItemsBySale[sale.id] || [];
+        if (lineItems.length > 0) {
+          const incomplete = lineItems.filter(
+            (it: any) => !it.device_id && !it.product_id && (Number(it.cost_price) || 0) <= 0
+          );
+          if (incomplete.length > 0) {
+            failedGates.push(
+              `${incomplete.length} line item(s) missing device/product link or cost (e.g. "${(incomplete[0].description || 'unnamed').slice(0, 40)}")`
+            );
+          }
+        }
 
         if (failedGates.length > 0) {
           // Quarantine — never post
