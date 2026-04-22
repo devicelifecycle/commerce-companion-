@@ -425,16 +425,12 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
         </CardContent>
       </Card>
 
-      {viewingSale && (
-        <OrderDetailDialog
-          open={!!viewingSale}
-          onOpenChange={() => setViewingSale(null)}
-          sale={viewingSale}
-          hasReturn={false}
-          onInitiateReturn={() => {}}
-          onSaleUpdated={() => { loadSales(); emitRefetch('sales'); }}
-        />
-      )}
+      <PendingOrderDialog
+        open={!!viewingSaleId}
+        onOpenChange={(o) => { if (!o) setViewingSaleId(null); }}
+        saleId={viewingSaleId}
+        onPosted={() => { loadSales(); emitRefetch('sales'); }}
+      />
     </div>
   );
 }
