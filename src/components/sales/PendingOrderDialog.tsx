@@ -509,7 +509,7 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
                             value={pendingDeviceId}
                             onSelect={(d) => setPendingDeviceId(d?.id || null)}
                             companyId={sale.company_id || undefined}
-                            statusFilter={['in_stock']}
+                            statusFilter={['in_stock', 'hold_for_refurbishment', 'in_repair', 'refurbished']}
                           />
                           <Button onClick={handleLinkDevice} disabled={!pendingDeviceId || savingLink} size="sm">
                             Link selected device
