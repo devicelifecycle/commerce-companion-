@@ -22,6 +22,7 @@ import {
   Send, Trash2, Smartphone, Wrench,
 } from 'lucide-react';
 import { useState } from 'react';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 
 type DeviceStatus = 'in_stock' | 'reserved' | 'sold' | 'returned' | 'hold_for_refurbishment';
 
@@ -108,6 +109,7 @@ export function DeviceTable({
       logEvent({ action: 'DELETE' as any, tableName: 'devices', recordId: id, module: 'Inventory', notes: 'Device deleted with full cleanup' });
       toast.success('Device deleted');
       onRefresh();
+      emitRefetch('inventory');
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete device');
     }
@@ -236,6 +238,7 @@ export function DeviceTable({
                                     logEvent({ action: 'UPDATE' as any, tableName: 'devices', recordId: device.id, module: 'Inventory', notes: 'Sent to FBA' });
                                     toast.success('Device marked as in transit to FBA');
                                     onRefresh();
+                                    emitRefetch('inventory');
                                   } catch (e: any) { toast.error(e.message); }
                                 }}>
                                   <Send className="h-4 w-4 mr-2" /> Send to FBA

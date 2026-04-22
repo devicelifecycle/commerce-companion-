@@ -22,6 +22,7 @@ import {
 } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Plus, Building, Search, Edit2, Trash2 } from 'lucide-react';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 
 interface Vendor {
   id: string;
@@ -133,6 +134,7 @@ export function VendorManagement() {
       setDialogOpen(false);
       resetForm();
       fetchVendors();
+      emitRefetch('vendors');
     } catch (error: any) {
       toast.error(error.message || 'Failed to save vendor');
     }
@@ -157,6 +159,7 @@ export function VendorManagement() {
       if (error) throw error;
       toast.success('Vendor deleted');
       fetchVendors();
+      emitRefetch('vendors');
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete vendor');
     }

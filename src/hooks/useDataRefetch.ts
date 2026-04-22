@@ -23,8 +23,15 @@ const CASCADE_MAP: Record<string, string[]> = {
   expenses: ['financials', 'dashboard'],
   inventory: ['financials', 'dashboard'],
   invoices: ['financials', 'dashboard'],
-  purchase_orders: ['financials', 'dashboard'],
+  purchase_orders: ['financials', 'dashboard', 'inventory'],
   returns: ['financials', 'dashboard', 'sales', 'inventory'],
+  vendors: ['expenses', 'purchase_orders'],
+  products: ['inventory', 'financials'],
+  repair_parts: ['inventory', 'financials'],
+  refurbishment: ['inventory', 'financials'],
+  customers: ['sales', 'invoices'],
+  team: ['dashboard'],
+  payouts: ['financials', 'dashboard', 'sales'],
 };
 
 function subscribe(channel: string, handler: RefetchHandler) {
