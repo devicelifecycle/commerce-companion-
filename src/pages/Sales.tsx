@@ -46,9 +46,8 @@ import { ActivityFooter } from '@/components/activity/ActivityFooter';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PendingOrdersTab } from '@/components/sales/PendingOrdersTab';
-import { ReturnsManagement } from '@/components/inventory/ReturnsManagement';
 import { PageGuide } from '@/components/guides/PageGuide';
-import { CheckCircle2, ClipboardCheck, Send, Inbox, ChevronDown, RotateCcw as ReturnsIcon, DollarSign, TrendingUp } from 'lucide-react';
+import { CheckCircle2, ClipboardCheck, Send, Inbox, ChevronDown, DollarSign, TrendingUp } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 
 type Marketplace = 'shopify' | 'amazon' | 'bestbuy' | 'other';
@@ -854,15 +853,6 @@ export default function Sales() {
         </Card>
           </CollapsibleContent>
         </Collapsible>
-
-        {/* Returns Management — primary action area for posted orders */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <ReturnsIcon className="h-4 w-4 text-primary" />
-            <h2 className="text-lg font-semibold">Returns</h2>
-          </div>
-          <ReturnsManagement />
-        </div>
           </TabsContent>
         </Tabs>
 
