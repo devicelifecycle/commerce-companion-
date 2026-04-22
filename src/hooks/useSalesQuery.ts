@@ -94,22 +94,33 @@ export function useSalesQuery({ companyFilter, marketplaceFilter, statusFilter, 
       const { data: salesData, error, count } = await query;
       if (error) throw error;
 
-      // Fetch return IDs for this page
+      // Fetch return status for this page (latest RMA per sale)
       const saleIds = (salesData || []).map((s: any) => s.id);
-      let returnSaleIds = new Set<string>();
+      const returnStatusMap = new Map<string, { status: string; resolution_type: string | null; rma_number: string }>();
       if (saleIds.length > 0) {
         const { data: returnData } = await supabase
           .from('return_authorizations')
-          .select('sale_id')
+          .select('sale_id, status, resolution_type, rma_number, created_at')
           .in('sale_id', saleIds)
-          .not('sale_id', 'is', null);
-        returnSaleIds = new Set((returnData || []).map((r: any) => r.sale_id));
+          .not('sale_id', 'is', null)
+          .order('created_at', { ascending: false });
+        for (const r of (returnData || []) as any[]) {
+          if (r.sale_id && !returnStatusMap.has(r.sale_id)) {
+            returnStatusMap.set(r.sale_id, {
+              status: r.status,
+              resolution_type: r.resolution_type,
+              rma_number: r.rma_number,
+            });
+          }
+        }
       }
+      const returnSaleIds = new Set(returnStatusMap.keys());
 
       return {
         sales: (salesData || []) as SaleRecord[],
         totalCount: count || 0,
         returnSaleIds,
+        returnStatusMap,
       };
     },
     staleTime: 30_000, // 30s cache
@@ -147,6 +158,7 @@ export function useSalesQuery({ companyFilter, marketplaceFilter, statusFilter, 
     sales: filteredSales,
     allSales: data?.sales || [],
     returnSaleIds: data?.returnSaleIds || new Set<string>(),
+    returnStatusMap: data?.returnStatusMap || new Map<string, { status: string; resolution_type: string | null; rma_number: string }>(),
     isLoading,
     error,
     refetch,
