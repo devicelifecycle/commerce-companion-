@@ -170,11 +170,14 @@ serve(async (req) => {
 
     const companyId = tgwCompany.id;
 
+    // Hard floor: 2026-01-01 (operational baseline). Earlier dates are clamped.
     let body: any = {};
     try { body = await req.json(); } catch (_) { /* empty body */ }
     const defaultStart = new Date();
     defaultStart.setDate(defaultStart.getDate() - 7);
-    const createdAtMin = body.startDate ? new Date(body.startDate).toISOString() : defaultStart.toISOString();
+    const FLOOR = new Date("2026-01-01T00:00:00Z");
+    const requested = body.startDate ? new Date(body.startDate) : defaultStart;
+    const createdAtMin = (requested < FLOOR ? FLOOR : requested).toISOString();
 
     console.log(`Fetching Shopify orders since ${createdAtMin}`);
 
