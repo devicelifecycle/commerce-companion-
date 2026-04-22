@@ -289,6 +289,17 @@ serve(async (req) => {
       });
     }
 
+    // Fetch sale_items for multi-line orders — Gate 5 requires every line to have a cost basis
+    const { data: allSaleItems } = await supabase
+      .from("sale_items")
+      .select("sale_id, id, device_id, product_id, cost_price, description")
+      .in("sale_id", allSaleIds);
+    const saleItemsBySale: Record<string, any[]> = {};
+    (allSaleItems || []).forEach((it: any) => {
+      if (!saleItemsBySale[it.sale_id]) saleItemsBySale[it.sale_id] = [];
+      saleItemsBySale[it.sale_id].push(it);
+    });
+
     // Cache account IDs per company
     const accountCache: Record<string, Record<string, string | null>> = {};
 
