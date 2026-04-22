@@ -371,6 +371,30 @@ serve(async (req) => {
             );
           }
         }
+        // Gate 6: marketplace totals reconciliation (Shopify) — stored editable values must match what the marketplace reported
+        if (sale.marketplace === "shopify") {
+          const expectedTax = (sale as any).marketplace_total_tax;
+          const expectedShipping = (sale as any).marketplace_total_shipping;
+          const storedTax = Number(sale.tax_amount || 0);
+          const storedShipping = Number((sale as any).shipping_revenue || 0);
+          const TOLERANCE = 0.01; // 1 cent rounding tolerance
+          if (expectedTax !== null && expectedTax !== undefined) {
+            const diff = Math.abs(storedTax - Number(expectedTax));
+            if (diff > TOLERANCE) {
+              failedGates.push(
+                `Tax mismatch: stored ${storedTax.toFixed(2)} ≠ Shopify total_tax ${Number(expectedTax).toFixed(2)} (diff ${diff.toFixed(2)})`
+              );
+            }
+          }
+          if (expectedShipping !== null && expectedShipping !== undefined) {
+            const diff = Math.abs(storedShipping - Number(expectedShipping));
+            if (diff > TOLERANCE) {
+              failedGates.push(
+                `Shipping mismatch: stored ${storedShipping.toFixed(2)} ≠ Shopify total_shipping ${Number(expectedShipping).toFixed(2)} (diff ${diff.toFixed(2)})`
+              );
+            }
+          }
+        }
 
         if (failedGates.length > 0) {
           // Quarantine — never post
