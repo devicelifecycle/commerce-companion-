@@ -164,7 +164,9 @@ export default function Sales() {
     const pending = sales.filter(s => s.fulfillment_status === 'pending').length;
     const shipped = sales.filter(s => s.fulfillment_status === 'shipped').length;
     const delivered = sales.filter(s => s.fulfillment_status === 'delivered').length;
-    return { total, received, pending, shipped, delivered };
+    const revenue = sales.reduce((sum, s) => sum + Number(s.sale_price || 0), 0);
+    const profit = sales.reduce((sum, s) => sum + Number(s.profit || 0), 0);
+    return { total, received, pending, shipped, delivered, revenue, profit };
   }, [sales, pagination.totalCount]);
 
   const handleDeleteSale = async (id: string) => {
@@ -592,11 +594,11 @@ export default function Sales() {
           )}
         </div>
 
-        {/* Metrics Strip */}
+        {/* Metrics Strip — summary first */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <MetricCard title="Revenue" value={new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(metrics.revenue)} icon={DollarSign} iconClassName="bg-primary/10" />
+          <MetricCard title="Profit" value={new Intl.NumberFormat('en-CA',{style:'currency',currency:'CAD',maximumFractionDigits:0}).format(metrics.profit)} icon={TrendingUp} iconClassName="bg-success/10" />
           <MetricCard title="Total Orders" value={metrics.total} icon={ShoppingCart} />
-          <MetricCard title="Received" value={metrics.received} icon={Package} iconClassName="bg-info/10" />
-          <MetricCard title="Pending" value={metrics.pending} icon={Clock} iconClassName="bg-warning/10" />
           <MetricCard title="Shipped" value={metrics.shipped} icon={Truck} iconClassName="bg-success/10" />
           <MetricCard title="Delivered" value={metrics.delivered} icon={PackageCheck} iconClassName="bg-emerald-500/10" />
         </div>
