@@ -198,7 +198,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
             <PopoverContent className="w-96" align="end">
               <div className="space-y-3">
                 <div>
-                  <p className="font-semibold text-sm">Auto-resolve checks 5 gates</p>
+                  <p className="font-semibold text-sm">Auto-resolve checks 6 gates</p>
                   <p className="text-xs text-muted-foreground mt-1">
                     Each imported order must pass these before it can be posted to the General Ledger.
                     Auto-resolve scans every pending order and tries to fill in missing pieces automatically.
