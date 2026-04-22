@@ -20,6 +20,7 @@ import { Download, Printer, TrendingUp, TrendingDown, DollarSign, ToggleLeft, In
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
+import { normalizeExpenseAccountCode } from '@/lib/accounting/expenseAccountCodes';
 
 interface PLData {
   revenue: {
@@ -150,12 +151,13 @@ export function ProfitLossReport({ companyView }: Props) {
       const handledRevenueCodes = new Set(['4000', '4100', '4101', '4300', '4400', '4401', '4200', '4201']);
       const handledExpenseCodes = new Set([
         '5000', '5001',
-        '6000', '6001', '6100', '6101', '6200', '6300', '6400',
+        '6000', '6100', '6200', '6300', '6400',
         '6500', '6600', '6700', '6800', '6900', '7000', '7100',
       ]);
 
       (data || []).forEach((line: any) => {
         const code = line.chart_of_accounts.account_code;
+        const normalizedExpenseCode = normalizeExpenseAccountCode(code);
         const credit = Number(line.credit_amount || 0);
         const debit = Number(line.debit_amount || 0);
 
@@ -176,21 +178,21 @@ export function ProfitLossReport({ companyView }: Props) {
         else if (code.startsWith('50')) pl.cogs += debit - credit;
 
         // Expenses (debit increases)
-        else if (code === '6000' || code === '6001') pl.expenses.marketplaceFees += debit - credit;
-        else if (code === '6100' || code === '6101') pl.expenses.shippingCosts += debit - credit;
-        else if (code === '6200') pl.expenses.rent += debit - credit;
-        else if (code === '6300') pl.expenses.salaries += debit - credit;
-        else if (code === '6400') pl.expenses.marketing += debit - credit;
-        else if (code === '6500') pl.expenses.office += debit - credit;
-        else if (code === '6600') pl.expenses.professional += debit - credit;
-        else if (code === '6700') pl.expenses.insurance += debit - credit;
-        else if (code === '6800') pl.expenses.bankFees += debit - credit;
-        else if (code === '6900') pl.expenses.software += debit - credit;
-        else if (code === '7000') pl.expenses.telecom += debit - credit;
-        else if (code === '7100') pl.expenses.other += debit - credit;
+        else if (normalizedExpenseCode === '6000') pl.expenses.marketplaceFees += debit - credit;
+        else if (normalizedExpenseCode === '6100') pl.expenses.shippingCosts += debit - credit;
+        else if (normalizedExpenseCode === '6200') pl.expenses.rent += debit - credit;
+        else if (normalizedExpenseCode === '6300') pl.expenses.salaries += debit - credit;
+        else if (normalizedExpenseCode === '6400') pl.expenses.marketing += debit - credit;
+        else if (normalizedExpenseCode === '6500') pl.expenses.office += debit - credit;
+        else if (normalizedExpenseCode === '6600') pl.expenses.professional += debit - credit;
+        else if (normalizedExpenseCode === '6700') pl.expenses.insurance += debit - credit;
+        else if (normalizedExpenseCode === '6800') pl.expenses.bankFees += debit - credit;
+        else if (normalizedExpenseCode === '6900') pl.expenses.software += debit - credit;
+        else if (normalizedExpenseCode === '7000') pl.expenses.telecom += debit - credit;
+        else if (normalizedExpenseCode === '7100') pl.expenses.other += debit - credit;
 
         // Catch-all: any 6xxx/7xxx expense not explicitly handled
-        else if ((code.startsWith('6') || code.startsWith('7')) && !handledExpenseCodes.has(code)) {
+        else if ((normalizedExpenseCode.startsWith('6') || normalizedExpenseCode.startsWith('7')) && !handledExpenseCodes.has(normalizedExpenseCode)) {
           pl.expenses.other += debit - credit;
         }
 

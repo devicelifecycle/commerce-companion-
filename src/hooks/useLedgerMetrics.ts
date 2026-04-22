@@ -6,6 +6,7 @@ import {
   format, subMonths, startOfMonth, endOfMonth, startOfQuarter, startOfYear,
   endOfYear, endOfQuarter, differenceInDays
 } from 'date-fns';
+import { normalizeExpenseAccountCode } from '@/lib/accounting/expenseAccountCodes';
 
 export interface LedgerMetrics {
   // P&L (ledger-sourced)
@@ -205,9 +206,9 @@ async function fetchLedgerForPeriod(
       if (acct.account_subtype === 'COGS') {
         totalCOGS += amount;
       } else {
-        const code = acct.account_code;
+        const code = normalizeExpenseAccountCode(acct.account_code);
         let cat = 'other';
-        if (code.startsWith('60') && acct.account_name.toLowerCase().includes('marketplace')) { cat = 'marketplace_fees'; marketplaceFees += amount; }
+        if (code === '6000') { cat = 'marketplace_fees'; marketplaceFees += amount; }
         else if (code.startsWith('61')) cat = 'shipping';
         else if (code === '6200') cat = 'utilities';
         else if (code === '6300') cat = 'payroll';
