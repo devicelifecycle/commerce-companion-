@@ -12,6 +12,7 @@ import { useAuditLog } from '@/hooks/useAuditLog';
 import { ExpenseDashboard } from '@/components/expenses/ExpenseDashboard';
 import { AddExpenseDialog } from '@/components/expenses/AddExpenseDialog';
 import { ExpenseRefundDialog } from '@/components/expenses/ExpenseRefundDialog';
+import { ExpenseTaxGuide } from '@/components/expenses/ExpenseTaxGuide';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,7 +43,7 @@ import {
 import { toast } from 'sonner';
 import { 
   Plus, Search, Filter, Download, LayoutDashboard, List, 
-  MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink, Info, Undo2
+  MoreHorizontal, Edit2, Trash2, Receipt, Repeat, ExternalLink, Info, Undo2, BookOpen
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
@@ -291,12 +292,18 @@ export default function Expenses() {
               <List className="h-4 w-4" />
               All Expenses
             </TabsTrigger>
-
-
+            <TabsTrigger value="guide" className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4" />
+              Tax Guide
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
             <ExpenseDashboard />
+          </TabsContent>
+
+          <TabsContent value="guide">
+            <ExpenseTaxGuide />
           </TabsContent>
 
           <TabsContent value="list">
