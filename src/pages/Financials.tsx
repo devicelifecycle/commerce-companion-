@@ -21,6 +21,7 @@ import { TrialBalance } from '@/components/accounting/TrialBalance';
 import { MarketplaceReconciliation } from '@/components/reports/MarketplaceReconciliation';
 import { PayoutReconciliation } from '@/components/reports/PayoutReconciliation';
 import { FBAReconciliation } from '@/components/reports/FBAReconciliation';
+import { JournalTruthReconciliation } from '@/components/reports/JournalTruthReconciliation';
 
 // AP & AR
 import { AccountsPayable } from '@/components/accounting/AccountsPayable';
@@ -56,7 +57,7 @@ import {
 type SubView =
   | 'pl' | 'balance-sheet' | 'cash-flow'
   | 'chart-of-accounts' | 'journal-entries' | 'trial-balance'
-  | 'reconciliation' | 'payouts' | 'fba-reconciliation'
+  | 'reconciliation' | 'payouts' | 'fba-reconciliation' | 'journal-truth'
   | 'ap' | 'ar'
   | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing' | 'tax-reconciliation'
   | 'cost-devices'
@@ -108,6 +109,7 @@ const SECTIONS = [
     icon: CheckSquare,
     views: [
       { value: 'reconciliation' as SubView, label: 'Marketplace', icon: CheckSquare },
+      { value: 'journal-truth' as SubView, label: 'Journal vs API', icon: FileText },
       { value: 'fba-reconciliation' as SubView, label: 'FBA Reconciliation', icon: Package },
       { value: 'payouts' as SubView, label: 'Payouts', icon: Banknote },
     ],
@@ -253,6 +255,7 @@ export default function Financials() {
             {subView === 'cost-devices' && <CostLedgerPanel companyView={companyView} />}
 
             {subView === 'reconciliation' && <MarketplaceReconciliation companyView={companyView} />}
+            {subView === 'journal-truth' && <JournalTruthReconciliation companyView={companyView} />}
             {subView === 'fba-reconciliation' && <FBAReconciliation />}
             {subView === 'payouts' && <PayoutReconciliation companyView={companyView} />}
 
