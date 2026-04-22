@@ -860,8 +860,7 @@ export default function Sales() {
             )}
           </CardContent>
         </Card>
-          </CollapsibleContent>
-        </Collapsible>
+        </div>
           </TabsContent>
         </Tabs>
 
