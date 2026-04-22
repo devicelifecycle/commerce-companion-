@@ -91,6 +91,14 @@ export function useSalesQuery({ companyFilter, marketplaceFilter, statusFilter, 
         query = query.eq('fulfillment_status', statusFilter);
       }
 
+      // Posted tab excludes the suspense pipeline (pending_review / ready_to_post / needs_review).
+      // Those orders live in the Pending tab until a human clicks "Complete & Post".
+      query = query.not(
+        'accounting_status',
+        'in',
+        '(pending_review,ready_to_post,needs_review)'
+      );
+
       const { data: salesData, error, count } = await query;
       if (error) throw error;
 
