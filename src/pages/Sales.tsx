@@ -111,6 +111,7 @@ export default function Sales() {
     sales: filteredSales,
     allSales: sales,
     returnSaleIds,
+    returnStatusMap,
     isLoading: loading,
     refetch: fetchSales,
     pagination,
@@ -713,11 +714,29 @@ export default function Sales() {
                                 <p className="text-[10px] text-muted-foreground truncate max-w-[110px]">{sale.customer_name}</p>
                               )}
                             </div>
-                            {returnSaleIds.has(sale.id) && (
-                              <Badge variant="outline" className="text-destructive border-destructive/40 text-[9px] px-1 py-0 shrink-0">
-                                RMA
-                              </Badge>
-                            )}
+                            {(() => {
+                              const ret = returnStatusMap.get(sale.id);
+                              if (!ret) return null;
+                              const isDone = ['completed', 'closed', 'refunded', 'resolved'].includes((ret.status || '').toLowerCase());
+                              const isCancelled = (ret.status || '').toLowerCase() === 'cancelled';
+                              const label = isDone
+                                ? (ret.resolution_type === 'refund' ? 'REFUNDED' : ret.resolution_type === 'exchange' ? 'EXCHANGED' : ret.resolution_type === 'store_credit' ? 'CREDITED' : ret.resolution_type === 'warranty' ? 'WARRANTY' : 'RETURNED')
+                                : isCancelled ? 'RMA CXL' : 'RMA OPEN';
+                              const cls = isDone
+                                ? 'text-emerald-500 border-emerald-500/40'
+                                : isCancelled
+                                  ? 'text-muted-foreground border-muted-foreground/40'
+                                  : 'text-amber-500 border-amber-500/40';
+                              return (
+                                <Badge
+                                  variant="outline"
+                                  className={`${cls} text-[9px] px-1 py-0 shrink-0`}
+                                  title={`${ret.rma_number} — ${ret.status}${ret.resolution_type ? ` (${ret.resolution_type})` : ''}`}
+                                >
+                                  {label}
+                                </Badge>
+                              );
+                            })()}
                             {sale.fulfillment_status === 'cancelled' && (
                               <Badge variant="destructive" className="text-[9px] px-1 py-0 shrink-0">
                                 VOID
