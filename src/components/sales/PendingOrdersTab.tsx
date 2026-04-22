@@ -240,6 +240,13 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
                       <p className="text-muted-foreground">For multi-line orders, every line item must be linked to a device or product, or have a cost price entered.</p>
                     </div>
                   </div>
+                  <div className="flex gap-2">
+                    <span className="font-mono text-primary shrink-0">6.</span>
+                    <div>
+                      <p className="font-medium">Marketplace totals match</p>
+                      <p className="text-muted-foreground">For Shopify orders, stored tax and shipping must match what Shopify reported (within 1¢). Drift is flagged so you can reconcile before posting.</p>
+                    </div>
+                  </div>
                 </div>
                 <div className="border-t pt-2 text-xs text-muted-foreground">
                   Orders with all 5 gates green move to <span className="font-medium text-foreground">Ready to Post</span>. The rest stay in Pending Review or Needs Action with a reason.
