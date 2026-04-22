@@ -3136,6 +3136,8 @@ export type Database = {
           marketplace_fees: number | null
           marketplace_sku: string | null
           marketplace_status: string | null
+          marketplace_total_shipping: number | null
+          marketplace_total_tax: number | null
           notes: string | null
           order_number: string
           payout_amount: number | null
@@ -3180,6 +3182,8 @@ export type Database = {
           marketplace_fees?: number | null
           marketplace_sku?: string | null
           marketplace_status?: string | null
+          marketplace_total_shipping?: number | null
+          marketplace_total_tax?: number | null
           notes?: string | null
           order_number: string
           payout_amount?: number | null
@@ -3224,6 +3228,8 @@ export type Database = {
           marketplace_fees?: number | null
           marketplace_sku?: string | null
           marketplace_status?: string | null
+          marketplace_total_shipping?: number | null
+          marketplace_total_tax?: number | null
           notes?: string | null
           order_number?: string
           payout_amount?: number | null
