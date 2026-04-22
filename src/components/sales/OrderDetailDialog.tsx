@@ -551,10 +551,10 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
             <TabsList className="bg-transparent h-9 p-0 gap-1">
               <TabsTrigger value="overview" className="text-xs data-[state=active]:bg-muted">Overview</TabsTrigger>
               <TabsTrigger value="items" className="text-xs data-[state=active]:bg-muted">
-                Items & Cost {!hasLinkedItem && <AlertTriangle className="h-3 w-3 ml-1 text-amber-500" />}
+                Items & Cost {!hasLinkedItem && <AlertTriangle className="h-3 w-3 ml-1 text-warning" />}
               </TabsTrigger>
               <TabsTrigger value="customer" className="text-xs data-[state=active]:bg-muted">
-                Customer & Shipping {!localProvince && <AlertTriangle className="h-3 w-3 ml-1 text-amber-500" />}
+                Customer & Shipping {!localProvince && <AlertTriangle className="h-3 w-3 ml-1 text-warning" />}
               </TabsTrigger>
               <TabsTrigger value="returns" className="text-xs data-[state=active]:bg-muted">
                 Returns {returnData && <Badge variant="outline" className="ml-1 h-4 px-1 text-[9px]">1</Badge>}
@@ -650,7 +650,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                         <MetaRow label="Marketplace SKU" value={<span className="font-mono text-xs">{sale.marketplace_sku}</span>} icon={<Hash className="h-3 w-3" />} />
                       )}
                       <MetaRow label="Sale Date" value={formatDate(sale.sale_date)} icon={<Calendar className="h-3 w-3" />} />
-                      <MetaRow label="Province" value={provinceName ? <span>{localProvince} — {provinceName}</span> : <span className="text-amber-500">Not set</span>} icon={<MapPin className="h-3 w-3" />} />
+                      <MetaRow label="Province" value={provinceName ? <span>{localProvince} — {provinceName}</span> : <span className="text-warning">Not set</span>} icon={<MapPin className="h-3 w-3" />} />
                       <MetaRow label="Fulfillment" value={<span className="capitalize">{sale.fulfillment_status || 'Unknown'}</span>} icon={<Truck className="h-3 w-3" />} />
                       <MetaRow label="Accounting" value={
                         <Badge variant="outline" className="text-[10px] capitalize">
@@ -802,8 +802,8 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                       </div>
                     </div>
                   ) : (
-                    <div className="bg-amber-500/5 border border-dashed border-amber-500/40 rounded-lg p-6 text-center">
-                      <AlertTriangle className="h-6 w-6 text-amber-500 mx-auto mb-2" />
+                    <div className="bg-warning/5 border border-dashed border-warning/40 rounded-lg p-6 text-center">
+                      <AlertTriangle className="h-6 w-6 text-warning mx-auto mb-2" />
                       <p className="text-sm font-medium mb-1">No cost linked to this order</p>
                       <p className="text-xs text-muted-foreground mb-3">Profit shown is incomplete until you attach inventory or a manual cost.</p>
                       <Button size="sm" onClick={() => setShowLinkDevice(true)}>
@@ -843,7 +843,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                         )}
                       </Label>
                       {!localProvince && suggestedProvince && (
-                        <p className="text-[11px] text-amber-500 mb-1.5">
+                        <p className="text-[11px] text-warning mb-1.5">
                           Detected <span className="font-mono font-bold">{suggestedProvince}</span> from address —{' '}
                           <button className="underline font-medium hover:text-foreground" onClick={() => handleProvinceChange(suggestedProvince)} disabled={savingProvince}>
                             apply
@@ -903,7 +903,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                         {returnData.accounting_status === 'processed' ? (
                           <Badge variant="outline" className="text-[10px] text-[hsl(var(--success))] border-[hsl(var(--success)/0.3)]">JE Reversed</Badge>
                         ) : (
-                          <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30">Pending</Badge>
+                          <Badge variant="outline" className="text-[10px] text-warning border-warning/30">Pending</Badge>
                         )}
                       </div>
                     </div>
@@ -937,7 +937,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                 Return on file — see Returns tab
               </span>
             ) : !hasLinkedItem ? (
-              <span className="flex items-center gap-1.5 text-amber-500">
+              <span className="flex items-center gap-1.5 text-warning">
                 <AlertTriangle className="h-3 w-3" />
                 Action needed: link cost for accurate profit
               </span>
@@ -1040,7 +1040,7 @@ function ActionCallout({ tone, icon: Icon, title, body, actionLabel, onAction }:
   title: string; body: string; actionLabel: string; onAction: () => void;
 }) {
   const styles = tone === 'amber'
-    ? 'bg-amber-500/5 border-amber-500/30 text-amber-600 dark:text-amber-400'
+    ? 'bg-warning/5 border-warning/30 text-amber-600 dark:text-amber-400'
     : 'bg-destructive/5 border-destructive/30 text-destructive';
   return (
     <div className={cn("border rounded-lg p-3 flex items-center justify-between gap-3", styles)}>
