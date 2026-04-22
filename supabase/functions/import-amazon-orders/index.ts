@@ -227,12 +227,15 @@ serve(async (req) => {
       AMAZON_REFRESH_TOKEN
     );
 
-    // Accept startDate from request body or default to 7 days ago
+    // Accept startDate from request body or default to 7 days ago.
+    // Hard floor: 2026-01-01 (operational baseline). Earlier dates are clamped.
     let body: any = {};
     try { body = await req.json(); } catch (_) { /* empty body is fine */ }
     const defaultStart = new Date();
     defaultStart.setDate(defaultStart.getDate() - 7);
-    const createdAfter = body.startDate ? new Date(body.startDate).toISOString() : defaultStart.toISOString();
+    const FLOOR = new Date("2026-01-01T00:00:00Z");
+    const requested = body.startDate ? new Date(body.startDate) : defaultStart;
+    const createdAfter = (requested < FLOOR ? FLOOR : requested).toISOString();
 
     console.log(`Fetching Amazon orders since ${createdAfter}`);
 
