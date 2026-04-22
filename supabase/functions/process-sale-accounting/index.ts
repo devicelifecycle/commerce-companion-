@@ -222,7 +222,7 @@ serve(async (req) => {
     let salesQuery = supabase
       .from("sales")
       .select(
-        "id, order_number, marketplace, sale_price, subtotal, shipping_cost, shipping_revenue, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost, shipping_province"
+        "id, order_number, marketplace, sale_price, subtotal, shipping_cost, shipping_revenue, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost, shipping_province, marketplace_total_tax, marketplace_total_shipping"
       )
       .in("accounting_status", ["pending_review", "needs_review", "ready_to_post"]);
 
@@ -369,6 +369,30 @@ serve(async (req) => {
             failedGates.push(
               `${incomplete.length} line item(s) missing device/product link or cost (e.g. "${(incomplete[0].description || 'unnamed').slice(0, 40)}")`
             );
+          }
+        }
+        // Gate 6: marketplace totals reconciliation (Shopify) — stored editable values must match what the marketplace reported
+        if (sale.marketplace === "shopify") {
+          const expectedTax = (sale as any).marketplace_total_tax;
+          const expectedShipping = (sale as any).marketplace_total_shipping;
+          const storedTax = Number(sale.tax_amount || 0);
+          const storedShipping = Number((sale as any).shipping_revenue || 0);
+          const TOLERANCE = 0.01; // 1 cent rounding tolerance
+          if (expectedTax !== null && expectedTax !== undefined) {
+            const diff = Math.abs(storedTax - Number(expectedTax));
+            if (diff > TOLERANCE) {
+              failedGates.push(
+                `Tax mismatch: stored ${storedTax.toFixed(2)} ≠ Shopify total_tax ${Number(expectedTax).toFixed(2)} (diff ${diff.toFixed(2)})`
+              );
+            }
+          }
+          if (expectedShipping !== null && expectedShipping !== undefined) {
+            const diff = Math.abs(storedShipping - Number(expectedShipping));
+            if (diff > TOLERANCE) {
+              failedGates.push(
+                `Shipping mismatch: stored ${storedShipping.toFixed(2)} ≠ Shopify total_shipping ${Number(expectedShipping).toFixed(2)} (diff ${diff.toFixed(2)})`
+              );
+            }
           }
         }
 

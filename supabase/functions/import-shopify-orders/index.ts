@@ -450,6 +450,9 @@ serve(async (req) => {
             marketplace_fees: marketplaceFees ?? 0,
             payout_amount: payoutAmount,
             shipping_province: province,
+            // Authoritative marketplace totals — Gate 6 compares these against editable fields
+            marketplace_total_tax: taxAmount,
+            marketplace_total_shipping: shippingRevenue,
             notes,
           };
           if (customerEmail) updates.customer_email = customerEmail;
@@ -505,6 +508,9 @@ serve(async (req) => {
           tax_amount: taxAmount,
           tax_rate: taxRate,
           tax_title: taxTitle,
+          // Authoritative marketplace totals — Gate 6 compares against editable fields
+          marketplace_total_tax: taxAmount,
+          marketplace_total_shipping: shippingRevenue,
           sale_date: order.created_at,
           customer_name: customerName,
           customer_email: customerEmail,
