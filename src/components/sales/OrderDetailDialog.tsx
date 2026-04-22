@@ -1040,7 +1040,7 @@ function ActionCallout({ tone, icon: Icon, title, body, actionLabel, onAction }:
   title: string; body: string; actionLabel: string; onAction: () => void;
 }) {
   const styles = tone === 'amber'
-    ? 'bg-warning/5 border-warning/30 text-amber-600 dark:text-amber-400'
+    ? 'bg-warning/5 border-warning/30 text-warning'
     : 'bg-destructive/5 border-destructive/30 text-destructive';
   return (
     <div className={cn("border rounded-lg p-3 flex items-center justify-between gap-3", styles)}>
