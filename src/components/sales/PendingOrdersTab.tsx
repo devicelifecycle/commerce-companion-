@@ -210,28 +210,28 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
                 </div>
                 <div className="space-y-2 text-xs">
                   <div className="flex gap-2">
-                    <span className="font-mono text-emerald-500 shrink-0">1.</span>
+                    <span className="font-mono text-primary shrink-0">1.</span>
                     <div>
                       <p className="font-medium">Sale price</p>
                       <p className="text-muted-foreground">Order total &gt; 0 and matches the marketplace payload.</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <span className="font-mono text-emerald-500 shrink-0">2.</span>
+                    <span className="font-mono text-primary shrink-0">2.</span>
                     <div>
                       <p className="font-medium">Shipping province</p>
                       <p className="text-muted-foreground">Resolved to a valid Canadian province (for correct GST/HST/PST). Inferred values are flagged with *.</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <span className="font-mono text-emerald-500 shrink-0">3.</span>
+                    <span className="font-mono text-primary shrink-0">3.</span>
                     <div>
                       <p className="font-medium">Cost basis</p>
                       <p className="text-muted-foreground">Order is linked to a device/product, OR a manual cost is entered. Without this we can't compute COGS.</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <span className="font-mono text-emerald-500 shrink-0">4.</span>
+                    <span className="font-mono text-primary shrink-0">4.</span>
                     <div>
                       <p className="font-medium">Marketplace fees</p>
                       <p className="text-muted-foreground">Fees captured from the marketplace, or zero confirmed (e.g., Shopify before payout sync).</p>
