@@ -336,6 +336,9 @@ Deno.serve(async (req) => {
         tax_amount: parseFloat(taxPerItem.toFixed(2)),
         tax_rate: orderTaxRate,
         tax_title: orderTaxTitle,
+        // Authoritative per-line marketplace totals (allocated from order-level Shopify values)
+        marketplace_total_tax: parseFloat(taxPerItem.toFixed(2)),
+        marketplace_total_shipping: parseFloat(shippingPerItem.toFixed(2)),
         sale_date: order.created_at,
         customer_name: customerName,
         customer_email: customerEmail,
