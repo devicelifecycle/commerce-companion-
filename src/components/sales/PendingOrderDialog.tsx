@@ -386,10 +386,10 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
             <DialogHeader className="px-6 py-4 border-b shrink-0">
               <div className="flex items-start justify-between gap-4 pr-8">
                 <div className="space-y-1">
-                  <DialogTitle className="text-lg flex items-center gap-2">
+                    <DialogTitle className="text-lg flex items-center gap-2">
                     <Hash className="h-4 w-4 text-muted-foreground" />
                     <span className="font-mono">{sale.order_number}</span>
-                    <MarketplaceBadge marketplace={sale.marketplace} account={sale.marketplace_account} />
+                    <MarketplaceBadge marketplace={sale.marketplace as any} account={sale.marketplace_account as any} />
                   </DialogTitle>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{new Date(sale.sale_date).toLocaleString()}</span>
@@ -507,8 +507,8 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
                         <div className="space-y-2">
                           <DeviceSearchCombobox
                             value={pendingDeviceId}
-                            onChange={setPendingDeviceId}
-                            companyId={sale.company_id}
+                            onSelect={(d) => setPendingDeviceId(d?.id || null)}
+                            companyId={sale.company_id || undefined}
                             statusFilter={['in_stock']}
                           />
                           <Button onClick={handleLinkDevice} disabled={!pendingDeviceId || savingLink} size="sm">
@@ -524,8 +524,8 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
                       </p>
                       <ProductSearchCombobox
                         value={null}
-                        onChange={() => toast.info('Product linking coming soon for pending dialog — use Manual cost for now.')}
-                        companyId={sale.company_id}
+                        onSelect={() => toast.info('Product linking coming soon for pending dialog — use Manual cost for now.')}
+                        companyId={sale.company_id || undefined}
                       />
                     </TabsContent>
 
