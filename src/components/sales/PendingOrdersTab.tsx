@@ -185,7 +185,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
       {/* Action bar */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-sm text-muted-foreground max-w-2xl">
-          Imported orders sit here until 4 gates pass and you click <strong>Post</strong>. Nothing affects
+          Imported orders sit here until 5 gates pass and you click <strong>Post</strong>. Nothing affects
           the P&amp;L, dashboard, or financial reports until posted.
         </p>
         <div className="flex gap-2 items-center">
