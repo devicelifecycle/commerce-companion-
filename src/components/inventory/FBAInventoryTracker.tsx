@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 
 type FulfillmentChannel = 'local' | 'fba' | 'in_transit_fba';
 
@@ -196,6 +197,8 @@ export function FBAInventoryTracker() {
       setSelectedFbaIds(new Set());
       setSelectedTransitIds(new Set());
       fetchFBAInventory();
+      emitRefetch('inventory');
+      emitRefetch('sales');
     } catch (err: any) {
       toast.error(err.message || 'Failed to process claim');
     } finally {

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupBeforePODelete } from '@/lib/accounting/reversalUtils';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -126,6 +127,7 @@ export default function PurchaseOrders() {
   };
 
   useDataRefetch('purchase_orders', loadOrders);
+  useRealtimeSubscription({ table: 'purchase_orders', onChanged: () => emitRefetch('purchase_orders') });
 
   const clearFilters = () => { setStatusFilter('all'); setPaymentFilter('all'); setSearch(''); };
 
