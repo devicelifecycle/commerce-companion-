@@ -8,10 +8,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
-  CheckCircle2, AlertTriangle, Clock, RefreshCw, Send, Link2, ScrollText, Eye,
+  CheckCircle2, AlertTriangle, Clock, RefreshCw, Send, Link2, ScrollText, Eye, Info,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { OrderDetailDialog } from '@/components/sales/OrderDetailDialog';
 import { emitRefetch } from '@/hooks/useDataRefetch';
 
@@ -191,7 +192,58 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
           Imported orders sit here until 4 gates pass and you click <strong>Post</strong>. Nothing affects
           the P&amp;L, dashboard, or financial reports until posted.
         </p>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" title="What does Auto-resolve do?">
+                <Info className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96" align="end">
+              <div className="space-y-3">
+                <div>
+                  <p className="font-semibold text-sm">Auto-resolve checks 4 gates</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Each imported order must pass these before it can be posted to the General Ledger.
+                    Auto-resolve scans every pending order and tries to fill in missing pieces automatically.
+                  </p>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div className="flex gap-2">
+                    <span className="font-mono text-emerald-500 shrink-0">1.</span>
+                    <div>
+                      <p className="font-medium">Sale price</p>
+                      <p className="text-muted-foreground">Order total &gt; 0 and matches the marketplace payload.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-mono text-emerald-500 shrink-0">2.</span>
+                    <div>
+                      <p className="font-medium">Shipping province</p>
+                      <p className="text-muted-foreground">Resolved to a valid Canadian province (for correct GST/HST/PST). Inferred values are flagged with *.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-mono text-emerald-500 shrink-0">3.</span>
+                    <div>
+                      <p className="font-medium">Cost basis</p>
+                      <p className="text-muted-foreground">Order is linked to a device/product, OR a manual cost is entered. Without this we can't compute COGS.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className="font-mono text-emerald-500 shrink-0">4.</span>
+                    <div>
+                      <p className="font-medium">Marketplace fees</p>
+                      <p className="text-muted-foreground">Fees captured from the marketplace, or zero confirmed (e.g., Shopify before payout sync).</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="border-t pt-2 text-xs text-muted-foreground">
+                  Orders with all 4 gates green move to <span className="font-medium text-foreground">Ready to Post</span>. The rest stay in Pending Review or Needs Action with a reason.
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button variant="outline" onClick={handleAutoResolve} disabled={resolving}>
             <RefreshCw className={`h-4 w-4 mr-2 ${resolving ? 'animate-spin' : ''}`} />
             Auto-resolve
