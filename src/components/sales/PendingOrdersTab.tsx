@@ -242,7 +242,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
                   </div>
                 </div>
                 <div className="border-t pt-2 text-xs text-muted-foreground">
-                  Orders with all 4 gates green move to <span className="font-medium text-foreground">Ready to Post</span>. The rest stay in Pending Review or Needs Action with a reason.
+                  Orders with all 5 gates green move to <span className="font-medium text-foreground">Ready to Post</span>. The rest stay in Pending Review or Needs Action with a reason.
                 </div>
               </div>
             </PopoverContent>
