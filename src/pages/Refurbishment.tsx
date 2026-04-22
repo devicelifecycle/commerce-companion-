@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { useDataRefetch } from '@/hooks/useDataRefetch';
 
 import { RefurbishmentQueue } from '@/components/refurbishment/RefurbishmentQueue';
 import { RefurbishmentDetail } from '@/components/refurbishment/RefurbishmentDetail';
@@ -49,6 +50,8 @@ export default function Refurbishment() {
   });
 
   const refetchAll = () => { refetchPending(); refetchCompleted(); };
+
+  useDataRefetch(['refurbishment', 'inventory'], refetchAll);
 
   const pendingCount = pendingDevices.length;
   const inProgressCount = pendingDevices.filter((d: any) => d.refurbishment_status === 'in_progress').length;

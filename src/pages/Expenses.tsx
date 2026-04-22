@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupBeforeExpenseDelete } from '@/lib/accounting/reversalUtils';
 import { useCompany } from '@/contexts/CompanyContext';
@@ -150,6 +151,7 @@ export default function Expenses() {
   };
 
   useDataRefetch('expenses', fetchExpenses);
+  useRealtimeSubscription({ table: 'expenses', onChanged: () => emitRefetch('expenses') });
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this expense? Associated journal entries, ITCs, and refunds will also be reversed.')) return;

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { supabase } from '@/integrations/supabase/client';
 import { cleanupBeforeSaleDelete } from '@/lib/accounting/reversalUtils';
 
@@ -122,6 +123,7 @@ export default function Sales() {
   } = useSalesQuery({ companyFilter, marketplaceFilter, statusFilter, searchTerm });
 
   useDataRefetch('sales', fetchSales);
+  useRealtimeSubscription({ table: 'sales', onChanged: () => emitRefetch('sales') });
 
   // Determine which company code is selected
   const selectedCompanyCode = useMemo(() => {
