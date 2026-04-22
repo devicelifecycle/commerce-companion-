@@ -222,7 +222,7 @@ serve(async (req) => {
     let salesQuery = supabase
       .from("sales")
       .select(
-        "id, order_number, marketplace, sale_price, subtotal, shipping_cost, shipping_revenue, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost, shipping_province"
+        "id, order_number, marketplace, sale_price, subtotal, shipping_cost, shipping_revenue, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost, shipping_province, marketplace_total_tax, marketplace_total_shipping"
       )
       .in("accounting_status", ["pending_review", "needs_review", "ready_to_post"]);
 
