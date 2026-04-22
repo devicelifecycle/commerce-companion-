@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { FileText, DollarSign, Package, Plus, User, Calendar, Building2, Truck } from 'lucide-react';
 import { format } from 'date-fns';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 
 interface PODetailDialogProps {
   open: boolean;

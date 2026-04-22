@@ -28,6 +28,7 @@ import { BatchActionBar, exportToCsv } from '@/components/ui/batch-action-bar';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { toast } from 'sonner';
 import { Search, Plus, Trash2, Edit2, MoreHorizontal, Package, Download, Filter, Upload, ChevronDown, ChevronRight, Layers, AlertTriangle } from 'lucide-react';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { ProductImportDialog } from './ProductImportDialog';
 import { format } from 'date-fns';
 
@@ -316,6 +317,7 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
       setIsDialogOpen(false);
       resetForm();
       fetchProducts();
+      emitRefetch('products');
     } catch (error: any) {
       toast.error(error.message || 'Failed to save product');
     }
@@ -328,6 +330,7 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
       if (error) throw error;
       toast.success('Product deleted');
       fetchProducts();
+      emitRefetch('products');
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete product');
     }
@@ -341,6 +344,7 @@ export function ProductsManagement({ canManage }: ProductsManagementProps) {
       toast.success(`${selection.count} product(s) deleted`);
       selection.clear();
       fetchProducts();
+      emitRefetch('products');
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete');
     }

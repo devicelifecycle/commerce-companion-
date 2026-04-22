@@ -22,6 +22,7 @@ import { generatePONumber, generateGRNNumber } from '@/lib/import/automatedImpor
 import {
   createAutoJournalEntry, getAccountIdByCode, createPaymentMadeJournalEntry,
 } from '@/lib/accounting/journalAutomation';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 
 const PART_CATEGORIES = ['screen', 'battery', 'housing', 'camera', 'charging_port', 'speaker', 'button', 'connector', 'adhesive', 'ssd', 'general'];
 const MOBILE_SENTRIX_NAME = 'MobileSentrix';

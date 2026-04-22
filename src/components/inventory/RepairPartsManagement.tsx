@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/select';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
 import { toast } from 'sonner';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import {
   Package, Search, AlertTriangle, MoreHorizontal, Trash2, Edit2,
   History, DollarSign, X, Download,
@@ -96,6 +97,7 @@ export function RepairPartsManagement({ canManage }: RepairPartsManagementProps)
       toast.success(`${ids.length} part(s) removed`);
       setSelectedIds(new Set());
       queryClient.invalidateQueries({ queryKey: ['repair-parts'] });
+      emitRefetch('repair_parts');
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete');
     }
@@ -108,6 +110,7 @@ export function RepairPartsManagement({ canManage }: RepairPartsManagementProps)
       logEvent({ action: 'DELETE' as any, tableName: 'repair_parts', recordId: id, module: 'Inventory', notes: `Deactivated part: ${name}` });
       toast.success(`${name} removed`);
       queryClient.invalidateQueries({ queryKey: ['repair-parts'] });
+      emitRefetch('repair_parts');
     } catch (err: any) {
       toast.error(err.message || 'Failed to delete');
     }
@@ -126,6 +129,7 @@ export function RepairPartsManagement({ canManage }: RepairPartsManagementProps)
       setBulkCostDialog(false);
       setBulkCostValue('');
       queryClient.invalidateQueries({ queryKey: ['repair-parts'] });
+      emitRefetch('repair_parts');
     } catch (err: any) {
       toast.error(err.message || 'Failed to update');
     }

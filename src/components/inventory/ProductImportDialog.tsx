@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { Upload, CheckCircle, XCircle, FileSpreadsheet, Download } from 'lucide-react';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 
 interface ProductImportDialogProps {
   open: boolean;
@@ -226,7 +227,7 @@ export function ProductImportDialog({ open, onOpenChange, onSuccess }: ProductIm
     setResults({ success, failed });
     setImporting(false);
     setStep('results');
-    if (success > 0) onSuccess();
+    if (success > 0) { onSuccess(); emitRefetch('products'); }
   };
 
   const downloadTemplate = () => {
