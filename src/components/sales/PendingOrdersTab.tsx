@@ -165,7 +165,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
         log.push({
           order: s.order_number,
           status: s.accounting_status,
-          reason: s.review_reason || (s.accounting_status === 'ready_to_post' ? 'All 4 gates passed (price, province, cost basis, fees)' : '—'),
+          reason: s.review_reason || (s.accounting_status === 'ready_to_post' ? 'All 5 gates passed (price, province, cost basis, fees, line items)' : '—'),
           at: now,
         });
       });
