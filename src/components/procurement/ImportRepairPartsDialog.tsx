@@ -909,7 +909,7 @@ export function ImportRepairPartsDialog({ open, onOpenChange, onSuccess }: Impor
             </>
           )}
           {step === 'complete' && (
-            <Button type="button" onClick={() => { handleClose(false); onSuccess(); }}>Done</Button>
+            <Button type="button" onClick={() => { handleClose(false); onSuccess(); emitRefetch('repair_parts'); emitRefetch('purchase_orders'); }}>Done</Button>
           )}
         </DialogFooter>
       </DialogContent>

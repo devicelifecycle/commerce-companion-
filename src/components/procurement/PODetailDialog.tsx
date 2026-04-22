@@ -179,6 +179,7 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }
       setPaymentNotes('');
       loadAll();
       onUpdate();
+      emitRefetch('purchase_orders');
     } catch (err: any) {
       toast.error(err.message || 'Failed to record payment');
     } finally {
