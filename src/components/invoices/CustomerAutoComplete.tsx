@@ -98,9 +98,13 @@ export function CustomerAutoComplete({ companyId, value, onChange, onSelect }: P
         onFocus={() => setShowDropdown(true)}
         placeholder="Search or enter customer name"
       />
-      {showDropdown && (value.length > 0 || customers.length > 0) && (
+      {showDropdown && (value.length > 0 || customers.length > 0 || errorMsg) && (
         <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto">
-          {filtered.length === 0 ? (
+          {errorMsg ? (
+            <div className="p-3 text-xs text-destructive text-center">
+              Search error: {errorMsg}
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="p-3 text-xs text-muted-foreground text-center flex items-center justify-center gap-1.5">
               <UserPlus className="h-3.5 w-3.5" /> New customer — fill details below
             </div>
@@ -118,6 +122,7 @@ export function CustomerAutoComplete({ companyId, value, onChange, onSelect }: P
               >
                 <span className="font-medium">{c.name}</span>
                 {c.email && <span className="text-muted-foreground ml-2">{c.email}</span>}
+                {c.city && <span className="text-muted-foreground ml-2">· {c.city}</span>}
               </button>
             ))
           )}
