@@ -158,6 +158,101 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
 
   const [lineItems, setLineItems] = useState<POLineItem[]>([newPOLine()]);
 
+  /** Per-line async SKU existence check state, keyed by line id. */
+  const [skuChecks, setSkuChecks] = useState<Record<string, SkuCheckState>>({});
+  const skuCheckTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Debounced existence check: when a user types a SKU/UPC for a NEW item,
+  // see if it already belongs to a product or repair part in this company.
+  useEffect(() => {
+    // Cancel timers for lines that no longer exist
+    Object.keys(skuCheckTimers.current).forEach(lineId => {
+      if (!lineItems.find(li => li.id === lineId)) {
+        clearTimeout(skuCheckTimers.current[lineId]);
+        delete skuCheckTimers.current[lineId];
+      }
+    });
+
+    lineItems.forEach(li => {
+      // Only check when user typed a SKU AND line is not already linked to a product
+      if (li.matched_sku || !li.new_sku.trim()) {
+        if (skuChecks[li.id]?.status !== 'idle' && skuChecks[li.id] !== undefined) {
+          setSkuChecks(prev => ({ ...prev, [li.id]: { status: 'idle' } }));
+        }
+        return;
+      }
+      // Format error: skip async check
+      if (validateSkuFormat(li.new_sku)) return;
+
+      // Debounce per-line
+      if (skuCheckTimers.current[li.id]) clearTimeout(skuCheckTimers.current[li.id]);
+      setSkuChecks(prev => ({ ...prev, [li.id]: { status: 'checking' } }));
+      skuCheckTimers.current[li.id] = setTimeout(async () => {
+        const trimmed = li.new_sku.trim();
+        const table = li.item_type === 'product' ? 'products' : 'repair_parts';
+        let q: any = supabase.from(table as any).select('id, name, sku').eq('sku', trimmed).limit(1);
+        if (selectedCompanyId) q = q.eq('company_id', selectedCompanyId);
+        const { data } = await q;
+        if (data && data.length > 0) {
+          setSkuChecks(prev => ({
+            ...prev,
+            [li.id]: {
+              status: 'duplicate',
+              where: li.item_type === 'product' ? 'product' : 'repair_part',
+              name: data[0].name,
+              sku: trimmed,
+            },
+          }));
+        } else {
+          setSkuChecks(prev => ({ ...prev, [li.id]: { status: 'ok' } }));
+        }
+      }, 350);
+    });
+
+    return () => {
+      // (timers are cleared lazily; no leak because they're keyed)
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineItems.map(li => `${li.id}:${li.new_sku}:${li.item_type}:${li.matched_sku ?? ''}`).join('|'), selectedCompanyId]);
+
+  /** Format-error string per line (sync). */
+  const skuFormatErrors = useMemo(() => {
+    const out: Record<string, string | null> = {};
+    lineItems.forEach(li => {
+      out[li.id] = li.matched_sku ? null : validateSkuFormat(li.new_sku);
+    });
+    return out;
+  }, [lineItems]);
+
+  /** Within-PO duplicate detection by typed SKU (case-insensitive). */
+  const skuInPoDuplicates = useMemo(() => {
+    const out: Record<string, number | null> = {};
+    const seen = new Map<string, number>(); // sku -> first line index
+    lineItems.forEach((li, idx) => {
+      const sku = (li.matched_sku || li.new_sku || '').trim().toLowerCase();
+      if (!sku) { out[li.id] = null; return; }
+      const prev = seen.get(sku);
+      if (prev !== undefined) {
+        out[li.id] = prev + 1; // 1-based line number
+      } else {
+        seen.set(sku, idx);
+        out[li.id] = null;
+      }
+    });
+    return out;
+  }, [lineItems]);
+
+  /** Whether ANY line currently has a blocking SKU error. */
+  const hasSkuErrors = useMemo(() => {
+    return lineItems.some(li => {
+      if (skuFormatErrors[li.id]) return true;
+      if (skuInPoDuplicates[li.id]) return true;
+      const check = skuChecks[li.id];
+      if (check?.status === 'duplicate') return true;
+      return false;
+    });
+  }, [lineItems, skuFormatErrors, skuInPoDuplicates, skuChecks]);
+
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
 
   useEffect(() => {
