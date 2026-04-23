@@ -96,7 +96,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
     const monthlyMap: Record<string, Record<string, { fees: number; revenue: number; orders: number }>> = {};
 
     sales.forEach(s => {
-      const mp = s.marketplace;
+      const mp = getChannelKey(s.marketplace, s.marketplace_account as any);
       if (!byMarketplace[mp]) {
         byMarketplace[mp] = { marketplace: mp, revenue: 0, fees: 0, feeRate: 0, orders: 0, avgFee: 0, taxRemitted: 0, taxOwed: 0 };
       }
@@ -126,16 +126,19 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
       m.avgFee = m.orders > 0 ? m.fees / m.orders : 0;
     });
 
-    const marketplaceList = Object.values(byMarketplace).sort((a, b) => b.fees - a.fees);
+    const marketplaceList = Object.values(byMarketplace).sort((a, b) => {
+      const c = compareChannels(a.marketplace, b.marketplace);
+      return c !== 0 ? c : b.fees - a.fees;
+    });
 
-    // Build monthly trend data
+    // Build monthly trend data — series per known channel.
     const months = Object.keys(monthlyMap).sort();
     const trendData = months.map(month => {
       const row: any = { month };
-      Object.keys(MARKETPLACE_LABELS).forEach(mp => {
-        row[`${mp}_fees`] = monthlyMap[month]?.[mp]?.fees || 0;
-        row[`${mp}_rate`] = monthlyMap[month]?.[mp]?.revenue > 0
-          ? ((monthlyMap[month][mp].fees / monthlyMap[month][mp].revenue) * 100)
+      TRACKED_CHANNELS.forEach(ch => {
+        row[`${ch}_fees`] = monthlyMap[month]?.[ch]?.fees || 0;
+        row[`${ch}_rate`] = (monthlyMap[month]?.[ch]?.revenue ?? 0) > 0
+          ? ((monthlyMap[month][ch].fees / monthlyMap[month][ch].revenue) * 100)
           : 0;
       });
       return row;
@@ -149,7 +152,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
 
     // Pie data
     const pieData = marketplaceList.map(m => ({
-      name: MARKETPLACE_LABELS[m.marketplace] || m.marketplace,
+      name: getChannelLabel(m.marketplace),
       value: m.fees,
     })).filter(d => d.value > 0);
 
@@ -172,7 +175,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
   const handleExport = () => {
     const header = 'Marketplace,Revenue,Total Fees,Fee Rate %,Orders,Avg Fee/Order,Tax Remitted by MP,Tax You Owe';
     const rows = analytics.marketplaceList.map(m =>
-      `${MARKETPLACE_LABELS[m.marketplace] || m.marketplace},${m.revenue.toFixed(2)},${m.fees.toFixed(2)},${m.feeRate.toFixed(1)},${m.orders},${m.avgFee.toFixed(2)},${m.taxRemitted.toFixed(2)},${m.taxOwed.toFixed(2)}`
+      `${getChannelLabel(m.marketplace)},${m.revenue.toFixed(2)},${m.fees.toFixed(2)},${m.feeRate.toFixed(1)},${m.orders},${m.avgFee.toFixed(2)},${m.taxRemitted.toFixed(2)},${m.taxOwed.toFixed(2)}`
     );
     const csv = [header, ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
