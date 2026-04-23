@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 import {
@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { emitRefetch } from '@/hooks/useDataRefetch';
-import { ClipboardList, Plus, Trash2, Package, Wrench, Info } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, Package, Wrench, Info, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { SupplierSearchCombobox } from '@/components/suppliers/SupplierSearchCombobox';
@@ -114,6 +114,29 @@ function newPOLine(): POLineItem {
   };
 }
 
+/**
+ * SKU/UPC validation rules:
+ *  - Optional (blank is fine — it auto-generates on receive)
+ *  - 3–40 chars
+ *  - Only A–Z, 0–9, dash, underscore, dot (UPCs are pure digits, our SKUs use dashes)
+ */
+const SKU_PATTERN = /^[A-Za-z0-9._-]+$/;
+function validateSkuFormat(sku: string): string | null {
+  const trimmed = sku.trim();
+  if (!trimmed) return null; // optional
+  if (trimmed.length < 3) return 'SKU must be at least 3 characters';
+  if (trimmed.length > 40) return 'SKU must be 40 characters or fewer';
+  if (!SKU_PATTERN.test(trimmed)) return 'Only letters, numbers, dash, underscore, and dot allowed';
+  return null;
+}
+
+/** Async check result per line id. */
+type SkuCheckState =
+  | { status: 'idle' }
+  | { status: 'checking' }
+  | { status: 'ok' }
+  | { status: 'duplicate'; where: 'product' | 'repair_part'; name: string; sku: string };
+
 export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: CreatePurchaseOrderDialogProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -134,6 +157,101 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
   });
 
   const [lineItems, setLineItems] = useState<POLineItem[]>([newPOLine()]);
+
+  /** Per-line async SKU existence check state, keyed by line id. */
+  const [skuChecks, setSkuChecks] = useState<Record<string, SkuCheckState>>({});
+  const skuCheckTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+
+  // Debounced existence check: when a user types a SKU/UPC for a NEW item,
+  // see if it already belongs to a product or repair part in this company.
+  useEffect(() => {
+    // Cancel timers for lines that no longer exist
+    Object.keys(skuCheckTimers.current).forEach(lineId => {
+      if (!lineItems.find(li => li.id === lineId)) {
+        clearTimeout(skuCheckTimers.current[lineId]);
+        delete skuCheckTimers.current[lineId];
+      }
+    });
+
+    lineItems.forEach(li => {
+      // Only check when user typed a SKU AND line is not already linked to a product
+      if (li.matched_sku || !li.new_sku.trim()) {
+        if (skuChecks[li.id]?.status !== 'idle' && skuChecks[li.id] !== undefined) {
+          setSkuChecks(prev => ({ ...prev, [li.id]: { status: 'idle' } }));
+        }
+        return;
+      }
+      // Format error: skip async check
+      if (validateSkuFormat(li.new_sku)) return;
+
+      // Debounce per-line
+      if (skuCheckTimers.current[li.id]) clearTimeout(skuCheckTimers.current[li.id]);
+      setSkuChecks(prev => ({ ...prev, [li.id]: { status: 'checking' } }));
+      skuCheckTimers.current[li.id] = setTimeout(async () => {
+        const trimmed = li.new_sku.trim();
+        const table = li.item_type === 'product' ? 'products' : 'repair_parts';
+        let q: any = supabase.from(table as any).select('id, name, sku').eq('sku', trimmed).limit(1);
+        if (selectedCompanyId) q = q.eq('company_id', selectedCompanyId);
+        const { data } = await q;
+        if (data && data.length > 0) {
+          setSkuChecks(prev => ({
+            ...prev,
+            [li.id]: {
+              status: 'duplicate',
+              where: li.item_type === 'product' ? 'product' : 'repair_part',
+              name: data[0].name,
+              sku: trimmed,
+            },
+          }));
+        } else {
+          setSkuChecks(prev => ({ ...prev, [li.id]: { status: 'ok' } }));
+        }
+      }, 350);
+    });
+
+    return () => {
+      // (timers are cleared lazily; no leak because they're keyed)
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lineItems.map(li => `${li.id}:${li.new_sku}:${li.item_type}:${li.matched_sku ?? ''}`).join('|'), selectedCompanyId]);
+
+  /** Format-error string per line (sync). */
+  const skuFormatErrors = useMemo(() => {
+    const out: Record<string, string | null> = {};
+    lineItems.forEach(li => {
+      out[li.id] = li.matched_sku ? null : validateSkuFormat(li.new_sku);
+    });
+    return out;
+  }, [lineItems]);
+
+  /** Within-PO duplicate detection by typed SKU (case-insensitive). */
+  const skuInPoDuplicates = useMemo(() => {
+    const out: Record<string, number | null> = {};
+    const seen = new Map<string, number>(); // sku -> first line index
+    lineItems.forEach((li, idx) => {
+      const sku = (li.matched_sku || li.new_sku || '').trim().toLowerCase();
+      if (!sku) { out[li.id] = null; return; }
+      const prev = seen.get(sku);
+      if (prev !== undefined) {
+        out[li.id] = prev + 1; // 1-based line number
+      } else {
+        seen.set(sku, idx);
+        out[li.id] = null;
+      }
+    });
+    return out;
+  }, [lineItems]);
+
+  /** Whether ANY line currently has a blocking SKU error. */
+  const hasSkuErrors = useMemo(() => {
+    return lineItems.some(li => {
+      if (skuFormatErrors[li.id]) return true;
+      if (skuInPoDuplicates[li.id]) return true;
+      const check = skuChecks[li.id];
+      if (check?.status === 'duplicate') return true;
+      return false;
+    });
+  }, [lineItems, skuFormatErrors, skuInPoDuplicates, skuChecks]);
 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
 
@@ -231,6 +349,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
     if (!formData.supplier_id) { toast.error('Select a supplier'); return; }
     const validItems = computedLines.filter(li => li.description && li.unit_cost > 0);
     if (validItems.length === 0) { toast.error('Add at least one line item'); return; }
+    if (hasSkuErrors) { toast.error('Fix the highlighted SKU/UPC errors before creating the PO'); return; }
 
     // Duplicate-line guard: prevent two lines pointing at the same product/part
     // (either by matched id, or by case-insensitive name within the same item type).
@@ -502,15 +621,65 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
                         <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5 truncate max-w-full" title={item.matched_sku}>
                           {item.matched_sku}
                         </Badge>
-                      ) : (
-                        <Input
-                          className="h-8 text-[11px] font-mono px-2"
-                          placeholder="SKU/UPC (optional)"
-                          value={item.new_sku}
-                          onChange={e => updateLine(item.id, { new_sku: e.target.value })}
-                          title="Optional. Leave blank to auto-generate when received."
-                        />
-                      )}
+                      ) : (() => {
+                        const formatErr = skuFormatErrors[item.id];
+                        const dupLine = skuInPoDuplicates[item.id];
+                        const check = skuChecks[item.id];
+                        const dupExisting = check?.status === 'duplicate' ? check : null;
+                        const errMsg = formatErr
+                          || (dupLine ? `Same SKU as line ${dupLine}` : null)
+                          || (dupExisting ? `Already used by ${dupExisting.where === 'product' ? 'product' : 'repair part'} "${dupExisting.name}"` : null);
+                        const isOk = !errMsg && check?.status === 'ok' && item.new_sku.trim().length >= 3;
+                        return (
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="relative">
+                                  <Input
+                                    className={cn(
+                                      'h-8 text-[11px] font-mono px-2 pr-6',
+                                      errMsg && 'border-destructive focus-visible:ring-destructive',
+                                      isOk && 'border-[hsl(var(--success))] focus-visible:ring-[hsl(var(--success))]',
+                                    )}
+                                    placeholder="SKU/UPC (optional)"
+                                    value={item.new_sku}
+                                    onChange={e => updateLine(item.id, { new_sku: e.target.value })}
+                                    aria-invalid={!!errMsg}
+                                    aria-describedby={errMsg ? `sku-err-${item.id}` : undefined}
+                                  />
+                                  <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                                    {check?.status === 'checking' && (
+                                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                    )}
+                                    {!check || check.status === 'idle' ? null : null}
+                                    {!errMsg && check?.status === 'ok' && (
+                                      <CheckCircle2 className="h-3 w-3 text-[hsl(var(--success))]" />
+                                    )}
+                                    {errMsg && (
+                                      <AlertCircle className="h-3 w-3 text-destructive" />
+                                    )}
+                                  </div>
+                                </div>
+                              </TooltipTrigger>
+                              {errMsg && (
+                                <TooltipContent side="top" className="text-xs max-w-[260px]">
+                                  <p id={`sku-err-${item.id}`} className="font-medium">{errMsg}</p>
+                                  {dupExisting && (
+                                    <p className="mt-1 text-muted-foreground">
+                                      Pick the existing item from the suggestions instead, or use a different SKU.
+                                    </p>
+                                  )}
+                                  {formatErr && (
+                                    <p className="mt-1 text-muted-foreground">
+                                      Allowed: A–Z, 0–9, dash, underscore, dot. Leave blank to auto-generate on receive.
+                                    </p>
+                                  )}
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })()}
                     </div>
                     {/* Type selector */}
                     <div className="w-[90px]">
@@ -623,9 +792,15 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
           </div>
         </div>
 
-        <DialogFooter className="pt-2">
+        <DialogFooter className="pt-2 flex-col sm:flex-row gap-2 sm:items-center">
+          {hasSkuErrors && (
+            <div className="flex-1 flex items-center gap-1.5 text-[11px] text-destructive">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              <span>Resolve SKU/UPC errors highlighted on the line items above.</span>
+            </div>
+          )}
           <Button variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={loading}>
+          <Button onClick={handleSubmit} disabled={loading || hasSkuErrors}>
             {loading ? 'Creating...' : 'Create Purchase Order'}
           </Button>
         </DialogFooter>
