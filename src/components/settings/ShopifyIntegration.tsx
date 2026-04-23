@@ -64,7 +64,9 @@ export function ShopifyIntegration() {
     setSyncing(true);
     setLastResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke('import-shopify-orders');
+      const { data, error } = await supabase.functions.invoke('import-shopify-orders', {
+        body: { startDate: '2026-01-01T00:00:00Z' },
+      });
       
       if (error) throw error;
       
@@ -115,7 +117,7 @@ export function ShopifyIntegration() {
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Shopify orders are automatically synced every 15 minutes and via webhook when new orders are placed. 
-              You can also trigger a manual sync to import orders from the last 7 days.
+              Manual sync backfills all orders from January 1, 2026 (operational baseline) to today.
             </p>
 
             {/* Stats */}
@@ -150,7 +152,7 @@ export function ShopifyIntegration() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Manual Sync</p>
-                <p className="text-xs text-muted-foreground">Import orders from the last 7 days</p>
+                <p className="text-xs text-muted-foreground">Backfill all orders since Jan 1, 2026</p>
               </div>
               <Button onClick={triggerSync} disabled={syncing} variant="outline" size="sm">
                 {syncing ? (
