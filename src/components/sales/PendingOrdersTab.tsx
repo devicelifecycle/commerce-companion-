@@ -24,6 +24,7 @@ interface SuspenseSale {
   id: string;
   order_number: string;
   marketplace: string;
+  marketplace_account: string | null;
   sale_price: number;
   sale_date: string;
   device_id: string | null;
@@ -77,7 +78,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
     setLoading(true);
     let q = supabase
       .from('sales')
-      .select('id, order_number, marketplace, sale_price, sale_date, device_id, manual_cost, shipping_province, province_inferred, marketplace_fees, accounting_status, review_reason, customer_name, company_id')
+      .select('id, order_number, marketplace, marketplace_account, sale_price, sale_date, device_id, manual_cost, shipping_province, province_inferred, marketplace_fees, accounting_status, review_reason, customer_name, company_id')
       .in('accounting_status', ['ready_to_post', 'pending_review', 'needs_review'])
       .order('sale_date', { ascending: false })
       .limit(500);
