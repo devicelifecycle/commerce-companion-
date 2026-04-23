@@ -247,6 +247,9 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, 
           </DialogTitle>
         </DialogHeader>
 
+        {/* GRN Status Timeline — auto-updates as GRNs are created */}
+        <GRNStatusTimeline status={po.status} grnCount={grns.length} />
+
         {/* Summary header */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
           <div className="flex items-center gap-2">
