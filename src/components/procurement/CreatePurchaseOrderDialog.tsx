@@ -93,6 +93,7 @@ interface POLineItem {
   tax_status: TaxStatus;
   item_type: ItemType;
   product_id: string | null;
+  matched_sku: string | null;
 }
 
 let poLineCounter = 0;
@@ -104,8 +105,9 @@ function newPOLine(): POLineItem {
     quantity: 1,
     unit_cost: 0,
     tax_status: 'hst_paid',
-    item_type: 'inventory',
+    item_type: 'product',
     product_id: null,
+    matched_sku: null,
   };
 }
 
