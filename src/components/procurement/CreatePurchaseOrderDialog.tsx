@@ -496,18 +496,20 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
                         unit_cost: next.cost != null && next.cost > 0 ? next.cost : item.unit_cost,
                       })}
                     />
-                    {/* SKU column — shows existing SKU when matched, or "New" badge for fresh items */}
+                    {/* SKU column — shows matched SKU; otherwise allows the user to enter a SKU/UPC for the new item */}
                     <div className="min-w-0">
                       {item.matched_sku ? (
                         <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5 truncate max-w-full" title={item.matched_sku}>
                           {item.matched_sku}
                         </Badge>
-                      ) : item.description.trim().length >= 2 ? (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 text-muted-foreground">
-                          Auto on receive
-                        </Badge>
                       ) : (
-                        <span className="text-[10px] text-muted-foreground/60">—</span>
+                        <Input
+                          className="h-8 text-[11px] font-mono px-2"
+                          placeholder="SKU/UPC (optional)"
+                          value={item.new_sku}
+                          onChange={e => updateLine(item.id, { new_sku: e.target.value })}
+                          title="Optional. Leave blank to auto-generate when received."
+                        />
                       )}
                     </div>
                     {/* Type selector */}
