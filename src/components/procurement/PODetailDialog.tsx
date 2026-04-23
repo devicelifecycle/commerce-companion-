@@ -32,6 +32,78 @@ interface PODetailDialogProps {
   onInitiateGRN?: (poId: string) => void;
 }
 
+/**
+ * Visual GRN lifecycle timeline shown on the PO header.
+ * Steps: Pending → Partially Received → Fully Received.
+ * Cancelled POs render a single muted "Cancelled" pill instead of the timeline.
+ * Driven entirely by `po.status`, which `ReceivePODialog` keeps in sync after each GRN.
+ */
+function GRNStatusTimeline({ status, grnCount }: { status: string; grnCount: number }) {
+  if (status === 'cancelled') {
+    return (
+      <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+        <XCircle className="h-3.5 w-3.5" />
+        <span className="font-medium">Cancelled</span>
+      </div>
+    );
+  }
+
+  // Map PO status → active step index. `received` and `completed` both = fully received.
+  const stepIndex =
+    status === 'received' || status === 'completed' ? 2
+    : status === 'partially_received' ? 1
+    : 0;
+
+  const steps = [
+    { label: 'Pending', icon: Clock, hint: 'Awaiting first receipt' },
+    { label: 'Partially Received', icon: PackageOpen, hint: `${grnCount} GRN${grnCount === 1 ? '' : 's'} so far` },
+    { label: 'Fully Received', icon: CheckCircle2, hint: 'All items received' },
+  ];
+
+  return (
+    <div className="rounded-lg border bg-muted/20 px-3 py-2.5">
+      <div className="flex items-center gap-1 sm:gap-2">
+        {steps.map((step, idx) => {
+          const Icon = step.icon;
+          const isComplete = idx < stepIndex;
+          const isActive = idx === stepIndex;
+          const isFinalDone = idx === 2 && stepIndex === 2;
+          const dotClass = isComplete || isFinalDone
+            ? 'bg-[hsl(var(--success))] text-[hsl(var(--success-foreground,0_0%_100%))] border-[hsl(var(--success))]'
+            : isActive
+            ? 'bg-primary text-primary-foreground border-primary animate-pulse'
+            : 'bg-muted text-muted-foreground border-border';
+          const labelClass = isActive
+            ? 'text-foreground font-semibold'
+            : isComplete || isFinalDone
+            ? 'text-foreground'
+            : 'text-muted-foreground';
+          const connectorClass = idx < stepIndex
+            ? 'bg-[hsl(var(--success))]'
+            : 'bg-border';
+
+          return (
+            <div key={step.label} className="flex items-center gap-1 sm:gap-2 flex-1 last:flex-initial">
+              <div className="flex flex-col items-center gap-1 min-w-0">
+                <div className={`h-7 w-7 rounded-full border-2 flex items-center justify-center transition-colors ${dotClass}`}>
+                  <Icon className="h-3.5 w-3.5" />
+                </div>
+                <div className="text-center">
+                  <p className={`text-[10px] sm:text-xs leading-tight ${labelClass}`}>{step.label}</p>
+                  {isActive && <p className="text-[9px] text-muted-foreground hidden sm:block">{step.hint}</p>}
+                </div>
+              </div>
+              {idx < steps.length - 1 && (
+                <div className={`h-0.5 flex-1 rounded transition-colors ${connectorClass}`} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, onInitiateGRN }: PODetailDialogProps) {
   const { user } = useAuth();
   const [po, setPO] = useState<any>(null);
