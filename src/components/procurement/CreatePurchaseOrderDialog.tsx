@@ -183,6 +183,20 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
     setLineItems(prev => prev.filter(li => li.id !== id));
   };
   const updateLine = (id: string, updates: Partial<POLineItem>) => {
+    // Guard: if a user just linked this line to an existing product/part, make
+    // sure no OTHER line on this PO is already linked to the same id. Two
+    // lines for the same SKU would create accounting + receiving ambiguity.
+    if (updates.product_id) {
+      const dup = lineItems.find(li => li.id !== id && li.product_id === updates.product_id);
+      if (dup) {
+        toast.error(
+          `"${updates.description || dup.description}" is already on line ${lineItems.indexOf(dup) + 1}. Increase that line's quantity instead.`,
+        );
+        // Clear the attempted match so the user can re-type a different item
+        setLineItems(prev => prev.map(li => li.id === id ? { ...li, product_id: null, description: '' } : li));
+        return;
+      }
+    }
     setLineItems(prev => prev.map(li => li.id === id ? { ...li, ...updates } : li));
   };
 
@@ -211,6 +225,30 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
     if (!formData.supplier_id) { toast.error('Select a supplier'); return; }
     const validItems = computedLines.filter(li => li.description && li.unit_cost > 0);
     if (validItems.length === 0) { toast.error('Add at least one line item'); return; }
+
+    // Duplicate-line guard: prevent two lines pointing at the same product/part
+    // (either by matched id, or by case-insensitive name within the same item type).
+    const seenIds = new Map<string, number>();
+    const seenNames = new Map<string, number>();
+    for (let i = 0; i < validItems.length; i++) {
+      const li = validItems[i];
+      if (li.item_type === 'inventory') continue; // serialized devices can repeat
+      if (li.product_id) {
+        const prev = seenIds.get(li.product_id);
+        if (prev !== undefined) {
+          toast.error(`Lines ${prev + 1} and ${i + 1} reference the same SKU. Combine them into one line with a higher quantity.`);
+          return;
+        }
+        seenIds.set(li.product_id, i);
+      }
+      const nameKey = `${li.item_type}::${li.description.trim().toLowerCase()}`;
+      const prevName = seenNames.get(nameKey);
+      if (prevName !== undefined) {
+        toast.error(`Lines ${prevName + 1} and ${i + 1} have the same item name ("${li.description}"). Combine them into one line.`);
+        return;
+      }
+      seenNames.set(nameKey, i);
+    }
 
     setLoading(true);
     try {
