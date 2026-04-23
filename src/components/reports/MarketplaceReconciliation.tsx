@@ -1,39 +1,34 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Download, AlertTriangle, CheckCircle2, Calendar, Search } from 'lucide-react';
+import { Download, Calendar, Info } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
-import { TransactionAuditTrail } from './TransactionAuditTrail';
-import { getChannelKey, getChannelLabel } from '@/lib/marketplaceAccounts';
+import { getChannelLabel } from '@/lib/marketplaceAccounts';
 
-interface ReconciliationRow {
+interface PayoutRow {
   id: string;
-  orderNumber: string;
+  payout_id: string;
   marketplace: string;
-  saleDate: string;
-  salePrice: number;
-  fees: number;
-  shipping: number;
-  expectedPayout: number;
-  deviceLinked: boolean;
-  deviceCost: number | null;
-  profit: number | null;
-  hasJournalEntries: boolean;
-  discrepancy: string | null;
+  payout_date: string;
+  period_start: string | null;
+  period_end: string | null;
+  gross_amount: number;
+  fees_amount: number;
+  adjustments_amount: number;
+  net_payout: number;
+  currency: string;
 }
 
-interface ReconciliationSummary {
-  totalSales: number;
-  matchedEntries: number;
-  unmatchedEntries: number;
-  missingDeviceLinks: number;
-  totalDiscrepancy: number;
+interface PayoutSummary {
+  count: number;
+  totalGross: number;
+  totalFees: number;
+  totalNet: number;
 }
 
 interface MarketplaceReconciliationProps {
@@ -41,121 +36,51 @@ interface MarketplaceReconciliationProps {
 }
 
 export function MarketplaceReconciliation({ companyView = 'consolidated' }: MarketplaceReconciliationProps) {
-  const { companies } = useCompany();
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState(format(new Date(), 'yyyy-MM'));
-  const [rows, setRows] = useState<ReconciliationRow[]>([]);
-  const [summary, setSummary] = useState<ReconciliationSummary>({ totalSales: 0, matchedEntries: 0, unmatchedEntries: 0, missingDeviceLinks: 0, totalDiscrepancy: 0 });
-  const [filterStatus, setFilterStatus] = useState<'all' | 'issues'>('all');
-  const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+  const [marketplaceFilter, setMarketplaceFilter] = useState<'all' | 'amazon' | 'shopify' | 'bestbuy' | 'temu'>('all');
+  const [rows, setRows] = useState<PayoutRow[]>([]);
+  const [summary, setSummary] = useState<PayoutSummary>({ count: 0, totalGross: 0, totalFees: 0, totalNet: 0 });
 
   useEffect(() => {
-    fetchReconciliationData();
-  }, [companyView, selectedPeriod]);
+    fetchPayouts();
+  }, [companyView, selectedPeriod, marketplaceFilter]);
 
-  const fetchReconciliationData = async () => {
+  const fetchPayouts = async () => {
     setLoading(true);
     try {
       const [year, month] = selectedPeriod.split('-');
       const start = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
       const end = endOfMonth(start);
 
-      // Fetch sales
-      let salesQuery = supabase
-        .from('sales')
-        .select('id, order_number, marketplace, marketplace_account, sale_date, sale_price, marketplace_fees, shipping_cost, profit, device_id, company_id')
-        .gte('sale_date', start.toISOString())
-        .lte('sale_date', end.toISOString())
-        .order('sale_date', { ascending: false });
+      let q = supabase
+        .from('marketplace_payouts')
+        .select('id, payout_id, marketplace, payout_date, period_start, period_end, gross_amount, fees_amount, adjustments_amount, net_payout, currency, company_id')
+        .gte('payout_date', start.toISOString().split('T')[0])
+        .lte('payout_date', end.toISOString().split('T')[0])
+        .order('payout_date', { ascending: false });
 
-      if (companyView !== 'consolidated') {
-        salesQuery = salesQuery.eq('company_id', companyView);
-      }
+      if (companyView !== 'consolidated') q = q.eq('company_id', companyView);
+      if (marketplaceFilter !== 'all') q = q.eq('marketplace', marketplaceFilter);
 
-      const { data: sales } = await salesQuery;
-      if (!sales || sales.length === 0) {
-        setRows([]);
-        setSummary({ totalSales: 0, matchedEntries: 0, unmatchedEntries: 0, missingDeviceLinks: 0, totalDiscrepancy: 0 });
-        setLoading(false);
-        return;
-      }
-
-      // Fetch device costs
-      const deviceIds = sales.filter(s => s.device_id).map(s => s.device_id!);
-      let deviceCosts: Record<string, number> = {};
-      if (deviceIds.length > 0) {
-        const { data: devices } = await supabase
-          .from('devices')
-          .select('id, cost_price')
-          .in('id', deviceIds);
-        devices?.forEach(d => { deviceCosts[d.id] = Number(d.cost_price); });
-      }
-
-      // Fetch journal entries linked to these sales
-      const saleIds = sales.map(s => s.id);
-      const { data: journalEntries } = await supabase
-        .from('journal_entries')
-        .select('reference_id')
-        .eq('reference_type', 'sale')
-        .in('reference_id', saleIds);
-
-      const salesWithJE = new Set(journalEntries?.map(je => je.reference_id) || []);
-
-      // Build reconciliation rows
-      const reconcRows: ReconciliationRow[] = sales.map(sale => {
-        const salePrice = Number(sale.sale_price);
-        const fees = Number(sale.marketplace_fees || 0);
-        const shipping = Number(sale.shipping_cost || 0);
-        const expectedPayout = salePrice - fees;
-        const deviceCost = sale.device_id ? (deviceCosts[sale.device_id] ?? null) : null;
-        const hasJE = salesWithJE.has(sale.id);
-        const discrepancies: string[] = [];
-
-        if (!sale.device_id) discrepancies.push('No device linked');
-        if (!hasJE) discrepancies.push('Missing journal entries');
-        if (sale.device_id && deviceCost === null) discrepancies.push('Device cost unknown');
-
-        return {
-          id: sale.id,
-          orderNumber: sale.order_number,
-          marketplace: getChannelKey(sale.marketplace, (sale as any).marketplace_account),
-          saleDate: sale.sale_date,
-          salePrice,
-          fees,
-          shipping,
-          expectedPayout,
-          deviceLinked: !!sale.device_id,
-          deviceCost,
-          profit: sale.profit !== null ? Number(sale.profit) : null,
-          hasJournalEntries: hasJE,
-          discrepancy: discrepancies.length > 0 ? discrepancies.join('; ') : null,
-        };
-      });
-
-      setRows(reconcRows);
-
-      const matched = reconcRows.filter(r => !r.discrepancy).length;
+      const { data } = await q;
+      const list = (data || []) as PayoutRow[];
+      setRows(list);
       setSummary({
-        totalSales: reconcRows.length,
-        matchedEntries: matched,
-        unmatchedEntries: reconcRows.length - matched,
-        missingDeviceLinks: reconcRows.filter(r => !r.deviceLinked).length,
-        totalDiscrepancy: reconcRows.filter(r => r.discrepancy).length,
+        count: list.length,
+        totalGross: list.reduce((s, r) => s + Number(r.gross_amount || 0), 0),
+        totalFees: list.reduce((s, r) => s + Number(r.fees_amount || 0), 0),
+        totalNet: list.reduce((s, r) => s + Number(r.net_payout || 0), 0),
       });
-    } catch (error) {
-      console.error('Error fetching reconciliation data:', error);
+    } catch (err) {
+      console.error('Error fetching payouts:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
-
-  // Channel labels are resolved per-row via getChannelLabel() so Best Buy
-  // splits into its TGW / VES sub-accounts.
-
-  const filteredRows = filterStatus === 'issues' ? rows.filter(r => r.discrepancy) : rows;
+  const fmt = (v: number) =>
+    new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(v);
 
   const periodOptions = Array.from({ length: 12 }, (_, i) => {
     const date = subMonths(new Date(), i);
@@ -163,16 +88,16 @@ export function MarketplaceReconciliation({ companyView = 'consolidated' }: Mark
   });
 
   const handleExport = () => {
-    const header = 'Order #,Marketplace,Date,Sale Price,Fees,Shipping,Expected Payout,Device Linked,Device Cost,Profit,Journal Entries,Issues';
+    const header = 'Payout ID,Marketplace,Payout Date,Period Start,Period End,Gross,Fees,Adjustments,Net,Currency';
     const csvRows = rows.map(r =>
-      `${r.orderNumber},${r.marketplace},${r.saleDate},${r.salePrice},${r.fees},${r.shipping},${r.expectedPayout},${r.deviceLinked},${r.deviceCost ?? ''},${r.profit ?? ''},${r.hasJournalEntries},"${r.discrepancy || ''}"`
+      `${r.payout_id},${r.marketplace},${r.payout_date},${r.period_start || ''},${r.period_end || ''},${r.gross_amount},${r.fees_amount},${r.adjustments_amount},${r.net_payout},${r.currency}`
     );
     const csv = [header, ...csvRows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `reconciliation-${selectedPeriod}.csv`;
+    a.download = `marketplace-payouts-${selectedPeriod}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -189,8 +114,19 @@ export function MarketplaceReconciliation({ companyView = 'consolidated' }: Mark
 
   return (
     <div className="space-y-6">
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertTitle>Payout log</AlertTitle>
+        <AlertDescription>
+          Marketplaces don't expose per-order breakdowns in their payout APIs, so we no longer reconcile
+          individual orders against payouts. Each marketplace sale is posted directly to the operating
+          bank account when it's marked as posted. This page is now a simple log of payout totals and
+          dates so you can verify that bank deposits match what marketplaces reported.
+        </AlertDescription>
+      </Alert>
+
       {/* Controls */}
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3">
         <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
           <SelectTrigger className="w-[200px]">
             <Calendar className="h-4 w-4 mr-2" />
@@ -202,13 +138,14 @@ export function MarketplaceReconciliation({ companyView = 'consolidated' }: Mark
             ))}
           </SelectContent>
         </Select>
-        <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as any)}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue />
-          </SelectTrigger>
+        <Select value={marketplaceFilter} onValueChange={(v) => setMarketplaceFilter(v as any)}>
+          <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Transactions</SelectItem>
-            <SelectItem value="issues">Issues Only</SelectItem>
+            <SelectItem value="all">All marketplaces</SelectItem>
+            <SelectItem value="amazon">Amazon</SelectItem>
+            <SelectItem value="shopify">Shopify</SelectItem>
+            <SelectItem value="bestbuy">Best Buy</SelectItem>
+            <SelectItem value="temu">Temu</SelectItem>
           </SelectContent>
         </Select>
         <div className="ml-auto">
@@ -219,111 +156,76 @@ export function MarketplaceReconciliation({ companyView = 'consolidated' }: Mark
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card>
           <CardContent className="pt-4">
-            <p className="text-sm text-muted-foreground">Total Sales</p>
-            <p className="text-2xl font-bold">{summary.totalSales}</p>
+            <p className="text-xs text-muted-foreground">Payouts</p>
+            <p className="text-2xl font-bold">{summary.count}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Fully Matched
-            </p>
-            <p className="text-2xl font-bold text-emerald-600">{summary.matchedEntries}</p>
+            <p className="text-xs text-muted-foreground">Gross</p>
+            <p className="text-2xl font-bold">{fmt(summary.totalGross)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <p className="text-sm text-muted-foreground flex items-center gap-1">
-              <AlertTriangle className="h-3.5 w-3.5 text-amber-500" /> With Issues
-            </p>
-            <p className="text-2xl font-bold text-amber-600">{summary.unmatchedEntries}</p>
+            <p className="text-xs text-muted-foreground">Fees</p>
+            <p className="text-2xl font-bold text-destructive">{fmt(summary.totalFees)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4">
-            <p className="text-sm text-muted-foreground">Missing Device Links</p>
-            <p className="text-2xl font-bold text-destructive">{summary.missingDeviceLinks}</p>
+            <p className="text-xs text-muted-foreground">Net deposited</p>
+            <p className="text-2xl font-bold text-emerald-600">{fmt(summary.totalNet)}</p>
           </CardContent>
         </Card>
       </div>
 
-      {summary.unmatchedEntries > 0 && (
-        <Alert variant="destructive">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Reconciliation Issues Found</AlertTitle>
-          <AlertDescription>
-            {summary.unmatchedEntries} transaction{summary.unmatchedEntries > 1 ? 's' : ''} have issues that need attention.
-            {summary.missingDeviceLinks > 0 && ` ${summary.missingDeviceLinks} sale(s) have no device linked — COGS cannot be calculated.`}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Detail Table */}
+      {/* Payout Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Transaction Reconciliation</CardTitle>
-          <CardDescription>Click any row to view the full audit trail</CardDescription>
+          <CardTitle className="text-base">Payouts</CardTitle>
+          <CardDescription>Totals and dates for each marketplace payout in the selected period.</CardDescription>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Order #</TableHead>
-                <TableHead>Channel</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Sale Price</TableHead>
+                <TableHead>Payout ID</TableHead>
+                <TableHead>Marketplace</TableHead>
+                <TableHead>Payout Date</TableHead>
+                <TableHead>Period</TableHead>
+                <TableHead className="text-right">Gross</TableHead>
                 <TableHead className="text-right">Fees</TableHead>
-                <TableHead className="text-right">COGS</TableHead>
-                <TableHead className="text-right">Profit</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead></TableHead>
+                <TableHead className="text-right">Adjustments</TableHead>
+                <TableHead className="text-right">Net</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredRows.map(row => (
-                <TableRow key={row.id} className={row.discrepancy ? 'bg-destructive/5' : ''}>
-                  <TableCell className="font-mono text-sm">{row.orderNumber}</TableCell>
+              {rows.map(row => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-mono text-xs">{row.payout_id}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{getChannelLabel(row.marketplace)}</Badge>
                   </TableCell>
-                  <TableCell className="text-sm">{format(new Date(row.saleDate), 'MMM dd, yyyy')}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(row.salePrice)}</TableCell>
-                  <TableCell className="text-right text-muted-foreground">{formatCurrency(row.fees)}</TableCell>
-                  <TableCell className="text-right">
-                    {row.deviceCost !== null ? formatCurrency(row.deviceCost) : <span className="text-muted-foreground">—</span>}
+                  <TableCell className="text-sm">{format(new Date(row.payout_date), 'MMM dd, yyyy')}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {row.period_start && row.period_end
+                      ? `${format(new Date(row.period_start), 'MMM dd')} – ${format(new Date(row.period_end), 'MMM dd')}`
+                      : '—'}
                   </TableCell>
-                  <TableCell className="text-right">
-                    {row.profit !== null ? (
-                      <span className={row.profit >= 0 ? 'text-emerald-600' : 'text-destructive'}>
-                        {formatCurrency(row.profit)}
-                      </span>
-                    ) : <span className="text-muted-foreground">—</span>}
-                  </TableCell>
-                  <TableCell>
-                    {row.discrepancy ? (
-                      <Badge variant="destructive" className="text-xs">{row.discrepancy}</Badge>
-                    ) : (
-                      <Badge variant="default" className="bg-emerald-600 text-xs">Matched</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSelectedSaleId(row.id)}
-                    >
-                      <Search className="h-3.5 w-3.5" />
-                    </Button>
-                  </TableCell>
+                  <TableCell className="text-right">{fmt(Number(row.gross_amount))}</TableCell>
+                  <TableCell className="text-right text-destructive">{fmt(Number(row.fees_amount))}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">{fmt(Number(row.adjustments_amount))}</TableCell>
+                  <TableCell className="text-right font-medium text-emerald-600">{fmt(Number(row.net_payout))}</TableCell>
                 </TableRow>
               ))}
-              {filteredRows.length === 0 && (
+              {rows.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                    {filterStatus === 'issues' ? 'No issues found — all transactions are matched!' : 'No sales data for this period'}
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    No payouts recorded for this period
                   </TableCell>
                 </TableRow>
               )}
@@ -331,15 +233,6 @@ export function MarketplaceReconciliation({ companyView = 'consolidated' }: Mark
           </Table>
         </CardContent>
       </Card>
-
-      {/* Audit Trail Dialog */}
-      {selectedSaleId && (
-        <TransactionAuditTrail
-          saleId={selectedSaleId}
-          open={!!selectedSaleId}
-          onOpenChange={(open) => { if (!open) setSelectedSaleId(null); }}
-        />
-      )}
     </div>
   );
 }
