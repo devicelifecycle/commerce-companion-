@@ -39,7 +39,10 @@ export function DeviceSearchCombobox({
   value,
   onSelect,
   companyId,
-  statusFilter = 'in_stock',
+  // Default to *all* statuses that represent a device that physically exists in
+  // inventory and could plausibly be linked/sold. Callers can pass a tighter
+  // list if they only want, e.g., 'in_stock'.
+  statusFilter = ['in_stock', 'reserved', 'hold_for_refurbishment', 'in_repair', 'refurbished'],
   excludeIds = [],
   placeholder = 'Search by IMEI, SKU, brand, model...',
   disabled = false,
@@ -50,17 +53,24 @@ export function DeviceSearchCombobox({
   const [devices, setDevices] = useState<DeviceOption[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const effectiveCompanyId = companyId || selectedCompany?.id;
+  // Resolve which company scope to query. If neither prop nor context is set
+  // (e.g., super-admin browsing "All companies"), search across all companies
+  // instead of silently returning zero results.
+  const effectiveCompanyId = companyId || selectedCompany?.id || null;
 
   const loadDevices = useCallback(async (term: string) => {
-    if (!effectiveCompanyId) return;
     setLoading(true);
+    setErrorMsg(null);
     try {
       let query = supabase
         .from('devices')
-        .select('id, brand, model, imei, sku, storage, color, cost_price, status, company_id, supplier_invoice_number, condition')
-        .eq('company_id', effectiveCompanyId);
+        .select('id, brand, model, imei, sku, storage, color, cost_price, status, company_id, supplier_invoice_number, condition');
+
+      if (effectiveCompanyId) {
+        query = query.eq('company_id', effectiveCompanyId);
+      }
 
       if (statusFilter && statusFilter !== 'all') {
         if (Array.isArray(statusFilter)) {
@@ -84,8 +94,12 @@ export function DeviceSearchCombobox({
       }
 
       const { data, error } = await query;
-      if (!error && data) {
-        setDevices(data as DeviceOption[]);
+      if (error) {
+        console.error('[DeviceSearchCombobox] query failed:', error);
+        setErrorMsg(error.message);
+        setDevices([]);
+      } else {
+        setDevices((data || []) as DeviceOption[]);
       }
     } finally {
       setLoading(false);
@@ -171,7 +185,11 @@ export function DeviceSearchCombobox({
           />
           <CommandList>
             <CommandEmpty>
-              {loading ? 'Loading devices...' : 'No devices found.'}
+              {loading
+                ? 'Loading devices…'
+                : errorMsg
+                  ? `Search error: ${errorMsg}`
+                  : 'No devices found. Try a different search term, or broaden the status filter.'}
             </CommandEmpty>
             <CommandGroup heading={`${filtered.length} device${filtered.length !== 1 ? 's' : ''} available`}>
               {filtered.slice(0, 50).map((device) => (
