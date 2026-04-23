@@ -114,6 +114,29 @@ function newPOLine(): POLineItem {
   };
 }
 
+/**
+ * SKU/UPC validation rules:
+ *  - Optional (blank is fine — it auto-generates on receive)
+ *  - 3–40 chars
+ *  - Only A–Z, 0–9, dash, underscore, dot (UPCs are pure digits, our SKUs use dashes)
+ */
+const SKU_PATTERN = /^[A-Za-z0-9._-]+$/;
+function validateSkuFormat(sku: string): string | null {
+  const trimmed = sku.trim();
+  if (!trimmed) return null; // optional
+  if (trimmed.length < 3) return 'SKU must be at least 3 characters';
+  if (trimmed.length > 40) return 'SKU must be 40 characters or fewer';
+  if (!SKU_PATTERN.test(trimmed)) return 'Only letters, numbers, dash, underscore, and dot allowed';
+  return null;
+}
+
+/** Async check result per line id. */
+type SkuCheckState =
+  | { status: 'idle' }
+  | { status: 'checking' }
+  | { status: 'ok' }
+  | { status: 'duplicate'; where: 'product' | 'repair_part'; name: string; sku: string };
+
 export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: CreatePurchaseOrderDialogProps) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
