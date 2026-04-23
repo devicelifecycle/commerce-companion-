@@ -60,9 +60,8 @@ const TAX_OPTIONS: { value: TaxStatus; label: string }[] = [
 ];
 
 const ITEM_TYPE_CONFIG: { value: ItemType; label: string; icon: typeof Package; color: string; description: string }[] = [
-  { value: 'inventory', label: 'Device', icon: Package, color: 'text-[hsl(var(--info))]', description: 'Serialized items (phones, laptops, tablets) — entered at Receive time with IMEI/serial' },
-  { value: 'product', label: 'Product', icon: Package, color: 'text-[hsl(var(--success))]', description: 'Bulk/generic items. Type a name; if it matches an existing product the SKU will be reused.' },
-  { value: 'repair_parts', label: 'Repair Parts', icon: Wrench, color: 'text-[hsl(var(--warning))]', description: 'Parts inventory. Type a name; existing parts will be suggested to avoid duplicate SKUs.' },
+  { value: 'product', label: 'Product', icon: Package, color: 'text-[hsl(var(--success))]', description: 'Bulk/generic items. Type a name or SKU; if it matches an existing product the SKU will be reused.' },
+  { value: 'repair_parts', label: 'Repair Parts', icon: Wrench, color: 'text-[hsl(var(--warning))]', description: 'Parts inventory. Type a name or SKU; existing parts will be suggested to avoid duplicate SKUs.' },
 ];
 
 function calcTax(unitCost: number, quantity: number, taxStatus: TaxStatus) {
