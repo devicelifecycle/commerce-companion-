@@ -190,23 +190,44 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
 
     setLoading(true);
     try {
-      // 1. Generate GRN number
-      const { count } = await supabase
+      // 1. Generate a per-company, per-day GRN number with retry-on-conflict.
+      //    Format: GRN-{YYYYMMDD}-{NNN} — scoped to the receiving company so
+      //    numbers don't collide across companies that receive the same day.
+      const dateStr = format(new Date(receivedDate), 'yyyyMMdd');
+      const datePrefix = `GRN-${dateStr}-`;
+      const { count: sameDayCount } = await supabase
         .from('goods_received_notes')
-        .select('id', { count: 'exact', head: true });
-      const grnNum = `GRN-${format(new Date(), 'yyyyMMdd')}-${String((count || 0) + 1).padStart(3, '0')}`;
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', po.company_id)
+        .like('grn_number', `${datePrefix}%`);
 
-      // 2. Create GRN
-      const { data: grn, error: grnError } = await supabase.from('goods_received_notes').insert({
-        grn_number: grnNum,
-        received_date: receivedDate,
-        status: isPartial ? 'partial' : 'completed',
-        notes: notes || null,
-        supplier_id: po.supplier_id,
-        purchase_order_id: po.id,
-        company_id: po.company_id,
-        received_by: user.id,
-      }).select('id').single();
+      let grnNum = `${datePrefix}${String((sameDayCount || 0) + 1).padStart(3, '0')}`;
+      let grn: { id: string } | null = null;
+      let grnError: any = null;
+
+      // Try insert; on unique-violation, bump the suffix and retry up to 5 times.
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const res = await supabase.from('goods_received_notes').insert({
+          grn_number: grnNum,
+          received_date: receivedDate,
+          status: isPartial ? 'partial' : 'completed',
+          notes: notes || null,
+          supplier_id: po.supplier_id,
+          purchase_order_id: po.id,
+          company_id: po.company_id,
+          received_by: user.id,
+        }).select('id').single();
+
+        if (!res.error) {
+          grn = res.data;
+          grnError = null;
+          break;
+        }
+        grnError = res.error;
+        // 23505 = unique_violation in Postgres
+        if (res.error.code !== '23505') break;
+        grnNum = `${datePrefix}${String((sameDayCount || 0) + 2 + attempt).padStart(3, '0')}`;
+      }
 
       if (grnError) throw grnError;
 

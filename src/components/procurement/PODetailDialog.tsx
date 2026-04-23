@@ -80,8 +80,39 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, 
       }
     }
     if (itemsRes.data) setItems(itemsRes.data);
-    if (grnsRes.data) setGrns(grnsRes.data);
     if (paymentsRes.data) setPayments(paymentsRes.data);
+
+    // Enrich GRNs with line counts, total qty received, and receiver names
+    if (grnsRes.data && grnsRes.data.length > 0) {
+      const grnIds = grnsRes.data.map((g: any) => g.id);
+      const receiverIds = Array.from(new Set(grnsRes.data.map((g: any) => g.received_by).filter(Boolean)));
+      const [{ data: grnItems }, { data: receivers }] = await Promise.all([
+        supabase.from('grn_items').select('grn_id, quantity_received').in('grn_id', grnIds),
+        receiverIds.length
+          ? supabase.from('profiles').select('user_id, full_name, email').in('user_id', receiverIds)
+          : Promise.resolve({ data: [] as any[] }),
+      ]);
+      const itemsByGrn = new Map<string, { lines: number; qty: number }>();
+      (grnItems || []).forEach((row: any) => {
+        const cur = itemsByGrn.get(row.grn_id) || { lines: 0, qty: 0 };
+        cur.lines += 1;
+        cur.qty += Number(row.quantity_received) || 0;
+        itemsByGrn.set(row.grn_id, cur);
+      });
+      const receiverByUser = new Map<string, string>();
+      (receivers || []).forEach((r: any) => {
+        receiverByUser.set(r.user_id, r.full_name || r.email || '—');
+      });
+      const enriched = grnsRes.data.map((g: any) => ({
+        ...g,
+        _lineCount: itemsByGrn.get(g.id)?.lines || 0,
+        _qtyTotal: itemsByGrn.get(g.id)?.qty || 0,
+        _receiverName: g.received_by ? (receiverByUser.get(g.received_by) || '—') : '—',
+      }));
+      setGrns(enriched);
+    } else {
+      setGrns([]);
+    }
   };
 
   const fmtCurrency = (v: number) =>
@@ -319,16 +350,22 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, 
                       <TableHead>GRN #</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-center">Lines</TableHead>
+                      <TableHead className="text-center">Qty</TableHead>
+                      <TableHead>Received By</TableHead>
                       <TableHead>Notes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {grns.map(g => (
                       <TableRow key={g.id}>
-                        <TableCell className="font-medium">{g.grn_number}</TableCell>
+                        <TableCell className="font-mono font-medium text-xs">{g.grn_number}</TableCell>
                         <TableCell>{format(new Date(g.received_date), 'MMM d, yyyy')}</TableCell>
                         <TableCell><Badge variant={g.status === 'completed' ? 'default' : 'secondary'} className="capitalize">{g.status}</Badge></TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{g.notes || '—'}</TableCell>
+                        <TableCell className="text-center font-mono">{g._lineCount}</TableCell>
+                        <TableCell className="text-center font-mono">{g._qtyTotal}</TableCell>
+                        <TableCell className="text-xs">{g._receiverName}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs max-w-[180px] truncate" title={g.notes || ''}>{g.notes || '—'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
