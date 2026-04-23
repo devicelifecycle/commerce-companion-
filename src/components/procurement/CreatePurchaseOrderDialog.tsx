@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ProductSearchCombobox, type ProductOption } from '@/components/inventory/ProductSearchCombobox';
 import { RepairPartSearchCombobox, type RepairPartCatalogOption } from '@/components/inventory/RepairPartSearchCombobox';
+import { SupplierSearchCombobox } from '@/components/suppliers/SupplierSearchCombobox';
 
 interface CreatePurchaseOrderDialogProps {
   open: boolean;
@@ -348,39 +349,17 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="md:col-span-2 space-y-1.5">
               <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Supplier *</Label>
-              <Popover open={supplierOpen} onOpenChange={setSupplierOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal h-9" disabled={!selectedCompanyId}>
-                    {formData.supplier_name || (selectedCompanyId ? 'Search supplier...' : 'Select company first')}
-                    <ChevronsUpDown className="h-3.5 w-3.5 ml-2 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[400px] p-0" align="start">
-                  <Command shouldFilter={false}>
-                    <CommandInput placeholder="Search suppliers..." value={supplierSearch} onValueChange={setSupplierSearch} />
-                    <CommandList>
-                      <CommandEmpty>No suppliers found.</CommandEmpty>
-                      <CommandGroup>
-                        {filteredSuppliers.map(sup => (
-                          <CommandItem
-                            key={sup.id}
-                            value={sup.id}
-                            onSelect={() => {
-                              setFormData(prev => ({ ...prev, supplier_id: sup.id, supplier_name: sup.name }));
-                              setSupplierOpen(false);
-                              setSupplierSearch('');
-                            }}
-                          >
-                            <Check className={cn('h-4 w-4 mr-2', formData.supplier_id === sup.id ? 'opacity-100' : 'opacity-0')} />
-                            <span className="font-medium">{sup.name}</span>
-                            <Badge variant="outline" className="ml-auto text-[10px]">#{sup.supplier_code}</Badge>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+              <SupplierSearchCombobox
+                value={formData.supplier_id || null}
+                onSelect={(sup) => setFormData(prev => ({
+                  ...prev,
+                  supplier_id: sup?.id || '',
+                  supplier_name: sup?.name || '',
+                }))}
+                companyId={selectedCompanyId || null}
+                disabled={!selectedCompanyId}
+                placeholder={selectedCompanyId ? 'Search supplier by name, code, contact, email…' : 'Select company first'}
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">Payment Method</Label>
