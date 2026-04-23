@@ -24,6 +24,7 @@ interface SuspenseSale {
   id: string;
   order_number: string;
   marketplace: string;
+  marketplace_account: string | null;
   sale_price: number;
   sale_date: string;
   device_id: string | null;
@@ -77,7 +78,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
     setLoading(true);
     let q = supabase
       .from('sales')
-      .select('id, order_number, marketplace, sale_price, sale_date, device_id, manual_cost, shipping_province, province_inferred, marketplace_fees, accounting_status, review_reason, customer_name, company_id')
+      .select('id, order_number, marketplace, marketplace_account, sale_price, sale_date, device_id, manual_cost, shipping_province, province_inferred, marketplace_fees, accounting_status, review_reason, customer_name, company_id')
       .in('accounting_status', ['ready_to_post', 'pending_review', 'needs_review'])
       .order('sale_date', { ascending: false })
       .limit(500);
@@ -115,11 +116,21 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
     [sales, activeTab]
   );
 
-  // Apply search + marketplace + link filters
+  // Apply search + marketplace + link filters.
+  // marketplaceFilter values: 'all' | 'shopify' | 'amazon' | 'bestbuy' | 'bestbuy:tgw' | 'bestbuy:ves' | ...
+  const matchMarketplace = (s: SuspenseSale, filter: string): boolean => {
+    if (filter === 'all') return true;
+    if (filter.includes(':')) {
+      const [mp, suffix] = filter.split(':');
+      return s.marketplace === mp && s.marketplace_account === `${mp}_${suffix}`;
+    }
+    return s.marketplace === filter;
+  };
+
   const filteredSales = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     return tabSales.filter(s => {
-      if (marketplaceFilter !== 'all' && s.marketplace !== marketplaceFilter) return false;
+      if (!matchMarketplace(s, marketplaceFilter)) return false;
       if (linkFilter === 'linked' && !s.device_id) return false;
       if (linkFilter === 'manual' && (s.device_id || !s.manual_cost)) return false;
       if (linkFilter === 'unlinked' && (s.device_id || s.manual_cost)) return false;
@@ -142,6 +153,18 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
     sales.forEach(s => s.marketplace && set.add(s.marketplace));
     return Array.from(set).sort();
   }, [sales]);
+
+  // Quick-chip counts (within the active tab, ignoring marketplace filter itself)
+  const chipCounts = useMemo(() => {
+    const base = tabSales;
+    return {
+      all: base.length,
+      bestbuy_tgw: base.filter(s => s.marketplace === 'bestbuy' && s.marketplace_account === 'bestbuy_tgw').length,
+      bestbuy_ves: base.filter(s => s.marketplace === 'bestbuy' && s.marketplace_account === 'bestbuy_ves').length,
+    };
+  }, [tabSales]);
+
+  const hasBestBuy = marketplaceOptions.includes('bestbuy');
 
   // Paginated slice for the table
   const totalCount = filteredSales.length;
@@ -352,7 +375,41 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
                 ({totalCount.toLocaleString()})
               </span>
             </CardTitle>
-          </div>
+            </div>
+
+            {/* Quick chips: Best Buy account split */}
+            {hasBestBuy && (
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant={marketplaceFilter === 'bestbuy:tgw' ? 'default' : 'outline'}
+                  className="h-9 rounded-full px-3 text-xs gap-1.5"
+                  onClick={() =>
+                    setMarketplaceFilter(marketplaceFilter === 'bestbuy:tgw' ? 'all' : 'bestbuy:tgw')
+                  }
+                  title="Show only Best Buy — TGW orders"
+                >
+                  BBY · TGW
+                  <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                    {chipCounts.bestbuy_tgw}
+                  </Badge>
+                </Button>
+                <Button
+                  size="sm"
+                  variant={marketplaceFilter === 'bestbuy:ves' ? 'default' : 'outline'}
+                  className="h-9 rounded-full px-3 text-xs gap-1.5"
+                  onClick={() =>
+                    setMarketplaceFilter(marketplaceFilter === 'bestbuy:ves' ? 'all' : 'bestbuy:ves')
+                  }
+                  title="Show only Best Buy — VES orders"
+                >
+                  BBY · VES
+                  <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                    {chipCounts.bestbuy_ves}
+                  </Badge>
+                </Button>
+              </div>
+            )}
 
           {/* Filter bar */}
           <div className="flex items-center gap-2 flex-wrap">
