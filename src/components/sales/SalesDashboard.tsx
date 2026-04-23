@@ -158,6 +158,12 @@ export function SalesDashboard() {
         query = query.eq('company_id', selectedCompany.id);
       }
 
+      if (marketplaceFilter !== 'all') {
+        const parsed = parseMarketplaceFilter(marketplaceFilter);
+        query = query.eq('marketplace', parsed.marketplace as any);
+        if (parsed.account) query = query.eq('marketplace_account', parsed.account);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
       setSales((data || []) as Sale[]);
@@ -172,6 +178,12 @@ export function SalesDashboard() {
 
         if (selectedCompany && !isSuperAdmin) {
           prevQuery = prevQuery.eq('company_id', selectedCompany.id);
+        }
+
+        if (marketplaceFilter !== 'all') {
+          const parsed = parseMarketplaceFilter(marketplaceFilter);
+          prevQuery = prevQuery.eq('marketplace', parsed.marketplace as any);
+          if (parsed.account) prevQuery = prevQuery.eq('marketplace_account', parsed.account);
         }
 
         const { data: prevData } = await prevQuery;
