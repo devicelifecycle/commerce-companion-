@@ -37,14 +37,112 @@ export function EditSaleDialog({
   open, onOpenChange, saleId, currentDeviceId, orderNumber, onSaved,
 }: EditSaleDialogProps) {
   const { toast } = useToast();
+  const { selectedCompany } = useCompany();
   const { processSaleAccounting } = useSaleAccounting();
   const [deviceId, setDeviceId] = useState<string>(currentDeviceId || '');
   const [availableDevices, setAvailableDevices] = useState<AvailableDevice[]>([]);
   const [loading, setLoading] = useState(false);
   const [imeiSearch, setImeiSearch] = useState('');
+  const [diagnosing, setDiagnosing] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<Array<{ label: string; count: number; ok: boolean; note?: string }> | null>(null);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+
+  const runDiagnostic = async () => {
+    setDiagnosing(true);
+    setDiagnostics(null);
+    const results: Array<{ label: string; count: number; ok: boolean; note?: string }> = [];
+    try {
+      // Test 1: total devices in DB (no filter)
+      const r1 = await supabase.from('devices').select('id', { count: 'exact', head: true });
+      results.push({
+        label: 'Total devices in database (no filter)',
+        count: r1.count || 0,
+        ok: !r1.error && (r1.count || 0) > 0,
+        note: r1.error?.message,
+      });
+
+      // Test 2: devices in selected company
+      if (selectedCompany?.id) {
+        const r2 = await supabase.from('devices').select('id', { count: 'exact', head: true })
+          .eq('company_id', selectedCompany.id);
+        results.push({
+          label: `Devices in company "${selectedCompany.name}"`,
+          count: r2.count || 0,
+          ok: !r2.error && (r2.count || 0) > 0,
+          note: r2.error?.message,
+        });
+      } else {
+        results.push({ label: 'Company scope', count: 0, ok: false, note: 'No company selected — searching all companies' });
+      }
+
+      // Test 3: in_stock devices
+      const r3 = await supabase.from('devices').select('id', { count: 'exact', head: true })
+        .eq('status', 'in_stock');
+      results.push({
+        label: 'Devices with status = in_stock',
+        count: r3.count || 0,
+        ok: !r3.error && (r3.count || 0) > 0,
+        note: r3.error?.message,
+      });
+
+      // Test 4: broadened status filter (matches Edit dialog default)
+      const r4 = await supabase.from('devices').select('id', { count: 'exact', head: true })
+        .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment', 'in_repair', 'refurbished']);
+      results.push({
+        label: 'Devices in linkable statuses (in_stock, reserved, hold, in_repair, refurbished)',
+        count: r4.count || 0,
+        ok: !r4.error && (r4.count || 0) > 0,
+        note: r4.error?.message,
+      });
+
+      // Test 5: sample SKU search using top device's SKU
+      const sample = await supabase.from('devices').select('sku, imei').not('sku', 'is', null).limit(1).maybeSingle();
+      if (sample.data?.sku) {
+        const term = sample.data.sku.slice(0, 4);
+        const r5 = await supabase.from('devices').select('id', { count: 'exact', head: true })
+          .ilike('sku', `%${term}%`);
+        results.push({
+          label: `Sample SKU search "${term}" (from existing device)`,
+          count: r5.count || 0,
+          ok: !r5.error && (r5.count || 0) > 0,
+          note: r5.error?.message,
+        });
+      } else {
+        results.push({ label: 'Sample SKU search', count: 0, ok: false, note: 'No devices with SKU found to sample' });
+      }
+
+      // Test 6: combined filter (company + status) — what the dialog actually runs
+      let q6 = supabase.from('devices').select('id', { count: 'exact', head: true })
+        .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment', 'in_repair', 'refurbished']);
+      if (selectedCompany?.id) q6 = q6.eq('company_id', selectedCompany.id);
+      const r6 = await q6;
+      results.push({
+        label: 'Combined filter (company + linkable statuses) — what this dialog uses',
+        count: r6.count || 0,
+        ok: !r6.error && (r6.count || 0) > 0,
+        note: r6.error?.message,
+      });
+
+      setDiagnostics(results);
+
+      const firstZero = results.find(r => !r.ok);
+      if (firstZero) {
+        toast({
+          title: 'Diagnostic complete — issue found',
+          description: `Bottleneck: ${firstZero.label}`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: 'Diagnostic complete', description: 'All filters return results — search should work.' });
+      }
+    } catch (err: any) {
+      toast({ title: 'Diagnostic failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setDiagnosing(false);
+    }
+  };
 
   useEffect(() => {
     if (open) {
