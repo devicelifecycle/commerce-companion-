@@ -94,6 +94,8 @@ interface POLineItem {
   item_type: ItemType;
   product_id: string | null;
   matched_sku: string | null;
+  /** User-supplied SKU/UPC for a brand-new item (only used when product_id is null). */
+  new_sku: string;
 }
 
 let poLineCounter = 0;
@@ -108,6 +110,7 @@ function newPOLine(): POLineItem {
     item_type: 'product',
     product_id: null,
     matched_sku: null,
+    new_sku: '',
   };
 }
 
@@ -286,6 +289,9 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
           pst_qst_amount: li.pst,
           total_cost: li.total,
           item_type: li.item_type,
+          // Carry SKU through: matched item reuses its SKU; otherwise use the
+          // user-typed SKU/UPC (if any) so the new product/part is created with it on GRN.
+          sku: li.matched_sku || (li.new_sku.trim() ? li.new_sku.trim() : null),
         }));
         const { error: itemsError } = await supabase.from('purchase_order_items').insert(items);
         if (itemsError) throw itemsError;
