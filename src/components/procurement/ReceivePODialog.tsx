@@ -288,6 +288,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
           } else {
             await supabase.from('repair_parts').insert({
               name: item.description,
+              sku: poItem.sku || null,
               company_id: po.company_id,
               supplier_id: po.supplier_id,
               unit_cost: poItem.unit_cost,
@@ -315,6 +316,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
             // Auto-create product if it doesn't exist
             await supabase.from('products').insert({
               name: item.description,
+              sku: poItem.sku || null,
               company_id: po.company_id,
               supplier_id: po.supplier_id,
               cost_price: poItem.unit_cost,
@@ -322,7 +324,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
               status: 'active',
               created_by: user.id,
             });
-            toast.info(`New product "${item.description}" auto-created`);
+            toast.info(`New product "${item.description}" auto-created${poItem.sku ? ` with SKU ${poItem.sku}` : ''}`);
           }
         }
       }
