@@ -18,7 +18,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { PackageCheck, AlertCircle, AlertTriangle, Plus, Trash2, Package, Wrench, Receipt } from 'lucide-react';
+import { PackageCheck, AlertCircle, AlertTriangle, Plus, Trash2, Package, Wrench } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface ReceivePODialogProps {
@@ -244,26 +244,13 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
         if (!poItem) continue;
 
         if (item.item_type === 'expense') {
-          // Route to expenses table — tools/supplies not for inventory
-          const totalCost = poItem.unit_cost * item.qty;
-          const gst = (poItem.gst_hst_amount || 0) * (item.qty / poItem.quantity);
-          const pst = (poItem.pst_qst_amount || 0) * (item.qty / poItem.quantity);
-          await supabase.from('expenses').insert({
-            description: `${item.description} (PO ${po.po_number})`,
-            amount: totalCost,
-            gst_hst_amount: parseFloat(gst.toFixed(2)),
-            pst_amount: parseFloat(pst.toFixed(2)),
-            category: 'supplies' as any,
-            subcategory: 'Tools & Equipment',
-            vendor: po.supplier_name,
-            expense_date: receivedDate,
-            company_id: po.company_id,
-            created_by: user.id,
-            payment_method: 'credit',
-            notes: `Auto-created from PO ${po.po_number}`,
-          });
-          toast.info(`Expense recorded for ${item.description}`);
-        } else if (item.item_type === 'repair_parts') {
+          // Legacy data only — the Expense PO type was removed. Skip silently
+          // so receiving still completes; the user can record the cost
+          // manually under Expenses if needed.
+          console.warn(`[ReceivePO] Skipping legacy expense line "${item.description}" — Expense PO type is deprecated.`);
+          continue;
+        }
+        if (item.item_type === 'repair_parts') {
           // Route to repair_parts table — match by normalized key first, then ilike name
           const inputKey = item.description.toLowerCase().replace(/[^a-z0-9]/g, '');
           
@@ -561,8 +548,8 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{group.description}</span>
                       {group.item_type === 'expense' && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-[hsl(var(--accent))] bg-[hsl(var(--accent)/.1)] border-[hsl(var(--accent)/.25)]">
-                          <Receipt className="h-2.5 w-2.5" /> Expense
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-muted-foreground">
+                          Legacy — skipped
                         </Badge>
                       )}
                       {group.item_type === 'repair_parts' && (
@@ -652,7 +639,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
                               </Select>
                             ) : (
                               <span className="text-xs text-muted-foreground">
-                                {group.item_type === 'expense' ? 'Accept → Expense' : group.item_type === 'repair_parts' ? 'Accept → Repair Parts' : 'Accept → Inventory'}
+                                {group.item_type === 'expense' ? 'Legacy expense — will be skipped' : group.item_type === 'repair_parts' ? 'Accept → Repair Parts' : 'Accept → Inventory'}
                               </span>
                             )}
                           </TableCell>
