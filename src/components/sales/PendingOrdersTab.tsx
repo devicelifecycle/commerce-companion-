@@ -375,7 +375,41 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
                 ({totalCount.toLocaleString()})
               </span>
             </CardTitle>
-          </div>
+            </div>
+
+            {/* Quick chips: Best Buy account split */}
+            {hasBestBuy && (
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant={marketplaceFilter === 'bestbuy:tgw' ? 'default' : 'outline'}
+                  className="h-9 rounded-full px-3 text-xs gap-1.5"
+                  onClick={() =>
+                    setMarketplaceFilter(marketplaceFilter === 'bestbuy:tgw' ? 'all' : 'bestbuy:tgw')
+                  }
+                  title="Show only Best Buy — TGW orders"
+                >
+                  BBY · TGW
+                  <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                    {chipCounts.bestbuy_tgw}
+                  </Badge>
+                </Button>
+                <Button
+                  size="sm"
+                  variant={marketplaceFilter === 'bestbuy:ves' ? 'default' : 'outline'}
+                  className="h-9 rounded-full px-3 text-xs gap-1.5"
+                  onClick={() =>
+                    setMarketplaceFilter(marketplaceFilter === 'bestbuy:ves' ? 'all' : 'bestbuy:ves')
+                  }
+                  title="Show only Best Buy — VES orders"
+                >
+                  BBY · VES
+                  <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+                    {chipCounts.bestbuy_ves}
+                  </Badge>
+                </Button>
+              </div>
+            )}
 
           {/* Filter bar */}
           <div className="flex items-center gap-2 flex-wrap">
