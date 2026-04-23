@@ -350,16 +350,22 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, 
                       <TableHead>GRN #</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="text-center">Lines</TableHead>
+                      <TableHead className="text-center">Qty</TableHead>
+                      <TableHead>Received By</TableHead>
                       <TableHead>Notes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {grns.map(g => (
                       <TableRow key={g.id}>
-                        <TableCell className="font-medium">{g.grn_number}</TableCell>
+                        <TableCell className="font-mono font-medium text-xs">{g.grn_number}</TableCell>
                         <TableCell>{format(new Date(g.received_date), 'MMM d, yyyy')}</TableCell>
                         <TableCell><Badge variant={g.status === 'completed' ? 'default' : 'secondary'} className="capitalize">{g.status}</Badge></TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{g.notes || '—'}</TableCell>
+                        <TableCell className="text-center font-mono">{g._lineCount}</TableCell>
+                        <TableCell className="text-center font-mono">{g._qtyTotal}</TableCell>
+                        <TableCell className="text-xs">{g._receiverName}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs max-w-[180px] truncate" title={g.notes || ''}>{g.notes || '—'}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
