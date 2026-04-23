@@ -185,7 +185,11 @@ export function DeviceSearchCombobox({
           />
           <CommandList>
             <CommandEmpty>
-              {loading ? 'Loading devices...' : 'No devices found.'}
+              {loading
+                ? 'Loading devices…'
+                : errorMsg
+                  ? `Search error: ${errorMsg}`
+                  : 'No devices found. Try a different search term, or broaden the status filter.'}
             </CommandEmpty>
             <CommandGroup heading={`${filtered.length} device${filtered.length !== 1 ? 's' : ''} available`}>
               {filtered.slice(0, 50).map((device) => (
