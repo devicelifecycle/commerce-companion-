@@ -235,7 +235,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
     const seenNames = new Map<string, number>();
     for (let i = 0; i < validItems.length; i++) {
       const li = validItems[i];
-      if (li.item_type === 'inventory') continue; // serialized devices can repeat
+      // (Devices are imported separately; product/repair_parts must be unique per PO.)
       if (li.product_id) {
         const prev = seenIds.get(li.product_id);
         if (prev !== undefined) {
