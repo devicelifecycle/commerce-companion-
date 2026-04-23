@@ -7,6 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, DollarSign, Package, Percent, MapPin } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { format, subDays, subMonths, startOfDay, startOfWeek, startOfMonth, startOfYear, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns';
+import {
+  getChannelKey,
+  getChannelLabel,
+  getChannelColor,
+  compareChannels,
+  parseMarketplaceFilter,
+  MARKETPLACE_FILTER_OPTIONS,
+} from '@/lib/marketplaceAccounts';
 
 type DateRange = 'today' | '7days' | '30days' | '90days' | 'year' | 'all';
 type GroupBy = 'daily' | 'weekly' | 'monthly';
@@ -20,6 +28,7 @@ interface Sale {
   profit: number | null;
   sale_date: string;
   marketplace: string;
+  marketplace_account: string | null;
   notes: string | null;
   company_id: string;
 }
@@ -60,11 +69,12 @@ export function SalesDashboard() {
   const [previousSales, setPreviousSales] = useState<Sale[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>('30days');
   const [groupBy, setGroupBy] = useState<GroupBy>('daily');
+  const [marketplaceFilter, setMarketplaceFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchSales();
-  }, [selectedCompany, dateRange]);
+  }, [selectedCompany, dateRange, marketplaceFilter]);
 
   // Realtime subscription for live sales updates
   useEffect(() => {
@@ -88,7 +98,7 @@ export function SalesDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedCompany, dateRange]);
+  }, [selectedCompany, dateRange, marketplaceFilter]);
 
   const getDateRange = (range: DateRange): { start: Date; end: Date; previousStart: Date; previousEnd: Date } => {
     const now = new Date();
@@ -148,6 +158,12 @@ export function SalesDashboard() {
         query = query.eq('company_id', selectedCompany.id);
       }
 
+      if (marketplaceFilter !== 'all') {
+        const parsed = parseMarketplaceFilter(marketplaceFilter);
+        query = query.eq('marketplace', parsed.marketplace as any);
+        if (parsed.account) query = query.eq('marketplace_account', parsed.account);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
       setSales((data || []) as Sale[]);
@@ -162,6 +178,12 @@ export function SalesDashboard() {
 
         if (selectedCompany && !isSuperAdmin) {
           prevQuery = prevQuery.eq('company_id', selectedCompany.id);
+        }
+
+        if (marketplaceFilter !== 'all') {
+          const parsed = parseMarketplaceFilter(marketplaceFilter);
+          prevQuery = prevQuery.eq('marketplace', parsed.marketplace as any);
+          if (parsed.account) prevQuery = prevQuery.eq('marketplace_account', parsed.account);
         }
 
         const { data: prevData } = await prevQuery;
@@ -235,23 +257,26 @@ export function SalesDashboard() {
     });
   }, [sales, dateRange, groupBy]);
 
-  const marketplaceData = useMemo((): MarketplaceData[] => {
-    const byMarketplace: Record<string, { value: number; count: number }> = {};
-    
+  const marketplaceData = useMemo((): (MarketplaceData & { channel: string })[] => {
+    const byChannel: Record<string, { value: number; count: number }> = {};
+
     sales.forEach(sale => {
-      const mp = sale.marketplace || 'other';
-      if (!byMarketplace[mp]) {
-        byMarketplace[mp] = { value: 0, count: 0 };
+      const ck = getChannelKey(sale.marketplace, sale.marketplace_account as any);
+      if (!byChannel[ck]) {
+        byChannel[ck] = { value: 0, count: 0 };
       }
-      byMarketplace[mp].value += sale.sale_price || 0;
-      byMarketplace[mp].count += 1;
+      byChannel[ck].value += sale.sale_price || 0;
+      byChannel[ck].count += 1;
     });
 
-    return Object.entries(byMarketplace).map(([name, data]) => ({
-      name: name.charAt(0).toUpperCase() + name.slice(1),
-      value: data.value,
-      count: data.count,
-    }));
+    return Object.entries(byChannel)
+      .sort(([a], [b]) => compareChannels(a, b))
+      .map(([channel, data]) => ({
+        channel,
+        name: getChannelLabel(channel),
+        value: data.value,
+        count: data.count,
+      }));
   }, [sales]);
 
   const provinceData = useMemo((): ProvinceData[] => {
@@ -360,6 +385,18 @@ export function SalesDashboard() {
             <SelectItem value="monthly">Monthly</SelectItem>
           </SelectContent>
         </Select>
+
+        <Select value={marketplaceFilter} onValueChange={setMarketplaceFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All marketplaces" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Marketplaces</SelectItem>
+            {MARKETPLACE_FILTER_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Metrics Cards */}
@@ -457,8 +494,8 @@ export function SalesDashboard() {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {marketplaceData.map((entry, index) => (
-                      <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+                    {marketplaceData.map((entry) => (
+                      <Cell key={entry.channel} fill={getChannelColor(entry.channel)} />
                     ))}
                   </Pie>
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
