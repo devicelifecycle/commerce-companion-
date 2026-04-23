@@ -277,8 +277,8 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
                     <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} className="text-xs" />
                     <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} labelFormatter={formatMonth} />
                     <Legend />
-                    {Object.entries(MARKETPLACE_LABELS).map(([key, label]) => (
-                      <Line key={key} type="monotone" dataKey={`${key}_rate`} name={`${label} %`} stroke={MARKETPLACE_COLORS[key] || 'hsl(var(--muted-foreground))'} strokeWidth={2} dot={false} />
+                    {TRACKED_CHANNELS.map((key) => (
+                      <Line key={key} type="monotone" dataKey={`${key}_rate`} name={`${getChannelLabel(key)} %`} stroke={getChannelColor(key)} strokeWidth={2} dot={false} />
                     ))}
                   </LineChart>
                 </ResponsiveContainer>
@@ -306,8 +306,8 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
                   <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} className="text-xs" />
                   <Tooltip formatter={(v: number) => formatCurrency(v)} labelFormatter={formatMonth} />
                   <Legend />
-                  {Object.entries(MARKETPLACE_LABELS).map(([key, label]) => (
-                    <Bar key={key} dataKey={`${key}_fees`} name={label} fill={MARKETPLACE_COLORS[key] || 'hsl(var(--muted-foreground))'} stackId="fees" radius={[2, 2, 0, 0]} />
+                  {TRACKED_CHANNELS.map((key) => (
+                    <Bar key={key} dataKey={`${key}_fees`} name={getChannelLabel(key)} fill={getChannelColor(key)} stackId="fees" radius={[2, 2, 0, 0]} />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
@@ -326,7 +326,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="rounded-lg border border-border p-4 space-y-2">
               <div className="flex items-center gap-2">
-                <div className="h-2.5 w-2.5 rounded-full" style={{ background: MARKETPLACE_COLORS.amazon }} />
+                <div className="h-2.5 w-2.5 rounded-full" style={{ background: getChannelColor('amazon') }} />
                 <span className="font-semibold text-sm">Amazon</span>
               </div>
               <ul className="text-xs text-muted-foreground space-y-1 pl-5 list-disc">
@@ -342,7 +342,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
 
             <div className="rounded-lg border border-border p-4 space-y-2">
               <div className="flex items-center gap-2">
-                <div className="h-2.5 w-2.5 rounded-full" style={{ background: MARKETPLACE_COLORS.shopify }} />
+                <div className="h-2.5 w-2.5 rounded-full" style={{ background: getChannelColor('shopify') }} />
                 <span className="font-semibold text-sm">Shopify</span>
               </div>
               <ul className="text-xs text-muted-foreground space-y-1 pl-5 list-disc">
@@ -357,7 +357,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
 
             <div className="rounded-lg border border-border p-4 space-y-2">
               <div className="flex items-center gap-2">
-                <div className="h-2.5 w-2.5 rounded-full" style={{ background: MARKETPLACE_COLORS.bestbuy }} />
+                <div className="h-2.5 w-2.5 rounded-full" style={{ background: getChannelColor('bestbuy') }} />
                 <span className="font-semibold text-sm">Best Buy (Mirakl)</span>
               </div>
               <ul className="text-xs text-muted-foreground space-y-1 pl-5 list-disc">
