@@ -420,52 +420,27 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
               return (
                 <div key={item.id} className="rounded-lg border border-border/60 p-3 bg-muted/20 hover:bg-muted/30 transition-colors">
                   <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,70px,90px,100px,80px,36px] gap-2 items-center">
-                    {/* Description / Product selector */}
-                    {item.item_type === 'inventory' || item.item_type === 'product' ? (
-                      <div className="space-y-1">
-                        <ProductSearchCombobox
-                          value={item.product_id}
-                          companyId={selectedCompanyId}
-                          disabled={!selectedCompanyId}
-                          placeholder={item.item_type === 'product' ? 'Select product...' : 'Select device product...'}
-                          className="h-8 text-xs"
-                          onSelect={(product: ProductOption | null) => {
-                            if (product) {
-                              updateLine(item.id, {
-                                product_id: product.id,
-                                description: product.name + (product.sku ? ` (${product.sku})` : ''),
-                                unit_cost: product.cost_price || item.unit_cost,
-                              });
-                            } else {
-                              updateLine(item.id, { product_id: null, description: '' });
-                            }
-                          }}
-                        />
-                      </div>
-                    ) : item.item_type === 'repair_parts' ? (
-                      <div className="space-y-1">
-                        <RepairPartSearchCombobox
-                          value={item.product_id}
-                          disabled={!selectedCompanyId}
-                          placeholder="Select from parts catalog..."
-                          className="h-8 text-xs"
-                          onSelect={(part: RepairPartCatalogOption | null) => {
-                            if (part) {
-                              updateLine(item.id, {
-                                product_id: part.id,
-                                description: part.name + (part.sku_prefix ? ` (${part.sku_prefix})` : ''),
-                                unit_cost: part.default_cost || item.unit_cost,
-                              });
-                            } else {
-                              updateLine(item.id, { product_id: null, description: '' });
-                            }
-                          }}
-                        />
-                      </div>
+                    {/* Description / Product picker */}
+                    {item.item_type === 'product' || item.item_type === 'repair_parts' ? (
+                      <ProductFreeTextCombobox
+                        value={item.description}
+                        matchedId={item.product_id}
+                        source={item.item_type === 'product' ? 'product' : 'repair_part'}
+                        companyId={selectedCompanyId || null}
+                        disabled={!selectedCompanyId}
+                        placeholder={item.item_type === 'product'
+                          ? 'Type product name (e.g. "USB-C Cable 1m")'
+                          : 'Type part name (e.g. "iPhone 13 Screen OEM")'}
+                        onChange={(next) => updateLine(item.id, {
+                          description: next.description,
+                          product_id: next.matchedId,
+                          unit_cost: next.cost != null && next.cost > 0 ? next.cost : item.unit_cost,
+                        })}
+                      />
                     ) : (
                       <Input
                         className="h-8 text-xs"
-                        placeholder="Item description *"
+                        placeholder='Device description (e.g. "iPhone 14 Pro 256GB Black")'
                         value={item.description}
                         onChange={e => updateLine(item.id, { description: e.target.value })}
                       />
