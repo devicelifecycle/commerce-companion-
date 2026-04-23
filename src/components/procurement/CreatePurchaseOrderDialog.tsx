@@ -445,8 +445,9 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
             </div>
 
             {/* Table header */}
-            <div className="hidden md:grid grid-cols-[1fr,auto,70px,90px,100px,80px,36px] gap-2 px-3 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+            <div className="hidden md:grid grid-cols-[1fr,110px,auto,70px,90px,100px,80px,36px] gap-2 px-3 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
               <span>Description</span>
+              <span>SKU</span>
               <span className="w-[90px]">Type</span>
               <span>Qty</span>
               <span>Unit Cost</span>
@@ -460,7 +461,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
               const typeConfig = getItemTypeConfig(item.item_type);
               return (
                 <div key={item.id} className="rounded-lg border border-border/60 p-3 bg-muted/20 hover:bg-muted/30 transition-colors">
-                  <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,70px,90px,100px,80px,36px] gap-2 items-center">
+                  <div className="grid grid-cols-1 md:grid-cols-[1fr,110px,auto,70px,90px,100px,80px,36px] gap-2 items-center">
                     {/* Description / Product picker — type to search by name or SKU */}
                     <ProductFreeTextCombobox
                       value={item.description}
@@ -479,6 +480,20 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
                         unit_cost: next.cost != null && next.cost > 0 ? next.cost : item.unit_cost,
                       })}
                     />
+                    {/* SKU column — shows existing SKU when matched, or "New" badge for fresh items */}
+                    <div className="min-w-0">
+                      {item.matched_sku ? (
+                        <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5 truncate max-w-full" title={item.matched_sku}>
+                          {item.matched_sku}
+                        </Badge>
+                      ) : item.description.trim().length >= 2 ? (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 text-muted-foreground">
+                          Auto on receive
+                        </Badge>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground/60">—</span>
+                      )}
+                    </div>
                     {/* Type selector */}
                     <div className="w-[90px]">
                       <Select value={item.item_type} onValueChange={(v: ItemType) => updateLine(item.id, { item_type: v, product_id: null, matched_sku: null })}>
