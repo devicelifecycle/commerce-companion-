@@ -47,7 +47,9 @@ interface Company {
 }
 
 type TaxStatus = 'zero_rated' | 'gst_paid' | 'hst_paid' | 'tax_inclusive' | 'gst_pst';
-type ItemType = 'inventory' | 'product' | 'repair_parts';
+// Devices are added through the dedicated Inventory Import section, NOT through POs.
+// Purchase Orders are limited to bulk products and repair parts.
+type ItemType = 'product' | 'repair_parts';
 
 const TAX_OPTIONS: { value: TaxStatus; label: string }[] = [
   { value: 'zero_rated', label: 'Zero-Rated' },
@@ -58,9 +60,8 @@ const TAX_OPTIONS: { value: TaxStatus; label: string }[] = [
 ];
 
 const ITEM_TYPE_CONFIG: { value: ItemType; label: string; icon: typeof Package; color: string; description: string }[] = [
-  { value: 'inventory', label: 'Device', icon: Package, color: 'text-[hsl(var(--info))]', description: 'Serialized items (phones, laptops, tablets) — entered at Receive time with IMEI/serial' },
-  { value: 'product', label: 'Product', icon: Package, color: 'text-[hsl(var(--success))]', description: 'Bulk/generic items. Type a name; if it matches an existing product the SKU will be reused.' },
-  { value: 'repair_parts', label: 'Repair Parts', icon: Wrench, color: 'text-[hsl(var(--warning))]', description: 'Parts inventory. Type a name; existing parts will be suggested to avoid duplicate SKUs.' },
+  { value: 'product', label: 'Product', icon: Package, color: 'text-[hsl(var(--success))]', description: 'Bulk/generic items. Type a name or SKU; if it matches an existing product the SKU will be reused.' },
+  { value: 'repair_parts', label: 'Repair Parts', icon: Wrench, color: 'text-[hsl(var(--warning))]', description: 'Parts inventory. Type a name or SKU; existing parts will be suggested to avoid duplicate SKUs.' },
 ];
 
 function calcTax(unitCost: number, quantity: number, taxStatus: TaxStatus) {
@@ -92,6 +93,7 @@ interface POLineItem {
   tax_status: TaxStatus;
   item_type: ItemType;
   product_id: string | null;
+  matched_sku: string | null;
 }
 
 let poLineCounter = 0;
@@ -103,8 +105,9 @@ function newPOLine(): POLineItem {
     quantity: 1,
     unit_cost: 0,
     tax_status: 'hst_paid',
-    item_type: 'inventory',
+    item_type: 'product',
     product_id: null,
+    matched_sku: null,
   };
 }
 
@@ -210,11 +213,11 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
   const totalPst = computedLines.reduce((s, li) => s + li.pst, 0);
   const grandTotal = subtotal + totalGst + totalPst;
 
-  // Determine dominant PO type from line items
+  // Determine dominant PO type from line items (only product / repair_parts now)
   const dominantType = useMemo(() => {
     const types = new Set(lineItems.map(li => li.item_type));
     if (types.size === 1) return lineItems[0].item_type;
-    return 'inventory'; // mixed
+    return 'product'; // mixed → default to product
   }, [lineItems]);
 
   const formatCurrency = (v: number) =>
@@ -232,7 +235,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
     const seenNames = new Map<string, number>();
     for (let i = 0; i < validItems.length; i++) {
       const li = validItems[i];
-      if (li.item_type === 'inventory') continue; // serialized devices can repeat
+      // (Devices are imported separately; product/repair_parts must be unique per PO.)
       if (li.product_id) {
         const prev = seenIds.get(li.product_id);
         if (prev !== undefined) {
@@ -344,7 +347,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
             Create Purchase Order
           </DialogTitle>
           <DialogDescription>
-            Order inventory, repair parts, and tools/supplies from a supplier.
+            Order bulk products and repair parts from a supplier. (Devices are added through Inventory → Import.)
           </DialogDescription>
         </DialogHeader>
 
@@ -458,34 +461,27 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
               return (
                 <div key={item.id} className="rounded-lg border border-border/60 p-3 bg-muted/20 hover:bg-muted/30 transition-colors">
                   <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,70px,90px,100px,80px,36px] gap-2 items-center">
-                    {/* Description / Product picker */}
-                    {item.item_type === 'product' || item.item_type === 'repair_parts' ? (
-                      <ProductFreeTextCombobox
-                        value={item.description}
-                        matchedId={item.product_id}
-                        source={item.item_type === 'product' ? 'product' : 'repair_part'}
-                        companyId={selectedCompanyId || null}
-                        disabled={!selectedCompanyId}
-                        placeholder={item.item_type === 'product'
-                          ? 'Type product name (e.g. "USB-C Cable 1m")'
-                          : 'Type part name (e.g. "iPhone 13 Screen OEM")'}
-                        onChange={(next) => updateLine(item.id, {
-                          description: next.description,
-                          product_id: next.matchedId,
-                          unit_cost: next.cost != null && next.cost > 0 ? next.cost : item.unit_cost,
-                        })}
-                      />
-                    ) : (
-                      <Input
-                        className="h-8 text-xs"
-                        placeholder='Device description (e.g. "iPhone 14 Pro 256GB Black")'
-                        value={item.description}
-                        onChange={e => updateLine(item.id, { description: e.target.value })}
-                      />
-                    )}
+                    {/* Description / Product picker — type to search by name or SKU */}
+                    <ProductFreeTextCombobox
+                      value={item.description}
+                      matchedId={item.product_id}
+                      matchedSku={item.matched_sku}
+                      source={item.item_type === 'product' ? 'product' : 'repair_part'}
+                      companyId={selectedCompanyId || null}
+                      disabled={!selectedCompanyId}
+                      placeholder={item.item_type === 'product'
+                        ? 'Type product name or SKU…'
+                        : 'Type part name or SKU…'}
+                      onChange={(next) => updateLine(item.id, {
+                        description: next.description,
+                        product_id: next.matchedId,
+                        matched_sku: next.sku ?? null,
+                        unit_cost: next.cost != null && next.cost > 0 ? next.cost : item.unit_cost,
+                      })}
+                    />
                     {/* Type selector */}
                     <div className="w-[90px]">
-                      <Select value={item.item_type} onValueChange={(v: ItemType) => updateLine(item.id, { item_type: v })}>
+                      <Select value={item.item_type} onValueChange={(v: ItemType) => updateLine(item.id, { item_type: v, product_id: null, matched_sku: null })}>
                         <SelectTrigger className="h-8 text-[11px] px-2">
                           <div className="flex items-center gap-1">
                             <typeConfig.icon className={cn('h-3 w-3 shrink-0', typeConfig.color)} />
