@@ -489,11 +489,14 @@ serve(async (req) => {
         // === Entry 1: Revenue recognition (create if not already done) ===
         if (!salesWithRevenue.has(sale.id)) {
           const revenueLines: JournalLine[] = [];
+          const isMarketplaceSaleEntry = ["amazon", "bestbuy", "shopify", "temu"].includes(sale.marketplace);
 
-          // Dr AR (net settlement after fees)
+          // Dr Cash (marketplace) or AR (other) — net settlement after fees
           revenueLines.push({
             account_id: accounts.ar!,
-            description: `Receivable from ${sale.marketplace} - ${sale.order_number}`,
+            description: isMarketplaceSaleEntry
+              ? `Bank settlement from ${sale.marketplace} - ${sale.order_number}`
+              : `Receivable from ${sale.marketplace} - ${sale.order_number}`,
             debit_amount: settlementAmount,
             credit_amount: 0,
           });
@@ -556,12 +559,10 @@ serve(async (req) => {
             revenueLines
           );
 
-          // Create Accounts Receivable record — only for non-marketplace sales
-          // Marketplace sales (amazon, shopify, bestbuy) are settled via batch payouts,
-          // so AR is created at payout level in sync-marketplace-payouts instead
-          const isMarketplaceSale = ["amazon", "bestbuy", "shopify", "temu"].includes(sale.marketplace);
-
-          if (!isMarketplaceSale) {
+          // Create Accounts Receivable record — ONLY for non-marketplace (private/storefront) sales.
+          // Marketplace sales (Amazon, Best Buy, Shopify, Temu) settle directly to the operating
+          // bank account at posting time — no AR row, no per-order payout reconciliation.
+          if (!isMarketplaceSaleEntry) {
             const arDueDate = new Date(saleDate);
             arDueDate.setDate(arDueDate.getDate() + 14);
 
