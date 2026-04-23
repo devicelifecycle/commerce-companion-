@@ -46,18 +46,22 @@ export function ProductSearchCombobox({
   const [products, setProducts] = useState<ProductOption[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const effectiveCompanyId = companyId || selectedCompany?.id;
+  const effectiveCompanyId = companyId || selectedCompany?.id || null;
 
   const loadProducts = useCallback(async (term: string) => {
-    if (!effectiveCompanyId) return;
     setLoading(true);
+    setErrorMsg(null);
     try {
       let query = supabase
         .from('products')
         .select('id, name, description, sku, barcode, unit_of_measure, cost_price, sale_price, quantity_on_hand, company_id, product_categories(name)')
-        .eq('company_id', effectiveCompanyId)
         .eq('status', 'active');
+
+      if (effectiveCompanyId) {
+        query = query.eq('company_id', effectiveCompanyId);
+      }
 
       const t = term.trim();
       if (t.length > 0) {
@@ -69,8 +73,12 @@ export function ProductSearchCombobox({
       }
 
       const { data, error } = await query;
-      if (!error && data) {
-        setProducts(data.map((p: any) => ({
+      if (error) {
+        console.error('[ProductSearchCombobox] query failed:', error);
+        setErrorMsg(error.message);
+        setProducts([]);
+      } else {
+        setProducts((data || []).map((p: any) => ({
           ...p,
           category_name: p.product_categories?.name || null,
         })));
