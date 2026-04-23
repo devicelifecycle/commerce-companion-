@@ -28,6 +28,7 @@ interface Sale {
   profit: number | null;
   sale_date: string;
   marketplace: string;
+  marketplace_account: string | null;
   notes: string | null;
   company_id: string;
 }
