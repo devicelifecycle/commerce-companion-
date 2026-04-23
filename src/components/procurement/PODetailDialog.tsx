@@ -195,7 +195,7 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
             <FileText className="h-5 w-5" />
             {po.po_number}
             <Badge variant={po.status === 'received' || po.status === 'completed' ? 'default' : 'secondary'} className="capitalize ml-2">
@@ -204,6 +204,15 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, 
             <Badge variant={po.payment_status === 'paid' ? 'default' : po.payment_status === 'partial' ? 'outline' : 'secondary'} className="capitalize">
               {po.payment_status}
             </Badge>
+            {canManage && onInitiateGRN && (po.status === 'pending' || po.status === 'partially_received') && (
+              <Button
+                size="sm"
+                className="ml-auto h-7 text-xs"
+                onClick={() => { onInitiateGRN(po.id); onOpenChange(false); }}
+              >
+                <PackageCheck className="h-3.5 w-3.5 mr-1" /> Initiate GRN
+              </Button>
+            )}
           </DialogTitle>
         </DialogHeader>
 
