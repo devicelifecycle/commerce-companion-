@@ -69,11 +69,12 @@ export function SalesDashboard() {
   const [previousSales, setPreviousSales] = useState<Sale[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>('30days');
   const [groupBy, setGroupBy] = useState<GroupBy>('daily');
+  const [marketplaceFilter, setMarketplaceFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchSales();
-  }, [selectedCompany, dateRange]);
+  }, [selectedCompany, dateRange, marketplaceFilter]);
 
   // Realtime subscription for live sales updates
   useEffect(() => {
