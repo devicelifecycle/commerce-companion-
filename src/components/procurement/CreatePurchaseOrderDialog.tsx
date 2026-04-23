@@ -22,12 +22,11 @@ import {
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { emitRefetch } from '@/hooks/useDataRefetch';
-import { ClipboardList, Plus, Trash2, ChevronsUpDown, Check, Package, Wrench, Receipt, Info } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, Package, Wrench, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { ProductSearchCombobox, type ProductOption } from '@/components/inventory/ProductSearchCombobox';
-import { RepairPartSearchCombobox, type RepairPartCatalogOption } from '@/components/inventory/RepairPartSearchCombobox';
 import { SupplierSearchCombobox } from '@/components/suppliers/SupplierSearchCombobox';
+import { ProductFreeTextCombobox } from '@/components/procurement/ProductFreeTextCombobox';
 
 interface CreatePurchaseOrderDialogProps {
   open: boolean;
@@ -48,7 +47,7 @@ interface Company {
 }
 
 type TaxStatus = 'zero_rated' | 'gst_paid' | 'hst_paid' | 'tax_inclusive' | 'gst_pst';
-type ItemType = 'inventory' | 'product' | 'repair_parts' | 'expense';
+type ItemType = 'inventory' | 'product' | 'repair_parts';
 
 const TAX_OPTIONS: { value: TaxStatus; label: string }[] = [
   { value: 'zero_rated', label: 'Zero-Rated' },
@@ -59,10 +58,9 @@ const TAX_OPTIONS: { value: TaxStatus; label: string }[] = [
 ];
 
 const ITEM_TYPE_CONFIG: { value: ItemType; label: string; icon: typeof Package; color: string; description: string }[] = [
-  { value: 'inventory', label: 'Device', icon: Package, color: 'text-[hsl(var(--info))]', description: 'Serialized items (phones, laptops, tablets)' },
-  { value: 'product', label: 'Product', icon: Package, color: 'text-[hsl(var(--success))]', description: 'Bulk/generic items added to product stock' },
-  { value: 'repair_parts', label: 'Repair Parts', icon: Wrench, color: 'text-[hsl(var(--warning))]', description: 'Added to repair parts inventory' },
-  { value: 'expense', label: 'Expense', icon: Receipt, color: 'text-[hsl(var(--accent))]', description: 'Recorded as expense, not inventory' },
+  { value: 'inventory', label: 'Device', icon: Package, color: 'text-[hsl(var(--info))]', description: 'Serialized items (phones, laptops, tablets) — entered at Receive time with IMEI/serial' },
+  { value: 'product', label: 'Product', icon: Package, color: 'text-[hsl(var(--success))]', description: 'Bulk/generic items. Type a name; if it matches an existing product the SKU will be reused.' },
+  { value: 'repair_parts', label: 'Repair Parts', icon: Wrench, color: 'text-[hsl(var(--warning))]', description: 'Parts inventory. Type a name; existing parts will be suggested to avoid duplicate SKUs.' },
 ];
 
 function calcTax(unitCost: number, quantity: number, taxStatus: TaxStatus) {
@@ -422,52 +420,27 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
               return (
                 <div key={item.id} className="rounded-lg border border-border/60 p-3 bg-muted/20 hover:bg-muted/30 transition-colors">
                   <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,70px,90px,100px,80px,36px] gap-2 items-center">
-                    {/* Description / Product selector */}
-                    {item.item_type === 'inventory' || item.item_type === 'product' ? (
-                      <div className="space-y-1">
-                        <ProductSearchCombobox
-                          value={item.product_id}
-                          companyId={selectedCompanyId}
-                          disabled={!selectedCompanyId}
-                          placeholder={item.item_type === 'product' ? 'Select product...' : 'Select device product...'}
-                          className="h-8 text-xs"
-                          onSelect={(product: ProductOption | null) => {
-                            if (product) {
-                              updateLine(item.id, {
-                                product_id: product.id,
-                                description: product.name + (product.sku ? ` (${product.sku})` : ''),
-                                unit_cost: product.cost_price || item.unit_cost,
-                              });
-                            } else {
-                              updateLine(item.id, { product_id: null, description: '' });
-                            }
-                          }}
-                        />
-                      </div>
-                    ) : item.item_type === 'repair_parts' ? (
-                      <div className="space-y-1">
-                        <RepairPartSearchCombobox
-                          value={item.product_id}
-                          disabled={!selectedCompanyId}
-                          placeholder="Select from parts catalog..."
-                          className="h-8 text-xs"
-                          onSelect={(part: RepairPartCatalogOption | null) => {
-                            if (part) {
-                              updateLine(item.id, {
-                                product_id: part.id,
-                                description: part.name + (part.sku_prefix ? ` (${part.sku_prefix})` : ''),
-                                unit_cost: part.default_cost || item.unit_cost,
-                              });
-                            } else {
-                              updateLine(item.id, { product_id: null, description: '' });
-                            }
-                          }}
-                        />
-                      </div>
+                    {/* Description / Product picker */}
+                    {item.item_type === 'product' || item.item_type === 'repair_parts' ? (
+                      <ProductFreeTextCombobox
+                        value={item.description}
+                        matchedId={item.product_id}
+                        source={item.item_type === 'product' ? 'product' : 'repair_part'}
+                        companyId={selectedCompanyId || null}
+                        disabled={!selectedCompanyId}
+                        placeholder={item.item_type === 'product'
+                          ? 'Type product name (e.g. "USB-C Cable 1m")'
+                          : 'Type part name (e.g. "iPhone 13 Screen OEM")'}
+                        onChange={(next) => updateLine(item.id, {
+                          description: next.description,
+                          product_id: next.matchedId,
+                          unit_cost: next.cost != null && next.cost > 0 ? next.cost : item.unit_cost,
+                        })}
+                      />
                     ) : (
                       <Input
                         className="h-8 text-xs"
-                        placeholder="Item description *"
+                        placeholder='Device description (e.g. "iPhone 14 Pro 256GB Black")'
                         value={item.description}
                         onChange={e => updateLine(item.id, { description: e.target.value })}
                       />
