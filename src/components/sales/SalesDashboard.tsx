@@ -7,6 +7,15 @@ import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, DollarSign, Package, Percent, MapPin } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell, Legend } from 'recharts';
 import { format, subDays, subMonths, startOfDay, startOfWeek, startOfMonth, startOfYear, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns';
+import {
+  getChannelKey,
+  getChannelLabel,
+  getChannelColor,
+  compareChannels,
+  parseMarketplaceFilter,
+  MARKETPLACE_FILTER_OPTIONS,
+} from '@/lib/marketplaceAccounts';
+import { Select as MpSelect, SelectContent as MpSelectContent, SelectItem as MpSelectItem, SelectTrigger as MpSelectTrigger, SelectValue as MpSelectValue } from '@/components/ui/select';
 
 type DateRange = 'today' | '7days' | '30days' | '90days' | 'year' | 'all';
 type GroupBy = 'daily' | 'weekly' | 'monthly';
