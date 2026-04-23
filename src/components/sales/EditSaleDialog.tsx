@@ -89,7 +89,7 @@ export function EditSaleDialog({
 
       // Test 4: broadened status filter (matches Edit dialog default)
       const r4 = await supabase.from('devices').select('id', { count: 'exact', head: true })
-        .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment', 'in_repair', 'refurbished']);
+        .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment', 'in_repair', 'refurbished'] as any);
       results.push({
         label: 'Devices in linkable statuses (in_stock, reserved, hold, in_repair, refurbished)',
         count: r4.count || 0,
@@ -115,7 +115,7 @@ export function EditSaleDialog({
 
       // Test 6: combined filter (company + status) — what the dialog actually runs
       let q6 = supabase.from('devices').select('id', { count: 'exact', head: true })
-        .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment', 'in_repair', 'refurbished']);
+        .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment', 'in_repair', 'refurbished'] as any);
       if (selectedCompany?.id) q6 = q6.eq('company_id', selectedCompany.id);
       const r6 = await q6;
       results.push({
