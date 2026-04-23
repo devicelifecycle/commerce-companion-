@@ -15,6 +15,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import { InventoryRepairPartCombobox } from '@/components/inventory/InventoryRepairPartCombobox';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -408,21 +409,28 @@ export function DeviceRepairDialog({ open, onOpenChange, device, onSuccess }: De
                       </TableCell>
                       <TableCell>
                         {item.item_type === 'part' ? (
-                          <Select
-                            value={item.repair_part_id || ''}
-                            onValueChange={(v) => updateItem(idx, 'repair_part_id', v)}
-                          >
-                            <SelectTrigger className="w-[200px]">
-                              <SelectValue placeholder="Select part" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {availableParts.map((p: any) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.name} (${Number(p.unit_cost).toFixed(2)}) — {p.quantity_on_hand} left
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <InventoryRepairPartCombobox
+                            value={item.repair_part_id || null}
+                            onSelect={(part) => {
+                              if (!part) {
+                                updateItem(idx, 'repair_part_id', null);
+                                return;
+                              }
+                              updateItem(idx, 'repair_part_id', part.id);
+                              // Auto-fill description and cost
+                              const updated = [...items];
+                              updated[idx] = {
+                                ...updated[idx],
+                                repair_part_id: part.id,
+                                description: part.name,
+                                unit_cost: part.unit_cost,
+                                total_cost: part.unit_cost * (updated[idx].quantity || 1),
+                              };
+                              setItems(updated);
+                            }}
+                            companyId={device?.company_id || null}
+                            className="w-[260px]"
+                          />
                         ) : (
                           <Input
                             value={item.description}
