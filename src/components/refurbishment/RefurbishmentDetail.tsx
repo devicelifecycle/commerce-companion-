@@ -14,6 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { InventoryRepairPartCombobox } from '@/components/inventory/InventoryRepairPartCombobox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import {
@@ -528,18 +529,15 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
         <CardContent>
           {canManage && !isCompleted && (
             <div className="flex gap-2 mb-4">
-              <Select value={selectedPartId} onValueChange={setSelectedPartId}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Select a repair part..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableParts.map((p: any) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name} {p.sku && `(${p.sku})`} — ${Number(p.unit_cost).toFixed(2)} · {p.quantity_on_hand} avail
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex-1">
+                <InventoryRepairPartCombobox
+                  value={selectedPartId || null}
+                  onSelect={(p) => setSelectedPartId(p?.id || '')}
+                  companyId={device?.company_id || null}
+                  inStockOnly
+                  placeholder="Search by name, SKU, category…"
+                />
+              </div>
               <Input
                 type="number"
                 min={1}
