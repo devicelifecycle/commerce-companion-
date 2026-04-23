@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, ChevronsUpDown, Smartphone, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { INVENTORY_LOOKUP_STATUSES, resolveLookupCompanyId } from '@/lib/inventoryLookup';
 
 export interface DeviceOption {
   id: string;
@@ -39,10 +40,10 @@ export function DeviceSearchCombobox({
   value,
   onSelect,
   companyId,
-  // Default to *all* statuses that represent a device that physically exists in
-  // inventory and could plausibly be linked/sold. Callers can pass a tighter
-  // list if they only want, e.g., 'in_stock'.
-  statusFilter = ['in_stock', 'reserved', 'hold_for_refurbishment', 'in_repair', 'refurbished'],
+  // Default to the canonical "physically in inventory" list. See
+  // src/lib/inventoryLookup.ts — keep it broad so users never hit an empty
+  // dropdown for a device that's just in repair/refurb.
+  statusFilter = INVENTORY_LOOKUP_STATUSES,
   excludeIds = [],
   placeholder = 'Search by IMEI, SKU, brand, model...',
   disabled = false,
@@ -55,10 +56,9 @@ export function DeviceSearchCombobox({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Resolve which company scope to query. If neither prop nor context is set
-  // (e.g., super-admin browsing "All companies"), search across all companies
-  // instead of silently returning zero results.
-  const effectiveCompanyId = companyId || selectedCompany?.id || null;
+  // Unified company-scope rule: prop > context > all companies. See
+  // resolveLookupCompanyId for the rationale.
+  const effectiveCompanyId = resolveLookupCompanyId(companyId, selectedCompany?.id);
 
   const loadDevices = useCallback(async (term: string) => {
     setLoading(true);

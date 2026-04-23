@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, ChevronsUpDown, Package, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { resolveLookupCompanyId } from '@/lib/inventoryLookup';
 
 export interface ProductOption {
   id: string;
@@ -48,7 +49,8 @@ export function ProductSearchCombobox({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const effectiveCompanyId = companyId || selectedCompany?.id || null;
+  // Unified company-scope rule: prop > context > all companies.
+  const effectiveCompanyId = resolveLookupCompanyId(companyId, selectedCompany?.id);
 
   const loadProducts = useCallback(async (term: string) => {
     setLoading(true);

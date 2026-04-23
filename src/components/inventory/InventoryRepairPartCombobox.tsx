@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Check, ChevronsUpDown, Wrench, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { resolveLookupCompanyId } from '@/lib/inventoryLookup';
 
 export interface InventoryRepairPart {
   id: string;
@@ -45,9 +46,9 @@ export function InventoryRepairPartCombobox({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Resolve company; if neither is set, search across all companies rather than
-  // returning zero results silently.
-  const effectiveCompanyId = companyId || selectedCompany?.id || null;
+  // Unified company-scope rule: prop > context > all companies. See
+  // src/lib/inventoryLookup.ts.
+  const effectiveCompanyId = resolveLookupCompanyId(companyId, selectedCompany?.id);
 
   const loadParts = useCallback(async (term: string) => {
     setLoading(true);
