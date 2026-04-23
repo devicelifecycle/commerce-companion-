@@ -1,24 +1,22 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { PopoverContent } from '@/components/ui/popover';
-import { AlertTriangle, Package, Wrench, Plus } from 'lucide-react';
+import { AlertTriangle, Package, Wrench, Plus, CornerDownLeft, ArrowUp, ArrowDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
  * Free-text combobox for the Create PO dialog.
  *
- * The user freely types an item name or SKU. As they type we look up matching
- * rows in the corresponding inventory table (`products` for product lines,
- * `repair_parts` for repair-part lines) and show suggestions so the user can:
- *   1. See that this item already exists (and reuse the SKU), preventing duplicates.
- *   2. Or proceed as a NEW item — a fresh SKU will be generated at receive-time.
+ * Type-ahead with keyboard navigation:
+ *   - ArrowDown / ArrowUp move the active suggestion
+ *   - Enter selects the active suggestion (reuses its SKU)
+ *   - Escape closes the suggestion list (keeps typed text as a new item)
+ *   - Matched substrings inside name and SKU are visually highlighted
  *
- * Uses `PopoverAnchor` (not `PopoverTrigger`) so typing in the input does NOT
- * toggle the popover or steal focus. Suggestions appear automatically when the
- * search returns matches and disappear when the input is cleared/blurred.
+ * Uses `PopoverAnchor` so typing in the input does NOT toggle focus.
  */
 
 export type FreeTextSource = 'product' | 'repair_part';
@@ -43,6 +41,43 @@ interface Props {
   onChange: (next: { description: string; matchedId: string | null; cost?: number | null; sku?: string | null }) => void;
 }
 
+/** Highlight occurrences of `term` inside `text` (case-insensitive). */
+function Highlight({ text, term }: { text: string; term: string }) {
+  if (!term) return <>{text}</>;
+  const t = term.trim();
+  if (!t) return <>{text}</>;
+  const lower = text.toLowerCase();
+  const needle = t.toLowerCase();
+  const parts: Array<{ s: string; hit: boolean }> = [];
+  let i = 0;
+  while (i < text.length) {
+    const idx = lower.indexOf(needle, i);
+    if (idx === -1) {
+      parts.push({ s: text.slice(i), hit: false });
+      break;
+    }
+    if (idx > i) parts.push({ s: text.slice(i, idx), hit: false });
+    parts.push({ s: text.slice(idx, idx + needle.length), hit: true });
+    i = idx + needle.length;
+  }
+  return (
+    <>
+      {parts.map((p, idx) =>
+        p.hit ? (
+          <mark
+            key={idx}
+            className="bg-[hsl(var(--warning)/0.25)] text-foreground rounded-sm px-0.5"
+          >
+            {p.s}
+          </mark>
+        ) : (
+          <span key={idx}>{p.s}</span>
+        )
+      )}
+    </>
+  );
+}
+
 export function ProductFreeTextCombobox({
   value,
   matchedId,
@@ -58,8 +93,10 @@ export function ProductFreeTextCombobox({
   const [matches, setMatches] = useState<FreeTextMatch[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasFocus, setHasFocus] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const Icon = source === 'product' ? Package : Wrench;
 
@@ -109,6 +146,18 @@ export function ProductFreeTextCombobox({
     setOpen(hasFocus && value.trim().length >= 2 && !matchedId);
   }, [hasFocus, value, matchedId]);
 
+  // Reset active index when match list changes
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [matches]);
+
+  // Keep active item visible inside the scroll container
+  useEffect(() => {
+    if (!open || !listRef.current) return;
+    const el = listRef.current.querySelector<HTMLElement>(`[data-idx="${activeIndex}"]`);
+    if (el) el.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex, open]);
+
   // Close when clicking outside
   useEffect(() => {
     if (!open) return;
@@ -121,6 +170,36 @@ export function ProductFreeTextCombobox({
     return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
+  const selectMatch = useCallback((m: FreeTextMatch) => {
+    onChange({
+      description: m.name,
+      matchedId: m.id,
+      cost: m.cost,
+      sku: m.sku,
+    });
+    setHasFocus(false);
+  }, [onChange]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!open || matches.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((i) => (i + 1) % matches.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((i) => (i - 1 + matches.length) % matches.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const m = matches[activeIndex];
+      if (m) selectMatch(m);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setHasFocus(false);
+    }
+  };
+
+  const term = useMemo(() => value.trim(), [value]);
+
   return (
     <div ref={containerRef} className={cn('space-y-1', className)}>
       <PopoverPrimitive.Root open={open && matches.length > 0} onOpenChange={() => { /* controlled */ }}>
@@ -130,6 +209,10 @@ export function ProductFreeTextCombobox({
             placeholder={placeholder || 'Type item name or SKU...'}
             value={value}
             className="h-8 text-xs"
+            role="combobox"
+            aria-expanded={open && matches.length > 0}
+            aria-autocomplete="list"
+            aria-activedescendant={open && matches[activeIndex] ? `pfx-opt-${matches[activeIndex].id}` : undefined}
             onChange={(e) => {
               const next = e.target.value;
               // Typing breaks the existing match (the user is editing the name)
@@ -139,6 +222,7 @@ export function ProductFreeTextCombobox({
               });
             }}
             onFocus={() => setHasFocus(true)}
+            onKeyDown={handleKeyDown}
           />
         </PopoverPrimitive.Anchor>
         <PopoverContent
@@ -152,43 +236,60 @@ export function ProductFreeTextCombobox({
             <AlertTriangle className="h-3 w-3 text-[hsl(var(--warning))]" />
             <span>
               {matches.length} existing {source === 'product' ? 'product' : 'repair part'}
-              {matches.length !== 1 ? 's' : ''} match. Click one to reuse its SKU, or keep typing for a new item.
+              {matches.length !== 1 ? 's' : ''} match. Use ↑ ↓ to navigate, Enter to select, Esc to keep typing.
             </span>
           </div>
-          <div className="max-h-[260px] overflow-y-auto">
-            {matches.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className={cn(
-                  'w-full text-left px-3 py-2 hover:bg-accent flex items-center gap-2 text-xs border-b border-border/40 last:border-0',
-                )}
-                onMouseDown={(e) => e.preventDefault()} // keep input focus during click
-                onClick={() => {
-                  onChange({
-                    description: m.name,
-                    matchedId: m.id,
-                    cost: m.cost,
-                    sku: m.sku,
-                  });
-                  setHasFocus(false);
-                }}
-              >
-                <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{m.name}</div>
-                  <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
-                    {m.sku && <Badge variant="outline" className="text-[9px] px-1 py-0">SKU {m.sku}</Badge>}
-                    {m.quantity_on_hand != null && <span>Qty {m.quantity_on_hand}</span>}
-                    {m.cost != null && m.cost > 0 && <span>${Number(m.cost).toFixed(2)}</span>}
+          <div ref={listRef} className="max-h-[260px] overflow-y-auto" role="listbox">
+            {matches.map((m, idx) => {
+              const active = idx === activeIndex;
+              return (
+                <button
+                  key={m.id}
+                  id={`pfx-opt-${m.id}`}
+                  data-idx={idx}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  className={cn(
+                    'w-full text-left px-3 py-2 flex items-center gap-2 text-xs border-b border-border/40 last:border-0 transition-colors',
+                    active ? 'bg-accent' : 'hover:bg-accent/60',
+                  )}
+                  onMouseDown={(e) => e.preventDefault()} // keep input focus during click
+                  onMouseEnter={() => setActiveIndex(idx)}
+                  onClick={() => selectMatch(m)}
+                >
+                  <Icon className={cn('h-3.5 w-3.5 shrink-0', active ? 'text-foreground' : 'text-muted-foreground')} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium truncate">
+                      <Highlight text={m.name} term={term} />
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                      {m.sku && (
+                        <Badge variant="outline" className="text-[9px] px-1 py-0">
+                          SKU <Highlight text={m.sku} term={term} />
+                        </Badge>
+                      )}
+                      {m.quantity_on_hand != null && <span>Qty {m.quantity_on_hand}</span>}
+                      {m.cost != null && m.cost > 0 && <span>${Number(m.cost).toFixed(2)}</span>}
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                  {active && (
+                    <CornerDownLeft className="h-3 w-3 text-muted-foreground shrink-0" />
+                  )}
+                </button>
+              );
+            })}
           </div>
-          <div className="px-3 py-2 border-t bg-muted/30 text-[10px] text-muted-foreground flex items-center gap-1.5">
-            <Plus className="h-3 w-3" />
-            Or just keep your typed name — a new {source === 'product' ? 'product' : 'repair part'} with a fresh SKU will be created on receive.
+          <div className="px-3 py-2 border-t bg-muted/30 text-[10px] text-muted-foreground flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5">
+              <Plus className="h-3 w-3" />
+              Keep typing for a new {source === 'product' ? 'product' : 'repair part'} (fresh SKU on receive).
+            </span>
+            <span className="flex items-center gap-1 opacity-80">
+              <ArrowUp className="h-2.5 w-2.5" /><ArrowDown className="h-2.5 w-2.5" />
+              <span>·</span>
+              <CornerDownLeft className="h-2.5 w-2.5" />
+            </span>
           </div>
         </PopoverContent>
       </PopoverPrimitive.Root>
