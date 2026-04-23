@@ -116,11 +116,21 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
     [sales, activeTab]
   );
 
-  // Apply search + marketplace + link filters
+  // Apply search + marketplace + link filters.
+  // marketplaceFilter values: 'all' | 'shopify' | 'amazon' | 'bestbuy' | 'bestbuy:tgw' | 'bestbuy:ves' | ...
+  const matchMarketplace = (s: SuspenseSale, filter: string): boolean => {
+    if (filter === 'all') return true;
+    if (filter.includes(':')) {
+      const [mp, suffix] = filter.split(':');
+      return s.marketplace === mp && s.marketplace_account === `${mp}_${suffix}`;
+    }
+    return s.marketplace === filter;
+  };
+
   const filteredSales = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     return tabSales.filter(s => {
-      if (marketplaceFilter !== 'all' && s.marketplace !== marketplaceFilter) return false;
+      if (!matchMarketplace(s, marketplaceFilter)) return false;
       if (linkFilter === 'linked' && !s.device_id) return false;
       if (linkFilter === 'manual' && (s.device_id || !s.manual_cost)) return false;
       if (linkFilter === 'unlinked' && (s.device_id || s.manual_cost)) return false;
@@ -143,6 +153,18 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
     sales.forEach(s => s.marketplace && set.add(s.marketplace));
     return Array.from(set).sort();
   }, [sales]);
+
+  // Quick-chip counts (within the active tab, ignoring marketplace filter itself)
+  const chipCounts = useMemo(() => {
+    const base = tabSales;
+    return {
+      all: base.length,
+      bestbuy_tgw: base.filter(s => s.marketplace === 'bestbuy' && s.marketplace_account === 'bestbuy_tgw').length,
+      bestbuy_ves: base.filter(s => s.marketplace === 'bestbuy' && s.marketplace_account === 'bestbuy_ves').length,
+    };
+  }, [tabSales]);
+
+  const hasBestBuy = marketplaceOptions.includes('bestbuy');
 
   // Paginated slice for the table
   const totalCount = filteredSales.length;
