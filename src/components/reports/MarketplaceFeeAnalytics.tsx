@@ -12,6 +12,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from 'recharts';
+import {
+  getChannelKey, getChannelLabel, getChannelColor, compareChannels,
+  CHANNEL_DISPLAY_ORDER,
+} from '@/lib/marketplaceAccounts';
 
 interface MarketplaceFeeAnalyticsProps {
   companyView?: 'consolidated' | string;
@@ -21,6 +25,7 @@ interface SaleRecord {
   id: string;
   order_number: string;
   marketplace: string;
+  marketplace_account: string | null;
   sale_price: number;
   shipping_cost: number;
   marketplace_fees: number;
@@ -31,19 +36,9 @@ interface SaleRecord {
   is_marketplace_remitted: boolean | null;
 }
 
-const MARKETPLACE_LABELS: Record<string, string> = {
-  amazon: 'Amazon',
-  bestbuy: 'Best Buy',
-  shopify: 'Shopify',
-  other: 'Manual/Direct',
-};
-
-const MARKETPLACE_COLORS: Record<string, string> = {
-  amazon: 'hsl(var(--chart-1))',
-  bestbuy: 'hsl(var(--chart-2))',
-  shopify: 'hsl(var(--chart-3))',
-  other: 'hsl(var(--chart-4))',
-};
+// Channels surfaced in the trend / pie / breakdown widgets. Best Buy is split
+// into its TGW and VES sub-accounts; everything else is the bare marketplace.
+const TRACKED_CHANNELS = ['amazon', 'shopify', 'bestbuy_tgw', 'bestbuy_ves'] as const;
 
 const PIE_COLORS = ['hsl(var(--primary))', 'hsl(var(--destructive))', 'hsl(221, 83%, 53%)', 'hsl(142, 71%, 45%)'];
 
@@ -65,7 +60,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
 
       let query = supabase
         .from('sales')
-        .select('id, order_number, marketplace, sale_price, shipping_cost, marketplace_fees, tax_amount, profit, sale_date, company_id, is_marketplace_remitted')
+        .select('id, order_number, marketplace, marketplace_account, sale_price, shipping_cost, marketplace_fees, tax_amount, profit, sale_date, company_id, is_marketplace_remitted')
         .gte('sale_date', startDate.toISOString())
         .order('sale_date', { ascending: false })
         .limit(5000);
@@ -101,7 +96,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
     const monthlyMap: Record<string, Record<string, { fees: number; revenue: number; orders: number }>> = {};
 
     sales.forEach(s => {
-      const mp = s.marketplace;
+      const mp = getChannelKey(s.marketplace, s.marketplace_account as any);
       if (!byMarketplace[mp]) {
         byMarketplace[mp] = { marketplace: mp, revenue: 0, fees: 0, feeRate: 0, orders: 0, avgFee: 0, taxRemitted: 0, taxOwed: 0 };
       }
@@ -131,16 +126,19 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
       m.avgFee = m.orders > 0 ? m.fees / m.orders : 0;
     });
 
-    const marketplaceList = Object.values(byMarketplace).sort((a, b) => b.fees - a.fees);
+    const marketplaceList = Object.values(byMarketplace).sort((a, b) => {
+      const c = compareChannels(a.marketplace, b.marketplace);
+      return c !== 0 ? c : b.fees - a.fees;
+    });
 
-    // Build monthly trend data
+    // Build monthly trend data — series per known channel.
     const months = Object.keys(monthlyMap).sort();
     const trendData = months.map(month => {
       const row: any = { month };
-      Object.keys(MARKETPLACE_LABELS).forEach(mp => {
-        row[`${mp}_fees`] = monthlyMap[month]?.[mp]?.fees || 0;
-        row[`${mp}_rate`] = monthlyMap[month]?.[mp]?.revenue > 0
-          ? ((monthlyMap[month][mp].fees / monthlyMap[month][mp].revenue) * 100)
+      TRACKED_CHANNELS.forEach(ch => {
+        row[`${ch}_fees`] = monthlyMap[month]?.[ch]?.fees || 0;
+        row[`${ch}_rate`] = (monthlyMap[month]?.[ch]?.revenue ?? 0) > 0
+          ? ((monthlyMap[month][ch].fees / monthlyMap[month][ch].revenue) * 100)
           : 0;
       });
       return row;
@@ -154,7 +152,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
 
     // Pie data
     const pieData = marketplaceList.map(m => ({
-      name: MARKETPLACE_LABELS[m.marketplace] || m.marketplace,
+      name: getChannelLabel(m.marketplace),
       value: m.fees,
     })).filter(d => d.value > 0);
 
@@ -177,7 +175,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
   const handleExport = () => {
     const header = 'Marketplace,Revenue,Total Fees,Fee Rate %,Orders,Avg Fee/Order,Tax Remitted by MP,Tax You Owe';
     const rows = analytics.marketplaceList.map(m =>
-      `${MARKETPLACE_LABELS[m.marketplace] || m.marketplace},${m.revenue.toFixed(2)},${m.fees.toFixed(2)},${m.feeRate.toFixed(1)},${m.orders},${m.avgFee.toFixed(2)},${m.taxRemitted.toFixed(2)},${m.taxOwed.toFixed(2)}`
+      `${getChannelLabel(m.marketplace)},${m.revenue.toFixed(2)},${m.fees.toFixed(2)},${m.feeRate.toFixed(1)},${m.orders},${m.avgFee.toFixed(2)},${m.taxRemitted.toFixed(2)},${m.taxOwed.toFixed(2)}`
     );
     const csv = [header, ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -279,8 +277,8 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
                     <YAxis tickFormatter={(v) => `${v.toFixed(0)}%`} className="text-xs" />
                     <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} labelFormatter={formatMonth} />
                     <Legend />
-                    {Object.entries(MARKETPLACE_LABELS).map(([key, label]) => (
-                      <Line key={key} type="monotone" dataKey={`${key}_rate`} name={`${label} %`} stroke={MARKETPLACE_COLORS[key] || 'hsl(var(--muted-foreground))'} strokeWidth={2} dot={false} />
+                    {TRACKED_CHANNELS.map((key) => (
+                      <Line key={key} type="monotone" dataKey={`${key}_rate`} name={`${getChannelLabel(key)} %`} stroke={getChannelColor(key)} strokeWidth={2} dot={false} />
                     ))}
                   </LineChart>
                 </ResponsiveContainer>
@@ -308,8 +306,8 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
                   <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} className="text-xs" />
                   <Tooltip formatter={(v: number) => formatCurrency(v)} labelFormatter={formatMonth} />
                   <Legend />
-                  {Object.entries(MARKETPLACE_LABELS).map(([key, label]) => (
-                    <Bar key={key} dataKey={`${key}_fees`} name={label} fill={MARKETPLACE_COLORS[key] || 'hsl(var(--muted-foreground))'} stackId="fees" radius={[2, 2, 0, 0]} />
+                  {TRACKED_CHANNELS.map((key) => (
+                    <Bar key={key} dataKey={`${key}_fees`} name={getChannelLabel(key)} fill={getChannelColor(key)} stackId="fees" radius={[2, 2, 0, 0]} />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
@@ -328,7 +326,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="rounded-lg border border-border p-4 space-y-2">
               <div className="flex items-center gap-2">
-                <div className="h-2.5 w-2.5 rounded-full" style={{ background: MARKETPLACE_COLORS.amazon }} />
+                <div className="h-2.5 w-2.5 rounded-full" style={{ background: getChannelColor('amazon') }} />
                 <span className="font-semibold text-sm">Amazon</span>
               </div>
               <ul className="text-xs text-muted-foreground space-y-1 pl-5 list-disc">
@@ -344,7 +342,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
 
             <div className="rounded-lg border border-border p-4 space-y-2">
               <div className="flex items-center gap-2">
-                <div className="h-2.5 w-2.5 rounded-full" style={{ background: MARKETPLACE_COLORS.shopify }} />
+                <div className="h-2.5 w-2.5 rounded-full" style={{ background: getChannelColor('shopify') }} />
                 <span className="font-semibold text-sm">Shopify</span>
               </div>
               <ul className="text-xs text-muted-foreground space-y-1 pl-5 list-disc">
@@ -359,7 +357,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
 
             <div className="rounded-lg border border-border p-4 space-y-2">
               <div className="flex items-center gap-2">
-                <div className="h-2.5 w-2.5 rounded-full" style={{ background: MARKETPLACE_COLORS.bestbuy }} />
+                <div className="h-2.5 w-2.5 rounded-full" style={{ background: getChannelColor('bestbuy') }} />
                 <span className="font-semibold text-sm">Best Buy (Mirakl)</span>
               </div>
               <ul className="text-xs text-muted-foreground space-y-1 pl-5 list-disc">
@@ -397,7 +395,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
             <TableBody>
               {analytics.marketplaceList.map(m => (
                 <TableRow key={m.marketplace}>
-                  <TableCell className="font-medium">{MARKETPLACE_LABELS[m.marketplace] || m.marketplace}</TableCell>
+                  <TableCell className="font-medium">{getChannelLabel(m.marketplace)}</TableCell>
                   <TableCell className="text-right">{formatCurrency(m.revenue)}</TableCell>
                   <TableCell className="text-right text-destructive font-medium">{formatCurrency(m.fees)}</TableCell>
                   <TableCell className="text-right">
@@ -453,7 +451,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
                       <TableCell className="font-mono text-xs">{order.order_number}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-[10px]">
-                          {MARKETPLACE_LABELS[order.marketplace] || order.marketplace}
+                          {getChannelLabel(getChannelKey(order.marketplace, (order as any).marketplace_account))}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm">{new Date(order.sale_date).toLocaleDateString('en-CA')}</TableCell>
