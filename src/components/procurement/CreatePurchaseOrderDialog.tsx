@@ -213,11 +213,11 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
   const totalPst = computedLines.reduce((s, li) => s + li.pst, 0);
   const grandTotal = subtotal + totalGst + totalPst;
 
-  // Determine dominant PO type from line items
+  // Determine dominant PO type from line items (only product / repair_parts now)
   const dominantType = useMemo(() => {
     const types = new Set(lineItems.map(li => li.item_type));
     if (types.size === 1) return lineItems[0].item_type;
-    return 'inventory'; // mixed
+    return 'product'; // mixed → default to product
   }, [lineItems]);
 
   const formatCurrency = (v: number) =>
