@@ -105,13 +105,51 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
     onCountsChange?.(counts.ready_to_post + counts.needs_review);
   }, [counts, onCountsChange]);
 
-  const visibleSales = useMemo(
+  // All sales matching the active tab (before search/marketplace filters)
+  const tabSales = useMemo(
     () => sales.filter(s =>
       activeTab === 'needs_review'
         ? REVIEW_STATUSES.includes(s.accounting_status as any)
         : s.accounting_status === activeTab
     ),
     [sales, activeTab]
+  );
+
+  // Apply search + marketplace + link filters
+  const filteredSales = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return tabSales.filter(s => {
+      if (marketplaceFilter !== 'all' && s.marketplace !== marketplaceFilter) return false;
+      if (linkFilter === 'linked' && !s.device_id) return false;
+      if (linkFilter === 'manual' && (s.device_id || !s.manual_cost)) return false;
+      if (linkFilter === 'unlinked' && (s.device_id || s.manual_cost)) return false;
+      if (!term) return true;
+      return (
+        s.order_number.toLowerCase().includes(term) ||
+        (s.customer_name?.toLowerCase().includes(term) ?? false) ||
+        (s.review_reason?.toLowerCase().includes(term) ?? false) ||
+        (s.shipping_province?.toLowerCase().includes(term) ?? false)
+      );
+    });
+  }, [tabSales, searchTerm, marketplaceFilter, linkFilter]);
+
+  // Reset page when filters / tab change
+  useEffect(() => { setPage(0); }, [searchTerm, marketplaceFilter, linkFilter, activeTab]);
+
+  // Available marketplace options (derived from current data)
+  const marketplaceOptions = useMemo(() => {
+    const set = new Set<string>();
+    sales.forEach(s => s.marketplace && set.add(s.marketplace));
+    return Array.from(set).sort();
+  }, [sales]);
+
+  // Paginated slice for the table
+  const totalCount = filteredSales.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const safePage = Math.min(page, totalPages - 1);
+  const visibleSales = useMemo(
+    () => filteredSales.slice(safePage * pageSize, safePage * pageSize + pageSize),
+    [filteredSales, safePage, pageSize]
   );
 
   const allSelected = visibleSales.length > 0 && visibleSales.every(s => selected.has(s.id));
