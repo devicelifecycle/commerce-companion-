@@ -14,24 +14,24 @@
  * inventory and therefore eligible to appear in any lookup (sales linking,
  * returns, repairs, refurbishment, intercompany, supplier returns, etc).
  *
- * "sold", "written_off", "returned", and "shipped_to_fba" are intentionally
- * excluded — those units are not on the floor for normal selection. Callers
- * that genuinely need a tighter list (e.g. only `in_stock` for a brand-new
- * sale) can still pass an explicit `statusFilter` prop, but the default is
- * deliberately broad so users don't get confused by an empty dropdown when
- * the device is sitting in repair or refurbishment.
+ * IMPORTANT: These MUST match the actual `device_status` Postgres enum
+ * values exactly. The current enum only contains:
+ *   in_stock, reserved, sold, returned, hold_for_refurbishment
  *
- * Typed as `string[]` rather than the device_status enum because the enum in
- * generated types lags actual DB values (`in_repair`, `refurbished` exist in
- * the DB but aren't in the generated union); the Supabase client casts these
- * at the call site.
+ * Repair / refurbishment progress is tracked on separate columns
+ * (`refurbishment_status`) and tables (`device_repairs`), NOT on the main
+ * status enum. Adding values that don't exist in the enum (e.g. `in_repair`,
+ * `refurbished`) causes Postgres to reject the entire `.in('status', […])`
+ * query with `invalid input value for enum device_status`, breaking every
+ * combobox at once.
+ *
+ * "sold" and "returned" are intentionally excluded — those units are not
+ * on the floor for normal selection.
  */
 export const INVENTORY_LOOKUP_STATUSES: string[] = [
   'in_stock',
   'reserved',
   'hold_for_refurbishment',
-  'in_repair',
-  'refurbished',
 ];
 
 /**
