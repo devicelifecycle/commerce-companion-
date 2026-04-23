@@ -564,7 +564,7 @@ serve(async (req) => {
       records_errored: errors.length,
       error_message: errors.length > 0 ? errors.join("; ") : null,
       sync_type: "scheduled",
-      metadata: { total_from_api: orders.length, voided: cancelledOrders.length },
+      metadata: { total_from_api: orders.length, voided: cancelledOrders.length, since: createdAtMin, until: new Date().toISOString() },
     });
 
     // Trigger accounting only for non-voided newly imported orders.

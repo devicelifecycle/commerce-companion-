@@ -761,7 +761,7 @@ serve(async (req) => {
       records_errored: errors.length,
       error_message: errors.length > 0 ? errors.join("; ") : null,
       sync_type: "scheduled",
-      metadata: { total_from_api: orders.length, total_count: totalCount, marketplace_account: marketplaceAccount },
+      metadata: { total_from_api: orders.length, total_count: totalCount, marketplace_account: marketplaceAccount, since: startDate, until: new Date().toISOString() },
     });
 
     // Aggregate
