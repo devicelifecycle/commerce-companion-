@@ -25,20 +25,16 @@ import {
 } from 'recharts';
 import { Download, TrendingUp, MapPin, Package, ShoppingCart, RefreshCw } from 'lucide-react';
 import { format, subMonths, startOfMonth, subDays } from 'date-fns';
+import { getChannelKey, getChannelLabel, getChannelColor } from '@/lib/marketplaceAccounts';
 
 const COLORS = ['hsl(var(--primary))', 'hsl(221, 83%, 53%)', 'hsl(142, 71%, 45%)', 'hsl(280, 65%, 60%)', 'hsl(25, 95%, 53%)', 'hsl(340, 82%, 52%)'];
-const MARKETPLACE_COLORS: Record<string, string> = {
-  shopify: '#6EE7B7',
-  amazon: '#FB923C',
-  bestbuy: '#3B82F6',
-  other: '#94A3B8',
-};
 
 interface SalesData {
   id: string;
   sale_price: number;
   profit: number;
   marketplace: string;
+  marketplace_account: string | null;
   sale_date: string;
   shipping_address: string | null;
   device?: { brand: string; model: string; category: string | null };
@@ -67,7 +63,7 @@ export function SalesReports({ companyView = 'consolidated' }: SalesReportsProps
 
       let query = supabase
         .from('sales')
-        .select('id, sale_price, profit, marketplace, sale_date, shipping_address, devices(brand, model, category)')
+        .select('id, sale_price, profit, marketplace, marketplace_account, sale_date, shipping_address, devices(brand, model, category)')
         .gte('sale_date', startDate.toISOString())
         .limit(5000);
 
@@ -92,9 +88,10 @@ export function SalesReports({ companyView = 'consolidated' }: SalesReportsProps
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', minimumFractionDigits: 0 }).format(value);
 
-  // Data aggregations
+  // Data aggregations — group by channel key (Best Buy split TGW/VES)
   const byMarketplace = sales.reduce((acc, s) => {
-    acc[s.marketplace] = (acc[s.marketplace] || 0) + Number(s.sale_price);
+    const ck = getChannelKey(s.marketplace, s.marketplace_account as any);
+    acc[ck] = (acc[ck] || 0) + Number(s.sale_price);
     return acc;
   }, {} as Record<string, number>);
 
@@ -283,10 +280,10 @@ export function SalesReports({ companyView = 'consolidated' }: SalesReportsProps
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={Object.entries(byMarketplace).map(([name, value]) => ({
-                          name: name.charAt(0).toUpperCase() + name.slice(1),
+                        data={Object.entries(byMarketplace).map(([ck, value]) => ({
+                          name: getChannelLabel(ck),
                           value,
-                          color: MARKETPLACE_COLORS[name] || MARKETPLACE_COLORS.other,
+                          color: getChannelColor(ck),
                         }))}
                         cx="50%"
                         cy="50%"
@@ -295,8 +292,8 @@ export function SalesReports({ companyView = 'consolidated' }: SalesReportsProps
                         paddingAngle={5}
                         dataKey="value"
                       >
-                        {Object.entries(byMarketplace).map(([name], index) => (
-                          <Cell key={name} fill={MARKETPLACE_COLORS[name] || MARKETPLACE_COLORS.other} />
+                        {Object.entries(byMarketplace).map(([ck]) => (
+                          <Cell key={ck} fill={getChannelColor(ck)} />
                         ))}
                       </Pie>
                       <Tooltip formatter={(value: number) => formatCurrency(value)} />
@@ -314,15 +311,15 @@ export function SalesReports({ companyView = 'consolidated' }: SalesReportsProps
                 <div className="space-y-3">
                   {Object.entries(byMarketplace)
                     .sort((a, b) => b[1] - a[1])
-                    .map(([mp, value]) => {
+                    .map(([ck, value]) => {
                       const percentage = totalRevenue > 0 ? (value / totalRevenue) * 100 : 0;
                       return (
-                        <div key={mp} className="flex items-center gap-4">
+                        <div key={ck} className="flex items-center gap-4">
                           <div
                             className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: MARKETPLACE_COLORS[mp] || MARKETPLACE_COLORS.other }}
+                            style={{ backgroundColor: getChannelColor(ck) }}
                           />
-                          <span className="flex-1 capitalize">{mp}</span>
+                          <span className="flex-1">{getChannelLabel(ck)}</span>
                           <span className="font-medium">{formatCurrency(value)}</span>
                           <Badge variant="outline">{percentage.toFixed(1)}%</Badge>
                         </div>

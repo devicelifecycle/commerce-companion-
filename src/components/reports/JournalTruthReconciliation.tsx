@@ -21,6 +21,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, AlertTriangle, CheckCircle2, FileSearch } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { toast } from 'sonner';
+import { getChannelKey, getChannelLabel, parseMarketplaceFilter } from '@/lib/marketplaceAccounts';
 
 const TOLERANCE = 0.02; // 2¢ rounding tolerance per line
 
@@ -35,6 +36,8 @@ interface ReconRow {
   saleId: string;
   orderNumber: string;
   marketplace: string;
+  marketplaceAccount: string | null;
+  channel: string;
   saleDate: string;
   companyId: string | null;
   // Marketplace truth
@@ -77,7 +80,7 @@ const ACCOUNT_BUCKETS = {
 export function JournalTruthReconciliation({ companyView = 'consolidated' }: Props) {
   const [period, setPeriod] = useState(format(new Date(), 'yyyy-MM'));
   const [filter, setFilter] = useState<'all' | 'mismatched' | 'no_journal'>('mismatched');
-  const [marketplace, setMarketplace] = useState<'all' | 'shopify' | 'amazon' | 'bestbuy'>('all');
+  const [marketplace, setMarketplace] = useState<string>('all');
   const [openSaleId, setOpenSaleId] = useState<string | null>(null);
 
   const { data, isLoading, refetch } = useReportQuery<ReconRow[]>({
@@ -178,13 +181,14 @@ export function JournalTruthReconciliation({ companyView = 'consolidated' }: Pro
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={marketplace} onValueChange={(v) => setMarketplace(v as any)}>
-                <SelectTrigger className="h-8 w-32 text-xs"><SelectValue /></SelectTrigger>
+              <Select value={marketplace} onValueChange={(v) => setMarketplace(v)}>
+                <SelectTrigger className="h-8 w-40 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All marketplaces</SelectItem>
+                  <SelectItem value="all">All channels</SelectItem>
                   <SelectItem value="shopify">Shopify</SelectItem>
                   <SelectItem value="amazon">Amazon</SelectItem>
-                  <SelectItem value="bestbuy">Best Buy</SelectItem>
+                  <SelectItem value="bestbuy:tgw">Best Buy — TGW</SelectItem>
+                  <SelectItem value="bestbuy:ves">Best Buy — VES</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={filter} onValueChange={(v) => setFilter(v as any)}>
@@ -312,7 +316,7 @@ function ReconRowView({ row, expanded, onToggle }: { row: ReconRow; expanded: bo
     <>
       <TableRow className="cursor-pointer" onClick={onToggle}>
         <TableCell className="font-mono text-xs">{row.orderNumber}</TableCell>
-        <TableCell className="text-xs capitalize">{row.marketplace}</TableCell>
+        <TableCell className="text-xs">{getChannelLabel(row.channel)}</TableCell>
         <TableCell className="text-xs">{format(new Date(row.saleDate), 'MMM d')}</TableCell>
         <TableCell>{fieldCell(row.mpSubtotal, row.jeRevenue, 'subtotal', row.mismatches)}</TableCell>
         <TableCell>{fieldCell(row.mpShipping, row.jeShipping, 'shipping', row.mismatches)}</TableCell>
@@ -362,7 +366,7 @@ async function fetchRecon(
 
   let salesQuery = supabase
     .from('sales')
-    .select('id, order_number, marketplace, sale_date, company_id, sale_price, subtotal, shipping_cost, shipping_revenue, tax_amount, marketplace_fees, payout_amount, marketplace_total_tax, marketplace_total_shipping, accounting_status')
+    .select('id, order_number, marketplace, marketplace_account, sale_date, company_id, sale_price, subtotal, shipping_cost, shipping_revenue, tax_amount, marketplace_fees, payout_amount, marketplace_total_tax, marketplace_total_shipping, accounting_status')
     .gte('sale_date', start.toISOString())
     .lte('sale_date', end.toISOString())
     .eq('accounting_status', 'posted')
@@ -370,7 +374,11 @@ async function fetchRecon(
     .limit(2000);
 
   if (companyView !== 'consolidated') salesQuery = salesQuery.eq('company_id', companyView);
-  if (marketplace !== 'all') salesQuery = salesQuery.eq('marketplace', marketplace as any);
+  if (marketplace !== 'all') {
+    const parsed = parseMarketplaceFilter(marketplace);
+    salesQuery = salesQuery.eq('marketplace', parsed.marketplace as any);
+    if (parsed.account) salesQuery = salesQuery.eq('marketplace_account', parsed.account);
+  }
 
   const { data: sales, error } = await salesQuery;
   if (error) throw error;
@@ -458,6 +466,8 @@ async function fetchRecon(
       saleId: s.id,
       orderNumber: s.order_number,
       marketplace: s.marketplace,
+      marketplaceAccount: s.marketplace_account ?? null,
+      channel: getChannelKey(s.marketplace, s.marketplace_account as any),
       saleDate: s.sale_date,
       companyId: s.company_id,
       mpSubtotal,

@@ -21,10 +21,12 @@ import {
 } from 'recharts';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import { getChannelKey, getChannelLabel, getChannelColor, compareChannels, CHANNEL_DISPLAY_ORDER } from '@/lib/marketplaceAccounts';
 
 interface MarketplacePayout {
   id: string;
   marketplace: string;
+  marketplace_account: string | null;
   payout_id: string;
   payout_date: string;
   period_start: string | null;
@@ -48,15 +50,7 @@ interface PayoutReconciliationProps {
   companyView?: 'consolidated' | string;
 }
 
-const marketplaceLabels: Record<string, string> = {
-  amazon: 'Amazon', shopify: 'Shopify', bestbuy: 'Best Buy',
-};
-
-const MARKETPLACE_COLORS: Record<string, string> = {
-  amazon: 'hsl(35, 95%, 50%)',
-  shopify: 'hsl(142, 71%, 45%)',
-  bestbuy: 'hsl(221, 83%, 53%)',
-};
+// Channel labels & colors now sourced from getChannelLabel/getChannelColor
 
 const STATUS_COLORS = {
   matched: 'hsl(var(--success))',
@@ -171,10 +165,11 @@ export function PayoutReconciliation({ companyView = 'consolidated' }: PayoutRec
     const totalVariance = payouts.reduce((s, p) => s + (p.discrepancy_amount || 0), 0);
     const totalAbsVariance = payouts.reduce((s, p) => s + Math.abs(p.discrepancy_amount || 0), 0);
 
-    // Per-marketplace breakdown
-    const marketplaces = ['amazon', 'shopify', 'bestbuy'];
-    const byMarketplace = marketplaces.map(mp => {
-      const mpPayouts = payouts.filter(p => p.marketplace === mp);
+    // Per-channel breakdown — Best Buy split into TGW & VES via getChannelKey
+    const channelKeys = Array.from(new Set(payouts.map(p => getChannelKey(p.marketplace, p.marketplace_account as any))));
+    channelKeys.sort(compareChannels);
+    const byMarketplace = channelKeys.map(ck => {
+      const mpPayouts = payouts.filter(p => getChannelKey(p.marketplace, p.marketplace_account as any) === ck);
       const mpMatched = mpPayouts.filter(p => p.reconciliation_status === 'matched').length;
       const mpTotal = mpPayouts.length;
       const mpNetPayout = mpPayouts.reduce((s, p) => s + p.net_payout, 0);
@@ -185,8 +180,8 @@ export function PayoutReconciliation({ companyView = 'consolidated' }: PayoutRec
       const mpSystemFees = mpPayouts.reduce((s, p) => s + (p.system_fees_total || 0), 0);
 
       return {
-        name: marketplaceLabels[mp] || mp,
-        key: mp,
+        name: getChannelLabel(ck),
+        key: ck,
         count: mpTotal,
         matched: mpMatched,
         accuracy: mpTotal > 0 ? (mpMatched / mpTotal) * 100 : 0,
@@ -208,13 +203,13 @@ export function PayoutReconciliation({ companyView = 'consolidated' }: PayoutRec
       { name: 'Pending', value: pending, color: STATUS_COLORS.pending },
     ].filter(s => s.value > 0);
 
-    // Variance by marketplace for bar chart
+    // Variance by channel for bar chart
     const varianceByMarketplace = byMarketplace.map(m => ({
       name: m.name,
       'Net Payout': m.netPayout,
       'System Expected': m.expected,
       Variance: m.variance,
-      fill: MARKETPLACE_COLORS[m.key],
+      fill: getChannelColor(m.key),
     }));
 
     // Fee accuracy by marketplace
@@ -497,7 +492,7 @@ export function PayoutReconciliation({ companyView = 'consolidated' }: PayoutRec
                       <TableRow key={mp.key}>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: MARKETPLACE_COLORS[mp.key] }} />
+                            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: getChannelColor(mp.key) }} />
                             {mp.name}
                           </div>
                         </TableCell>
@@ -577,7 +572,7 @@ export function PayoutReconciliation({ companyView = 'consolidated' }: PayoutRec
                           {format(new Date(payout.payout_date), 'MMM dd, yyyy')}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{marketplaceLabels[payout.marketplace] || payout.marketplace}</Badge>
+                          <Badge variant="outline">{getChannelLabel(getChannelKey(payout.marketplace, payout.marketplace_account as any))}</Badge>
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {payout.period_start && payout.period_end
@@ -644,7 +639,7 @@ export function PayoutReconciliation({ companyView = 'consolidated' }: PayoutRec
           <DialogHeader>
             <DialogTitle>Payout Detail</DialogTitle>
             <DialogDescription>
-              {selectedPayout && `${marketplaceLabels[selectedPayout.marketplace] || selectedPayout.marketplace} — ${format(new Date(selectedPayout.payout_date), 'MMM dd, yyyy')}`}
+              {selectedPayout && `${getChannelLabel(getChannelKey(selectedPayout.marketplace, selectedPayout.marketplace_account as any))} — ${format(new Date(selectedPayout.payout_date), 'MMM dd, yyyy')}`}
             </DialogDescription>
           </DialogHeader>
 
