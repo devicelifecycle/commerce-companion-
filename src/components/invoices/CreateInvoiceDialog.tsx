@@ -118,7 +118,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
             supabase
               .from('devices')
               .select('id, brand, model, storage, color, sku, cost_price, sale_price, condition, imei')
-              .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment'] as any)
+              .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment', 'in_repair', 'refurbished'] as any)
               .eq('company_id', invoiceCompanyId)
               .order('created_at', { ascending: false })
               .limit(15),
@@ -157,7 +157,7 @@ export function CreateInvoiceDialog({ open, onOpenChange, onCreated }: Props) {
             supabase
               .from('devices')
               .select('id, brand, model, storage, color, sku, cost_price, sale_price, condition, imei')
-              .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment'] as any)
+              .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment', 'in_repair', 'refurbished'] as any)
               .eq('company_id', invoiceCompanyId)
               .or(`brand.ilike.${term},model.ilike.${term},imei.ilike.${term},sku.ilike.${term},color.ilike.${term},storage.ilike.${term}`)
               .limit(25),
