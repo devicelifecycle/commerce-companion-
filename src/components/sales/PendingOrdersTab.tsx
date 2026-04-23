@@ -66,6 +66,13 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
   const [lastRunAt, setLastRunAt] = useState<string | null>(null);
   const [viewingSaleId, setViewingSaleId] = useState<string | null>(null);
 
+  // Filters & pagination
+  const [searchTerm, setSearchTerm] = useState('');
+  const [marketplaceFilter, setMarketplaceFilter] = useState<string>('all');
+  const [linkFilter, setLinkFilter] = useState<string>('all'); // all | linked | manual | unlinked
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(25);
+
   const loadSales = async () => {
     setLoading(true);
     let q = supabase
