@@ -514,7 +514,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
                     </div>
                     {/* Type selector */}
                     <div className="w-[90px]">
-                      <Select value={item.item_type} onValueChange={(v: ItemType) => updateLine(item.id, { item_type: v, product_id: null, matched_sku: null })}>
+                      <Select value={item.item_type} onValueChange={(v: ItemType) => updateLine(item.id, { item_type: v, product_id: null, matched_sku: null, new_sku: '' })}>
                         <SelectTrigger className="h-8 text-[11px] px-2">
                           <div className="flex items-center gap-1">
                             <typeConfig.icon className={cn('h-3 w-3 shrink-0', typeConfig.color)} />
