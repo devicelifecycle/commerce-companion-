@@ -12,7 +12,8 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Search } from 'lucide-react';
+import { useCompany } from '@/contexts/CompanyContext';
+import { Search, Stethoscope, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 
 interface AvailableDevice {
   id: string;
@@ -36,14 +37,112 @@ export function EditSaleDialog({
   open, onOpenChange, saleId, currentDeviceId, orderNumber, onSaved,
 }: EditSaleDialogProps) {
   const { toast } = useToast();
+  const { selectedCompany } = useCompany();
   const { processSaleAccounting } = useSaleAccounting();
   const [deviceId, setDeviceId] = useState<string>(currentDeviceId || '');
   const [availableDevices, setAvailableDevices] = useState<AvailableDevice[]>([]);
   const [loading, setLoading] = useState(false);
   const [imeiSearch, setImeiSearch] = useState('');
+  const [diagnosing, setDiagnosing] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<Array<{ label: string; count: number; ok: boolean; note?: string }> | null>(null);
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+
+  const runDiagnostic = async () => {
+    setDiagnosing(true);
+    setDiagnostics(null);
+    const results: Array<{ label: string; count: number; ok: boolean; note?: string }> = [];
+    try {
+      // Test 1: total devices in DB (no filter)
+      const r1 = await supabase.from('devices').select('id', { count: 'exact', head: true });
+      results.push({
+        label: 'Total devices in database (no filter)',
+        count: r1.count || 0,
+        ok: !r1.error && (r1.count || 0) > 0,
+        note: r1.error?.message,
+      });
+
+      // Test 2: devices in selected company
+      if (selectedCompany?.id) {
+        const r2 = await supabase.from('devices').select('id', { count: 'exact', head: true })
+          .eq('company_id', selectedCompany.id);
+        results.push({
+          label: `Devices in company "${selectedCompany.name}"`,
+          count: r2.count || 0,
+          ok: !r2.error && (r2.count || 0) > 0,
+          note: r2.error?.message,
+        });
+      } else {
+        results.push({ label: 'Company scope', count: 0, ok: false, note: 'No company selected — searching all companies' });
+      }
+
+      // Test 3: in_stock devices
+      const r3 = await supabase.from('devices').select('id', { count: 'exact', head: true })
+        .eq('status', 'in_stock');
+      results.push({
+        label: 'Devices with status = in_stock',
+        count: r3.count || 0,
+        ok: !r3.error && (r3.count || 0) > 0,
+        note: r3.error?.message,
+      });
+
+      // Test 4: broadened status filter (matches Edit dialog default)
+      const r4 = await supabase.from('devices').select('id', { count: 'exact', head: true })
+        .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment', 'in_repair', 'refurbished'] as any);
+      results.push({
+        label: 'Devices in linkable statuses (in_stock, reserved, hold, in_repair, refurbished)',
+        count: r4.count || 0,
+        ok: !r4.error && (r4.count || 0) > 0,
+        note: r4.error?.message,
+      });
+
+      // Test 5: sample SKU search using top device's SKU
+      const sample = await supabase.from('devices').select('sku, imei').not('sku', 'is', null).limit(1).maybeSingle();
+      if (sample.data?.sku) {
+        const term = sample.data.sku.slice(0, 4);
+        const r5 = await supabase.from('devices').select('id', { count: 'exact', head: true })
+          .ilike('sku', `%${term}%`);
+        results.push({
+          label: `Sample SKU search "${term}" (from existing device)`,
+          count: r5.count || 0,
+          ok: !r5.error && (r5.count || 0) > 0,
+          note: r5.error?.message,
+        });
+      } else {
+        results.push({ label: 'Sample SKU search', count: 0, ok: false, note: 'No devices with SKU found to sample' });
+      }
+
+      // Test 6: combined filter (company + status) — what the dialog actually runs
+      let q6 = supabase.from('devices').select('id', { count: 'exact', head: true })
+        .in('status', ['in_stock', 'reserved', 'hold_for_refurbishment', 'in_repair', 'refurbished'] as any);
+      if (selectedCompany?.id) q6 = q6.eq('company_id', selectedCompany.id);
+      const r6 = await q6;
+      results.push({
+        label: 'Combined filter (company + linkable statuses) — what this dialog uses',
+        count: r6.count || 0,
+        ok: !r6.error && (r6.count || 0) > 0,
+        note: r6.error?.message,
+      });
+
+      setDiagnostics(results);
+
+      const firstZero = results.find(r => !r.ok);
+      if (firstZero) {
+        toast({
+          title: 'Diagnostic complete — issue found',
+          description: `Bottleneck: ${firstZero.label}`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({ title: 'Diagnostic complete', description: 'All filters return results — search should work.' });
+      }
+    } catch (err: any) {
+      toast({ title: 'Diagnostic failed', description: err.message, variant: 'destructive' });
+    } finally {
+      setDiagnosing(false);
+    }
+  };
 
   useEffect(() => {
     if (open) {
@@ -178,6 +277,45 @@ export function EditSaleDialog({
           <p className="text-sm text-muted-foreground">
             Linking a device will automatically calculate profit based on cost price.
           </p>
+
+          {/* Diagnostic panel */}
+          <div className="border-t border-border/40 pt-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Search not working?</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={runDiagnostic}
+                disabled={diagnosing}
+              >
+                <Stethoscope className="h-3.5 w-3.5" />
+                {diagnosing ? 'Running…' : 'Run search diagnostic'}
+              </Button>
+            </div>
+            {diagnostics && (
+              <div className="space-y-1 bg-muted/30 border border-border/40 rounded-md p-2 text-xs">
+                {diagnostics.map((r, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    {r.ok ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-success mt-0.5 shrink-0" />
+                    ) : r.count === 0 ? (
+                      <XCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="h-3.5 w-3.5 text-warning mt-0.5 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between gap-2">
+                        <span className="text-foreground">{r.label}</span>
+                        <span className="font-mono text-muted-foreground shrink-0">{r.count}</span>
+                      </div>
+                      {r.note && <div className="text-muted-foreground mt-0.5">{r.note}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <DialogFooter>
