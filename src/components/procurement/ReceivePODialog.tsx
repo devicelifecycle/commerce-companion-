@@ -548,8 +548,8 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{group.description}</span>
                       {group.item_type === 'expense' && (
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-[hsl(var(--accent))] bg-[hsl(var(--accent)/.1)] border-[hsl(var(--accent)/.25)]">
-                          <Receipt className="h-2.5 w-2.5" /> Expense
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 gap-1 text-muted-foreground">
+                          Legacy — skipped
                         </Badge>
                       )}
                       {group.item_type === 'repair_parts' && (
