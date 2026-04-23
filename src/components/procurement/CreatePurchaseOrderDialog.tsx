@@ -183,6 +183,20 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
     setLineItems(prev => prev.filter(li => li.id !== id));
   };
   const updateLine = (id: string, updates: Partial<POLineItem>) => {
+    // Guard: if a user just linked this line to an existing product/part, make
+    // sure no OTHER line on this PO is already linked to the same id. Two
+    // lines for the same SKU would create accounting + receiving ambiguity.
+    if (updates.product_id) {
+      const dup = lineItems.find(li => li.id !== id && li.product_id === updates.product_id);
+      if (dup) {
+        toast.error(
+          `"${updates.description || dup.description}" is already on line ${lineItems.indexOf(dup) + 1}. Increase that line's quantity instead.`,
+        );
+        // Clear the attempted match so the user can re-type a different item
+        setLineItems(prev => prev.map(li => li.id === id ? { ...li, product_id: null, description: '' } : li));
+        return;
+      }
+    }
     setLineItems(prev => prev.map(li => li.id === id ? { ...li, ...updates } : li));
   };
 
