@@ -22,12 +22,11 @@ import {
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { emitRefetch } from '@/hooks/useDataRefetch';
-import { ClipboardList, Plus, Trash2, ChevronsUpDown, Check, Package, Wrench, Receipt, Info } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, Package, Wrench, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import { ProductSearchCombobox, type ProductOption } from '@/components/inventory/ProductSearchCombobox';
-import { RepairPartSearchCombobox, type RepairPartCatalogOption } from '@/components/inventory/RepairPartSearchCombobox';
 import { SupplierSearchCombobox } from '@/components/suppliers/SupplierSearchCombobox';
+import { ProductFreeTextCombobox } from '@/components/procurement/ProductFreeTextCombobox';
 
 interface CreatePurchaseOrderDialogProps {
   open: boolean;
