@@ -47,7 +47,7 @@ interface Company {
 }
 
 type TaxStatus = 'zero_rated' | 'gst_paid' | 'hst_paid' | 'tax_inclusive' | 'gst_pst';
-type ItemType = 'inventory' | 'product' | 'repair_parts' | 'expense';
+type ItemType = 'inventory' | 'product' | 'repair_parts';
 
 const TAX_OPTIONS: { value: TaxStatus; label: string }[] = [
   { value: 'zero_rated', label: 'Zero-Rated' },
@@ -58,10 +58,9 @@ const TAX_OPTIONS: { value: TaxStatus; label: string }[] = [
 ];
 
 const ITEM_TYPE_CONFIG: { value: ItemType; label: string; icon: typeof Package; color: string; description: string }[] = [
-  { value: 'inventory', label: 'Device', icon: Package, color: 'text-[hsl(var(--info))]', description: 'Serialized items (phones, laptops, tablets)' },
-  { value: 'product', label: 'Product', icon: Package, color: 'text-[hsl(var(--success))]', description: 'Bulk/generic items added to product stock' },
-  { value: 'repair_parts', label: 'Repair Parts', icon: Wrench, color: 'text-[hsl(var(--warning))]', description: 'Added to repair parts inventory' },
-  { value: 'expense', label: 'Expense', icon: Receipt, color: 'text-[hsl(var(--accent))]', description: 'Recorded as expense, not inventory' },
+  { value: 'inventory', label: 'Device', icon: Package, color: 'text-[hsl(var(--info))]', description: 'Serialized items (phones, laptops, tablets) — entered at Receive time with IMEI/serial' },
+  { value: 'product', label: 'Product', icon: Package, color: 'text-[hsl(var(--success))]', description: 'Bulk/generic items. Type a name; if it matches an existing product the SKU will be reused.' },
+  { value: 'repair_parts', label: 'Repair Parts', icon: Wrench, color: 'text-[hsl(var(--warning))]', description: 'Parts inventory. Type a name; existing parts will be suggested to avoid duplicate SKUs.' },
 ];
 
 function calcTax(unitCost: number, quantity: number, taxStatus: TaxStatus) {
