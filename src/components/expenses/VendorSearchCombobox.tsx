@@ -55,7 +55,7 @@ export function VendorSearchCombobox({
     setLoading(true);
     setErrorMsg(null);
     try {
-      let vq = supabase.from('vendors').select('id, name, category').eq('is_active', true);
+      let vq = supabase.from('vendors').select('id, name, category');
       if (effectiveCompanyId) {
         vq = vq.or(`company_id.eq.${effectiveCompanyId},company_id.is.null`);
       }
