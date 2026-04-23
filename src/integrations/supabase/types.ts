@@ -2563,6 +2563,7 @@ export type Database = {
           pst_qst_amount: number | null
           purchase_order_id: string
           quantity: number
+          sku: string | null
           total_cost: number
           unit_cost: number
         }
@@ -2577,6 +2578,7 @@ export type Database = {
           pst_qst_amount?: number | null
           purchase_order_id: string
           quantity?: number
+          sku?: string | null
           total_cost: number
           unit_cost: number
         }
@@ -2591,6 +2593,7 @@ export type Database = {
           pst_qst_amount?: number | null
           purchase_order_id?: string
           quantity?: number
+          sku?: string | null
           total_cost?: number
           unit_cost?: number
         }
