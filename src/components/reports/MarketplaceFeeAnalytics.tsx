@@ -12,6 +12,10 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend, PieChart, Pie, Cell,
 } from 'recharts';
+import {
+  getChannelKey, getChannelLabel, getChannelColor, compareChannels,
+  CHANNEL_DISPLAY_ORDER,
+} from '@/lib/marketplaceAccounts';
 
 interface MarketplaceFeeAnalyticsProps {
   companyView?: 'consolidated' | string;
@@ -21,6 +25,7 @@ interface SaleRecord {
   id: string;
   order_number: string;
   marketplace: string;
+  marketplace_account: string | null;
   sale_price: number;
   shipping_cost: number;
   marketplace_fees: number;
@@ -31,19 +36,9 @@ interface SaleRecord {
   is_marketplace_remitted: boolean | null;
 }
 
-const MARKETPLACE_LABELS: Record<string, string> = {
-  amazon: 'Amazon',
-  bestbuy: 'Best Buy',
-  shopify: 'Shopify',
-  other: 'Manual/Direct',
-};
-
-const MARKETPLACE_COLORS: Record<string, string> = {
-  amazon: 'hsl(var(--chart-1))',
-  bestbuy: 'hsl(var(--chart-2))',
-  shopify: 'hsl(var(--chart-3))',
-  other: 'hsl(var(--chart-4))',
-};
+// Channels surfaced in the trend / pie / breakdown widgets. Best Buy is split
+// into its TGW and VES sub-accounts; everything else is the bare marketplace.
+const TRACKED_CHANNELS = ['amazon', 'shopify', 'bestbuy_tgw', 'bestbuy_ves'] as const;
 
 const PIE_COLORS = ['hsl(var(--primary))', 'hsl(var(--destructive))', 'hsl(221, 83%, 53%)', 'hsl(142, 71%, 45%)'];
 
@@ -65,7 +60,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
 
       let query = supabase
         .from('sales')
-        .select('id, order_number, marketplace, sale_price, shipping_cost, marketplace_fees, tax_amount, profit, sale_date, company_id, is_marketplace_remitted')
+        .select('id, order_number, marketplace, marketplace_account, sale_price, shipping_cost, marketplace_fees, tax_amount, profit, sale_date, company_id, is_marketplace_remitted')
         .gte('sale_date', startDate.toISOString())
         .order('sale_date', { ascending: false })
         .limit(5000);
