@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Download, TrendingUp, DollarSign, Percent, ShoppingCart, Calendar } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth, startOfQuarter, startOfYear } from 'date-fns';
+import { getChannelKey, getChannelLabel, compareChannels } from '@/lib/marketplaceAccounts';
 
 interface MarketplaceMetrics {
   marketplace: string;
@@ -55,10 +56,11 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
         start = startOfMonth(subMonths(now, months - 1));
       }
 
-      // Fetch sales with device cost
+      // Fetch sales with device cost (include marketplace_account so we can
+      // split Best Buy into TGW vs VES channels).
       let salesQuery = supabase
         .from('sales')
-        .select('marketplace, sale_price, shipping_cost, marketplace_fees, profit, device_id, company_id')
+        .select('marketplace, marketplace_account, sale_price, shipping_cost, marketplace_fees, profit, device_id, company_id')
         .gte('sale_date', start.toISOString())
         .lte('sale_date', end.toISOString())
         .limit(5000);
@@ -80,11 +82,11 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
         devices?.forEach(d => { deviceCosts[d.id] = Number(d.cost_price); });
       }
 
-      // Aggregate by marketplace
+      // Aggregate by channel (Best Buy splits into TGW / VES).
       const marketplaceMap: Record<string, MarketplaceMetrics> = {};
-      
+
       sales?.forEach(sale => {
-        const mp = sale.marketplace;
+        const mp = getChannelKey(sale.marketplace, sale.marketplace_account as any);
         if (!marketplaceMap[mp]) {
           marketplaceMap[mp] = {
             marketplace: mp,
@@ -113,8 +115,11 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
         return m;
       });
 
-      // Sort by revenue desc
-      result.sort((a, b) => b.revenue - a.revenue);
+      // Sort by canonical channel order, then by revenue desc within ties
+      result.sort((a, b) => {
+        const c = compareChannels(a.marketplace, b.marketplace);
+        return c !== 0 ? c : b.revenue - a.revenue;
+      });
       setMetrics(result);
     } catch (error) {
       console.error('Error fetching marketplace accounting data:', error);
@@ -126,12 +131,8 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', minimumFractionDigits: 0 }).format(value);
 
-  const marketplaceLabels: Record<string, string> = {
-    amazon: 'Amazon',
-    bestbuy: 'Best Buy',
-    shopify: 'Shopify',
-    manual: 'Manual',
-  };
+  const marketplaceLabels: Record<string, string> = {};
+  metrics.forEach(m => { marketplaceLabels[m.marketplace] = getChannelLabel(m.marketplace); });
 
   const totals = metrics.reduce(
     (acc, m) => ({
@@ -147,7 +148,7 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
   const totalMargin = totals.revenue > 0 ? (totals.grossProfit / totals.revenue) * 100 : 0;
 
   const chartData = metrics.map(m => ({
-    name: marketplaceLabels[m.marketplace] || m.marketplace,
+    name: getChannelLabel(m.marketplace),
     Revenue: m.revenue,
     COGS: m.cogs,
     Fees: m.fees,
@@ -158,7 +159,7 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
   const handleExport = () => {
     const header = 'Marketplace,Revenue,COGS,Fees,Shipping,Gross Profit,Margin %,Orders,Avg Order';
     const rows = metrics.map(m =>
-      `${marketplaceLabels[m.marketplace] || m.marketplace},${m.revenue.toFixed(2)},${m.cogs.toFixed(2)},${m.fees.toFixed(2)},${m.shipping.toFixed(2)},${m.grossProfit.toFixed(2)},${m.grossMargin.toFixed(1)}%,${m.orderCount},${m.avgOrderValue.toFixed(2)}`
+      `${getChannelLabel(m.marketplace)},${m.revenue.toFixed(2)},${m.cogs.toFixed(2)},${m.fees.toFixed(2)},${m.shipping.toFixed(2)},${m.grossProfit.toFixed(2)},${m.grossMargin.toFixed(1)}%,${m.orderCount},${m.avgOrderValue.toFixed(2)}`
     );
     const csv = [header, ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -291,7 +292,7 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
               {metrics.map(m => (
                 <TableRow key={m.marketplace}>
                   <TableCell className="font-medium">
-                    {marketplaceLabels[m.marketplace] || m.marketplace}
+                    {getChannelLabel(m.marketplace)}
                   </TableCell>
                   <TableCell className="text-right">{formatCurrency(m.revenue)}</TableCell>
                   <TableCell className="text-right text-destructive">{formatCurrency(m.cogs)}</TableCell>
