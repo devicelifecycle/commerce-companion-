@@ -385,6 +385,18 @@ export function SalesDashboard() {
             <SelectItem value="monthly">Monthly</SelectItem>
           </SelectContent>
         </Select>
+
+        <Select value={marketplaceFilter} onValueChange={setMarketplaceFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All marketplaces" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Marketplaces</SelectItem>
+            {MARKETPLACE_FILTER_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Metrics Cards */}
