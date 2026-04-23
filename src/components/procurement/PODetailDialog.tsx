@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { FileText, DollarSign, Package, Plus, User, Calendar, Building2, Truck } from 'lucide-react';
+import { FileText, DollarSign, Package, Plus, User, Calendar, Building2, Truck, PackageCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { emitRefetch } from '@/hooks/useDataRefetch';
 
@@ -28,9 +28,11 @@ interface PODetailDialogProps {
   onUpdate: () => void;
   poId: string | null;
   canManage: boolean;
+  /** Opens the Receive Items / GRN flow for this PO. Closes this dialog first. */
+  onInitiateGRN?: (poId: string) => void;
 }
 
-export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }: PODetailDialogProps) {
+export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, onInitiateGRN }: PODetailDialogProps) {
   const { user } = useAuth();
   const [po, setPO] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
