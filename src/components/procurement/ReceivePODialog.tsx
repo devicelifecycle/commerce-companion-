@@ -639,7 +639,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
                               </Select>
                             ) : (
                               <span className="text-xs text-muted-foreground">
-                                {group.item_type === 'expense' ? 'Accept → Expense' : group.item_type === 'repair_parts' ? 'Accept → Repair Parts' : 'Accept → Inventory'}
+                                {group.item_type === 'expense' ? 'Legacy expense — will be skipped' : group.item_type === 'repair_parts' ? 'Accept → Repair Parts' : 'Accept → Inventory'}
                               </span>
                             )}
                           </TableCell>
