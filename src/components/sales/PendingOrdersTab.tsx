@@ -35,9 +35,11 @@ interface SuspenseSale {
 
 const STATUS_TABS = [
   { value: 'ready_to_post', label: 'Ready to Post', icon: CheckCircle2, tone: 'text-emerald-500' },
-  { value: 'pending_review', label: 'Pending Review', icon: Clock, tone: 'text-amber-500' },
-  { value: 'needs_review', label: 'Needs Action', icon: AlertTriangle, tone: 'text-red-500' },
+  { value: 'needs_review', label: 'Needs Review', icon: AlertTriangle, tone: 'text-amber-500' },
 ] as const;
+
+// Both pending_review and needs_review map to the unified "Needs Review" bucket.
+const REVIEW_STATUSES = ['pending_review', 'needs_review'] as const;
 
 interface Props {
   onCountsChange?: (total: number) => void;
@@ -85,16 +87,19 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
 
   const counts = useMemo(() => ({
     ready_to_post: sales.filter(s => s.accounting_status === 'ready_to_post').length,
-    pending_review: sales.filter(s => s.accounting_status === 'pending_review').length,
-    needs_review: sales.filter(s => s.accounting_status === 'needs_review').length,
+    needs_review: sales.filter(s => REVIEW_STATUSES.includes(s.accounting_status as any)).length,
   }), [sales]);
 
   useEffect(() => {
-    onCountsChange?.(counts.ready_to_post + counts.pending_review + counts.needs_review);
+    onCountsChange?.(counts.ready_to_post + counts.needs_review);
   }, [counts, onCountsChange]);
 
   const visibleSales = useMemo(
-    () => sales.filter(s => s.accounting_status === activeTab),
+    () => sales.filter(s =>
+      activeTab === 'needs_review'
+        ? REVIEW_STATUSES.includes(s.accounting_status as any)
+        : s.accounting_status === activeTab
+    ),
     [sales, activeTab]
   );
 
@@ -266,7 +271,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
       </div>
 
       {/* Status cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {STATUS_TABS.map(tab => {
           const Icon = tab.icon;
           return (
