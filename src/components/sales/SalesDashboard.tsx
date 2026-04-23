@@ -257,23 +257,26 @@ export function SalesDashboard() {
     });
   }, [sales, dateRange, groupBy]);
 
-  const marketplaceData = useMemo((): MarketplaceData[] => {
-    const byMarketplace: Record<string, { value: number; count: number }> = {};
-    
+  const marketplaceData = useMemo((): (MarketplaceData & { channel: string })[] => {
+    const byChannel: Record<string, { value: number; count: number }> = {};
+
     sales.forEach(sale => {
-      const mp = sale.marketplace || 'other';
-      if (!byMarketplace[mp]) {
-        byMarketplace[mp] = { value: 0, count: 0 };
+      const ck = getChannelKey(sale.marketplace, sale.marketplace_account as any);
+      if (!byChannel[ck]) {
+        byChannel[ck] = { value: 0, count: 0 };
       }
-      byMarketplace[mp].value += sale.sale_price || 0;
-      byMarketplace[mp].count += 1;
+      byChannel[ck].value += sale.sale_price || 0;
+      byChannel[ck].count += 1;
     });
 
-    return Object.entries(byMarketplace).map(([name, data]) => ({
-      name: name.charAt(0).toUpperCase() + name.slice(1),
-      value: data.value,
-      count: data.count,
-    }));
+    return Object.entries(byChannel)
+      .sort(([a], [b]) => compareChannels(a, b))
+      .map(([channel, data]) => ({
+        channel,
+        name: getChannelLabel(channel),
+        value: data.value,
+        count: data.count,
+      }));
   }, [sales]);
 
   const provinceData = useMemo((): ProvinceData[] => {
