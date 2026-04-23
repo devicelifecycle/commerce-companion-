@@ -277,6 +277,45 @@ export function EditSaleDialog({
           <p className="text-sm text-muted-foreground">
             Linking a device will automatically calculate profit based on cost price.
           </p>
+
+          {/* Diagnostic panel */}
+          <div className="border-t border-border/40 pt-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Search not working?</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={runDiagnostic}
+                disabled={diagnosing}
+              >
+                <Stethoscope className="h-3.5 w-3.5" />
+                {diagnosing ? 'Running…' : 'Run search diagnostic'}
+              </Button>
+            </div>
+            {diagnostics && (
+              <div className="space-y-1 bg-muted/30 border border-border/40 rounded-md p-2 text-xs">
+                {diagnostics.map((r, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    {r.ok ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+                    ) : r.count === 0 ? (
+                      <XCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
+                    ) : (
+                      <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 mt-0.5 shrink-0" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between gap-2">
+                        <span className="text-foreground">{r.label}</span>
+                        <span className="font-mono text-muted-foreground shrink-0">{r.count}</span>
+                      </div>
+                      {r.note && <div className="text-muted-foreground mt-0.5">{r.note}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <DialogFooter>
