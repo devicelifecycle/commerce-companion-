@@ -494,8 +494,8 @@ export function SalesDashboard() {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {marketplaceData.map((entry, index) => (
-                      <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+                    {marketplaceData.map((entry) => (
+                      <Cell key={entry.channel} fill={getChannelColor(entry.channel)} />
                     ))}
                   </Pie>
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
