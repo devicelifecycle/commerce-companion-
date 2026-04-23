@@ -244,26 +244,13 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
         if (!poItem) continue;
 
         if (item.item_type === 'expense') {
-          // Route to expenses table — tools/supplies not for inventory
-          const totalCost = poItem.unit_cost * item.qty;
-          const gst = (poItem.gst_hst_amount || 0) * (item.qty / poItem.quantity);
-          const pst = (poItem.pst_qst_amount || 0) * (item.qty / poItem.quantity);
-          await supabase.from('expenses').insert({
-            description: `${item.description} (PO ${po.po_number})`,
-            amount: totalCost,
-            gst_hst_amount: parseFloat(gst.toFixed(2)),
-            pst_amount: parseFloat(pst.toFixed(2)),
-            category: 'supplies' as any,
-            subcategory: 'Tools & Equipment',
-            vendor: po.supplier_name,
-            expense_date: receivedDate,
-            company_id: po.company_id,
-            created_by: user.id,
-            payment_method: 'credit',
-            notes: `Auto-created from PO ${po.po_number}`,
-          });
-          toast.info(`Expense recorded for ${item.description}`);
-        } else if (item.item_type === 'repair_parts') {
+          // Legacy data only — the Expense PO type was removed. Skip silently
+          // so receiving still completes; the user can record the cost
+          // manually under Expenses if needed.
+          console.warn(`[ReceivePO] Skipping legacy expense line "${item.description}" — Expense PO type is deprecated.`);
+          continue;
+        }
+        if (item.item_type === 'repair_parts') {
           // Route to repair_parts table — match by normalized key first, then ilike name
           const inputKey = item.description.toLowerCase().replace(/[^a-z0-9]/g, '');
           
