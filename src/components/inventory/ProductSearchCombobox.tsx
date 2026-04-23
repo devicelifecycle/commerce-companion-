@@ -145,7 +145,13 @@ export function ProductSearchCombobox({
         <Command shouldFilter={false}>
           <CommandInput placeholder="Search name, SKU, barcode..." value={search} onValueChange={setSearch} />
           <CommandList>
-            <CommandEmpty>{loading ? 'Loading products...' : 'No products found.'}</CommandEmpty>
+            <CommandEmpty>
+              {loading
+                ? 'Loading products…'
+                : errorMsg
+                  ? `Search error: ${errorMsg}`
+                  : 'No products found. Try a different search term.'}
+            </CommandEmpty>
             <CommandGroup heading={`${filtered.length} product${filtered.length !== 1 ? 's' : ''} available`}>
               {filtered.slice(0, 50).map((product) => (
                 <CommandItem
