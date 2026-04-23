@@ -15,6 +15,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { PendingOrderDialog } from '@/components/sales/PendingOrderDialog';
 import { emitRefetch } from '@/hooks/useDataRefetch';
+import { MarketplaceSyncStatus } from '@/components/sales/MarketplaceSyncStatus';
 
 interface SuspenseSale {
   id: string;
@@ -187,6 +188,7 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
 
   return (
     <div className="space-y-6">
+      <MarketplaceSyncStatus />
       {/* Action bar */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <p className="text-sm text-muted-foreground max-w-2xl">
