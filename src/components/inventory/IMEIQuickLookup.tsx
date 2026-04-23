@@ -55,7 +55,11 @@ export function IMEIQuickLookup({ onSelectDevice }: IMEIQuickLookupProps) {
           .select('id, brand, model, imei, sku, status, condition, cosmetic_grade, cost_price, sale_price, storage, color, fulfillment_channel, company_id, suppliers(name)')
           .or(`imei.ilike.%${query}%,sku.ilike.%${query}%,model.ilike.%${query}%`)
           .limit(8);
-        if (selectedCompany) q = q.eq('company_id', selectedCompany.id);
+        // Unified scope rule: only narrow to a company when one is explicitly
+        // selected. In consolidated view, search across all companies the
+        // user can see (RLS still applies). Keeps lookups consistent with
+        // every other inventory combobox.
+        if (selectedCompany?.id) q = q.eq('company_id', selectedCompany.id);
         const { data } = await q;
         setResults((data as any) || []);
         setIsOpen(true);

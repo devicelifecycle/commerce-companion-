@@ -767,7 +767,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
                             value={selectedDeviceId}
                             onSelect={(device) => setSelectedDeviceId(device?.id ?? null)}
                             companyId={sale.company_id || undefined}
-                            statusFilter={['in_stock', 'hold_for_refurbishment', 'in_repair', 'refurbished']}
+                            /* statusFilter omitted — uses unified INVENTORY_LOOKUP_STATUSES default. */
                           />
                         </TabsContent>
                         <TabsContent value="product" className="mt-3">
