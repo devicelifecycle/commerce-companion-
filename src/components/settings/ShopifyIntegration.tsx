@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { ShoppingBag, RefreshCw, Loader2, CheckCircle2, XCircle, Clock, ExternalLink, Package, Users, DollarSign } from 'lucide-react';
+import { MarketplaceSyncStatus } from '@/components/sales/MarketplaceSyncStatus';
 
 interface SyncResult {
   success: boolean;
@@ -94,6 +95,7 @@ export function ShopifyIntegration() {
 
   return (
     <div className="space-y-6">
+      <MarketplaceSyncStatus />
       {/* Connection Status */}
       <Card>
         <CardHeader>
