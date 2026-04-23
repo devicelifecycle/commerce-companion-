@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Download, AlertTriangle, CheckCircle2, Calendar, Search } from 'lucide-react';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
 import { TransactionAuditTrail } from './TransactionAuditTrail';
+import { getChannelKey, getChannelLabel } from '@/lib/marketplaceAccounts';
 
 interface ReconciliationRow {
   id: string;
@@ -62,7 +63,7 @@ export function MarketplaceReconciliation({ companyView = 'consolidated' }: Mark
       // Fetch sales
       let salesQuery = supabase
         .from('sales')
-        .select('id, order_number, marketplace, sale_date, sale_price, marketplace_fees, shipping_cost, profit, device_id, company_id')
+        .select('id, order_number, marketplace, marketplace_account, sale_date, sale_price, marketplace_fees, shipping_cost, profit, device_id, company_id')
         .gte('sale_date', start.toISOString())
         .lte('sale_date', end.toISOString())
         .order('sale_date', { ascending: false });
@@ -117,7 +118,7 @@ export function MarketplaceReconciliation({ companyView = 'consolidated' }: Mark
         return {
           id: sale.id,
           orderNumber: sale.order_number,
-          marketplace: sale.marketplace,
+          marketplace: getChannelKey(sale.marketplace, (sale as any).marketplace_account),
           saleDate: sale.sale_date,
           salePrice,
           fees,
@@ -151,9 +152,8 @@ export function MarketplaceReconciliation({ companyView = 'consolidated' }: Mark
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(value);
 
-  const marketplaceLabels: Record<string, string> = {
-    amazon: 'Amazon', bestbuy: 'Best Buy', shopify: 'Shopify', manual: 'Manual',
-  };
+  // Channel labels are resolved per-row via getChannelLabel() so Best Buy
+  // splits into its TGW / VES sub-accounts.
 
   const filteredRows = filterStatus === 'issues' ? rows.filter(r => r.discrepancy) : rows;
 
@@ -287,7 +287,7 @@ export function MarketplaceReconciliation({ companyView = 'consolidated' }: Mark
                 <TableRow key={row.id} className={row.discrepancy ? 'bg-destructive/5' : ''}>
                   <TableCell className="font-mono text-sm">{row.orderNumber}</TableCell>
                   <TableCell>
-                    <Badge variant="outline">{marketplaceLabels[row.marketplace] || row.marketplace}</Badge>
+                    <Badge variant="outline">{getChannelLabel(row.marketplace)}</Badge>
                   </TableCell>
                   <TableCell className="text-sm">{format(new Date(row.saleDate), 'MMM dd, yyyy')}</TableCell>
                   <TableCell className="text-right">{formatCurrency(row.salePrice)}</TableCell>
