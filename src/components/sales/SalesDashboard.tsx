@@ -98,7 +98,7 @@ export function SalesDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedCompany, dateRange]);
+  }, [selectedCompany, dateRange, marketplaceFilter]);
 
   const getDateRange = (range: DateRange): { start: Date; end: Date; previousStart: Date; previousEnd: Date } => {
     const now = new Date();
