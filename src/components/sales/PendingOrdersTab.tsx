@@ -344,10 +344,72 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
 
       {/* Table */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            {STATUS_TABS.find(t => t.value === activeTab)?.label} ({visibleSales.length})
-          </CardTitle>
+        <CardHeader className="space-y-3">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <CardTitle className="text-base">
+              {STATUS_TABS.find(t => t.value === activeTab)?.label}
+              <span className="text-muted-foreground font-normal ml-2">
+                ({totalCount.toLocaleString()})
+              </span>
+            </CardTitle>
+          </div>
+
+          {/* Filter bar */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="relative flex-1 min-w-[220px] max-w-md">
+              <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search order #, customer, reason, province..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 h-9"
+              />
+              {searchTerm && (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-7 w-7 absolute right-1 top-1/2 -translate-y-1/2"
+                  onClick={() => setSearchTerm('')}
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+
+            <Select value={marketplaceFilter} onValueChange={setMarketplaceFilter}>
+              <SelectTrigger className="h-9 w-[160px]">
+                <SelectValue placeholder="Marketplace" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All marketplaces</SelectItem>
+                {marketplaceOptions.map(mp => (
+                  <SelectItem key={mp} value={mp}>{mp}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={linkFilter} onValueChange={setLinkFilter}>
+              <SelectTrigger className="h-9 w-[150px]">
+                <SelectValue placeholder="Link status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All link states</SelectItem>
+                <SelectItem value="linked">Linked to device</SelectItem>
+                <SelectItem value="manual">Manual cost</SelectItem>
+                <SelectItem value="unlinked">Unlinked</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {(searchTerm || marketplaceFilter !== 'all' || linkFilter !== 'all') && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setSearchTerm(''); setMarketplaceFilter('all'); setLinkFilter('all'); }}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -356,75 +418,89 @@ export function PendingOrdersTab({ onCountsChange }: Props) {
             </div>
           ) : visibleSales.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground text-sm">
-              No orders in this state.
+              {tabSales.length === 0 ? 'No orders in this state.' : 'No orders match your filters.'}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8">
-                      <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
-                    </TableHead>
-                    <TableHead>Order</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Marketplace</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                    <TableHead>Province</TableHead>
-                    <TableHead>Device</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead className="w-8"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {visibleSales.map(s => (
-                    <TableRow
-                      key={s.id}
-                      className={`cursor-pointer ${selected.has(s.id) ? 'bg-muted/50' : ''}`}
-                      onClick={() => openSale(s)}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggleOne(s.id)} />
-                      </TableCell>
-                      <TableCell className="font-mono text-xs">{s.order_number}</TableCell>
-                      <TableCell className="text-xs">{new Date(s.sale_date).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs">{s.marketplace}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        ${Number(s.sale_price).toFixed(2)}
-                      </TableCell>
-                      <TableCell>
-                        {s.shipping_province ? (
-                          <Badge variant={s.province_inferred ? 'secondary' : 'outline'} className="text-xs">
-                            {s.shipping_province}{s.province_inferred ? ' *' : ''}
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {s.device_id ? (
-                          <Badge className="text-xs"><Link2 className="h-3 w-3 mr-1" />Linked</Badge>
-                        ) : s.manual_cost ? (
-                          <Badge variant="secondary" className="text-xs">Manual cost</Badge>
-                        ) : (
-                          <Badge variant="destructive" className="text-xs">Unlinked</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
-                        {s.review_reason || (s.accounting_status === 'ready_to_post' ? 'All gates passed' : '—')}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Button size="icon" variant="ghost" onClick={() => openSale(s)} title="Open order">
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                      </TableCell>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-8">
+                        <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                      </TableHead>
+                      <TableHead>Order</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Marketplace</TableHead>
+                      <TableHead className="text-right">Total</TableHead>
+                      <TableHead>Province</TableHead>
+                      <TableHead>Device</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead className="w-8"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {visibleSales.map(s => (
+                      <TableRow
+                        key={s.id}
+                        className={`cursor-pointer ${selected.has(s.id) ? 'bg-muted/50' : ''}`}
+                        onClick={() => openSale(s)}
+                      >
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Checkbox checked={selected.has(s.id)} onCheckedChange={() => toggleOne(s.id)} />
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">{s.order_number}</TableCell>
+                        <TableCell className="text-xs">{new Date(s.sale_date).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="text-xs">{s.marketplace}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          ${Number(s.sale_price).toFixed(2)}
+                        </TableCell>
+                        <TableCell>
+                          {s.shipping_province ? (
+                            <Badge variant={s.province_inferred ? 'secondary' : 'outline'} className="text-xs">
+                              {s.shipping_province}{s.province_inferred ? ' *' : ''}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {s.device_id ? (
+                            <Badge className="text-xs"><Link2 className="h-3 w-3 mr-1" />Linked</Badge>
+                          ) : s.manual_cost ? (
+                            <Badge variant="secondary" className="text-xs">Manual cost</Badge>
+                          ) : (
+                            <Badge variant="destructive" className="text-xs">Unlinked</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-xs truncate">
+                          {s.review_reason || (s.accounting_status === 'ready_to_post' ? 'All gates passed' : '—')}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Button size="icon" variant="ghost" onClick={() => openSale(s)} title="Open order">
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination */}
+              <DataTablePagination
+                pagination={{
+                  page: safePage,
+                  pageSize,
+                  totalCount,
+                  totalPages,
+                }}
+                onPageChange={setPage}
+                onPageSizeChange={(n) => { setPageSize(n); setPage(0); }}
+              />
+            </>
           )}
         </CardContent>
       </Card>
