@@ -12,7 +12,8 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Search } from 'lucide-react';
+import { useCompany } from '@/contexts/CompanyContext';
+import { Search, Stethoscope, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 
 interface AvailableDevice {
   id: string;
