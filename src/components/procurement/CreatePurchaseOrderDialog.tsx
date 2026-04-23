@@ -47,7 +47,9 @@ interface Company {
 }
 
 type TaxStatus = 'zero_rated' | 'gst_paid' | 'hst_paid' | 'tax_inclusive' | 'gst_pst';
-type ItemType = 'inventory' | 'product' | 'repair_parts';
+// Devices are added through the dedicated Inventory Import section, NOT through POs.
+// Purchase Orders are limited to bulk products and repair parts.
+type ItemType = 'product' | 'repair_parts';
 
 const TAX_OPTIONS: { value: TaxStatus; label: string }[] = [
   { value: 'zero_rated', label: 'Zero-Rated' },
