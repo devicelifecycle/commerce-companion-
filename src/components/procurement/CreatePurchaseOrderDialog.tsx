@@ -349,6 +349,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
     if (!formData.supplier_id) { toast.error('Select a supplier'); return; }
     const validItems = computedLines.filter(li => li.description && li.unit_cost > 0);
     if (validItems.length === 0) { toast.error('Add at least one line item'); return; }
+    if (hasSkuErrors) { toast.error('Fix the highlighted SKU/UPC errors before creating the PO'); return; }
 
     // Duplicate-line guard: prevent two lines pointing at the same product/part
     // (either by matched id, or by case-insensitive name within the same item type).
