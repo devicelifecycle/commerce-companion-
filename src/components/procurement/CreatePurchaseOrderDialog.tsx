@@ -347,7 +347,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
             Create Purchase Order
           </DialogTitle>
           <DialogDescription>
-            Order inventory, repair parts, and tools/supplies from a supplier.
+            Order bulk products and repair parts from a supplier. (Devices are added through Inventory → Import.)
           </DialogDescription>
         </DialogHeader>
 
