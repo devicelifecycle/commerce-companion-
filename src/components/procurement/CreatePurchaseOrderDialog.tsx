@@ -226,6 +226,30 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
     const validItems = computedLines.filter(li => li.description && li.unit_cost > 0);
     if (validItems.length === 0) { toast.error('Add at least one line item'); return; }
 
+    // Duplicate-line guard: prevent two lines pointing at the same product/part
+    // (either by matched id, or by case-insensitive name within the same item type).
+    const seenIds = new Map<string, number>();
+    const seenNames = new Map<string, number>();
+    for (let i = 0; i < validItems.length; i++) {
+      const li = validItems[i];
+      if (li.item_type === 'inventory') continue; // serialized devices can repeat
+      if (li.product_id) {
+        const prev = seenIds.get(li.product_id);
+        if (prev !== undefined) {
+          toast.error(`Lines ${prev + 1} and ${i + 1} reference the same SKU. Combine them into one line with a higher quantity.`);
+          return;
+        }
+        seenIds.set(li.product_id, i);
+      }
+      const nameKey = `${li.item_type}::${li.description.trim().toLowerCase()}`;
+      const prevName = seenNames.get(nameKey);
+      if (prevName !== undefined) {
+        toast.error(`Lines ${prevName + 1} and ${i + 1} have the same item name ("${li.description}"). Combine them into one line.`);
+        return;
+      }
+      seenNames.set(nameKey, i);
+    }
+
     setLoading(true);
     try {
       const { data: po, error: poError } = await supabase.from('purchase_orders').insert({
