@@ -15,7 +15,6 @@ import {
   parseMarketplaceFilter,
   MARKETPLACE_FILTER_OPTIONS,
 } from '@/lib/marketplaceAccounts';
-import { Select as MpSelect, SelectContent as MpSelectContent, SelectItem as MpSelectItem, SelectTrigger as MpSelectTrigger, SelectValue as MpSelectValue } from '@/components/ui/select';
 
 type DateRange = 'today' | '7days' | '30days' | '90days' | 'year' | 'all';
 type GroupBy = 'daily' | 'weekly' | 'monthly';
