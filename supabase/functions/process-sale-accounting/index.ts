@@ -21,10 +21,13 @@ function generateEntryNumber(): string {
   return `AUTO-${date}-${rand}`;
 }
 
-// Account code map: marketplace → account codes (accrual: use AR, not Cash)
+// Account code map: marketplace → account codes
+// Marketplace sales settle directly to the operating bank account (no AR — payouts
+// from Amazon/Shopify/Best Buy don't expose per-order breakdowns we can reconcile).
+// `ar` here is used as the debit/settlement account (Cash for marketplace, true AR for other).
 const ACCOUNT_MAP: Record<string, Record<string, string>> = {
   amazon: {
-    ar: "1050",
+    ar: "1000", // Cash - VES (operating bank)
     revenue: "4000",
     shippingRevenue: "4002",
     taxCollected: "4200",
@@ -34,7 +37,7 @@ const ACCOUNT_MAP: Record<string, Record<string, string>> = {
     inventory: "1100",
   },
   bestbuy: {
-    ar: "1051",
+    ar: "1001", // Cash - TGW (operating bank)
     revenue: "4100",
     shippingRevenue: "4103",
     taxCollected: "4201",
@@ -44,7 +47,7 @@ const ACCOUNT_MAP: Record<string, Record<string, string>> = {
     inventory: "1101",
   },
   shopify: {
-    ar: "1051",
+    ar: "1001", // Cash - TGW (operating bank)
     revenue: "4101",
     shippingRevenue: "4102",
     taxCollected: "4201",
@@ -53,7 +56,17 @@ const ACCOUNT_MAP: Record<string, Record<string, string>> = {
     cogs: "5001",
     inventory: "1101",
   },
-  // Private/storefront/other sales use TGW accounts by default
+  temu: {
+    ar: "1001", // Cash - TGW (operating bank)
+    revenue: "4101",
+    shippingRevenue: "4102",
+    taxCollected: "4201",
+    fees: "6001",
+    shipping: "6101",
+    cogs: "5001",
+    inventory: "1101",
+  },
+  // Private/storefront/other sales — true AR (1051 = Accounts Receivable - TGW)
   other: {
     ar: "1051",
     revenue: "4101",
