@@ -1,0 +1,2 @@
+ALTER TABLE public.purchase_order_items ADD COLUMN IF NOT EXISTS sku text;
+COMMENT ON COLUMN public.purchase_order_items.sku IS 'Optional user-supplied SKU/UPC for new items being created on this PO. Used at GRN time to seed the products/repair_parts row when no existing match was linked.';

@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { FileText, DollarSign, Package, Plus, User, Calendar, Building2, Truck } from 'lucide-react';
+import { FileText, DollarSign, Package, Plus, User, Calendar, Building2, Truck, PackageCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { emitRefetch } from '@/hooks/useDataRefetch';
 
@@ -28,9 +28,11 @@ interface PODetailDialogProps {
   onUpdate: () => void;
   poId: string | null;
   canManage: boolean;
+  /** Opens the Receive Items / GRN flow for this PO. Closes this dialog first. */
+  onInitiateGRN?: (poId: string) => void;
 }
 
-export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }: PODetailDialogProps) {
+export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, onInitiateGRN }: PODetailDialogProps) {
   const { user } = useAuth();
   const [po, setPO] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
@@ -193,7 +195,7 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+          <DialogTitle className="flex items-center gap-2 flex-wrap">
             <FileText className="h-5 w-5" />
             {po.po_number}
             <Badge variant={po.status === 'received' || po.status === 'completed' ? 'default' : 'secondary'} className="capitalize ml-2">
@@ -202,6 +204,15 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }
             <Badge variant={po.payment_status === 'paid' ? 'default' : po.payment_status === 'partial' ? 'outline' : 'secondary'} className="capitalize">
               {po.payment_status}
             </Badge>
+            {canManage && onInitiateGRN && (po.status === 'pending' || po.status === 'partially_received') && (
+              <Button
+                size="sm"
+                className="ml-auto h-7 text-xs"
+                onClick={() => { onInitiateGRN(po.id); onOpenChange(false); }}
+              >
+                <PackageCheck className="h-3.5 w-3.5 mr-1" /> Initiate GRN
+              </Button>
+            )}
           </DialogTitle>
         </DialogHeader>
 
@@ -292,28 +303,44 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage }
           {/* GRNs Tab */}
           <TabsContent value="receiving" className="space-y-3">
             {grns.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No goods received yet</p>
+              <div className="text-center py-8 space-y-3">
+                <p className="text-sm text-muted-foreground">No goods received yet</p>
+                {canManage && onInitiateGRN && (po.status === 'pending' || po.status === 'partially_received') && (
+                  <Button size="sm" onClick={() => { onInitiateGRN(po.id); onOpenChange(false); }}>
+                    <PackageCheck className="h-3.5 w-3.5 mr-1" /> Initiate GRN
+                  </Button>
+                )}
+              </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>GRN #</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Notes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {grns.map(g => (
-                    <TableRow key={g.id}>
-                      <TableCell className="font-medium">{g.grn_number}</TableCell>
-                      <TableCell>{format(new Date(g.received_date), 'MMM d, yyyy')}</TableCell>
-                      <TableCell><Badge variant={g.status === 'completed' ? 'default' : 'secondary'} className="capitalize">{g.status}</Badge></TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{g.notes || '—'}</TableCell>
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>GRN #</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Notes</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {grns.map(g => (
+                      <TableRow key={g.id}>
+                        <TableCell className="font-medium">{g.grn_number}</TableCell>
+                        <TableCell>{format(new Date(g.received_date), 'MMM d, yyyy')}</TableCell>
+                        <TableCell><Badge variant={g.status === 'completed' ? 'default' : 'secondary'} className="capitalize">{g.status}</Badge></TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{g.notes || '—'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {canManage && onInitiateGRN && po.status === 'partially_received' && (
+                  <div className="flex justify-end">
+                    <Button size="sm" variant="outline" onClick={() => { onInitiateGRN(po.id); onOpenChange(false); }}>
+                      <PackageCheck className="h-3.5 w-3.5 mr-1" /> Receive Remaining Items
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
 

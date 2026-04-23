@@ -94,6 +94,8 @@ interface POLineItem {
   item_type: ItemType;
   product_id: string | null;
   matched_sku: string | null;
+  /** User-supplied SKU/UPC for a brand-new item (only used when product_id is null). */
+  new_sku: string;
 }
 
 let poLineCounter = 0;
@@ -108,6 +110,7 @@ function newPOLine(): POLineItem {
     item_type: 'product',
     product_id: null,
     matched_sku: null,
+    new_sku: '',
   };
 }
 
@@ -286,6 +289,9 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
           pst_qst_amount: li.pst,
           total_cost: li.total,
           item_type: li.item_type,
+          // Carry SKU through: matched item reuses its SKU; otherwise use the
+          // user-typed SKU/UPC (if any) so the new product/part is created with it on GRN.
+          sku: li.matched_sku || (li.new_sku.trim() ? li.new_sku.trim() : null),
         }));
         const { error: itemsError } = await supabase.from('purchase_order_items').insert(items);
         if (itemsError) throw itemsError;
@@ -490,23 +496,25 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
                         unit_cost: next.cost != null && next.cost > 0 ? next.cost : item.unit_cost,
                       })}
                     />
-                    {/* SKU column — shows existing SKU when matched, or "New" badge for fresh items */}
+                    {/* SKU column — shows matched SKU; otherwise allows the user to enter a SKU/UPC for the new item */}
                     <div className="min-w-0">
                       {item.matched_sku ? (
                         <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5 truncate max-w-full" title={item.matched_sku}>
                           {item.matched_sku}
                         </Badge>
-                      ) : item.description.trim().length >= 2 ? (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 text-muted-foreground">
-                          Auto on receive
-                        </Badge>
                       ) : (
-                        <span className="text-[10px] text-muted-foreground/60">—</span>
+                        <Input
+                          className="h-8 text-[11px] font-mono px-2"
+                          placeholder="SKU/UPC (optional)"
+                          value={item.new_sku}
+                          onChange={e => updateLine(item.id, { new_sku: e.target.value })}
+                          title="Optional. Leave blank to auto-generate when received."
+                        />
                       )}
                     </div>
                     {/* Type selector */}
                     <div className="w-[90px]">
-                      <Select value={item.item_type} onValueChange={(v: ItemType) => updateLine(item.id, { item_type: v, product_id: null, matched_sku: null })}>
+                      <Select value={item.item_type} onValueChange={(v: ItemType) => updateLine(item.id, { item_type: v, product_id: null, matched_sku: null, new_sku: '' })}>
                         <SelectTrigger className="h-8 text-[11px] px-2">
                           <div className="flex items-center gap-1">
                             <typeConfig.icon className={cn('h-3 w-3 shrink-0', typeConfig.color)} />
