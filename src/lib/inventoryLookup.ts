@@ -5,9 +5,9 @@
  * statuses count as "available" or how company scope is resolved.
  */
 
-import type { Database } from '@/integrations/supabase/types';
 
-type DeviceStatus = Database['public']['Enums']['device_status'];
+
+
 
 /**
  * Canonical list of device statuses that represent a unit physically in
