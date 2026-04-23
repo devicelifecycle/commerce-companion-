@@ -395,7 +395,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
             <TableBody>
               {analytics.marketplaceList.map(m => (
                 <TableRow key={m.marketplace}>
-                  <TableCell className="font-medium">{MARKETPLACE_LABELS[m.marketplace] || m.marketplace}</TableCell>
+                  <TableCell className="font-medium">{getChannelLabel(m.marketplace)}</TableCell>
                   <TableCell className="text-right">{formatCurrency(m.revenue)}</TableCell>
                   <TableCell className="text-right text-destructive font-medium">{formatCurrency(m.fees)}</TableCell>
                   <TableCell className="text-right">
@@ -451,7 +451,7 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
                       <TableCell className="font-mono text-xs">{order.order_number}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-[10px]">
-                          {MARKETPLACE_LABELS[order.marketplace] || order.marketplace}
+                          {getChannelLabel(getChannelKey(order.marketplace, (order as any).marketplace_account))}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm">{new Date(order.sale_date).toLocaleDateString('en-CA')}</TableCell>
