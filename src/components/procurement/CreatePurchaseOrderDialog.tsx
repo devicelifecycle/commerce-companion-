@@ -445,8 +445,9 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
             </div>
 
             {/* Table header */}
-            <div className="hidden md:grid grid-cols-[1fr,auto,70px,90px,100px,80px,36px] gap-2 px-3 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+            <div className="hidden md:grid grid-cols-[1fr,110px,auto,70px,90px,100px,80px,36px] gap-2 px-3 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
               <span>Description</span>
+              <span>SKU</span>
               <span className="w-[90px]">Type</span>
               <span>Qty</span>
               <span>Unit Cost</span>
