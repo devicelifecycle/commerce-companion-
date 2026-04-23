@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { emitRefetch } from '@/hooks/useDataRefetch';
-import { ClipboardList, Plus, Trash2, Package, Wrench, Info } from 'lucide-react';
+import { ClipboardList, Plus, Trash2, Package, Wrench, Info, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { SupplierSearchCombobox } from '@/components/suppliers/SupplierSearchCombobox';
