@@ -303,28 +303,44 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, 
           {/* GRNs Tab */}
           <TabsContent value="receiving" className="space-y-3">
             {grns.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-6">No goods received yet</p>
+              <div className="text-center py-8 space-y-3">
+                <p className="text-sm text-muted-foreground">No goods received yet</p>
+                {canManage && onInitiateGRN && (po.status === 'pending' || po.status === 'partially_received') && (
+                  <Button size="sm" onClick={() => { onInitiateGRN(po.id); onOpenChange(false); }}>
+                    <PackageCheck className="h-3.5 w-3.5 mr-1" /> Initiate GRN
+                  </Button>
+                )}
+              </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>GRN #</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Notes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {grns.map(g => (
-                    <TableRow key={g.id}>
-                      <TableCell className="font-medium">{g.grn_number}</TableCell>
-                      <TableCell>{format(new Date(g.received_date), 'MMM d, yyyy')}</TableCell>
-                      <TableCell><Badge variant={g.status === 'completed' ? 'default' : 'secondary'} className="capitalize">{g.status}</Badge></TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{g.notes || '—'}</TableCell>
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>GRN #</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Notes</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {grns.map(g => (
+                      <TableRow key={g.id}>
+                        <TableCell className="font-medium">{g.grn_number}</TableCell>
+                        <TableCell>{format(new Date(g.received_date), 'MMM d, yyyy')}</TableCell>
+                        <TableCell><Badge variant={g.status === 'completed' ? 'default' : 'secondary'} className="capitalize">{g.status}</Badge></TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{g.notes || '—'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {canManage && onInitiateGRN && po.status === 'partially_received' && (
+                  <div className="flex justify-end">
+                    <Button size="sm" variant="outline" onClick={() => { onInitiateGRN(po.id); onOpenChange(false); }}>
+                      <PackageCheck className="h-3.5 w-3.5 mr-1" /> Receive Remaining Items
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
 
