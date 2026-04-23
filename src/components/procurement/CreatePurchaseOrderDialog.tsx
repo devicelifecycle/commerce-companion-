@@ -792,9 +792,15 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
           </div>
         </div>
 
-        <DialogFooter className="pt-2">
+        <DialogFooter className="pt-2 flex-col sm:flex-row gap-2 sm:items-center">
+          {hasSkuErrors && (
+            <div className="flex-1 flex items-center gap-1.5 text-[11px] text-destructive">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              <span>Resolve SKU/UPC errors highlighted on the line items above.</span>
+            </div>
+          )}
           <Button variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={loading}>
+          <Button onClick={handleSubmit} disabled={loading || hasSkuErrors}>
             {loading ? 'Creating...' : 'Create Purchase Order'}
           </Button>
         </DialogFooter>
