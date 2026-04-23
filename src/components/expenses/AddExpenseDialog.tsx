@@ -27,6 +27,7 @@ import {
 import { toast } from 'sonner';
 import { Receipt, Upload, Building2, Calendar, CreditCard } from 'lucide-react';
 import { createExpenseJournalEntry } from '@/lib/accounting/journalAutomation';
+import { VendorSearchCombobox } from '@/components/expenses/VendorSearchCombobox';
 
 interface Subcategory {
   category: string;
@@ -608,10 +609,10 @@ export function AddExpenseDialog({ open, onOpenChange, onSuccess, editExpense }:
             </div>
             <div className="space-y-2">
               <Label>Vendor *</Label>
-              <Input
+              <VendorSearchCombobox
                 value={formData.vendor}
-                onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
-                placeholder="Vendor name"
+                onChange={(name) => setFormData({ ...formData, vendor: name })}
+                companyId={selectedCompany?.id || null}
               />
             </div>
           </div>
