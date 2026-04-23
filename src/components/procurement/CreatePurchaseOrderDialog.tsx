@@ -621,15 +621,65 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
                         <Badge variant="outline" className="font-mono text-[10px] px-1.5 py-0.5 truncate max-w-full" title={item.matched_sku}>
                           {item.matched_sku}
                         </Badge>
-                      ) : (
-                        <Input
-                          className="h-8 text-[11px] font-mono px-2"
-                          placeholder="SKU/UPC (optional)"
-                          value={item.new_sku}
-                          onChange={e => updateLine(item.id, { new_sku: e.target.value })}
-                          title="Optional. Leave blank to auto-generate when received."
-                        />
-                      )}
+                      ) : (() => {
+                        const formatErr = skuFormatErrors[item.id];
+                        const dupLine = skuInPoDuplicates[item.id];
+                        const check = skuChecks[item.id];
+                        const dupExisting = check?.status === 'duplicate' ? check : null;
+                        const errMsg = formatErr
+                          || (dupLine ? `Same SKU as line ${dupLine}` : null)
+                          || (dupExisting ? `Already used by ${dupExisting.where === 'product' ? 'product' : 'repair part'} "${dupExisting.name}"` : null);
+                        const isOk = !errMsg && check?.status === 'ok' && item.new_sku.trim().length >= 3;
+                        return (
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="relative">
+                                  <Input
+                                    className={cn(
+                                      'h-8 text-[11px] font-mono px-2 pr-6',
+                                      errMsg && 'border-destructive focus-visible:ring-destructive',
+                                      isOk && 'border-[hsl(var(--success))] focus-visible:ring-[hsl(var(--success))]',
+                                    )}
+                                    placeholder="SKU/UPC (optional)"
+                                    value={item.new_sku}
+                                    onChange={e => updateLine(item.id, { new_sku: e.target.value })}
+                                    aria-invalid={!!errMsg}
+                                    aria-describedby={errMsg ? `sku-err-${item.id}` : undefined}
+                                  />
+                                  <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                                    {check?.status === 'checking' && (
+                                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                    )}
+                                    {!check || check.status === 'idle' ? null : null}
+                                    {!errMsg && check?.status === 'ok' && (
+                                      <CheckCircle2 className="h-3 w-3 text-[hsl(var(--success))]" />
+                                    )}
+                                    {errMsg && (
+                                      <AlertCircle className="h-3 w-3 text-destructive" />
+                                    )}
+                                  </div>
+                                </div>
+                              </TooltipTrigger>
+                              {errMsg && (
+                                <TooltipContent side="top" className="text-xs max-w-[260px]">
+                                  <p id={`sku-err-${item.id}`} className="font-medium">{errMsg}</p>
+                                  {dupExisting && (
+                                    <p className="mt-1 text-muted-foreground">
+                                      Pick the existing item from the suggestions instead, or use a different SKU.
+                                    </p>
+                                  )}
+                                  {formatErr && (
+                                    <p className="mt-1 text-muted-foreground">
+                                      Allowed: A–Z, 0–9, dash, underscore, dot. Leave blank to auto-generate on receive.
+                                    </p>
+                                  )}
+                                </TooltipContent>
+                              )}
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })()}
                     </div>
                     {/* Type selector */}
                     <div className="w-[90px]">
