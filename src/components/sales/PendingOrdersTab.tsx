@@ -8,11 +8,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
-  CheckCircle2, AlertTriangle, Clock, RefreshCw, Send, Link2, ScrollText, Eye, Info,
+  CheckCircle2, AlertTriangle, Clock, RefreshCw, Send, Link2, ScrollText, Eye, Info, Search, X,
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DataTablePagination } from '@/components/ui/data-table-pagination';
 import { PendingOrderDialog } from '@/components/sales/PendingOrderDialog';
 import { emitRefetch } from '@/hooks/useDataRefetch';
 import { MarketplaceSyncStatus } from '@/components/sales/MarketplaceSyncStatus';
