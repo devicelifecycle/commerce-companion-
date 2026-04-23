@@ -13,6 +13,8 @@ import { UserManagementTable } from '@/components/team/UserManagementTable';
 import { PermissionsMatrix } from '@/components/team/PermissionsMatrix';
 import { Settings as SettingsIcon, User, Bell, Shield, Building2, Sliders, Plug, Users } from 'lucide-react';
 import { ShopifyIntegration } from '@/components/settings/ShopifyIntegration';
+import { MarketplaceManualSync } from '@/components/settings/MarketplaceManualSync';
+import { Package, Store } from 'lucide-react';
 
 export default function Settings() {
   const { user } = useAuth();
@@ -163,9 +165,33 @@ export default function Settings() {
           )}
 
           {/* Integrations Tab */}
-          <TabsContent value="integrations">
+          <TabsContent value="integrations" className="space-y-6">
             {selectedCompany ? (
-              <ShopifyIntegration />
+              <>
+                <ShopifyIntegration />
+                <MarketplaceManualSync
+                  label="Amazon"
+                  functionName="import-amazon-orders"
+                  description="SP-API order import (Amazon.ca)"
+                  icon={Package}
+                  details={[
+                    { label: 'Sync Method', value: 'Auto (15 min) + Manual' },
+                    { label: 'Order Prefix', value: <code className="text-xs bg-muted px-2 py-0.5 rounded">AMZ-</code> },
+                    { label: 'Marketplace', value: 'Amazon.ca (A2EUQ1WTGCTBG2)' },
+                  ]}
+                />
+                <MarketplaceManualSync
+                  label="Best Buy"
+                  functionName="import-bestbuy-orders"
+                  description="Mirakl API order import (Best Buy Canada)"
+                  icon={Store}
+                  details={[
+                    { label: 'Sync Method', value: 'Auto (15 min) + Manual' },
+                    { label: 'Order Prefix', value: <code className="text-xs bg-muted px-2 py-0.5 rounded">BBY- / BBY-VES-</code> },
+                    { label: 'Accounts', value: 'TGW + VES' },
+                  ]}
+                />
+              </>
             ) : (
               <Card>
                 <CardContent className="py-12">
