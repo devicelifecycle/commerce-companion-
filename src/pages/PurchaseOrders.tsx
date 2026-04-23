@@ -442,7 +442,7 @@ export default function PurchaseOrders() {
 
         <CreatePurchaseOrderDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} onSuccess={loadOrders} />
         <ReceivePODialog open={showReceiveDialog} onOpenChange={setShowReceiveDialog} onSuccess={loadOrders} poId={receivePoId} />
-        <PODetailDialog open={showDetailDialog} onOpenChange={setShowDetailDialog} onUpdate={loadOrders} poId={detailPoId} canManage={canManage} />
+        <PODetailDialog open={showDetailDialog} onOpenChange={setShowDetailDialog} onUpdate={loadOrders} poId={detailPoId} canManage={canManage} onInitiateGRN={openReceive} />
         <ImportRepairPartsDialog open={showImportRepairParts} onOpenChange={setShowImportRepairParts} onSuccess={loadOrders} />
 
         <ActivityFooter module="Procurement" tableNames={['purchase_orders', 'purchase_order_items', 'goods_received_notes', 'grn_items']} />
