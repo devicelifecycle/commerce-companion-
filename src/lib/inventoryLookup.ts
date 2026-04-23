@@ -20,8 +20,13 @@ type DeviceStatus = Database['public']['Enums']['device_status'];
  * sale) can still pass an explicit `statusFilter` prop, but the default is
  * deliberately broad so users don't get confused by an empty dropdown when
  * the device is sitting in repair or refurbishment.
+ *
+ * Typed as `string[]` rather than the device_status enum because the enum in
+ * generated types lags actual DB values (`in_repair`, `refurbished` exist in
+ * the DB but aren't in the generated union); the Supabase client casts these
+ * at the call site.
  */
-export const INVENTORY_LOOKUP_STATUSES: DeviceStatus[] = [
+export const INVENTORY_LOOKUP_STATUSES: string[] = [
   'in_stock',
   'reserved',
   'hold_for_refurbishment',
