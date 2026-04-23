@@ -298,11 +298,11 @@ export function EditSaleDialog({
                 {diagnostics.map((r, i) => (
                   <div key={i} className="flex items-start gap-2">
                     {r.ok ? (
-                      <CheckCircle2 className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+                      <CheckCircle2 className="h-3.5 w-3.5 text-success mt-0.5 shrink-0" />
                     ) : r.count === 0 ? (
                       <XCircle className="h-3.5 w-3.5 text-destructive mt-0.5 shrink-0" />
                     ) : (
-                      <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 mt-0.5 shrink-0" />
+                      <AlertTriangle className="h-3.5 w-3.5 text-warning mt-0.5 shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between gap-2">
