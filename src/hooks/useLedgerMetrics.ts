@@ -7,6 +7,7 @@ import {
   endOfYear, endOfQuarter, differenceInDays
 } from 'date-fns';
 import { normalizeExpenseAccountCode } from '@/lib/accounting/expenseAccountCodes';
+import { getChannelKey, getChannelLabel, getChannelColor } from '@/lib/marketplaceAccounts';
 
 export interface LedgerMetrics {
   // P&L (ledger-sourced)
@@ -295,7 +296,7 @@ export function useLedgerMetrics(dateRange: DateRange, companyFilter: string | n
 
       // Sales data for operational metrics + marketplace breakdown + top products + activity
       let salesQ = supabase.from('sales')
-        .select('id, sale_price, profit, marketplace, sale_date, marketplace_fees, shipping_cost, company_id, devices(brand, model, cost_price, created_at)')
+        .select('id, sale_price, profit, marketplace, marketplace_account, sale_date, marketplace_fees, shipping_cost, company_id, devices(brand, model, cost_price, created_at)')
         .gte('sale_date', start.toISOString())
         .limit(5000);
       if (companyFilter) salesQ = salesQ.eq('company_id', companyFilter);
@@ -429,25 +430,25 @@ export function useLedgerMetrics(dateRange: DateRange, companyFilter: string | n
         });
       }
 
-      // Marketplace breakdown
+      // Marketplace breakdown — split Best Buy by account (TGW/VES)
       const mpTotals: Record<string, { revenue: number; orders: number; fees: number; shipping: number }> = {};
       sales?.forEach(s => {
-        const mp = s.marketplace || 'other';
-        if (!mpTotals[mp]) mpTotals[mp] = { revenue: 0, orders: 0, fees: 0, shipping: 0 };
-        mpTotals[mp].revenue += Number(s.sale_price);
-        mpTotals[mp].orders += 1;
-        mpTotals[mp].fees += Number(s.marketplace_fees || 0);
-        mpTotals[mp].shipping += Number(s.shipping_cost || 0);
+        const ck = getChannelKey(s.marketplace, (s as any).marketplace_account);
+        if (!mpTotals[ck]) mpTotals[ck] = { revenue: 0, orders: 0, fees: 0, shipping: 0 };
+        mpTotals[ck].revenue += Number(s.sale_price);
+        mpTotals[ck].orders += 1;
+        mpTotals[ck].fees += Number(s.marketplace_fees || 0);
+        mpTotals[ck].shipping += Number(s.shipping_cost || 0);
       });
-      const marketplaceBreakdown = Object.entries(mpTotals).map(([name, d]) => ({
-        name: name.charAt(0).toUpperCase() + name.slice(1),
+      const marketplaceBreakdown = Object.entries(mpTotals).map(([ck, d]) => ({
+        name: getChannelLabel(ck),
         revenue: d.revenue,
         orders: d.orders,
         fees: d.fees,
         shipping: d.shipping,
         netRevenue: d.revenue - d.fees - d.shipping,
         feeRate: d.revenue > 0 ? (d.fees / d.revenue) * 100 : 0,
-        color: MARKETPLACE_COLORS[name] || MARKETPLACE_COLORS.other,
+        color: getChannelColor(ck),
       })).sort((a, b) => b.revenue - a.revenue);
 
       // Top products
@@ -487,7 +488,7 @@ export function useLedgerMetrics(dateRange: DateRange, companyFilter: string | n
           description: d ? `${d.brand} ${d.model}` : `Order #${s.id.slice(0, 6)}`,
           amount: Number(s.sale_price),
           timestamp: new Date(s.sale_date),
-          marketplace: s.marketplace,
+          marketplace: getChannelKey(s.marketplace, (s as any).marketplace_account),
         });
       });
       recentExps.forEach(e => {

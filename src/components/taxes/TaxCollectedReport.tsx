@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Download, Receipt, MapPin, TrendingUp } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, startOfYear, endOfYear } from 'date-fns';
+import { getChannelKey, getChannelLabel } from '@/lib/marketplaceAccounts';
 
 interface ProvinceRate {
   province_code: string;
@@ -107,7 +108,7 @@ export function TaxCollectedReport() {
     try {
       let query = supabase
         .from('sales')
-        .select('id, sale_price, tax_amount, marketplace, shipping_address')
+        .select('id, sale_price, tax_amount, marketplace, marketplace_account, shipping_address')
         .gte('sale_date', startDate)
         .lte('sale_date', endDate);
 
@@ -163,26 +164,26 @@ export function TaxCollectedReport() {
         
         provinceMap.set(province, existing);
 
-        // Update marketplace stats
-        const marketplace = sale.marketplace || 'other';
-        const mktExisting = marketplaceMap.get(marketplace) || {
-          marketplace,
+        // Update channel stats — Best Buy split into TGW & VES
+        const channelKey = getChannelKey(sale.marketplace, (sale as any).marketplace_account);
+        const mktExisting = marketplaceMap.get(channelKey) || {
+          marketplace: channelKey,
           salesCount: 0,
-          taxCollected: taxAmount,
+          taxCollected: 0,
           marketplaceCollected: 0,
           sellerCollected: 0,
         };
-        
+
         mktExisting.salesCount += 1;
         mktExisting.taxCollected += taxAmount;
-        // Assume marketplace collects for Amazon/BestBuy
-        if (marketplace === 'amazon' || marketplace === 'bestbuy') {
+        // Marketplace remits tax for Amazon and Best Buy variants
+        if (channelKey === 'amazon' || channelKey.startsWith('bestbuy')) {
           mktExisting.marketplaceCollected += taxAmount;
         } else {
           mktExisting.sellerCollected += taxAmount;
         }
-        
-        marketplaceMap.set(marketplace, mktExisting);
+
+        marketplaceMap.set(channelKey, mktExisting);
       });
 
       setTaxByProvince(Array.from(provinceMap.values()).sort((a, b) => b.totalTax - a.totalTax));
@@ -392,7 +393,7 @@ export function TaxCollectedReport() {
               {taxByMarketplace.map(row => (
                 <TableRow key={row.marketplace}>
                   <TableCell>
-                    <Badge variant="outline" className="capitalize">{row.marketplace}</Badge>
+                    <Badge variant="outline">{getChannelLabel(row.marketplace)}</Badge>
                   </TableCell>
                   <TableCell className="text-right">{row.salesCount}</TableCell>
                   <TableCell className="text-right">{formatCurrency(row.taxCollected)}</TableCell>
