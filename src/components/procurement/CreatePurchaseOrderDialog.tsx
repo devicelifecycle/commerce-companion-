@@ -444,6 +444,16 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
               </Button>
             </div>
 
+            {/* Helper text — explains the type-ahead behavior of the Description field */}
+            <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground flex items-start gap-2">
+              <Info className="h-3.5 w-3.5 mt-0.5 shrink-0 text-[hsl(var(--info))]" />
+              <span>
+                Search the Description field by <span className="font-medium text-foreground">name or SKU</span>.
+                Matching items appear as suggestions — pick one to reuse its existing SKU and link this line to current stock.
+                If nothing matches, just keep your typed name: a brand-new item with a fresh auto-generated SKU will be created when the PO is received.
+              </span>
+            </div>
+
             {/* Table header */}
             <div className="hidden md:grid grid-cols-[1fr,110px,auto,70px,90px,100px,80px,36px] gap-2 px-3 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
               <span>Description</span>
