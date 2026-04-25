@@ -3860,6 +3860,8 @@ export type Database = {
         | "sold"
         | "returned"
         | "hold_for_refurbishment"
+        | "in_repair"
+        | "refurbished"
       expense_category:
         | "inventory"
         | "shipping"
@@ -4027,6 +4029,8 @@ export const Constants = {
         "sold",
         "returned",
         "hold_for_refurbishment",
+        "in_repair",
+        "refurbished",
       ],
       expense_category: [
         "inventory",
