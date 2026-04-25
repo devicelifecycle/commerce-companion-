@@ -81,8 +81,7 @@ export function SecuritySettings() {
     try {
       const { error } = await supabase.auth.mfa.unenroll({ factorId: mfaFactorId });
       if (error) throw error;
-      toast({ title: '2FA has been reset', description: 'You will be redirected to set up a new authenticator.' });
-      setTimeout(() => navigate('/mfa-enroll'), 1500);
+      toast({ title: '2FA has been reset', description: 'Two-factor authentication is currently disabled for this workspace.' });
     } catch (error: any) {
       toast({ title: 'Failed to reset 2FA', description: error.message, variant: 'destructive' });
     }
