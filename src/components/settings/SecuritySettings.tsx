@@ -174,9 +174,6 @@ export function SecuritySettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Session History */}
       <Card>
