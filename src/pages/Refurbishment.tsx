@@ -16,15 +16,17 @@ export default function Refurbishment() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const canManage = hasPermission('inventory_manage', 'edit') || isSuperAdmin;
 
-  // Fetch devices in refurbishment
+  // Fetch devices in refurbishment.
+  // Source of truth: device.status. We pull both 'hold_for_refurbishment' (procurement-side intake)
+  // and 'in_repair' (return-side intake from customer RMAs). refurbishment_status is the sub-stage.
   const { data: pendingDevices = [], isLoading: pendingLoading, refetch: refetchPending } = useQuery({
     queryKey: ['refurbishment-pending', selectedCompany?.id],
     queryFn: async () => {
       let query = supabase
         .from('devices')
         .select('*, suppliers(name)')
-        .eq('status', 'hold_for_refurbishment')
-        .in('refurbishment_status', ['pending', 'in_progress'])
+        .in('status', ['hold_for_refurbishment', 'in_repair'])
+        .or('refurbishment_status.is.null,refurbishment_status.in.(pending,in_progress)')
         .order('created_at', { ascending: false });
       if (selectedCompany) query = query.eq('company_id', selectedCompany.id);
       const { data, error } = await query;
