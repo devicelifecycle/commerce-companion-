@@ -183,7 +183,15 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
           }
         }
         if (resolutionType === 'repair' && sale.device_id) {
-          await supabase.from('devices').update({ status: 'in_repair' as any }).eq('id', sale.device_id);
+          // Route the device into the Refurbishment Queue.
+          // device.status is the master ('in_repair'); refurbishment_status tracks the sub-stage so the
+          // queue picks it up immediately (Refurbishment.tsx filters on refurbishment_status in pending/in_progress).
+          await supabase.from('devices').update({
+            status: 'in_repair',
+            refurbishment_status: 'pending',
+            refurbishment_started_at: new Date().toISOString(),
+            refurbishment_notes: repairNotes || null,
+          }).eq('id', sale.device_id);
           await supabase.from('device_repairs').insert({
             device_id: sale.device_id,
             company_id: sale.company_id,
