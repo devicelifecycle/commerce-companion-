@@ -271,7 +271,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
         manual_cost: costValue,
         manual_cost_description: manualCostDesc || null,
         accounting_status: 'revenue_only',
-      } as any).eq('id', sale.id);
+      }).eq('id', sale.id);
       if (error) throw error;
 
       if (costValue && costValue > 0) {
@@ -318,7 +318,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
         manual_cost: null,
         manual_cost_description: null,
         accounting_status: 'revenue_only',
-      } as any).eq('id', sale.id);
+      }).eq('id', sale.id);
       if (error) throw error;
       setManualCostAmount('');
       setManualCostDesc('');
@@ -374,7 +374,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
         if (saleError) throw saleError;
 
         const { error: deviceError } = await supabase.from('devices').update({
-          status: 'sold' as any,
+          status: 'sold',
           sale_price: sale.sale_price,
         }).eq('id', selectedDeviceId);
         if (deviceError) throw deviceError;
@@ -422,7 +422,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
       if (saleError) throw saleError;
 
       const { error: deviceError } = await supabase.from('devices').update({
-        status: 'in_stock' as any,
+        status: 'in_stock',
         sale_price: null,
       }).eq('id', sale.device_id);
       if (deviceError) throw deviceError;
