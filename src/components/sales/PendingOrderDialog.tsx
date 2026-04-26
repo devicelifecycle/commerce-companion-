@@ -282,12 +282,12 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
         shipping_province: code,
         province_inferred: false,
         tax_amount: newTax,
-      } as any).eq('id', sale.id);
+      }).eq('id', sale.id);
       await supabase.from('sales_tax_details').update({
         customer_province: code,
         gst_amount: gst, hst_amount: hst, pst_amount: pst, qst_amount: qst,
         total_tax: newTax,
-      } as any).eq('sale_id', sale.id);
+      }).eq('sale_id', sale.id);
       toast.success(`Province set to ${code} — tax ${fmt(newTax)}`);
       await reload();
     } catch (e: any) {
@@ -304,7 +304,7 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
         device_id: pendingDeviceId,
         manual_cost: null,
         manual_cost_description: null,
-      } as any).eq('id', sale.id);
+      }).eq('id', sale.id);
       toast.success('Device linked');
       await reload();
       emitRefetch('sales');
@@ -318,7 +318,7 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
     if (!sale) return;
     setSavingLink(true);
     try {
-      await supabase.from('sales').update({ device_id: null } as any).eq('id', sale.id);
+      await supabase.from('sales').update({ device_id: null }).eq('id', sale.id);
       setPendingDeviceId(null);
       toast.success('Device unlinked');
       await reload();
@@ -342,7 +342,7 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
         manual_cost: n,
         manual_cost_description: manualDesc || null,
         device_id: null,
-      } as any).eq('id', sale.id);
+      }).eq('id', sale.id);
       toast.success('Manual cost saved');
       await reload();
       emitRefetch('sales');
