@@ -136,7 +136,7 @@ export function AppSettings() {
           company_id: selectedCompany.id,
           ...data,
           updated_at: new Date().toISOString(),
-        } as any, { onConflict: 'company_id' });
+        }, { onConflict: 'company_id' });
 
       if (error) throw error;
       toast.success('App settings saved');
