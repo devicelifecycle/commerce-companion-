@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import { HSTReconciliation } from '@/components/taxes/HSTReconciliation';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -154,11 +155,43 @@ const SECTIONS = [
   },
 ];
 
+// Map every SubView back to the section it belongs to so deep links can preselect both.
+const SUBVIEW_TO_SECTION: Record<string, string> = SECTIONS.reduce((acc, s) => {
+  s.views.forEach(v => { acc[v.value] = s.key; });
+  return acc;
+}, {} as Record<string, string>);
+
 export default function Financials() {
   const { companies } = useCompany();
-  const [activeSection, setActiveSection] = useState('statements');
-  const [subView, setSubView] = useState<SubView>('pl');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as SubView | null;
+
+  const initialSubView: SubView = tabParam && SUBVIEW_TO_SECTION[tabParam] ? tabParam : 'pl';
+  const initialSection = SUBVIEW_TO_SECTION[initialSubView] || 'statements';
+
+  const [activeSection, setActiveSection] = useState(initialSection);
+  const [subView, setSubView] = useState<SubView>(initialSubView);
   const [companyView, setCompanyView] = useState<'consolidated' | string>('consolidated');
+
+  // Keep URL ?tab= in sync with the active sub-view so links stay shareable / refreshable.
+  useEffect(() => {
+    const current = searchParams.get('tab');
+    if (current !== subView) {
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', subView);
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subView]);
+
+  // External nav (e.g. dashboard click) updates the URL — re-sync state.
+  useEffect(() => {
+    if (tabParam && tabParam !== subView && SUBVIEW_TO_SECTION[tabParam]) {
+      setSubView(tabParam);
+      setActiveSection(SUBVIEW_TO_SECTION[tabParam]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabParam]);
 
   const handleSectionChange = (section: string) => {
     if (!section) return;
