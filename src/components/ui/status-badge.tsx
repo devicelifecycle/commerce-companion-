@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 
-type StatusType = 'in_stock' | 'reserved' | 'sold' | 'returned' | 'hold_for_refurbishment';
+type StatusType = 'in_stock' | 'reserved' | 'sold' | 'returned' | 'hold_for_refurbishment' | 'in_repair' | 'refurbished';
 type MarketplaceType = 'shopify' | 'amazon' | 'bestbuy' | 'other';
 type ConditionType = 'new' | 'refurbished' | 'used' | 'damaged';
 
@@ -15,6 +15,8 @@ const statusLabels: Record<StatusType, string> = {
   sold: 'Sold',
   returned: 'Returned',
   hold_for_refurbishment: 'Hold for Refurb',
+  in_repair: 'In Repair',
+  refurbished: 'Refurbished',
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
@@ -27,6 +29,8 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
         status === 'sold' && 'status-sold',
         status === 'returned' && 'status-returned',
         status === 'hold_for_refurbishment' && 'bg-violet-500/15 text-violet-600',
+        status === 'in_repair' && 'bg-amber-500/15 text-amber-600',
+        status === 'refurbished' && 'bg-info/15 text-info',
         className
       )}
     >
