@@ -6,8 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, CheckCircle2, AlertTriangle, LogIn, Clock, User } from 'lucide-react';
+import { Shield, CheckCircle2, AlertTriangle, LogIn, Clock, User, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { format, subDays } from 'date-fns';
 
@@ -22,6 +25,12 @@ export function SecuritySettings() {
   const [sessionLogs, setSessionLogs] = useState<any[]>([]);
   const [sessionLoading, setSessionLoading] = useState(false);
   const [profiles, setProfiles] = useState<Record<string, string>>({});
+
+  // Password change dialog state
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
 
   useEffect(() => {
     checkMfaStatus();
@@ -87,6 +96,37 @@ export function SecuritySettings() {
     }
   };
 
+  const handlePasswordChange = async () => {
+    if (pwNew.length < 8) {
+      toast({ title: 'Password too short', description: 'Use at least 8 characters.', variant: 'destructive' });
+      return;
+    }
+    if (pwNew !== pwConfirm) {
+      toast({ title: 'Passwords do not match', variant: 'destructive' });
+      return;
+    }
+    setPwSaving(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: pwNew });
+      if (error) throw error;
+      // Audit log entry — best-effort, RLS allows self-inserts after our hardening
+      await supabase.from('audit_logs').insert({
+        action: 'PASSWORD_CHANGED',
+        table_name: 'auth.users',
+        user_id: user?.id,
+        notes: 'User changed password from Settings → Security',
+      });
+      toast({ title: 'Password updated', description: 'Use your new password next time you sign in.' });
+      setPwOpen(false);
+      setPwNew('');
+      setPwConfirm('');
+    } catch (error: any) {
+      toast({ title: 'Failed to update password', description: error.message, variant: 'destructive' });
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -102,11 +142,38 @@ export function SecuritySettings() {
                 <p className="font-medium">Password</p>
                 <p className="text-sm text-muted-foreground">Last changed: Never</p>
               </div>
-              <Button variant="outline">Change Password</Button>
+              <Button variant="outline" onClick={() => setPwOpen(true)}>Change Password</Button>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Password change dialog */}
+      <Dialog open={pwOpen} onOpenChange={(o) => { setPwOpen(o); if (!o) { setPwNew(''); setPwConfirm(''); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change password</DialogTitle>
+            <DialogDescription>Enter and confirm your new password (min 8 characters).</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="pw-new">New password</Label>
+              <Input id="pw-new" type="password" autoComplete="new-password" value={pwNew} onChange={e => setPwNew(e.target.value)} disabled={pwSaving} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pw-confirm">Confirm new password</Label>
+              <Input id="pw-confirm" type="password" autoComplete="new-password" value={pwConfirm} onChange={e => setPwConfirm(e.target.value)} disabled={pwSaving} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPwOpen(false)} disabled={pwSaving}>Cancel</Button>
+            <Button onClick={handlePasswordChange} disabled={pwSaving || !pwNew || !pwConfirm}>
+              {pwSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Update password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Session History */}
       <Card>

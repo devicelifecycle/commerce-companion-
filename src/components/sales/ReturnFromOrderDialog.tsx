@@ -163,7 +163,7 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
           tax_refunded: (resolutionType !== 'adjustment' && sale.tax_amount) ? sale.tax_amount : 0,
           marketplace_initiated: marketplaceInitiated,
           refund_reason_detail: reasonDetail || null,
-        } as any)
+        })
         .select('id')
         .single();
 
@@ -171,15 +171,15 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
 
       if (resolutionType !== 'adjustment') {
         if (restockDevice && sale.device_id) {
-          await supabase.from('devices').update({ status: 'in_stock' as any, sale_price: null }).eq('id', sale.device_id);
+          await supabase.from('devices').update({ status: 'in_stock', sale_price: null }).eq('id', sale.device_id);
           await supabase.from('sales').update({ device_id: null, accounting_status: 'revenue_only' }).eq('id', sale.id);
         }
         if (resolutionType === 'exchange') {
           if (sale.device_id && !restockDevice) {
-            await supabase.from('devices').update({ status: 'in_stock' as any }).eq('id', sale.device_id);
+            await supabase.from('devices').update({ status: 'in_stock' }).eq('id', sale.device_id);
           }
           if (replacementDeviceId) {
-            await supabase.from('devices').update({ status: 'sold' as any, sale_price: sale.sale_price }).eq('id', replacementDeviceId);
+            await supabase.from('devices').update({ status: 'sold', sale_price: sale.sale_price }).eq('id', replacementDeviceId);
           }
         }
         if (resolutionType === 'repair' && sale.device_id) {

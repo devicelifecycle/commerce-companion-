@@ -109,14 +109,14 @@ export function AppSettings() {
           default_payment_terms: data.default_payment_terms ?? 30,
           default_ves_allocation: Number(data.default_ves_allocation) || 50,
           default_tgw_allocation: Number(data.default_tgw_allocation) || 50,
-          default_tax_province: (data as any).default_tax_province ?? 'ON',
-          currency_format: (data as any).currency_format ?? 'en-CA',
-          auto_generate_sku: (data as any).auto_generate_sku ?? true,
-          default_fulfillment_channel: (data as any).default_fulfillment_channel ?? 'local',
-          session_timeout_minutes: (data as any).session_timeout_minutes ?? 480,
-          reorder_point_threshold: (data as any).reorder_point_threshold ?? 3,
-          default_invoice_notes: (data as any).default_invoice_notes ?? '',
-          fiscal_year_start_month: (data as any).fiscal_year_start_month ?? 1,
+          default_tax_province: data.default_tax_province ?? 'ON',
+          currency_format: data.currency_format ?? 'en-CA',
+          auto_generate_sku: data.auto_generate_sku ?? true,
+          default_fulfillment_channel: data.default_fulfillment_channel ?? 'local',
+          session_timeout_minutes: data.session_timeout_minutes ?? 480,
+          reorder_point_threshold: data.reorder_point_threshold ?? 3,
+          default_invoice_notes: data.default_invoice_notes ?? '',
+          fiscal_year_start_month: data.fiscal_year_start_month ?? 1,
         });
       }
     } catch (error) {
@@ -136,7 +136,7 @@ export function AppSettings() {
           company_id: selectedCompany.id,
           ...data,
           updated_at: new Date().toISOString(),
-        } as any, { onConflict: 'company_id' });
+        }, { onConflict: 'company_id' });
 
       if (error) throw error;
       toast.success('App settings saved');

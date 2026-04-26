@@ -167,7 +167,7 @@ export default function Invoices() {
         }
       });
       if (overdueIds.length > 0) {
-        supabase.from('invoices').update({ status: 'overdue' as any }).in('id', overdueIds).then();
+        supabase.from('invoices').update({ status: 'overdue' }).in('id', overdueIds).then();
       }
       setInvoices(fetched);
     } catch (error) {
@@ -387,11 +387,11 @@ export default function Invoices() {
 
           // Update invoice status to match
           if (isFullyPaid) {
-            await supabase.from('invoices').update({ status: 'paid' as any }).eq('id', viewInvoice.id);
+            await supabase.from('invoices').update({ status: 'paid' }).eq('id', viewInvoice.id);
           } else if (paidAmount > 0) {
-            await supabase.from('invoices').update({ status: 'partially_paid' as any }).eq('id', viewInvoice.id);
+            await supabase.from('invoices').update({ status: 'partially_paid' }).eq('id', viewInvoice.id);
           } else {
-            await supabase.from('invoices').update({ status: 'sent' as any }).eq('id', viewInvoice.id);
+            await supabase.from('invoices').update({ status: 'sent' }).eq('id', viewInvoice.id);
           }
         }
 
@@ -504,7 +504,7 @@ export default function Invoices() {
         invoice_number: invoiceNumber, customer_name: source.customer_name, customer_email: source.customer_email,
         customer_address: source.customer_address, customer_phone: source.customer_phone,
         customer_gst_hst_number: source.customer_gst_hst_number, subtotal: source.subtotal, tax_amount: source.tax_amount,
-        total: source.total, status: 'sent' as any, issue_date: new Date().toISOString().split('T')[0],
+        total: source.total, status: 'sent', issue_date: new Date().toISOString().split('T')[0],
         due_date: dueDate.toISOString().split('T')[0], notes: source.notes, company_id: source.company_id,
       }).select('id').single();
       if (error) throw error;
@@ -732,9 +732,9 @@ export default function Invoices() {
       }).eq('id', viewAR.id);
 
       // Update invoice status
-      const invoiceStatus = newTotalPaid <= 0 ? 'sent' : newBalance <= 0.01 ? 'paid' : 'partially_paid';
+      const invoiceStatus: 'sent' | 'paid' | 'partially_paid' = newTotalPaid <= 0 ? 'sent' : newBalance <= 0.01 ? 'paid' : 'partially_paid';
       await supabase.from('invoices').update({
-        status: invoiceStatus as any,
+        status: invoiceStatus,
         paid_date: invoiceStatus === 'paid' ? payment.payment_date : null,
       }).eq('id', viewInvoice.id);
 
@@ -779,7 +779,7 @@ export default function Invoices() {
       const invoice = invoices.find(i => i.id === id);
       if (!invoice) return;
 
-      await supabase.from('invoices').update({ status: 'cancelled' as any }).eq('id', id);
+      await supabase.from('invoices').update({ status: 'cancelled' }).eq('id', id);
       await supabase.from('accounts_receivable')
         .update({ status: 'cancelled', notes: `Cancelled - Invoice ${invoice.invoice_number}` })
         .eq('invoice_id', id);
