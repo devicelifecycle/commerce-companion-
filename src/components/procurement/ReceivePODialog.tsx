@@ -248,6 +248,112 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
       const newStatus = isPartial ? 'partially_received' : 'received';
       await supabase.from('purchase_orders').update({ status: newStatus }).eq('id', po.id);
 
+      // 4b. If partial, auto-create a back-order PO for the unreceived quantities.
+      //     The back-order PO is linked to the parent via parent_po_id and inherits
+      //     supplier, company, and per-line costs. AP is NOT created here — it'll
+      //     be created when the back-order PO is itself received.
+      let backOrderPoNumber: string | null = null;
+      if (isPartial) {
+        // Compute unreceived qty per PO line (ordered - accepted in this GRN)
+        const acceptedQtyByItem = new Map<string, number>();
+        for (const split of validSplits) {
+          if (split.condition === 'passed' || split.action === 'accept') {
+            acceptedQtyByItem.set(split.po_item_id, (acceptedQtyByItem.get(split.po_item_id) || 0) + split.qty);
+          }
+        }
+        const backOrderLines = poItems
+          .map(pi => {
+            const accepted = acceptedQtyByItem.get(pi.id) || 0;
+            const remaining = pi.quantity - accepted;
+            return { poItem: pi, remaining };
+          })
+          .filter(x => x.remaining > 0);
+
+        if (backOrderLines.length > 0) {
+          // Generate child PO number: parent + "-BO" + sequence
+          const baseBoNumber = `${po.po_number}-BO`;
+          const { count: existingBoCount } = await supabase
+            .from('purchase_orders')
+            .select('id', { count: 'exact', head: true })
+            .like('po_number', `${baseBoNumber}%`);
+          const boPoNumber = existingBoCount && existingBoCount > 0
+            ? `${baseBoNumber}-${existingBoCount + 1}`
+            : baseBoNumber;
+
+          const boSubtotal = backOrderLines.reduce((s, x) => s + x.poItem.unit_cost * x.remaining, 0);
+          const boGst = backOrderLines.reduce((s, x) => {
+            const ratio = x.remaining / x.poItem.quantity;
+            return s + (x.poItem.gst_hst_amount || 0) * ratio;
+          }, 0);
+          const boPst = backOrderLines.reduce((s, x) => {
+            const ratio = x.remaining / x.poItem.quantity;
+            return s + (x.poItem.pst_qst_amount || 0) * ratio;
+          }, 0);
+          const boTotal = boSubtotal + boGst + boPst;
+
+          const { data: childPO, error: childPoError } = await supabase
+            .from('purchase_orders')
+            .insert({
+              po_number: boPoNumber,
+              supplier_id: po.supplier_id,
+              supplier_name: po.supplier_name,
+              company_id: po.company_id,
+              po_date: receivedDate,
+              subtotal: parseFloat(boSubtotal.toFixed(2)),
+              gst_hst_amount: parseFloat(boGst.toFixed(2)),
+              pst_qst_amount: parseFloat(boPst.toFixed(2)),
+              total_amount: parseFloat(boTotal.toFixed(2)),
+              status: 'back_ordered',
+              payment_status: 'unpaid',
+              po_type: po.po_type || 'inventory',
+              parent_po_id: po.id,
+              notes: `Auto-generated back-order from PO ${po.po_number} on ${receivedDate}.`,
+              created_by: user.id,
+            })
+            .select('id, po_number')
+            .single();
+
+          if (childPoError) {
+            console.error('Back-order PO creation error:', childPoError);
+            toast.warning('Partial received, but back-order PO failed to create — create manually');
+          } else if (childPO) {
+            backOrderPoNumber = childPO.po_number;
+            // Insert back-order PO line items
+            const childItems = backOrderLines.map(x => {
+              const ratio = x.remaining / x.poItem.quantity;
+              const lineGst = parseFloat(((x.poItem.gst_hst_amount || 0) * ratio).toFixed(2));
+              const linePst = parseFloat(((x.poItem.pst_qst_amount || 0) * ratio).toFixed(2));
+              const lineSubtotal = x.poItem.unit_cost * x.remaining;
+              return {
+                purchase_order_id: childPO.id,
+                description: x.poItem.description,
+                quantity: x.remaining,
+                unit_cost: x.poItem.unit_cost,
+                gst_hst_amount: lineGst,
+                pst_qst_amount: linePst,
+                total_cost: parseFloat((lineSubtotal + lineGst + linePst).toFixed(2)),
+                item_type: x.poItem.item_type,
+                sku: x.poItem.sku,
+              };
+            });
+            const { error: childItemsError } = await supabase
+              .from('purchase_order_items')
+              .insert(childItems);
+            if (childItemsError) {
+              console.error('Back-order line items error:', childItemsError);
+              toast.warning(`Back-order PO ${boPoNumber} created but line items failed`);
+            } else {
+              // Link parent → child
+              await supabase
+                .from('purchase_orders')
+                .update({ back_order_po_id: childPO.id })
+                .eq('id', po.id);
+              toast.info(`Back-order PO ${boPoNumber} created for ${backOrderLines.reduce((s, x) => s + x.remaining, 0)} unreceived units`);
+            }
+          }
+        }
+      }
+
       // 5. Add accepted items to inventory — route based on item_type per line
       const acceptedByItem = new Map<string, { qty: number; description: string; po_item_id: string; item_type: string }>();
       for (const split of validSplits) {
