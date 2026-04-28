@@ -28,55 +28,8 @@ import { format } from 'date-fns';
 import { toTitleCase } from '@/lib/utils';
 import { ActivityFooter } from '@/components/activity/ActivityFooter';
 
-interface Invoice {
-  id: string;
-  invoice_number: string;
-  customer_name: string;
-  customer_email: string | null;
-  customer_phone: string | null;
-  customer_address: string | null;
-  customer_gst_hst_number: string | null;
-  subtotal: number;
-  tax_amount: number;
-  total: number;
-  status: string;
-  issue_date: string;
-  due_date: string;
-  paid_date: string | null;
-  notes: string | null;
-  created_at: string;
-  company_id: string | null;
-}
-
-interface InvoiceItem {
-  id: string;
-  description: string;
-  quantity: number;
-  unit_price: number;
-  total: number;
-  tax_treatment: string;
-  device_id: string | null;
-}
-
-interface ARRecord {
-  id: string;
-  invoice_id: string;
-  original_amount: number;
-  paid_amount: number | null;
-  balance_due: number | null;
-  status: string | null;
-}
-
-interface ARPayment {
-  id: string;
-  amount: number;
-  payment_date: string;
-  payment_method: string | null;
-  notes: string | null;
-  created_at: string | null;
-}
-
-type DisplayStatus = 'outstanding' | 'partially_paid' | 'paid' | 'overdue' | 'cancelled';
+import type { Invoice, InvoiceItem, ARRecord, ARPayment, DisplayStatus } from '@/lib/invoices/types';
+import { PAYMENT_METHODS, TAX_LABELS, TAX_RATES } from '@/lib/invoices/constants';
 
 const STATUS_CONFIG: Record<DisplayStatus, { label: string; icon: any; className: string }> = {
   outstanding: { label: 'Outstanding', icon: Clock, className: 'bg-warning/10 text-warning' },
@@ -84,22 +37,6 @@ const STATUS_CONFIG: Record<DisplayStatus, { label: string; icon: any; className
   paid: { label: 'Paid', icon: CheckCircle, className: 'bg-success/10 text-success' },
   overdue: { label: 'Overdue', icon: AlertCircle, className: 'bg-destructive/10 text-destructive' },
   cancelled: { label: 'Cancelled', icon: AlertCircle, className: 'bg-muted text-muted-foreground' },
-};
-
-const PAYMENT_METHODS = ['Cash', 'E-Transfer', 'Credit Card', 'Debit Card', 'Cheque', 'Wire Transfer', 'Other'] as const;
-
-const TAX_LABELS: Record<string, string> = {
-  hst: 'HST 13%',
-  gst: 'GST 5%',
-  zero_rated: 'Zero-Rated',
-  tax_inclusive: 'Tax Incl.',
-};
-
-const TAX_RATES: Record<string, number> = {
-  hst: 0.13,
-  gst: 0.05,
-  zero_rated: 0,
-  tax_inclusive: 0.13,
 };
 
 export default function Invoices() {
