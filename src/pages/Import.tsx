@@ -43,122 +43,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { createPurchaseOrder, createGoodsReceivedNote } from '@/lib/import/automatedImport';
 import { createPurchaseJournalEntry } from '@/lib/accounting/journalAutomation';
-
-interface ExcelRow {
-  [key: string]: string | number | null;
-}
-
-interface ColumnMapping {
-  company: string;
-  category: string;
-  brand: string;
-  model: string;
-  imei: string;
-  storage: string;
-  color: string;
-  cost_price: string;
-  notes: string;
-  supplier_id_code: string;
-  supplier_invoice_number: string;
-  purchase_date: string;
-  tax_status: string;
-}
-
-interface ValidationResult {
-  row: number;
-  valid: boolean;
-  errors: string[];
-  warnings: string[];
-  data: ExcelRow;
-}
-
-interface ImportResult {
-  success: boolean;
-  row: number;
-  message: string;
-  data?: ExcelRow;
-}
-
-interface SupplierInfo {
-  id: string;
-  supplier_code: string;
-  name: string;
-}
-
-type DraftTaxStatus = 'zero_rated' | 'gst_paid' | 'hst_paid' | 'tax_included';
-
-const DRAFT_TAX_OPTIONS: { value: DraftTaxStatus; label: string; rate: number }[] = [
-  { value: 'zero_rated', label: 'Zero-Rated', rate: 0 },
-  { value: 'gst_paid', label: 'GST Paid (5%)', rate: 0.05 },
-  { value: 'hst_paid', label: 'HST Paid (13%)', rate: 0.13 },
-  { value: 'tax_included', label: 'Tax Inclusive', rate: 0 },
-];
-
-function calcTaxForItem(unitCost: number, quantity: number, taxStatus: DraftTaxStatus): { taxAmount: number; preTaxAmount: number } {
-  const opt = DRAFT_TAX_OPTIONS.find(o => o.value === taxStatus);
-  if (!opt || opt.rate === 0) {
-    if (taxStatus === 'tax_included') return { taxAmount: 0, preTaxAmount: unitCost * quantity };
-    return { taxAmount: 0, preTaxAmount: unitCost * quantity };
-  }
-  const taxAmount = parseFloat((unitCost * quantity * opt.rate).toFixed(2));
-  return { taxAmount, preTaxAmount: unitCost * quantity };
-}
-
-interface PODraftItem {
-  description: string;
-  quantity: number;
-  unitCost: number;
-  taxStatus: DraftTaxStatus;
-  pstQstAmount: number;
-  imei: string;
-}
-
-interface PODraft {
-  supplierCode: string;
-  supplierName: string;
-  supplierId: string | null;
-  invoiceNumber: string;
-  shippingCost: string;
-  shippingTaxStatus: DraftTaxStatus;
-  otherCharges: string;
-  otherChargesTaxStatus: DraftTaxStatus;
-  paymentMethod: string;
-  paymentDate: string;
-  items: PODraftItem[];
-}
-
-interface FinalizeResultItem {
-  supplierName: string;
-  poNumber: string;
-  grnNumber: string;
-  invoiceTotal: number;
-}
-
-const CATEGORIES = ['phone', 'tablet', 'laptop'];
-const VALID_TAX_STATUSES = ['Tax Included', 'Zero-Rated', 'GST Paid', 'HST Paid'];
-const TAX_STATUS_DB_MAP: Record<string, string> = {
-  'Tax Included': 'tax_included',
-  'Zero-Rated': 'zero_rated',
-  'GST Paid': 'gst_paid',
-  'HST Paid': 'hst_paid',
-};
-
-const KNOWN_BRANDS = [
-  'Apple', 'Samsung', 'Google', 'OnePlus', 'Xiaomi', 'Huawei', 'Sony', 'LG',
-  'Motorola', 'Nokia', 'Asus', 'Lenovo', 'Dell', 'HP', 'Microsoft', 'Acer',
-  'Razer', 'Nothing', 'Oppo', 'Vivo', 'Realme', 'TCL', 'ZTE', 'BlackBerry',
-];
-
-function generateSKU(brand: string, model: string, storage: string | null, sequence: number): string {
-  const brandAbbr = brand.substring(0, 3).toUpperCase();
-  const modelWords = model.split(/\s+/);
-  const modelAbbr = modelWords.map(w => {
-    if (/^\d+$/.test(w)) return w;
-    return w.substring(0, 2).toUpperCase();
-  }).join('').substring(0, 8);
-  const storagePart = storage ? `-${storage.replace(/\s/g, '')}` : '';
-  return `${brandAbbr}-${modelAbbr}${storagePart}-${String(sequence).padStart(3, '0')}`;
-}
+import type {
+  ExcelRow,
+  ColumnMapping,
+  ValidationResult,
+  ImportResult,
+  SupplierInfo,
+  DraftTaxStatus,
+  PODraftItem,
+  PODraft,
+  FinalizeResultItem,
+} from '@/lib/import/types';
+import {
+  DRAFT_TAX_OPTIONS,
+  CATEGORIES,
+  VALID_TAX_STATUSES,
+  TAX_STATUS_DB_MAP,
+  KNOWN_BRANDS,
+} from '@/lib/import/constants';
+import { calcTaxForItem, generateSKU } from '@/lib/import/helpers';
 
 export default function Import() {
   const { user } = useAuth();
