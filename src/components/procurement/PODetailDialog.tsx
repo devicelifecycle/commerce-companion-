@@ -307,6 +307,16 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, 
             <Badge variant={po.payment_status === 'paid' ? 'default' : po.payment_status === 'partial' ? 'outline' : 'secondary'} className="capitalize">
               {po.payment_status}
             </Badge>
+            {po.parent_po_id && (
+              <Badge variant="outline" className="text-[10px] gap-1 border-warning/50 text-warning">
+                Back-order
+              </Badge>
+            )}
+            {po.back_order_po_id && (
+              <Badge variant="outline" className="text-[10px] gap-1 border-info/50 text-info">
+                Has back-order
+              </Badge>
+            )}
             {canManage && onInitiateGRN && (po.status === 'pending' || po.status === 'partially_received') && (
               <Button
                 size="sm"
