@@ -2623,6 +2623,7 @@ export type Database = {
       }
       purchase_orders: {
         Row: {
+          back_order_po_id: string | null
           company_id: string | null
           created_at: string | null
           created_by: string | null
@@ -2631,6 +2632,7 @@ export type Database = {
           id: string
           notes: string | null
           paid_amount: number | null
+          parent_po_id: string | null
           payment_date: string | null
           payment_method: string | null
           payment_reference: string | null
@@ -2647,6 +2649,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          back_order_po_id?: string | null
           company_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -2655,6 +2658,7 @@ export type Database = {
           id?: string
           notes?: string | null
           paid_amount?: number | null
+          parent_po_id?: string | null
           payment_date?: string | null
           payment_method?: string | null
           payment_reference?: string | null
@@ -2671,6 +2675,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          back_order_po_id?: string | null
           company_id?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -2679,6 +2684,7 @@ export type Database = {
           id?: string
           notes?: string | null
           paid_amount?: number | null
+          parent_po_id?: string | null
           payment_date?: string | null
           payment_method?: string | null
           payment_reference?: string | null
@@ -2696,10 +2702,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "purchase_orders_back_order_po_id_fkey"
+            columns: ["back_order_po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "purchase_orders_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_parent_po_id_fkey"
+            columns: ["parent_po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
             referencedColumns: ["id"]
           },
           {
