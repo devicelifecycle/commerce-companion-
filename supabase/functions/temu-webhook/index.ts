@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createHmac } from "https://deno.land/std@0.177.0/node/crypto.ts";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { createLogger } from "../_shared/logger.ts";
 
 // Zod schemas for Temu webhook payloads
 const TemuOrderSchema = z.object({
@@ -246,20 +247,21 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  console.log("Temu webhook received");
+  const log = createLogger("temu-webhook", { request_id: crypto.randomUUID() });
+  log.info("request_received");
 
   try {
     const temuSignature = req.headers.get("x-temu-signature");
     const temuTopic = req.headers.get("x-temu-topic");
     const temuTimestamp = req.headers.get("x-temu-timestamp") || "";
 
-    console.log(`Topic: ${temuTopic}, Timestamp: ${temuTimestamp}`);
+    log.info("headers_parsed", { topic: temuTopic, timestamp: temuTimestamp });
 
     const body = await req.text();
     const webhookSecret = Deno.env.get("TEMU_WEBHOOK_SECRET");
 
     if (!webhookSecret) {
-      console.error("TEMU_WEBHOOK_SECRET not configured");
+      log.error("secret_not_configured");
       return new Response(
         JSON.stringify({ error: "Server configuration error" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -270,13 +272,13 @@ Deno.serve(async (req) => {
     if (temuSignature) {
       const isValid = verifyTemuSignature(body, temuSignature, webhookSecret, temuTimestamp);
       if (!isValid) {
-        console.error("Invalid webhook signature");
+        log.warn("invalid_signature");
         return new Response(
           JSON.stringify({ error: "Invalid signature" }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      console.log("Webhook signature verified");
+      log.info("signature_verified");
     }
 
     const supabase = createClient(
@@ -294,7 +296,7 @@ Deno.serve(async (req) => {
     const companyId = tgwCompany?.id || null;
 
     if (!companyId) {
-      console.error("TGW company not found");
+      log.error("tgw_company_not_found");
       return new Response(
         JSON.stringify({ error: "Company not found" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -306,7 +308,7 @@ Deno.serve(async (req) => {
     const validateAndRoute = <T>(schema: z.ZodSchema<T>, handler: (s: any, p: T, c: string) => Promise<Response>) => {
       const r = schema.safeParse(rawPayload);
       if (!r.success) {
-        console.error(`Invalid Temu payload for ${temuTopic}:`, r.error.flatten());
+        log.warn("payload_invalid", { topic: temuTopic, details: r.error.flatten() });
         return new Response(
           JSON.stringify({ error: "Invalid payload", details: r.error.flatten() }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -329,14 +331,14 @@ Deno.serve(async (req) => {
         return await validateAndRoute(TemuSettlementSchema, handleSettlement as any);
 
       default:
-        console.log(`Ignoring topic: ${temuTopic}`);
+        log.info("topic_ignored", { topic: temuTopic });
         return new Response(
           JSON.stringify({ message: "Event ignored", topic: temuTopic }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
     }
   } catch (error) {
-    console.error("Webhook processing error:", error);
+    log.error("unhandled_exception", { err: error });
     return new Response(
       JSON.stringify({ error: "Internal server error", details: String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
