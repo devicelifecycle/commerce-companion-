@@ -254,7 +254,6 @@ Deno.serve(async (req) => {
     const customerPhone = order.customer?.phone || order.shipping_address?.phone || null;
     const shippingAddress = formatShippingAddress(order.shipping_address);
     const structuredAddr = parseStructuredAddress(order.shipping_address);
-    const totalPrice = parseFloat(order.total_price || "0");
 
     // Upsert customer
     let customerId: string | null = null;
@@ -273,6 +272,7 @@ Deno.serve(async (req) => {
 
     // === Pull EXACT financial data from Shopify webhook payload ===
     const totalPrice = parseFloat(order.total_price || "0");
+    void totalPrice;
     const subtotalPrice = parseFloat(order.subtotal_price || "0");
     const totalTax = parseFloat(order.total_tax || "0");
     const totalShippingRevenue = parseFloat(order.total_shipping_price_set?.shop_money?.amount || "0");
