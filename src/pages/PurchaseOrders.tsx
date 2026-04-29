@@ -459,6 +459,7 @@ export default function PurchaseOrders() {
         <BatchActionBar count={selectedIds.size} onClear={clear}
           actions={[
             { label: 'Export Selected', icon: <Download className="h-4 w-4" />, onClick: exportCsv },
+            { label: 'Cancel Selected', icon: <Ban className="h-4 w-4" />, onClick: cancelSelectedPOs },
             { label: 'Delete Selected', icon: <Trash2 className="h-4 w-4" />, onClick: deleteSelectedPOs, variant: 'destructive' as const },
           ]}
         />
