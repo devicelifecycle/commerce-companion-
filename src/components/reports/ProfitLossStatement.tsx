@@ -571,7 +571,7 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
             <TooltipTrigger asChild>
               <Button
                 variant={costingView === 'management' ? 'default' : 'outline'}
-                onClick={() => setCostingView(v => v === 'accounting' ? 'management' : 'accounting')}
+                onClick={() => setCostingView(costingView === 'accounting' ? 'management' : 'accounting')}
               >
                 <ToggleLeft className="h-4 w-4 mr-2" />
                 {costingView === 'accounting' ? 'Accounting View' : 'Management View'}
