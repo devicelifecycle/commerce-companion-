@@ -301,20 +301,32 @@ Deno.serve(async (req) => {
       );
     }
 
-    const payload = JSON.parse(body);
+    const rawPayload = JSON.parse(body);
+
+    const validateAndRoute = <T>(schema: z.ZodSchema<T>, handler: (s: any, p: T, c: string) => Promise<Response>) => {
+      const r = schema.safeParse(rawPayload);
+      if (!r.success) {
+        console.error(`Invalid Temu payload for ${temuTopic}:`, r.error.flatten());
+        return new Response(
+          JSON.stringify({ error: "Invalid payload", details: r.error.flatten() }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return handler(supabase, r.data, companyId);
+    };
 
     // Route by topic
     switch (temuTopic) {
       case "order.created":
       case "order.status_update":
-        return await handleOrder(supabase, payload, companyId);
+        return await validateAndRoute(TemuOrderSchema, handleOrder as any);
 
       case "return.created":
       case "return.status_update":
-        return await handleReturn(supabase, payload, companyId);
+        return await validateAndRoute(TemuReturnSchema, handleReturn as any);
 
       case "settlement.completed":
-        return await handleSettlement(supabase, payload, companyId);
+        return await validateAndRoute(TemuSettlementSchema, handleSettlement as any);
 
       default:
         console.log(`Ignoring topic: ${temuTopic}`);
