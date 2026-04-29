@@ -1,52 +1,59 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock the supabase client BEFORE importing the module under test
-const mockInsert = vi.fn();
-const mockSelect = vi.fn();
-const mockSingle = vi.fn();
-const mockEq = vi.fn();
-const mockUpdate = vi.fn();
+const insertedHeaders: any[] = [];
+const lookedUpCodes: string[] = [];
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    from: vi.fn(() => ({
-      insert: (...args: any[]) => {
-        mockInsert(...args);
-        return {
-          select: () => ({
-            single: () => Promise.resolve({ data: { id: "je-1" }, error: null }),
-          }),
-        };
-      },
-      select: (...args: any[]) => {
-        mockSelect(...args);
-        return {
-          eq: (col: string, val: any) => {
-            mockEq(col, val);
-            return {
-              eq: () => ({
-                single: () =>
-                  Promise.resolve({
-                    data: { id: `acc-${val}`, current_balance: 0, normal_balance: "debit" },
-                    error: null,
-                  }),
-              }),
-              single: () =>
-                Promise.resolve({
-                  data: { id: `acc-${val}`, current_balance: 0, normal_balance: "debit" },
+vi.mock("@/integrations/supabase/client", () => {
+  const fromBuilder = (table: string) => {
+    if (table === "chart_of_accounts") {
+      // select('id').eq('company_id', X).eq('account_code', Y).single()
+      // OR select('current_balance,normal_balance').eq('id', X).single()
+      return {
+        select: (cols: string) => {
+          const builder: any = {
+            _filters: {} as Record<string, any>,
+            eq(col: string, val: any) {
+              builder._filters[col] = val;
+              if (col === "account_code") lookedUpCodes.push(val);
+              return builder;
+            },
+            single() {
+              if (cols.includes("current_balance")) {
+                return Promise.resolve({
+                  data: { current_balance: 0, normal_balance: "debit" },
                   error: null,
-                }),
-            };
-          },
-        };
-      },
-      update: (...args: any[]) => {
-        mockUpdate(...args);
-        return { eq: () => Promise.resolve({ data: null, error: null }) };
-      },
-    })),
-  },
-}));
+                });
+              }
+              return Promise.resolve({
+                data: { id: `acc-${builder._filters.account_code}` },
+                error: null,
+              });
+            },
+          };
+          return builder;
+        },
+        update: () => ({ eq: () => Promise.resolve({ data: null, error: null }) }),
+      };
+    }
+    if (table === "journal_entries") {
+      return {
+        insert: (row: any) => {
+          insertedHeaders.push(row);
+          return {
+            select: () => ({
+              single: () => Promise.resolve({ data: { id: `je-${insertedHeaders.length}` }, error: null }),
+            }),
+          };
+        },
+      };
+    }
+    if (table === "journal_entry_lines") {
+      return { insert: () => Promise.resolve({ data: null, error: null }) };
+    }
+    return {} as any;
+  };
+  return { supabase: { from: vi.fn(fromBuilder) } };
+});
 
 import {
   createSaleJournalEntries,
@@ -55,56 +62,34 @@ import {
 } from "../journalAutomation";
 
 beforeEach(() => {
-  mockInsert.mockClear();
-  mockSelect.mockClear();
-  mockSingle.mockClear();
-  mockEq.mockClear();
-  mockUpdate.mockClear();
+  insertedHeaders.length = 0;
+  lookedUpCodes.length = 0;
 });
 
-describe("journalAutomation - balanced entries", () => {
-  it("creates balanced journal entry for an Amazon (VES) sale", async () => {
+describe("journalAutomation", () => {
+  it("creates balanced revenue + COGS entries for Amazon (VES) sale", async () => {
     await createSaleJournalEntries({
       companyId: "co-ves",
       saleId: "sale-1",
       saleDate: "2026-01-15",
       marketplace: "amazon",
-      settlementAmount: 85,
+      settlementAmount: 100, // debits
       salePrice: 100,
       taxCollected: 13,
-      marketplaceFees: 15,
-      shippingCost: 5,
+      marketplaceFees: 10,
+      shippingCost: 3,
       deviceCost: 60,
       deviceDescription: "iPhone 14",
       orderNumber: "AMZ-001",
     });
 
-    // Find the revenue journal_entries insert
-    const headers = mockInsert.mock.calls
-      .map((c) => c[0])
-      .filter((p) => p && p.entry_number);
-
-    expect(headers.length).toBeGreaterThan(0);
-    headers.forEach((h: any) => {
+    expect(insertedHeaders.length).toBe(2); // revenue + COGS
+    insertedHeaders.forEach((h) => {
       expect(Math.abs(Number(h.total_debit) - Number(h.total_credit))).toBeLessThan(0.01);
     });
   });
 
-  it("throws when debits don't equal credits", async () => {
-    // Force imbalance via direct call: use a marketplace that has missing accounts? Easier: assert balanced math.
-    // Validate the math helper indirectly: settlement + fees + shipping should equal salePrice + tax
-    const settlementAmount = 80;
-    const salePrice = 100;
-    const taxCollected = 13;
-    const marketplaceFees = 28; // intentionally off
-    const shippingCost = 5;
-
-    const debits = settlementAmount + marketplaceFees + shippingCost;
-    const credits = salePrice + taxCollected;
-    expect(debits).not.toBeCloseTo(credits);
-  });
-
-  it("uses VES account codes (1050 AR) for amazon", async () => {
+  it("uses VES account codes (1000 Cash, 1050 AR) for amazon", async () => {
     await createPaymentReceivedJournalEntry({
       companyId: "co-ves",
       paymentDate: "2026-01-20",
@@ -113,13 +98,11 @@ describe("journalAutomation - balanced entries", () => {
       description: "Amazon payout",
       isVES: true,
     });
-
-    const codes = mockEq.mock.calls.filter((c) => c[0] === "account_code").map((c) => c[1]);
-    expect(codes).toContain("1000"); // VES Cash
-    expect(codes).toContain("1050"); // VES AR
+    expect(lookedUpCodes).toContain("1000");
+    expect(lookedUpCodes).toContain("1050");
   });
 
-  it("uses TGW account codes (1051 AR, 1001 Cash) when isVES=false", async () => {
+  it("uses TGW account codes (1001 Cash, 1051 AR) when isVES=false", async () => {
     await createPaymentReceivedJournalEntry({
       companyId: "co-tgw",
       paymentDate: "2026-01-20",
@@ -128,10 +111,8 @@ describe("journalAutomation - balanced entries", () => {
       description: "Shopify payout",
       isVES: false,
     });
-
-    const codes = mockEq.mock.calls.filter((c) => c[0] === "account_code").map((c) => c[1]);
-    expect(codes).toContain("1001");
-    expect(codes).toContain("1051");
+    expect(lookedUpCodes).toContain("1001");
+    expect(lookedUpCodes).toContain("1051");
   });
 
   it("creates balanced purchase entry with HST and QST", async () => {
@@ -149,26 +130,27 @@ describe("journalAutomation - balanced entries", () => {
       isVES: true,
     });
 
-    const headers = mockInsert.mock.calls
-      .map((c) => c[0])
-      .filter((p) => p && p.entry_number);
-
-    headers.forEach((h: any) => {
-      expect(Math.abs(Number(h.total_debit) - Number(h.total_credit))).toBeLessThan(0.01);
-      expect(Number(h.total_debit)).toBeCloseTo(1180);
-    });
+    expect(insertedHeaders.length).toBe(1);
+    const h = insertedHeaders[0];
+    expect(Math.abs(Number(h.total_debit) - Number(h.total_credit))).toBeLessThan(0.01);
+    expect(Number(h.total_debit)).toBeCloseTo(1180);
   });
-});
 
-describe("journalAutomation - account selection", () => {
-  it("selects revenue account 4000 for amazon, 4100 for bestbuy, 4101 for shopify", () => {
-    const map: Record<string, string> = {
-      amazon: "4000",
-      bestbuy: "4100",
-      shopify: "4101",
-    };
-    expect(map.amazon).toBe("4000");
-    expect(map.bestbuy).toBe("4100");
-    expect(map.shopify).toBe("4101");
+  it("revenue account selection: 4000=amazon, 4100=bestbuy, 4101=shopify", async () => {
+    await createSaleJournalEntries({
+      companyId: "co",
+      saleId: "s1",
+      saleDate: "2026-01-15",
+      marketplace: "bestbuy",
+      settlementAmount: 100,
+      salePrice: 100,
+      taxCollected: 0,
+      marketplaceFees: 0,
+      shippingCost: 0,
+      deviceCost: 0,
+      deviceDescription: "x",
+      orderNumber: "BB-1",
+    });
+    expect(lookedUpCodes).toContain("4100");
   });
 });
