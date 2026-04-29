@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createHmac } from "https://deno.land/std@0.177.0/node/crypto.ts";
 import { z } from "https://esm.sh/zod@3.23.8";
+import { createLogger } from "../_shared/logger.ts";
 
 // Zod schema for incoming Shopify order webhook payload (only the fields we use).
 // Unknown fields are allowed; missing required fields cause a 400 response.
@@ -218,17 +219,18 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-  console.log("Shopify webhook received");
+  const log = createLogger("shopify-webhook", { request_id: crypto.randomUUID() });
+  log.info("request_received");
 
   try {
     const shopifyHmac = req.headers.get("x-shopify-hmac-sha256");
     const shopifyTopic = req.headers.get("x-shopify-topic");
     const shopifyDomain = req.headers.get("x-shopify-shop-domain");
 
-    console.log(`Topic: ${shopifyTopic}, Domain: ${shopifyDomain}`);
+    log.info("headers_parsed", { topic: shopifyTopic, shop: shopifyDomain });
 
     if (!shopifyHmac) {
-      console.error("Missing HMAC signature");
+      log.warn("missing_hmac");
       return new Response(
         JSON.stringify({ error: "Missing HMAC signature" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -239,7 +241,7 @@ Deno.serve(async (req) => {
     const webhookSecret = Deno.env.get("SHOPIFY_WEBHOOK_SECRET");
 
     if (!webhookSecret) {
-      console.error("SHOPIFY_WEBHOOK_SECRET not configured");
+      log.error("secret_not_configured");
       return new Response(
         JSON.stringify({ error: "Server configuration error" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -249,18 +251,18 @@ Deno.serve(async (req) => {
     // Verify the webhook signature
     const isValid = verifyShopifyWebhook(body, shopifyHmac, webhookSecret);
     if (!isValid) {
-      console.error("Invalid webhook signature");
+      log.warn("invalid_signature");
       return new Response(
         JSON.stringify({ error: "Invalid signature" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("Webhook signature verified");
+    log.info("signature_verified");
 
     // Only process order creation events
     if (shopifyTopic !== "orders/create") {
-      console.log(`Ignoring topic: ${shopifyTopic}`);
+      log.info("topic_ignored", { topic: shopifyTopic });
       return new Response(
         JSON.stringify({ message: "Event ignored" }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -270,14 +272,14 @@ Deno.serve(async (req) => {
     const rawPayload = JSON.parse(body);
     const parseResult = ShopifyOrderSchema.safeParse(rawPayload);
     if (!parseResult.success) {
-      console.error("Invalid Shopify payload:", parseResult.error.flatten());
+      log.warn("payload_invalid", { details: parseResult.error.flatten() });
       return new Response(
         JSON.stringify({ error: "Invalid payload", details: parseResult.error.flatten() }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     const order = parseResult.data as unknown as ShopifyOrder;
-    console.log(`Processing order #${order.order_number}`);
+    log.info("order_parsed", { order_number: order.order_number, line_count: order.line_items.length });
 
     // Initialize Supabase client with service role for webhook processing
     const supabase = createClient(
@@ -405,14 +407,14 @@ Deno.serve(async (req) => {
         .select();
 
       if (insertError) {
-        console.error("Error inserting sales:", insertError);
+        log.error("sales_insert_failed", { err: insertError, order_number: order.order_number });
         return new Response(
           JSON.stringify({ error: "Failed to insert sales", details: insertError }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      console.log(`Successfully created ${insertedSales?.length || 0} sales from order #${order.order_number}`);
+      log.info("sales_inserted", { count: insertedSales?.length || 0, order_number: order.order_number });
     }
 
     return new Response(
@@ -423,7 +425,7 @@ Deno.serve(async (req) => {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Webhook processing error:", error);
+    log.error("unhandled_exception", { err: error });
     return new Response(
       JSON.stringify({ error: "Internal server error", details: String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

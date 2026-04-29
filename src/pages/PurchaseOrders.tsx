@@ -17,7 +17,7 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import { Search, Download, Plus, ClipboardList, X, Trash2, PackageCheck, Copy, Eye, Package, Wrench, Receipt, Upload } from 'lucide-react';
+import { Search, Download, Plus, ClipboardList, X, Trash2, PackageCheck, Copy, Eye, Package, Wrench, Receipt, Upload, Ban } from 'lucide-react';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -161,6 +161,29 @@ export default function PurchaseOrders() {
   };
 
   const deleteSelectedPOs = async () => { for (const id of selectedIds) await deletePO(id); clear(); };
+
+  const cancelSelectedPOs = async () => {
+    const eligible = selectedItems.filter(p => p.status === 'pending' || p.status === 'partially_received');
+    if (eligible.length === 0) {
+      toast.error('No selected POs are eligible to cancel (must be pending or partial)');
+      return;
+    }
+    if (!confirm(`Cancel ${eligible.length} purchase order(s)? Items already received will remain in inventory.`)) return;
+    try {
+      const { error } = await supabase
+        .from('purchase_orders')
+        .update({ status: 'cancelled' })
+        .in('id', eligible.map(p => p.id));
+      if (error) throw error;
+      eligible.forEach(p => logDelete('purchase_orders', p.id, { po_number: p.po_number }, `PO ${p.po_number} cancelled (bulk)`));
+      toast.success(`Cancelled ${eligible.length} PO(s)`);
+      clear();
+      loadOrders();
+      emitRefetch('financials');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to cancel POs');
+    }
+  };
 
   const clonePO = async (po: PurchaseOrder) => {
     setCloneLoading(po.id);
@@ -436,6 +459,7 @@ export default function PurchaseOrders() {
         <BatchActionBar count={selectedIds.size} onClear={clear}
           actions={[
             { label: 'Export Selected', icon: <Download className="h-4 w-4" />, onClick: exportCsv },
+            { label: 'Cancel Selected', icon: <Ban className="h-4 w-4" />, onClick: cancelSelectedPOs },
             { label: 'Delete Selected', icon: <Trash2 className="h-4 w-4" />, onClick: deleteSelectedPOs, variant: 'destructive' as const },
           ]}
         />
