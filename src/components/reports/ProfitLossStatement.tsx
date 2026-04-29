@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSavedFilters } from '@/hooks/useSavedFilters';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDataRefetch } from '@/hooks/useDataRefetch';
@@ -64,10 +65,20 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
   const { selectedCompany, companies, isSuperAdmin } = useCompany();
   const [loading, setLoading] = useState(true);
   const viewMode = companyView;
-  const [periodType, setPeriodType] = useState<'monthly' | 'quarterly' | 'yearly'>('monthly');
-  const [selectedPeriod, setSelectedPeriod] = useState(format(new Date(), 'yyyy-MM'));
-  const [showComparison, setShowComparison] = useState(false);
-  const [costingView, setCostingView] = useState<'accounting' | 'management'>('accounting');
+  const [savedFilters, setSavedFilters] = useSavedFilters('pl-statement', {
+    periodType: 'monthly' as 'monthly' | 'quarterly' | 'yearly',
+    selectedPeriod: format(new Date(), 'yyyy-MM'),
+    showComparison: false,
+    costingView: 'accounting' as 'accounting' | 'management',
+  });
+  const periodType = savedFilters.periodType;
+  const setPeriodType = (v: 'monthly' | 'quarterly' | 'yearly') => setSavedFilters({ periodType: v });
+  const selectedPeriod = savedFilters.selectedPeriod;
+  const setSelectedPeriod = (v: string) => setSavedFilters({ selectedPeriod: v });
+  const showComparison = savedFilters.showComparison;
+  const setShowComparison = (v: boolean) => setSavedFilters({ showComparison: v });
+  const costingView = savedFilters.costingView;
+  const setCostingView = (v: 'accounting' | 'management') => setSavedFilters({ costingView: v });
   const [data, setData] = useState<ComparisonData | null>(null);
 
   const queryClient = useQueryClient();
@@ -560,7 +571,7 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
             <TooltipTrigger asChild>
               <Button
                 variant={costingView === 'management' ? 'default' : 'outline'}
-                onClick={() => setCostingView(v => v === 'accounting' ? 'management' : 'accounting')}
+                onClick={() => setCostingView(costingView === 'accounting' ? 'management' : 'accounting')}
               >
                 <ToggleLeft className="h-4 w-4 mr-2" />
                 {costingView === 'accounting' ? 'Accounting View' : 'Management View'}
