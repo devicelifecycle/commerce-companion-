@@ -1,5 +1,66 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createHmac } from "https://deno.land/std@0.177.0/node/crypto.ts";
+import { z } from "https://esm.sh/zod@3.23.8";
+
+// Zod schemas for Temu webhook payloads
+const TemuOrderSchema = z.object({
+  order_sn: z.string(),
+  sub_order_sn: z.string().optional(),
+  order_status: z.number().int(),
+  create_time: z.number(),
+  update_time: z.number().optional(),
+  buyer_info: z.object({
+    buyer_name: z.string(),
+    email: z.string().optional().nullable(),
+    phone: z.string().optional().nullable(),
+  }).optional().nullable(),
+  shipping_address: z.object({
+    address_line1: z.string().optional().nullable(),
+    address_line2: z.string().optional().nullable(),
+    city: z.string().optional().nullable(),
+    state: z.string().optional().nullable(),
+    zip_code: z.string().optional().nullable(),
+    country: z.string().optional().nullable(),
+  }).optional().nullable(),
+  item_list: z.array(z.object({
+    sku_id: z.string(),
+    product_name: z.string(),
+    product_sku: z.string().optional().default(""),
+    quantity: z.number().int().positive(),
+    sale_price: z.number(),
+    currency: z.string().optional().default("CAD"),
+  })).min(1),
+  order_amount: z.number(),
+  shipping_fee: z.number().optional().default(0),
+  platform_discount: z.number().optional().default(0),
+  seller_discount: z.number().optional().default(0),
+}).passthrough();
+
+const TemuReturnSchema = z.object({
+  return_id: z.string(),
+  order_sn: z.string(),
+  sub_order_sn: z.string().optional(),
+  return_status: z.number().int(),
+  return_reason: z.string().optional().default(""),
+  create_time: z.number(),
+  item_list: z.array(z.any()).optional().default([]),
+  refund_amount: z.number().optional().default(0),
+  buyer_info: z.object({ buyer_name: z.string().optional() }).optional().nullable(),
+}).passthrough();
+
+const TemuSettlementSchema = z.object({
+  settlement_id: z.string(),
+  settlement_time: z.number(),
+  period_start: z.number(),
+  period_end: z.number(),
+  total_order_amount: z.number(),
+  total_platform_fee: z.number().optional().default(0),
+  total_commission: z.number().optional().default(0),
+  total_refund: z.number().optional().default(0),
+  total_adjustment: z.number().optional().default(0),
+  net_payout: z.number(),
+  currency: z.string().optional().default("CAD"),
+}).passthrough();
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -240,20 +301,32 @@ Deno.serve(async (req) => {
       );
     }
 
-    const payload = JSON.parse(body);
+    const rawPayload = JSON.parse(body);
+
+    const validateAndRoute = <T>(schema: z.ZodSchema<T>, handler: (s: any, p: T, c: string) => Promise<Response>) => {
+      const r = schema.safeParse(rawPayload);
+      if (!r.success) {
+        console.error(`Invalid Temu payload for ${temuTopic}:`, r.error.flatten());
+        return new Response(
+          JSON.stringify({ error: "Invalid payload", details: r.error.flatten() }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return handler(supabase, r.data, companyId);
+    };
 
     // Route by topic
     switch (temuTopic) {
       case "order.created":
       case "order.status_update":
-        return await handleOrder(supabase, payload, companyId);
+        return await validateAndRoute(TemuOrderSchema, handleOrder as any);
 
       case "return.created":
       case "return.status_update":
-        return await handleReturn(supabase, payload, companyId);
+        return await validateAndRoute(TemuReturnSchema, handleReturn as any);
 
       case "settlement.completed":
-        return await handleSettlement(supabase, payload, companyId);
+        return await validateAndRoute(TemuSettlementSchema, handleSettlement as any);
 
       default:
         console.log(`Ignoring topic: ${temuTopic}`);
