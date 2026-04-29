@@ -1,5 +1,44 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createHmac } from "https://deno.land/std@0.177.0/node/crypto.ts";
+import { z } from "https://esm.sh/zod@3.23.8";
+
+// Zod schema for incoming Shopify order webhook payload (only the fields we use).
+// Unknown fields are allowed; missing required fields cause a 400 response.
+const ShopifyOrderSchema = z.object({
+  id: z.number(),
+  order_number: z.union([z.string(), z.number()]).transform((v) => String(v)),
+  email: z.string().optional().nullable(),
+  total_price: z.string(),
+  subtotal_price: z.string().optional().default("0"),
+  total_tax: z.string().optional().default("0"),
+  total_shipping_price_set: z.object({
+    shop_money: z.object({ amount: z.string() }),
+  }).optional(),
+  created_at: z.string(),
+  shipping_address: z.object({
+    address1: z.string().optional().nullable(),
+    address2: z.string().optional().nullable(),
+    city: z.string().optional().nullable(),
+    province: z.string().optional().nullable(),
+    zip: z.string().optional().nullable(),
+    country: z.string().optional().nullable(),
+    phone: z.string().optional().nullable(),
+  }).optional().nullable(),
+  customer: z.object({
+    first_name: z.string().optional().default(""),
+    last_name: z.string().optional().default(""),
+    email: z.string().optional().nullable(),
+    phone: z.string().optional().nullable(),
+  }).optional().nullable(),
+  line_items: z.array(z.object({
+    id: z.number(),
+    title: z.string(),
+    sku: z.string().optional().nullable().default(""),
+    quantity: z.number().int().positive(),
+    price: z.string(),
+  })).min(1),
+  tax_lines: z.array(z.object({ title: z.string().optional() })).optional(),
+}).passthrough();
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -228,7 +267,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    const order: ShopifyOrder = JSON.parse(body);
+    const rawPayload = JSON.parse(body);
+    const parseResult = ShopifyOrderSchema.safeParse(rawPayload);
+    if (!parseResult.success) {
+      console.error("Invalid Shopify payload:", parseResult.error.flatten());
+      return new Response(
+        JSON.stringify({ error: "Invalid payload", details: parseResult.error.flatten() }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const order = parseResult.data as unknown as ShopifyOrder;
     console.log(`Processing order #${order.order_number}`);
 
     // Initialize Supabase client with service role for webhook processing
