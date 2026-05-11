@@ -94,6 +94,7 @@ export function PartnerBulkIntakeDialog({
   const [open, setOpen] = useState(false);
   const [batchNumber, setBatchNumber] = useState(`BATCH-${new Date().toISOString().split('T')[0]}`);
   const [text, setText] = useState('');
+  const [defaultDisposition, setDefaultDisposition] = useState<'list_for_sale' | 'return_to_partner'>('list_for_sale');
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
