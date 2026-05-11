@@ -150,16 +150,23 @@ export async function reversePartnerSaleAccrual(saleId: string): Promise<void> {
 
   // Re-list the partner device for resale
   if (ps.partner_device_id) {
+    const { data: pd } = await supabase
+      .from('partner_devices')
+      .select('partner_id, company_id')
+      .eq('id', ps.partner_device_id)
+      .maybeSingle();
     await supabase.from('partner_devices')
       .update({ status: 'listed' })
       .eq('id', ps.partner_device_id);
-    await supabase.from('partner_device_events').insert({
-      partner_device_id: ps.partner_device_id,
-      partner_id: '00000000-0000-0000-0000-000000000000', // backfilled by trigger if needed
-      company_id: '00000000-0000-0000-0000-000000000000',
-      event_type: 'sale_reversed',
-      payload: { sale_id: saleId, partner_sale_id: ps.id },
-    });
+    if (pd) {
+      await supabase.from('partner_device_events').insert({
+        partner_device_id: ps.partner_device_id,
+        partner_id: pd.partner_id,
+        company_id: pd.company_id,
+        event_type: 'sale_reversed',
+        payload: { sale_id: saleId, partner_sale_id: ps.id },
+      });
+    }
   }
 }
 
