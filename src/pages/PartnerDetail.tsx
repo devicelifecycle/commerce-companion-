@@ -49,6 +49,12 @@ export default function PartnerDetail() {
     category: 'phone', partner_cost: 0, notes: '',
   });
 
+  // Date filter for sales tab
+  const ytdStart = `${new Date().getFullYear()}-01-01`;
+  const today = new Date().toISOString().split('T')[0];
+  const [salesFrom, setSalesFrom] = useState(ytdStart);
+  const [salesTo, setSalesTo] = useState(today);
+
   const load = async () => {
     if (!id) return;
     setLoading(true);
