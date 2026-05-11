@@ -135,11 +135,126 @@ serve(async (req) => {
       // Fetch the original sale
       const { data: sale } = await supabase
         .from("sales")
-        .select("marketplace, sale_price, marketplace_fees, shipping_cost, tax_amount, device_id, company_id")
+        .select("marketplace, sale_price, marketplace_fees, shipping_cost, tax_amount, device_id, company_id, is_partner_sale")
         .eq("id", rma.sale_id)
         .single();
 
       if (!sale) throw new Error("Original sale not found");
+
+      // === PARTNER SALE RETURN: reverse the partner-sale accrual instead of standard COGS path ===
+      if ((sale as any).is_partner_sale) {
+        const { data: ps } = await supabase
+          .from("partner_sales")
+          .select("id, partner_id, partner_device_id, sale_amount, partner_proceeds, company_id")
+          .eq("sale_id", rma.sale_id)
+          .maybeSingle();
+
+        if (ps) {
+          const isFullRefund = rma.resolution_type !== "adjustment"
+            && (refundAmount === 0 || refundAmount >= Number(ps.sale_amount) - 0.01);
+
+          if (isFullRefund) {
+            // Pull original JE lines and post a mirror reversal
+            const { data: origJE } = await supabase
+              .from("journal_entries")
+              .select("id, entry_date, description")
+              .eq("reference_type", "partner_sale")
+              .eq("reference_id", ps.id)
+              .eq("status", "posted")
+              .order("created_at", { ascending: true })
+              .limit(1)
+              .maybeSingle();
+
+            if (origJE) {
+              const { data: origLines } = await supabase
+                .from("journal_entry_lines")
+                .select("account_id, debit_amount, credit_amount, description")
+                .eq("journal_entry_id", origJE.id);
+
+              const reversalLines: JournalLine[] = (origLines || []).map((l: any) => ({
+                account_id: l.account_id,
+                description: `Reversal — RMA#${rma.rma_number} — ${l.description || ""}`.slice(0, 250),
+                debit_amount: Number(l.credit_amount || 0),
+                credit_amount: Number(l.debit_amount || 0),
+              }));
+
+              if (reversalLines.length > 0) {
+                await createJournalEntry(
+                  supabase, companyId, returnDate,
+                  `Partner sale reversal — RMA#${rma.rma_number}`,
+                  rma.id, reversalLines
+                );
+              }
+            }
+
+            await supabase.from("partner_payables")
+              .update({ status: "reversed" }).eq("partner_sale_id", ps.id);
+            await supabase.from("partner_sales")
+              .update({ status: "reversed" }).eq("id", ps.id);
+
+            if (ps.partner_device_id) {
+              await supabase.from("partner_devices")
+                .update({ status: "listed" }).eq("id", ps.partner_device_id);
+              await supabase.from("partner_device_events").insert({
+                partner_device_id: ps.partner_device_id,
+                partner_id: ps.partner_id,
+                company_id: ps.company_id,
+                event_type: "sale_reversed",
+                payload: { sale_id: rma.sale_id, partner_sale_id: ps.id, rma_id: rma.id, rma_number: rma.rma_number },
+              });
+            }
+          } else {
+            // Partial refund / adjustment: reduce partner payable proportionally
+            const ratio = Number(ps.sale_amount) > 0 ? refundAmount / Number(ps.sale_amount) : 0;
+            const payableReduction = +(Number(ps.partner_proceeds) * ratio).toFixed(2);
+
+            const codes = ACCOUNT_MAP[sale.marketplace] || ACCOUNT_MAP["other"];
+            const [arId, partnerPayableId, taxId] = await Promise.all([
+              getAccountId(supabase, companyId, codes.ar),
+              getAccountId(supabase, companyId, "2050"),
+              getAccountId(supabase, companyId, codes.taxCollected),
+            ]);
+
+            const lines: JournalLine[] = [];
+            if (payableReduction > 0 && partnerPayableId) {
+              lines.push({ account_id: partnerPayableId, description: `Partner payable reduced — RMA#${rma.rma_number}`, debit_amount: payableReduction, credit_amount: 0 });
+            }
+            if (taxRefunded > 0 && taxId) {
+              lines.push({ account_id: taxId, description: `Tax reversal — RMA#${rma.rma_number}`, debit_amount: taxRefunded, credit_amount: 0 });
+            }
+            const arCredit = +(payableReduction + taxRefunded).toFixed(2);
+            if (arCredit > 0 && arId) {
+              lines.push({ account_id: arId, description: `AR credit/refund — RMA#${rma.rma_number}`, debit_amount: 0, credit_amount: arCredit });
+            }
+            if (lines.length > 0) {
+              await createJournalEntry(
+                supabase, companyId, returnDate,
+                `Partner sale partial refund — RMA#${rma.rma_number}`,
+                rma.id, lines
+              );
+            }
+
+            // Reduce open payable amount
+            const { data: payable } = await supabase
+              .from("partner_payables").select("id, amount")
+              .eq("partner_sale_id", ps.id).eq("status", "accrued").maybeSingle();
+            if (payable) {
+              const newAmount = Math.max(0, Number(payable.amount) - payableReduction);
+              await supabase.from("partner_payables")
+                .update({ amount: newAmount, status: newAmount === 0 ? "reversed" : "accrued" })
+                .eq("id", payable.id);
+            }
+          }
+        }
+
+        await supabase.from("return_authorizations")
+          .update({ accounting_status: "processed" }).eq("id", rma.id);
+
+        return new Response(
+          JSON.stringify({ success: true, message: `Partner sale return processed — RMA ${rma.rma_number}` }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
       // Always calculate proportional tax refund based on the effective tax rate
       // e.g. if sale was $225.99 with $26.16 HST (13%), a $25 refund gets $25 * (26.16/225.99) ≈ $2.89 tax refund

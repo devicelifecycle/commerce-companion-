@@ -94,6 +94,7 @@ export function PartnerBulkIntakeDialog({
   const [open, setOpen] = useState(false);
   const [batchNumber, setBatchNumber] = useState(`BATCH-${new Date().toISOString().split('T')[0]}`);
   const [text, setText] = useState('');
+  const [defaultDisposition, setDefaultDisposition] = useState<'list_for_sale' | 'return_to_partner'>('list_for_sale');
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
@@ -110,9 +111,14 @@ export function PartnerBulkIntakeDialog({
       if (bErr) throw bErr;
 
       const rows = lines.map(line => {
-        // Format: Brand,Model,IMEI,Storage,Color,PartnerCost
+        // Format: Brand,Model,IMEI,Storage,Color,PartnerCost[,Disposition]
         const parts = line.split(/[,;\t]/).map(p => p.trim());
-        const [brand, model, identifier, storage, color, cost] = parts;
+        const [brand, model, identifier, storage, color, cost, dispOverride] = parts;
+        const dispRaw = (dispOverride || '').toLowerCase();
+        const rowDisposition =
+          dispRaw === 'return' || dispRaw === 'return_to_partner' ? 'return_to_partner'
+          : dispRaw === 'list' || dispRaw === 'list_for_sale' ? 'list_for_sale'
+          : defaultDisposition;
         return {
           partner_id: partnerId, company_id: companyId,
           intake_batch_id: batch.id,
@@ -123,6 +129,7 @@ export function PartnerBulkIntakeDialog({
           color: color || null,
           partner_cost: Number(cost) || 0,
           status: 'received',
+          disposition: rowDisposition,
           created_by: u.user?.id,
         };
       });
@@ -162,12 +169,23 @@ export function PartnerBulkIntakeDialog({
             <Input value={batchNumber} onChange={e => setBatchNumber(e.target.value)} />
           </div>
           <div>
-            <Label>Devices (one per line — Brand, Model, IMEI/SN, Storage, Color, PartnerCost)</Label>
+            <Label>Default decision</Label>
+            <Select value={defaultDisposition} onValueChange={(v: any) => setDefaultDisposition(v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="list_for_sale">List for resale</SelectItem>
+                <SelectItem value="return_to_partner">Repair &amp; return to partner</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground mt-1">Applied to all rows. Override per row by appending a 7th column with <code>list</code> or <code>return</code>.</p>
+          </div>
+          <div>
+            <Label>Devices (one per line — Brand, Model, IMEI/SN, Storage, Color, PartnerCost, [list|return])</Label>
             <textarea
               value={text}
               onChange={e => setText(e.target.value)}
               className="w-full min-h-[200px] rounded-md border bg-background p-3 font-mono text-sm"
-              placeholder={`Apple, iPhone 14 Pro, 358888888888888, 256GB, Black, 600\nSamsung, Galaxy S23, 359000000000000, 128GB, Gray, 400`}
+              placeholder={`Apple, iPhone 14 Pro, 358888888888888, 256GB, Black, 600, list\nSamsung, Galaxy S23, 359000000000000, 128GB, Gray, 400, return`}
             />
             <p className="text-xs text-muted-foreground mt-1">Comma, semicolon or tab-separated. Only Model is required.</p>
           </div>
