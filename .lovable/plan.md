@@ -1,125 +1,213 @@
+# Partner / Investor Consignment Module — Implementation Plan
 
+## Goal
+Onboard an inventory **partner (investor)** who supplies devices we test, refurbish, and sell across our marketplaces. Their inventory stays **off our balance sheet** (consignment). 
 
-# Revised Repair Cost & Management Profit System
+**Revenue model — clarified:**
+- The partner OWNS the devices and KEEPS the proceeds of each sale.
+- WE earn:
+  1. **Refurbishment / testing fees** (manual entry per device) — billed to partner
+  2. **Commission** = configurable % (default **15%**) of **net profit** on each sale, retained by us out of partner proceeds
+- So on every sale: we collect cash, deduct our refurb fee + our 15% commission, and the **remainder is owed back to the partner** (Partner Payable).
 
-## Summary
-
-Overhaul the repair tracking to separate **accounting profit** (actual costs) from **management profit** (estimated labor). Repair parts flow through a dedicated PO type. Labor estimates live on the device. The P&L toggle controls which view is shown. Orders show both profit columns.
-
----
-
-## Current Issues
-
-1. The P&L toggle exists but uses a flawed approach (contra-expense JE + shifting costs between COGS and OpEx). Need to simplify.
-2. Repair parts are added via a standalone "Add Part" button — should come through POs.
-3. No management labor field on devices.
-4. Orders table shows a single profit column.
+Every partner device must be traceable end-to-end with full history.
 
 ---
 
-## Plan
+## 1. Data model (new tables)
 
-### 1. Database Changes
-
-- **`purchase_orders` table**: Add `po_type` column (`text`, default `'inventory'`, values: `'inventory'` | `'repair_parts'`).
-- **`purchase_order_items` table**: No change needed — the PO type determines routing on receive.
-- **`devices` table**: Add `management_labor_cost` (`numeric`, nullable, default `null`) and `management_labor_hours` (`numeric`, nullable, default `null`).
-- **Remove** contra-expense accounts 6950/6951 from `chartOfAccounts.ts` seed data (leave any existing DB rows; just stop creating new JEs).
-
-### 2. Repair Parts PO Type
-
-**CreatePurchaseOrderDialog.tsx**:
-- Add a `po_type` selector at the top: "Device Inventory" (default) vs "Repair Parts".
-- Save `po_type` to the `purchase_orders` record.
-
-**ReceivePODialog.tsx**:
-- When receiving a PO with `po_type = 'repair_parts'`:
-  - Instead of creating devices, insert/upsert rows into `repair_parts` (increment `quantity_on_hand`).
-  - Match by name/SKU or create new repair part entries.
-  - Still create AP entries and GRNs as normal.
-
-**RepairPartsManagement.tsx**:
-- Remove the "Add Part" button entirely.
-- Keep the search and table display as read-only inventory view.
-
-### 3. Management Labor on Devices
-
-**DeviceEditDialog.tsx**:
-- Add two new fields: "Management Labor Hours" and "Management Labor Cost ($)".
-- These are optional fields for management reporting only.
-- Add a helper tooltip: "Used for management profit calculations. Does not affect accounting books."
-
-### 4. P&L Toggle Rework
-
-**ProfitLossStatement.tsx** — revise the toggle logic:
-
-- **Accounting View** (default):
-  - COGS = device purchases (includes capitalized repair parts since they're in `cost_price`).
-  - OpEx = all expenses including payroll/labor.
-  - This is the standard GAAP view.
-
-- **Management View**:
-  - COGS = device purchases + sum of `management_labor_cost` from sold devices in the period.
-  - OpEx = all expenses **minus** the payroll/labor expense category.
-  - Add explanatory alert for each view.
-
-- Remove the contra-expense JE creation from `DeviceRepairDialog.tsx`.
-- Fetch `management_labor_cost` from sold devices to calculate management COGS adjustment.
-
-Update `PLData` interface:
-- Replace `capitalizedRepairLabor` with `managementLaborCost` (sum of `management_labor_cost` from devices sold in period).
-- Add `payrollExpenses` (labor-category expenses to exclude in management view).
-- Keep `repairPartsCost` but note it's already in device `cost_price`.
-
-### 5. Orders Table — Dual Profit Columns
-
-**Sales.tsx**:
-- Rename existing "Profit" column header to "Acct Profit".
-- Add new "Mgmt Profit" column.
-- Accounting profit = existing `profit` field (sale_price - cost_price - fees - shipping - tax).
-- Management profit = sale_price - (original_cost_price + repair_parts_cost + management_labor_cost) - fees - shipping - tax.
-- This requires joining device data including `original_cost_price` and `management_labor_cost`.
-
-**useSalesQuery.ts**:
-- Expand the `devices` select to include `original_cost_price` and `management_labor_cost`.
-- Add these to the `SaleRecord` interface.
-
-**SaleRecord interface update**:
 ```text
-devices?: {
-  ...existing fields,
-  original_cost_price?: number | null;
-  management_labor_cost?: number | null;
-} | null;
+partners                              ← investor master record
+  id, name, contact info, commission_pct (default 15, editable per partner),
+  is_active, agreement_start_date
+
+partner_devices                       ← separate from `devices`, never on our books
+  id, partner_id, intake_date, intake_batch_id
+  category (phone/laptop/camera/other), brand, model, identifier (IMEI/SN), color, storage
+  partner_cost (informational — supplied by partner, used in net-profit calc, NOT in GL)
+  status: received → testing → tested → refurbishing → refurbished
+          → listed → sold → returned_to_partner → written_off
+  disposition: null | list_for_sale | return_to_partner   (decided AFTER testing)
+  refurb_fee (manual, set per device by operator)
+  refurb_fee_status: pending | accrued | netted | invoiced | settled
+  device_id (nullable — synthesized device row used by sales/marketplace flows)
+  notes
+
+partner_intake_batches
+  id, partner_id, received_date, manifest_url, total_units, notes
+
+partner_device_events                 ← timeline / audit
+  id, partner_device_id, event_type, payload jsonb, user_id, created_at
+  event_types: received, tested, parts_added, labor_logged, refurb_completed,
+               disposition_set, listed_<channel>, sale_recorded,
+               refund_recorded, returned_to_partner, fee_billed,
+               commission_earned, payable_accrued, settled
+
+partner_device_parts                  ← parts pulled from our repair_parts inventory
+  id, partner_device_id, repair_part_id, qty, unit_cost, total_cost, used_at
+  (Parts ARE on our books → Dr. Refurb-Cost-Recoverable / Cr. Parts Inventory.
+   Cost is then included in the refurb_fee billed to partner.)
+
+partner_device_labor
+  id, partner_device_id, hours, rate, total_cost, logged_at
+
+partner_sales                         ← per-sale breakdown (the heart of traceability)
+  id, partner_id, partner_device_id, sale_id
+  sale_amount, partner_cost, marketplace_fees, shipping, tax, refurb_fee
+  net_profit             ← sale − partner_cost − fees − shipping − tax − refurb_fee
+  commission_pct, commission_amount   ← OUR revenue (net_profit × pct)
+  partner_proceeds       ← sale − fees − shipping − tax − refurb_fee − commission
+                           = what we owe the partner for this sale
+  status: accrued | settled, settled_at, settlement_id
+
+partner_payables                      ← rolled up by sale (what WE owe partner)
+  id, partner_id, partner_sale_id, amount, status, settlement_id
+
+partner_receivables                   ← refurb fees on returned/unsold devices
+  id, partner_id, partner_device_id, fee_amount, billed_date, status
+
+partner_settlements                   ← periodic netting / payouts
+  id, partner_id, period_start, period_end
+  total_payable, total_receivable, net_amount, direction (pay|collect),
+  paid_date, payment_method, reference, statement_pdf_url
 ```
 
-### 6. Financials Explanation
-
-Add explanatory content to the P&L view:
-- **Accounting View tooltip**: "Standard P&L using actual costs. Device COGS includes purchase price + capitalized repair parts. Labor appears as payroll in Operating Expenses."
-- **Management View tooltip**: "Performance P&L. Device COGS includes purchase price + repair parts + estimated labor per device. Payroll expenses are excluded to avoid double-counting."
-
-### 7. DeviceRepairDialog Cleanup
-
-- Remove the JE creation logic (contra-expense entries for 6950/6951).
-- Keep the parts deduction and cost capitalization logic (parts cost → device `cost_price`).
-- Remove labor cost capitalization into `cost_price` — labor is now tracked separately via `management_labor_cost`.
-- On repair completion: only add parts cost to `cost_price`, not labor.
+Schema additions to existing tables:
+- `devices`: `is_partner_owned boolean default false`, `partner_device_id uuid`
+- `sales`: `is_partner_sale boolean`, `partner_id uuid`, `partner_device_id uuid`
 
 ---
 
-## File Changes Summary
+## 2. Sale-level money flow (single sale example)
 
-| File | Change |
-|------|--------|
-| DB migration | Add `po_type` to `purchase_orders`, add `management_labor_cost` and `management_labor_hours` to `devices` |
-| `CreatePurchaseOrderDialog.tsx` | Add PO type selector |
-| `ReceivePODialog.tsx` | Route repair parts POs to `repair_parts` table |
-| `RepairPartsManagement.tsx` | Remove "Add Part" button |
-| `DeviceEditDialog.tsx` | Add management labor fields |
-| `DeviceRepairDialog.tsx` | Remove JE logic, stop capitalizing labor into cost_price |
-| `ProfitLossStatement.tsx` | Rework toggle logic, update data fetching |
-| `Sales.tsx` | Add "Mgmt Profit" column alongside existing "Acct Profit" |
-| `useSalesQuery.ts` | Expand device fields in query |
-| `chartOfAccounts.ts` | Remove 6950/6951 accounts from seed |
+```text
+Sale price                              $500.00
+  − Marketplace fees                    − $50.00
+  − Shipping                            − $15.00
+  − Tax (collected & remitted)          − $65.00
+  − Refurb fee (our income)             − $40.00
+  ─────────────────────────────────────
+  = Net profit                          $330.00
+  − Partner cost (informational)        − $200.00
+  ─────────────────────────────────────
+  = Net profit for commission base      $130.00
+  × Commission %                        × 15%
+  = OUR commission (income)             $19.50
+  
+Partner proceeds owed = $330.00 − $19.50 = $310.50  →  Partner Payable
+```
 
+**Accounting (our books):**
+```text
+Dr. Cash / AR                          500.00
+    Cr. Marketplace Fees Clearing        50.00
+    Cr. Shipping Clearing                15.00
+    Cr. HST Payable                      65.00
+    Cr. Refurb Service Revenue (4500)    40.00
+    Cr. Consignment Commission (4510)    19.50
+    Cr. Partner Payable (liability)     310.50
+```
+No COGS — we never owned the device.
+
+---
+
+## 3. Workflow
+
+```text
+INTAKE → TESTING → REFURB (optional) → DISPOSITION (list | return)
+       → LIST → SALE → COMMISSION + PAYABLE → SETTLEMENT
+```
+
+- **Intake**: bulk Excel import or manual; creates partner_devices + intake batch.
+- **Testing/refurb**: parts pulled from our inventory, labor logged, manual refurb fee entered.
+- **Disposition (after testing)**: operator picks `list_for_sale` or `return_to_partner`.
+  - List → synth `devices` row (`is_partner_owned=true`, `cost_price=0`) → flows through existing marketplaces unchanged.
+  - Return → status `returned_to_partner`; refurb fee → `partner_receivables`.
+- **Sale ingestion** (Amazon/Best Buy/Shopify/Temu/manual): existing pipelines run; post-insert hook detects `is_partner_owned` and calls `process-partner-sale` edge function which writes `partner_sales`, journal entries, and accrues payable.
+- **Refunds**: reverse via existing `reversalUtils.ts`, plus reverse the matching partner_sale + payable.
+- **Settlement**: monthly job nets payables − receivables → settlement → payment + statement PDF.
+
+---
+
+## 4. Partner Investor Dashboard (NEW)
+
+Top-level nav item **"Partners"** (admin-gated). Selecting a partner opens their dashboard:
+
+### Dashboard tabs
+1. **Overview** — KPI tiles (tabular-nums, dark theme):
+   - Total devices received / in-stock / listed / sold / returned
+   - Lifetime gross sales, our commission earned, our refurb-fee revenue
+   - Current Partner Payable balance, Receivable balance, Net owing
+   - MTD / YTD toggle
+2. **Inventory** — full partner_devices table with status filters; **clicking a device opens Device Detail** (timeline, parts, labor, fee, listings, sale).
+3. **Sales & Profit Breakdown** — order-by-order table:
+   - Date • Channel • Device • Sale $ • Fees • Shipping • Tax • Refurb Fee • Partner Cost • **Net Profit** • Commission % • **Our Commission $** • **Partner Proceeds $** • Status
+   - Row click → drill into the full computation + linked sale + linked device timeline.
+   - Export CSV / PDF.
+4. **Refurb Fees** — every fee charged: device, fee, status (netted vs invoiced), date.
+5. **Settlements** — period statements, payment history, generate next statement PDF.
+6. **Documents** — uploaded agreements, intake manifests.
+
+Sidebar deep-links: "View this partner's inventory", "View this partner's sales", "View open payables".
+
+### Partner Device Detail page
+- Header: identifiers, status, disposition, partner cost, current location
+- **Timeline** (every `partner_device_events` row, with user + timestamp)
+- Parts used (with cost), Labor log
+- Refurb fee + status
+- Listings per channel (active + historical)
+- If sold: linked `partner_sales` row with full profit-share math
+- Refunds/returns history
+
+---
+
+## 5. Reporting impact
+
+- **Balance Sheet**: partner inventory excluded. New lines: Partner Payables (liability), Partner Receivables (asset).
+- **P&L**: two new revenue accounts:
+  - `4500 Refurbishment Service Revenue`
+  - `4510 Consignment Commission Revenue`
+- **FIFO valuation reports**: filter `is_partner_owned = false` everywhere.
+- **Marketplace fee analytics**: unchanged.
+
+---
+
+## 6. UI integration with existing app
+
+- Existing **Inventory** pages: hide `is_partner_owned = true` by default; add a "Partner inventory" toggle.
+- Existing **Sales/Orders** pages: badge partner sales; Profit column shows our commission (not gross profit) for partner rows.
+- Existing **Reports** (P&L, Balance Sheet, dashboards): partner activity excluded from VES/TGW totals; surfaced under "Partners" instead.
+
+---
+
+## 7. Marketplace integration touchpoints
+
+All five sale ingestion paths (Amazon, Best Buy, Shopify, Temu, manual) get one additive post-insert hook → `process-partner-sale` edge function. Gated by `is_partner_owned`. No changes to fetching logic.
+
+---
+
+## 8. Implementation phases
+
+1. **Schema** — new tables, columns, RLS (admin + new `partners_manage` permission).
+2. **Partners CRUD + Intake** — partners page, intake batch + Excel importer.
+3. **Partner Device detail + Timeline** (read-only shell).
+4. **Testing/Refurb workflow** — parts, labor, manual fee entry, disposition decision.
+5. **List-for-sale bridge** — synth `devices` row; verify existing marketplace flows ingest correctly.
+6. **Partner profit/commission engine** — `process-partner-sale` edge function + hooks.
+7. **Refurb-fee receivables + monthly billing job**.
+8. **Investor Dashboard** (Overview, Sales Breakdown, Inventory, Fees, Settlements).
+9. **Settlement UI + statement PDF**.
+10. **Filter existing reports** to exclude partner inventory; permissions + audit logging.
+
+---
+
+## Risk / safety assessment
+
+- ✅ Existing books untouched: only additive accounts + tables.
+- ✅ Marketplace webhooks: additive hook gated by flag — zero risk to current sales flow.
+- ✅ FIFO valuation: filtered by `is_partner_owned` — partner units never enter cost layers.
+- ✅ Refunds: `reversalUtils.ts` extended to also reverse `partner_sales` + payable.
+- ⚠️ Repair parts used on partner devices: posted to a recoverable account (not COGS); recovered via the refurb fee billed to partner.
+- ⚠️ Multi-channel listings of the same partner device: enforce single active listing per `partner_device_id` to prevent overselling.
+
+Yes — this is fully buildable without breaking the existing app. Approve and I'll start with Phase 1 (schema + RLS).
