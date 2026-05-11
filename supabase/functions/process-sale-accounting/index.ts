@@ -360,7 +360,7 @@ serve(async (req) => {
               const ppUrl = `${SUPABASE_URL}/functions/v1/process-partner-sale`;
               const r = await fetch(ppUrl, {
                 method: "POST",
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
                 body: JSON.stringify({ sale_id: sale.id }),
               });
               if (r.ok) processed.push(sale.order_number);
