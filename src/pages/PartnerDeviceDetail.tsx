@@ -37,6 +37,26 @@ export default function PartnerDeviceDetail() {
   const [linkOpen, setLinkOpen] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
   const [linking, setLinking] = useState(false);
+  const [returning, setReturning] = useState(false);
+
+  const returnToPartner = async () => {
+    if (!device) return;
+    if (!confirm(`Mark this device as returned to partner${Number(device.refurb_fee) > 0 ? ` and bill refurb fee ${Number(device.refurb_fee).toFixed(2)}` : ''}?`)) return;
+    setReturning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('bill-refurb-return', {
+        body: { partner_device_id: device.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      toast.success(`Device returned to partner${(data as any).billed > 0 ? ` · billed ${Number((data as any).billed).toFixed(2)}` : ''}`);
+      load();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to return');
+    } finally {
+      setReturning(false);
+    }
+  };
 
   const load = async () => {
     if (!deviceId) return;
@@ -213,6 +233,12 @@ export default function PartnerDeviceDetail() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+          )}
+          {!sale && device.status !== 'returned_to_partner' && (
+            <Button variant="outline" onClick={returnToPartner} disabled={returning}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              {returning ? 'Processing…' : `Return to partner${Number(device.refurb_fee) > 0 ? ` & bill ${Number(device.refurb_fee).toFixed(2)}` : ''}`}
+            </Button>
           )}
         </div>
 

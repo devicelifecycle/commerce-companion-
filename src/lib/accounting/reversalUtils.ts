@@ -127,7 +127,60 @@ export async function resetDeviceOnSaleDelete(deviceId: string): Promise<void> {
  * - Remove sale items
  * - Remove linked RMAs
  */
+export async function reversePartnerSaleAccrual(saleId: string): Promise<void> {
+  const { data: ps } = await supabase
+    .from('partner_sales')
+    .select('id, partner_device_id')
+    .eq('sale_id', saleId)
+    .maybeSingle();
+  if (!ps) return;
+
+  // Reverse partner-sale journal entries (linked by reference_id = partner_sales.id)
+  await reverseJournalEntries(ps.id);
+
+  // Mark payables reversed
+  await supabase.from('partner_payables')
+    .update({ status: 'reversed' })
+    .eq('partner_sale_id', ps.id);
+
+  // Mark partner sale reversed
+  await supabase.from('partner_sales')
+    .update({ status: 'reversed' })
+    .eq('id', ps.id);
+
+  // Re-list the partner device for resale
+  if (ps.partner_device_id) {
+    const { data: pd } = await supabase
+      .from('partner_devices')
+      .select('partner_id, company_id')
+      .eq('id', ps.partner_device_id)
+      .maybeSingle();
+    await supabase.from('partner_devices')
+      .update({ status: 'listed' })
+      .eq('id', ps.partner_device_id);
+    if (pd) {
+      await supabase.from('partner_device_events').insert({
+        partner_device_id: ps.partner_device_id,
+        partner_id: pd.partner_id,
+        company_id: pd.company_id,
+        event_type: 'sale_reversed',
+        payload: { sale_id: saleId, partner_sale_id: ps.id },
+      });
+    }
+  }
+}
+
 export async function cleanupBeforeSaleDelete(saleId: string, deviceId: string | null): Promise<{ journalCount: number }> {
+  // Check if this is a partner sale; if so, reverse accruals first
+  const { data: saleRow } = await supabase
+    .from('sales')
+    .select('is_partner_sale')
+    .eq('id', saleId)
+    .maybeSingle();
+  if (saleRow?.is_partner_sale) {
+    await reversePartnerSaleAccrual(saleId);
+  }
+
   const journalCount = await reverseJournalEntries(saleId);
   await reverseARForSale(saleId);
 

@@ -299,6 +299,7 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
           let devicesQuery = supabase
             .from('devices')
             .select('cost_price, purchase_date')
+            .eq('is_partner_owned', false)
             .gte('purchase_date', startStr)
             .lte('purchase_date', endStr);
           if (viewMode !== 'consolidated') devicesQuery = devicesQuery.eq('company_id', viewMode);
@@ -313,7 +314,8 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
         // Inventory values (for display only)
         let inventoryQuery = supabase
           .from('devices')
-          .select('cost_price, status, purchase_date');
+          .select('cost_price, status, purchase_date')
+          .eq('is_partner_owned', false);
         if (viewMode !== 'consolidated') inventoryQuery = inventoryQuery.eq('company_id', viewMode);
         const { data: allDevices } = await inventoryQuery;
         
