@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Save, ListChecks, RefreshCw } from 'lucide-react';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ArrowLeft, Save, ListChecks, RefreshCw, LinkIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { fmtMoney, STATUS_COLORS, STATUS_LABELS, PARTNER_STATUSES, logPartnerEvent } from '@/lib/partnerEvents';
 
