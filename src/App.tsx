@@ -26,6 +26,9 @@ import Returns from "./pages/Returns";
 import IntegrationHealth from "./pages/IntegrationHealth";
 import Customers from "./pages/Customers";
 import ActivityLogPage from "./pages/ActivityLogPage";
+import Partners from "./pages/Partners";
+import PartnerDetail from "./pages/PartnerDetail";
+import PartnerDeviceDetail from "./pages/PartnerDeviceDetail";
 
 
 import { ErrorBoundary } from "@/components/ui/error-boundary";
@@ -102,6 +105,9 @@ const App = () => (
               {/* Redirects for old routes */}
               <Route path="/sales" element={<Navigate to="/orders" replace />} />
               <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+              <Route path="/partners" element={<ProtectedRoute><Partners /></ProtectedRoute>} />
+              <Route path="/partners/:id" element={<ProtectedRoute><PartnerDetail /></ProtectedRoute>} />
+              <Route path="/partners/:partnerId/devices/:deviceId" element={<ProtectedRoute><PartnerDeviceDetail /></ProtectedRoute>} />
               <Route path="/accounting" element={<Navigate to="/financials" replace />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

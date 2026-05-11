@@ -19,6 +19,7 @@ import {
   ClipboardCheck,
   RotateCcw,
   Activity,
+  Handshake,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/lib/auth';
@@ -53,6 +54,7 @@ const operationsNav = [
   { title: 'Returns / RMA', url: '/returns', icon: RotateCcw },
   { title: 'Suppliers', url: '/suppliers', icon: Package },
   { title: 'Customers', url: '/customers', icon: Users },
+  { title: 'Partners', url: '/partners', icon: Handshake },
   { title: 'Invoices', url: '/invoices', icon: FileText },
   { title: 'Expenses', url: '/expenses', icon: Wallet },
 ];

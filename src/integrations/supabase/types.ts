@@ -1026,11 +1026,13 @@ export type Database = {
           id: string
           imei: string | null
           import_batch_id: string | null
+          is_partner_owned: boolean
           management_labor_cost: number | null
           management_labor_hours: number | null
           model: string
           notes: string | null
           original_cost_price: number | null
+          partner_device_id: string | null
           purchase_date: string | null
           refurbishment_completed_at: string | null
           refurbishment_labor_cost: number | null
@@ -1061,11 +1063,13 @@ export type Database = {
           id?: string
           imei?: string | null
           import_batch_id?: string | null
+          is_partner_owned?: boolean
           management_labor_cost?: number | null
           management_labor_hours?: number | null
           model: string
           notes?: string | null
           original_cost_price?: number | null
+          partner_device_id?: string | null
           purchase_date?: string | null
           refurbishment_completed_at?: string | null
           refurbishment_labor_cost?: number | null
@@ -1096,11 +1100,13 @@ export type Database = {
           id?: string
           imei?: string | null
           import_batch_id?: string | null
+          is_partner_owned?: boolean
           management_labor_cost?: number | null
           management_labor_hours?: number | null
           model?: string
           notes?: string | null
           original_cost_price?: number | null
+          partner_device_id?: string | null
           purchase_date?: string | null
           refurbishment_completed_at?: string | null
           refurbishment_labor_cost?: number | null
@@ -2123,6 +2129,607 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      partner_device_events: {
+        Row: {
+          company_id: string
+          created_at: string
+          event_type: string
+          id: string
+          partner_device_id: string
+          partner_id: string
+          payload: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          partner_device_id: string
+          partner_id: string
+          payload?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          partner_device_id?: string
+          partner_id?: string
+          payload?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_device_events_partner_device_id_fkey"
+            columns: ["partner_device_id"]
+            isOneToOne: false
+            referencedRelation: "partner_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_device_labor: {
+        Row: {
+          company_id: string
+          created_by: string | null
+          description: string | null
+          hours: number
+          id: string
+          logged_at: string
+          partner_device_id: string
+          rate: number
+          total_cost: number | null
+        }
+        Insert: {
+          company_id: string
+          created_by?: string | null
+          description?: string | null
+          hours?: number
+          id?: string
+          logged_at?: string
+          partner_device_id: string
+          rate?: number
+          total_cost?: number | null
+        }
+        Update: {
+          company_id?: string
+          created_by?: string | null
+          description?: string | null
+          hours?: number
+          id?: string
+          logged_at?: string
+          partner_device_id?: string
+          rate?: number
+          total_cost?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_device_labor_partner_device_id_fkey"
+            columns: ["partner_device_id"]
+            isOneToOne: false
+            referencedRelation: "partner_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_device_parts: {
+        Row: {
+          company_id: string
+          created_by: string | null
+          id: string
+          part_name: string | null
+          partner_device_id: string
+          qty: number
+          repair_part_id: string | null
+          total_cost: number | null
+          unit_cost: number
+          used_at: string
+        }
+        Insert: {
+          company_id: string
+          created_by?: string | null
+          id?: string
+          part_name?: string | null
+          partner_device_id: string
+          qty?: number
+          repair_part_id?: string | null
+          total_cost?: number | null
+          unit_cost?: number
+          used_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_by?: string | null
+          id?: string
+          part_name?: string | null
+          partner_device_id?: string
+          qty?: number
+          repair_part_id?: string | null
+          total_cost?: number | null
+          unit_cost?: number
+          used_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_device_parts_partner_device_id_fkey"
+            columns: ["partner_device_id"]
+            isOneToOne: false
+            referencedRelation: "partner_devices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_devices: {
+        Row: {
+          brand: string | null
+          category: string | null
+          color: string | null
+          company_id: string
+          cosmetic_grade: string | null
+          created_at: string
+          created_by: string | null
+          device_id: string | null
+          disposition: string | null
+          id: string
+          identifier: string | null
+          intake_batch_id: string | null
+          intake_date: string
+          model: string
+          notes: string | null
+          partner_cost: number | null
+          partner_id: string
+          refurb_fee: number | null
+          refurb_fee_status: string
+          status: string
+          storage: string | null
+          updated_at: string
+        }
+        Insert: {
+          brand?: string | null
+          category?: string | null
+          color?: string | null
+          company_id: string
+          cosmetic_grade?: string | null
+          created_at?: string
+          created_by?: string | null
+          device_id?: string | null
+          disposition?: string | null
+          id?: string
+          identifier?: string | null
+          intake_batch_id?: string | null
+          intake_date?: string
+          model: string
+          notes?: string | null
+          partner_cost?: number | null
+          partner_id: string
+          refurb_fee?: number | null
+          refurb_fee_status?: string
+          status?: string
+          storage?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brand?: string | null
+          category?: string | null
+          color?: string | null
+          company_id?: string
+          cosmetic_grade?: string | null
+          created_at?: string
+          created_by?: string | null
+          device_id?: string | null
+          disposition?: string | null
+          id?: string
+          identifier?: string | null
+          intake_batch_id?: string | null
+          intake_date?: string
+          model?: string
+          notes?: string | null
+          partner_cost?: number | null
+          partner_id?: string
+          refurb_fee?: number | null
+          refurb_fee_status?: string
+          status?: string
+          storage?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_devices_intake_batch_id_fkey"
+            columns: ["intake_batch_id"]
+            isOneToOne: false
+            referencedRelation: "partner_intake_batches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_devices_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_intake_batches: {
+        Row: {
+          batch_number: string
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          manifest_url: string | null
+          notes: string | null
+          partner_id: string
+          received_date: string
+          total_units: number | null
+        }
+        Insert: {
+          batch_number: string
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          manifest_url?: string | null
+          notes?: string | null
+          partner_id: string
+          received_date?: string
+          total_units?: number | null
+        }
+        Update: {
+          batch_number?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          manifest_url?: string | null
+          notes?: string | null
+          partner_id?: string
+          received_date?: string
+          total_units?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_intake_batches_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_payables: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          partner_id: string
+          partner_sale_id: string | null
+          settlement_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          company_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          partner_id: string
+          partner_sale_id?: string | null
+          settlement_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          partner_id?: string
+          partner_sale_id?: string | null
+          settlement_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_payables_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_payables_partner_sale_id_fkey"
+            columns: ["partner_sale_id"]
+            isOneToOne: false
+            referencedRelation: "partner_sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_receivables: {
+        Row: {
+          amount: number
+          billed_date: string
+          company_id: string
+          created_at: string
+          fee_type: string
+          id: string
+          notes: string | null
+          partner_device_id: string | null
+          partner_id: string
+          settlement_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          billed_date?: string
+          company_id: string
+          created_at?: string
+          fee_type?: string
+          id?: string
+          notes?: string | null
+          partner_device_id?: string | null
+          partner_id: string
+          settlement_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          billed_date?: string
+          company_id?: string
+          created_at?: string
+          fee_type?: string
+          id?: string
+          notes?: string | null
+          partner_device_id?: string | null
+          partner_id?: string
+          settlement_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_receivables_partner_device_id_fkey"
+            columns: ["partner_device_id"]
+            isOneToOne: false
+            referencedRelation: "partner_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_receivables_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_sales: {
+        Row: {
+          channel: string | null
+          commission_amount: number
+          commission_pct: number
+          company_id: string
+          created_at: string
+          id: string
+          marketplace_fees: number
+          net_profit: number
+          notes: string | null
+          partner_cost: number
+          partner_device_id: string | null
+          partner_id: string
+          partner_proceeds: number
+          refurb_fee: number
+          sale_amount: number
+          sale_date: string
+          sale_id: string | null
+          settled_at: string | null
+          settlement_id: string | null
+          shipping: number
+          status: string
+          tax: number
+          updated_at: string
+        }
+        Insert: {
+          channel?: string | null
+          commission_amount?: number
+          commission_pct?: number
+          company_id: string
+          created_at?: string
+          id?: string
+          marketplace_fees?: number
+          net_profit?: number
+          notes?: string | null
+          partner_cost?: number
+          partner_device_id?: string | null
+          partner_id: string
+          partner_proceeds?: number
+          refurb_fee?: number
+          sale_amount?: number
+          sale_date?: string
+          sale_id?: string | null
+          settled_at?: string | null
+          settlement_id?: string | null
+          shipping?: number
+          status?: string
+          tax?: number
+          updated_at?: string
+        }
+        Update: {
+          channel?: string | null
+          commission_amount?: number
+          commission_pct?: number
+          company_id?: string
+          created_at?: string
+          id?: string
+          marketplace_fees?: number
+          net_profit?: number
+          notes?: string | null
+          partner_cost?: number
+          partner_device_id?: string | null
+          partner_id?: string
+          partner_proceeds?: number
+          refurb_fee?: number
+          sale_amount?: number
+          sale_date?: string
+          sale_id?: string | null
+          settled_at?: string | null
+          settlement_id?: string | null
+          shipping?: number
+          status?: string
+          tax?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_sales_partner_device_id_fkey"
+            columns: ["partner_device_id"]
+            isOneToOne: false
+            referencedRelation: "partner_devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_sales_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_settlements: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          direction: string
+          id: string
+          net_amount: number
+          notes: string | null
+          paid_date: string | null
+          partner_id: string
+          payment_method: string | null
+          period_end: string
+          period_start: string
+          reference: string | null
+          statement_pdf_url: string | null
+          status: string
+          total_payable: number
+          total_receivable: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          id?: string
+          net_amount?: number
+          notes?: string | null
+          paid_date?: string | null
+          partner_id: string
+          payment_method?: string | null
+          period_end: string
+          period_start: string
+          reference?: string | null
+          statement_pdf_url?: string | null
+          status?: string
+          total_payable?: number
+          total_receivable?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          direction?: string
+          id?: string
+          net_amount?: number
+          notes?: string | null
+          paid_date?: string | null
+          partner_id?: string
+          payment_method?: string | null
+          period_end?: string
+          period_start?: string
+          reference?: string | null
+          statement_pdf_url?: string | null
+          status?: string
+          total_payable?: number
+          total_receivable?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_settlements_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partners: {
+        Row: {
+          address: string | null
+          agreement_start_date: string | null
+          commission_pct: number
+          company_id: string
+          contact_name: string | null
+          created_at: string
+          created_by: string | null
+          default_labor_rate: number | null
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          agreement_start_date?: string | null
+          commission_pct?: number
+          company_id: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_labor_rate?: number | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          agreement_start_date?: string | null
+          commission_pct?: number
+          company_id?: string
+          contact_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          default_labor_rate?: number | null
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       permissions: {
         Row: {
@@ -3151,6 +3758,7 @@ export type Database = {
           id: string
           is_marketplace_remitted: boolean | null
           is_multi_item: boolean | null
+          is_partner_sale: boolean
           item_count: number | null
           manual_cost: number | null
           manual_cost_description: string | null
@@ -3163,6 +3771,8 @@ export type Database = {
           marketplace_total_tax: number | null
           notes: string | null
           order_number: string
+          partner_device_id: string | null
+          partner_id: string | null
           payout_amount: number | null
           posted_at: string | null
           posted_by: string | null
@@ -3197,6 +3807,7 @@ export type Database = {
           id?: string
           is_marketplace_remitted?: boolean | null
           is_multi_item?: boolean | null
+          is_partner_sale?: boolean
           item_count?: number | null
           manual_cost?: number | null
           manual_cost_description?: string | null
@@ -3209,6 +3820,8 @@ export type Database = {
           marketplace_total_tax?: number | null
           notes?: string | null
           order_number: string
+          partner_device_id?: string | null
+          partner_id?: string | null
           payout_amount?: number | null
           posted_at?: string | null
           posted_by?: string | null
@@ -3243,6 +3856,7 @@ export type Database = {
           id?: string
           is_marketplace_remitted?: boolean | null
           is_multi_item?: boolean | null
+          is_partner_sale?: boolean
           item_count?: number | null
           manual_cost?: number | null
           manual_cost_description?: string | null
@@ -3255,6 +3869,8 @@ export type Database = {
           marketplace_total_tax?: number | null
           notes?: string | null
           order_number?: string
+          partner_device_id?: string | null
+          partner_id?: string | null
           payout_amount?: number | null
           posted_at?: string | null
           posted_by?: string | null
