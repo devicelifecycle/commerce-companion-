@@ -214,6 +214,12 @@ export default function PartnerDeviceDetail() {
               </DialogContent>
             </Dialog>
           )}
+          {!sale && device.status !== 'returned_to_partner' && (
+            <Button variant="outline" onClick={returnToPartner} disabled={returning}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              {returning ? 'Processing…' : `Return to partner${Number(device.refurb_fee) > 0 ? ` & bill ${Number(device.refurb_fee).toFixed(2)}` : ''}`}
+            </Button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
