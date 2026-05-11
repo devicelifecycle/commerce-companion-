@@ -235,7 +235,7 @@ serve(async (req) => {
     let salesQuery = supabase
       .from("sales")
       .select(
-        "id, order_number, marketplace, sale_price, subtotal, shipping_cost, shipping_revenue, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost, shipping_province, marketplace_total_tax, marketplace_total_shipping"
+        "id, order_number, marketplace, sale_price, subtotal, shipping_cost, shipping_revenue, marketplace_fees, tax_amount, sale_date, device_id, company_id, accounting_status, manual_cost, shipping_province, marketplace_total_tax, marketplace_total_shipping, is_partner_sale"
       )
       .in("accounting_status", ["pending_review", "needs_review", "ready_to_post"]);
 
@@ -353,6 +353,29 @@ serve(async (req) => {
 
     for (const sale of sales) {
       try {
+        // Partner consignment sales — route to dedicated engine, skip COGS pipeline entirely
+        if ((sale as any).is_partner_sale) {
+          if (mode === "post") {
+            try {
+              const ppUrl = `${SUPABASE_URL}/functions/v1/process-partner-sale`;
+              const r = await fetch(ppUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}` },
+                body: JSON.stringify({ sale_id: sale.id }),
+              });
+              if (r.ok) processed.push(sale.order_number);
+              else errors.push(`${sale.order_number}: partner-sale processing failed`);
+            } catch (e) {
+              errors.push(`${sale.order_number}: ${(e as Error).message}`);
+            }
+          } else {
+            if (sale.accounting_status !== "ready_to_post" && sale.accounting_status !== "fully_processed") {
+              await supabase.from("sales").update({ accounting_status: "ready_to_post", review_reason: null }).eq("id", sale.id);
+            }
+          }
+          continue;
+        }
+
         // ============================================================
         // GATE EVALUATION — runs in BOTH modes
         // ============================================================

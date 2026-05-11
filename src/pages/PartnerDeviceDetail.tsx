@@ -9,7 +9,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Save, ListChecks, RefreshCw } from 'lucide-react';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ArrowLeft, Save, ListChecks, RefreshCw, LinkIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { fmtMoney, STATUS_COLORS, STATUS_LABELS, PARTNER_STATUSES, logPartnerEvent } from '@/lib/partnerEvents';
 
@@ -31,6 +32,11 @@ export default function PartnerDeviceDetail() {
   // new part / labor entry
   const [newPart, setNewPart] = useState({ name: '', qty: 1, unit_cost: 0 });
   const [newLabor, setNewLabor] = useState({ description: '', hours: 0, rate: 0 });
+
+  // link sale
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [orderNumber, setOrderNumber] = useState('');
+  const [linking, setLinking] = useState(false);
 
   const load = async () => {
     if (!deviceId) return;
@@ -122,6 +128,43 @@ export default function PartnerDeviceDetail() {
     load();
   };
 
+  const linkAndProcessSale = async () => {
+    if (!device || !orderNumber.trim()) return;
+    setLinking(true);
+    try {
+      const { data: foundSale, error: findErr } = await supabase
+        .from('sales')
+        .select('id, order_number, marketplace, sale_price, company_id, is_partner_sale')
+        .eq('order_number', orderNumber.trim())
+        .eq('company_id', device.company_id)
+        .maybeSingle();
+      if (findErr) throw findErr;
+      if (!foundSale) { toast.error('Sale not found in this company'); return; }
+
+      const { error: updErr } = await supabase.from('sales').update({
+        is_partner_sale: true,
+        partner_id: device.partner_id,
+        partner_device_id: device.id,
+      }).eq('id', foundSale.id);
+      if (updErr) throw updErr;
+
+      const { data: result, error: fnErr } = await supabase.functions.invoke('process-partner-sale', {
+        body: { sale_id: foundSale.id },
+      });
+      if (fnErr) throw fnErr;
+      if ((result as any)?.error) throw new Error((result as any).error);
+
+      toast.success(`Linked. Commission ${Number((result as any).commission_amount || 0).toFixed(2)}, owed partner ${Number((result as any).partner_proceeds || 0).toFixed(2)}`);
+      setLinkOpen(false);
+      setOrderNumber('');
+      load();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to link sale');
+    } finally {
+      setLinking(false);
+    }
+  };
+
   if (loading) return <DashboardLayout><div className="text-muted-foreground">Loading…</div></DashboardLayout>;
   if (!device) return <DashboardLayout><div>Device not found.</div></DashboardLayout>;
 
@@ -131,18 +174,46 @@ export default function PartnerDeviceDetail() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <Link to={`/partners/${partnerId}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back to partner
-          </Link>
-          <h1 className="text-2xl font-bold mt-1">
-            {[device.brand, device.model, device.storage, device.color].filter(Boolean).join(' · ')}
-          </h1>
-          <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-            <Badge variant="outline" className={STATUS_COLORS[device.status]}>{STATUS_LABELS[device.status]}</Badge>
-            {device.identifier && <span className="font-mono text-xs">{device.identifier}</span>}
-            <span>· Intake {device.intake_date}</span>
+        <div className="flex items-start justify-between">
+          <div>
+            <Link to={`/partners/${partnerId}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4 mr-1" /> Back to partner
+            </Link>
+            <h1 className="text-2xl font-bold mt-1">
+              {[device.brand, device.model, device.storage, device.color].filter(Boolean).join(' · ')}
+            </h1>
+            <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+              <Badge variant="outline" className={STATUS_COLORS[device.status]}>{STATUS_LABELS[device.status]}</Badge>
+              {device.identifier && <span className="font-mono text-xs">{device.identifier}</span>}
+              <span>· Intake {device.intake_date}</span>
+            </div>
           </div>
+          {!sale && (
+            <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline"><LinkIcon className="h-4 w-4 mr-2" />Link & process sale</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Link sale to this partner device</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Enter the order number of an already-imported sale. We'll mark it as a partner sale,
+                    compute commission + partner proceeds, and post the journal entry.
+                  </p>
+                  <div>
+                    <Label>Order number</Label>
+                    <Input value={orderNumber} onChange={e => setOrderNumber(e.target.value)} placeholder="e.g. 701-1234567-7654321" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setLinkOpen(false)}>Cancel</Button>
+                  <Button onClick={linkAndProcessSale} disabled={linking || !orderNumber.trim()}>
+                    {linking ? 'Processing…' : 'Link & process'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
