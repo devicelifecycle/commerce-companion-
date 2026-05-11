@@ -353,6 +353,29 @@ serve(async (req) => {
 
     for (const sale of sales) {
       try {
+        // Partner consignment sales — route to dedicated engine, skip COGS pipeline entirely
+        if ((sale as any).is_partner_sale) {
+          if (mode === "post") {
+            try {
+              const ppUrl = `${SUPABASE_URL}/functions/v1/process-partner-sale`;
+              const r = await fetch(ppUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", Authorization: `Bearer ${SERVICE_ROLE_KEY}` },
+                body: JSON.stringify({ sale_id: sale.id }),
+              });
+              if (r.ok) processed.push(sale.order_number);
+              else errors.push(`${sale.order_number}: partner-sale processing failed`);
+            } catch (e) {
+              errors.push(`${sale.order_number}: ${(e as Error).message}`);
+            }
+          } else {
+            if (sale.accounting_status !== "ready_to_post" && sale.accounting_status !== "fully_processed") {
+              await supabase.from("sales").update({ accounting_status: "ready_to_post", review_reason: null }).eq("id", sale.id);
+            }
+          }
+          continue;
+        }
+
         // ============================================================
         // GATE EVALUATION — runs in BOTH modes
         // ============================================================
