@@ -111,9 +111,14 @@ export function PartnerBulkIntakeDialog({
       if (bErr) throw bErr;
 
       const rows = lines.map(line => {
-        // Format: Brand,Model,IMEI,Storage,Color,PartnerCost
+        // Format: Brand,Model,IMEI,Storage,Color,PartnerCost[,Disposition]
         const parts = line.split(/[,;\t]/).map(p => p.trim());
-        const [brand, model, identifier, storage, color, cost] = parts;
+        const [brand, model, identifier, storage, color, cost, dispOverride] = parts;
+        const dispRaw = (dispOverride || '').toLowerCase();
+        const rowDisposition =
+          dispRaw === 'return' || dispRaw === 'return_to_partner' ? 'return_to_partner'
+          : dispRaw === 'list' || dispRaw === 'list_for_sale' ? 'list_for_sale'
+          : defaultDisposition;
         return {
           partner_id: partnerId, company_id: companyId,
           intake_batch_id: batch.id,
@@ -124,6 +129,7 @@ export function PartnerBulkIntakeDialog({
           color: color || null,
           partner_cost: Number(cost) || 0,
           status: 'received',
+          disposition: rowDisposition,
           created_by: u.user?.id,
         };
       });
