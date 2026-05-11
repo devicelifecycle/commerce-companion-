@@ -33,6 +33,11 @@ export default function PartnerDeviceDetail() {
   const [newPart, setNewPart] = useState({ name: '', qty: 1, unit_cost: 0 });
   const [newLabor, setNewLabor] = useState({ description: '', hours: 0, rate: 0 });
 
+  // link sale
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [orderNumber, setOrderNumber] = useState('');
+  const [linking, setLinking] = useState(false);
+
   const load = async () => {
     if (!deviceId) return;
     setLoading(true);
