@@ -240,51 +240,73 @@ export default function PartnerDetail() {
 
           <TabsContent value="sales">
             <Card>
-              <CardHeader><CardTitle>Order-by-order profit breakdown</CardTitle></CardHeader>
+              <CardHeader className="flex-row items-center justify-between gap-3">
+                <CardTitle>Order-by-order profit breakdown</CardTitle>
+                <div className="flex items-center gap-2 text-sm">
+                  <Input type="date" className="w-auto h-8" value={salesFrom} onChange={e => setSalesFrom(e.target.value)} />
+                  <span className="text-muted-foreground">to</span>
+                  <Input type="date" className="w-auto h-8" value={salesTo} onChange={e => setSalesTo(e.target.value)} />
+                  <Button size="sm" variant="outline" onClick={() => exportSalesCsv(filteredSales, partner.name, salesFrom, salesTo)}>
+                    <Download className="h-3 w-3 mr-1" />CSV
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => printStatement(partner, filteredSales, openPayable, openReceivable, salesFrom, salesTo)}>
+                    <Printer className="h-3 w-3 mr-1" />Print
+                  </Button>
+                </div>
+              </CardHeader>
               <CardContent>
-                {sales.length === 0 ? (
-                  <p className="text-muted-foreground py-6 text-center">No sales yet.</p>
+                {filteredSales.length === 0 ? (
+                  <p className="text-muted-foreground py-6 text-center">No sales in range.</p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Channel</TableHead>
-                          <TableHead className="text-right tabular-nums">Sale</TableHead>
-                          <TableHead className="text-right tabular-nums">Fees</TableHead>
-                          <TableHead className="text-right tabular-nums">Shipping</TableHead>
-                          <TableHead className="text-right tabular-nums">Tax</TableHead>
-                          <TableHead className="text-right tabular-nums">Refurb fee</TableHead>
-                          <TableHead className="text-right tabular-nums">Partner cost</TableHead>
-                          <TableHead className="text-right tabular-nums">Net profit</TableHead>
-                          <TableHead className="text-right tabular-nums">Comm %</TableHead>
-                          <TableHead className="text-right tabular-nums text-emerald-400">Our cut</TableHead>
-                          <TableHead className="text-right tabular-nums text-amber-400">Owed partner</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {sales.map(s => (
-                          <TableRow key={s.id}>
-                            <TableCell>{s.sale_date}</TableCell>
-                            <TableCell><Badge variant="outline">{s.channel || 'manual'}</Badge></TableCell>
-                            <TableCell className="text-right tabular-nums">{fmtMoney(s.sale_amount)}</TableCell>
-                            <TableCell className="text-right tabular-nums text-muted-foreground">{fmtMoney(s.marketplace_fees)}</TableCell>
-                            <TableCell className="text-right tabular-nums text-muted-foreground">{fmtMoney(s.shipping)}</TableCell>
-                            <TableCell className="text-right tabular-nums text-muted-foreground">{fmtMoney(s.tax)}</TableCell>
-                            <TableCell className="text-right tabular-nums text-muted-foreground">{fmtMoney(s.refurb_fee)}</TableCell>
-                            <TableCell className="text-right tabular-nums text-muted-foreground">{fmtMoney(s.partner_cost)}</TableCell>
-                            <TableCell className="text-right tabular-nums font-medium">{fmtMoney(s.net_profit)}</TableCell>
-                            <TableCell className="text-right tabular-nums">{Number(s.commission_pct).toFixed(2)}%</TableCell>
-                            <TableCell className="text-right tabular-nums text-emerald-400 font-semibold">{fmtMoney(s.commission_amount)}</TableCell>
-                            <TableCell className="text-right tabular-nums text-amber-400 font-semibold">{fmtMoney(s.partner_proceeds)}</TableCell>
-                            <TableCell><Badge variant="outline">{s.status}</Badge></TableCell>
+                  <>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+                      <Kpi label="Sales" value={fmtMoney(periodTotals.sales)} />
+                      <Kpi label="Net profit" value={fmtMoney(periodTotals.netProfit)} />
+                      <Kpi label="Our commission" value={fmtMoney(periodTotals.commission)} accent="emerald" />
+                      <Kpi label="Refurb fees" value={fmtMoney(periodTotals.refurb)} accent="emerald" />
+                      <Kpi label="Owed to partner" value={fmtMoney(periodTotals.proceeds)} accent="amber" />
+                    </div>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Channel</TableHead>
+                            <TableHead className="text-right tabular-nums">Sale</TableHead>
+                            <TableHead className="text-right tabular-nums">Fees</TableHead>
+                            <TableHead className="text-right tabular-nums">Shipping</TableHead>
+                            <TableHead className="text-right tabular-nums">Tax</TableHead>
+                            <TableHead className="text-right tabular-nums">Refurb fee</TableHead>
+                            <TableHead className="text-right tabular-nums">Partner cost</TableHead>
+                            <TableHead className="text-right tabular-nums">Net profit</TableHead>
+                            <TableHead className="text-right tabular-nums">Comm %</TableHead>
+                            <TableHead className="text-right tabular-nums text-emerald-400">Our cut</TableHead>
+                            <TableHead className="text-right tabular-nums text-amber-400">Owed partner</TableHead>
+                            <TableHead>Status</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredSales.map(s => (
+                            <TableRow key={s.id}>
+                              <TableCell>{s.sale_date}</TableCell>
+                              <TableCell><Badge variant="outline">{s.channel || 'manual'}</Badge></TableCell>
+                              <TableCell className="text-right tabular-nums">{fmtMoney(s.sale_amount)}</TableCell>
+                              <TableCell className="text-right tabular-nums text-muted-foreground">{fmtMoney(s.marketplace_fees)}</TableCell>
+                              <TableCell className="text-right tabular-nums text-muted-foreground">{fmtMoney(s.shipping)}</TableCell>
+                              <TableCell className="text-right tabular-nums text-muted-foreground">{fmtMoney(s.tax)}</TableCell>
+                              <TableCell className="text-right tabular-nums text-muted-foreground">{fmtMoney(s.refurb_fee)}</TableCell>
+                              <TableCell className="text-right tabular-nums text-muted-foreground">{fmtMoney(s.partner_cost)}</TableCell>
+                              <TableCell className="text-right tabular-nums font-medium">{fmtMoney(s.net_profit)}</TableCell>
+                              <TableCell className="text-right tabular-nums">{Number(s.commission_pct).toFixed(2)}%</TableCell>
+                              <TableCell className="text-right tabular-nums text-emerald-400 font-semibold">{fmtMoney(s.commission_amount)}</TableCell>
+                              <TableCell className="text-right tabular-nums text-amber-400 font-semibold">{fmtMoney(s.partner_proceeds)}</TableCell>
+                              <TableCell><Badge variant="outline">{s.status}</Badge></TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
                 )}
               </CardContent>
             </Card>
