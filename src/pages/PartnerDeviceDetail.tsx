@@ -128,6 +128,43 @@ export default function PartnerDeviceDetail() {
     load();
   };
 
+  const linkAndProcessSale = async () => {
+    if (!device || !orderNumber.trim()) return;
+    setLinking(true);
+    try {
+      const { data: foundSale, error: findErr } = await supabase
+        .from('sales')
+        .select('id, order_number, marketplace, sale_price, company_id, is_partner_sale')
+        .eq('order_number', orderNumber.trim())
+        .eq('company_id', device.company_id)
+        .maybeSingle();
+      if (findErr) throw findErr;
+      if (!foundSale) { toast.error('Sale not found in this company'); return; }
+
+      const { error: updErr } = await supabase.from('sales').update({
+        is_partner_sale: true,
+        partner_id: device.partner_id,
+        partner_device_id: device.id,
+      }).eq('id', foundSale.id);
+      if (updErr) throw updErr;
+
+      const { data: result, error: fnErr } = await supabase.functions.invoke('process-partner-sale', {
+        body: { sale_id: foundSale.id },
+      });
+      if (fnErr) throw fnErr;
+      if ((result as any)?.error) throw new Error((result as any).error);
+
+      toast.success(`Linked. Commission ${Number((result as any).commission_amount || 0).toFixed(2)}, owed partner ${Number((result as any).partner_proceeds || 0).toFixed(2)}`);
+      setLinkOpen(false);
+      setOrderNumber('');
+      load();
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to link sale');
+    } finally {
+      setLinking(false);
+    }
+  };
+
   if (loading) return <DashboardLayout><div className="text-muted-foreground">Loading…</div></DashboardLayout>;
   if (!device) return <DashboardLayout><div>Device not found.</div></DashboardLayout>;
 
