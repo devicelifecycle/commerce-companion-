@@ -119,6 +119,16 @@ export default function PartnerDetail() {
   const openPayable = payables.filter(p => p.status === 'accrued').reduce((s, x) => s + Number(x.amount), 0);
   const openReceivable = receivables.filter(r => ['pending', 'invoiced'].includes(r.status)).reduce((s, x) => s + Number(x.amount), 0);
 
+  // Filtered period sales
+  const filteredSales = sales.filter(s => s.sale_date >= salesFrom && s.sale_date <= salesTo);
+  const periodTotals = filteredSales.reduce((acc, s) => ({
+    sales: acc.sales + Number(s.sale_amount),
+    netProfit: acc.netProfit + Number(s.net_profit),
+    commission: acc.commission + Number(s.commission_amount),
+    refurb: acc.refurb + Number(s.refurb_fee),
+    proceeds: acc.proceeds + Number(s.partner_proceeds),
+  }), { sales: 0, netProfit: 0, commission: 0, refurb: 0, proceeds: 0 });
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
