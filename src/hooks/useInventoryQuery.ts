@@ -26,6 +26,7 @@ export function useInventoryQuery({ statusFilter, categoryFilter, channelFilter,
       let query = supabase
         .from('devices')
         .select(`*, suppliers (name)`, { count: 'exact' })
+        .eq('is_partner_owned', false)
         .order(pq.sort.column, { ascending: pq.sort.direction === 'asc' })
         .range(pq.range.from, pq.range.to);
 

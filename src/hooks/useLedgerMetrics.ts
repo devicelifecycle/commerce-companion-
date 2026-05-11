@@ -303,7 +303,7 @@ export function useLedgerMetrics(dateRange: DateRange, companyFilter: string | n
       const { data: sales } = await salesQ;
 
       // Inventory, AP, AR, Bank, Refurb — all in parallel
-      let invQ = supabase.from('devices').select('id, cost_price, status, fulfillment_channel, refurbishment_status, refurbishment_started_at, refurbishment_completed_at, created_at').limit(5000);
+      let invQ = supabase.from('devices').select('id, cost_price, status, fulfillment_channel, refurbishment_status, refurbishment_started_at, refurbishment_completed_at, created_at').eq('is_partner_owned', false).limit(5000);
       if (companyFilter) invQ = invQ.eq('company_id', companyFilter);
 
       let apQ = supabase.from('accounts_payable').select('balance_due').eq('status', 'outstanding');
