@@ -400,3 +400,76 @@ function Kpi({ label, value, accent }: { label: string; value: string | number; 
     </Card>
   );
 }
+
+function exportSalesCsv(sales: any[], partnerName: string, from: string, to: string) {
+  const cols = ['sale_date','channel','sale_amount','marketplace_fees','shipping','tax','refurb_fee','partner_cost','net_profit','commission_pct','commission_amount','partner_proceeds','status'];
+  const header = cols.join(',');
+  const rows = sales.map(s => cols.map(c => {
+    const v = (s as any)[c];
+    return typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : (v ?? '');
+  }).join(','));
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${partnerName.replace(/\s+/g,'_')}_sales_${from}_${to}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function printStatement(partner: any, sales: any[], openPayable: number, openReceivable: number, from: string, to: string) {
+  const fmt = (n: number) => new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(n || 0);
+  const tot = sales.reduce((a, s) => ({
+    sales: a.sales + Number(s.sale_amount),
+    np: a.np + Number(s.net_profit),
+    com: a.com + Number(s.commission_amount),
+    rf: a.rf + Number(s.refurb_fee),
+    pp: a.pp + Number(s.partner_proceeds),
+  }), { sales: 0, np: 0, com: 0, rf: 0, pp: 0 });
+
+  const rows = sales.map(s => `<tr>
+    <td>${s.sale_date}</td><td>${s.channel || 'manual'}</td>
+    <td style="text-align:right">${fmt(s.sale_amount)}</td>
+    <td style="text-align:right">${fmt(s.marketplace_fees)}</td>
+    <td style="text-align:right">${fmt(s.shipping)}</td>
+    <td style="text-align:right">${fmt(s.tax)}</td>
+    <td style="text-align:right">${fmt(s.refurb_fee)}</td>
+    <td style="text-align:right">${fmt(s.net_profit)}</td>
+    <td style="text-align:right">${fmt(s.commission_amount)}</td>
+    <td style="text-align:right"><b>${fmt(s.partner_proceeds)}</b></td>
+  </tr>`).join('');
+
+  const html = `<!doctype html><html><head><title>Partner Statement — ${partner.name}</title>
+  <style>body{font-family:system-ui,sans-serif;padding:24px;color:#111}h1{margin:0 0 4px}small{color:#666}
+  table{width:100%;border-collapse:collapse;margin-top:12px;font-size:12px}
+  th,td{border-bottom:1px solid #eee;padding:6px 8px;text-align:left}
+  th{background:#f5f5f5;text-transform:uppercase;font-size:10px;letter-spacing:.05em}
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:16px 0}
+  .kpi{padding:10px;border:1px solid #eee;border-radius:6px}.kpi .l{color:#666;font-size:10px;text-transform:uppercase}.kpi .v{font-weight:700;font-size:16px;margin-top:2px}
+  .totals{margin-top:16px;padding:12px;background:#fafafa;border-radius:6px}</style></head><body>
+  <h1>${partner.name}</h1>
+  <small>Statement period: ${from} → ${to} · Commission ${Number(partner.commission_pct).toFixed(2)}%</small>
+  <div class="kpis">
+    <div class="kpi"><div class="l">Sales</div><div class="v">${fmt(tot.sales)}</div></div>
+    <div class="kpi"><div class="l">Net profit</div><div class="v">${fmt(tot.np)}</div></div>
+    <div class="kpi"><div class="l">Our commission</div><div class="v">${fmt(tot.com)}</div></div>
+    <div class="kpi"><div class="l">Refurb fees</div><div class="v">${fmt(tot.rf)}</div></div>
+    <div class="kpi"><div class="l">Owed to partner</div><div class="v">${fmt(tot.pp)}</div></div>
+  </div>
+  <table><thead><tr>
+    <th>Date</th><th>Channel</th><th style="text-align:right">Sale</th><th style="text-align:right">Fees</th>
+    <th style="text-align:right">Shipping</th><th style="text-align:right">Tax</th><th style="text-align:right">Refurb</th>
+    <th style="text-align:right">Net profit</th><th style="text-align:right">Our cut</th><th style="text-align:right">Owed</th>
+  </tr></thead><tbody>${rows || '<tr><td colspan="10" style="text-align:center;color:#999;padding:20px">No sales</td></tr>'}</tbody></table>
+  <div class="totals">
+    <div><b>Open payable to partner:</b> ${fmt(openPayable)}</div>
+    <div><b>Open receivable from partner:</b> ${fmt(openReceivable)}</div>
+    <div style="margin-top:6px;font-size:18px"><b>Net ${openPayable - openReceivable >= 0 ? 'owed to partner' : 'owed by partner'}: ${fmt(Math.abs(openPayable - openReceivable))}</b></div>
+  </div>
+  <script>window.onload=()=>setTimeout(()=>window.print(),300)</script>
+  </body></html>`;
+
+  const w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); }
+}
