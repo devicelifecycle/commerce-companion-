@@ -174,18 +174,46 @@ export default function PartnerDeviceDetail() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div>
-          <Link to={`/partners/${partnerId}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back to partner
-          </Link>
-          <h1 className="text-2xl font-bold mt-1">
-            {[device.brand, device.model, device.storage, device.color].filter(Boolean).join(' · ')}
-          </h1>
-          <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
-            <Badge variant="outline" className={STATUS_COLORS[device.status]}>{STATUS_LABELS[device.status]}</Badge>
-            {device.identifier && <span className="font-mono text-xs">{device.identifier}</span>}
-            <span>· Intake {device.intake_date}</span>
+        <div className="flex items-start justify-between">
+          <div>
+            <Link to={`/partners/${partnerId}`} className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground">
+              <ArrowLeft className="h-4 w-4 mr-1" /> Back to partner
+            </Link>
+            <h1 className="text-2xl font-bold mt-1">
+              {[device.brand, device.model, device.storage, device.color].filter(Boolean).join(' · ')}
+            </h1>
+            <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
+              <Badge variant="outline" className={STATUS_COLORS[device.status]}>{STATUS_LABELS[device.status]}</Badge>
+              {device.identifier && <span className="font-mono text-xs">{device.identifier}</span>}
+              <span>· Intake {device.intake_date}</span>
+            </div>
           </div>
+          {!sale && (
+            <Dialog open={linkOpen} onOpenChange={setLinkOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline"><LinkIcon className="h-4 w-4 mr-2" />Link & process sale</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Link sale to this partner device</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Enter the order number of an already-imported sale. We'll mark it as a partner sale,
+                    compute commission + partner proceeds, and post the journal entry.
+                  </p>
+                  <div>
+                    <Label>Order number</Label>
+                    <Input value={orderNumber} onChange={e => setOrderNumber(e.target.value)} placeholder="e.g. 701-1234567-7654321" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setLinkOpen(false)}>Cancel</Button>
+                  <Button onClick={linkAndProcessSale} disabled={linking || !orderNumber.trim()}>
+                    {linking ? 'Processing…' : 'Link & process'}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
