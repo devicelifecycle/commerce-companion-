@@ -31,21 +31,22 @@ export async function reverseJournalEntries(referenceId: string): Promise<number
 
     if (lines) {
       for (const line of lines) {
-        const { data: account } = await supabase
+        const { data: account, error: acctErr } = await supabase
           .from('chart_of_accounts')
           .select('current_balance, normal_balance')
           .eq('id', line.account_id)
           .single();
+        if (acctErr) throw new Error(`Failed to fetch account ${line.account_id}: ${acctErr.message}`);
 
         if (account) {
           const debit = Number(line.debit_amount || 0);
           const credit = Number(line.credit_amount || 0);
           const current = Number(account.current_balance || 0);
-          // Reverse: subtract what was originally added
           const newBal = account.normal_balance === 'debit'
             ? current - debit + credit
             : current - credit + debit;
-          await supabase.from('chart_of_accounts').update({ current_balance: newBal }).eq('id', line.account_id);
+          const { error: balErr } = await supabase.from('chart_of_accounts').update({ current_balance: newBal }).eq('id', line.account_id);
+          if (balErr) throw new Error(`Failed to update balance for account ${line.account_id}: ${balErr.message}`);
         }
       }
     }
@@ -300,6 +301,56 @@ export async function cleanupBeforeInvoiceDelete(invoiceId: string): Promise<{ j
   if (itemsErr) throw new Error(`Failed to delete invoice items: ${itemsErr.message}`);
 
   return { journalCount };
+}
+
+/**
+ * Reverse only COGS journal entries for a sale (used when unlinking a device or clearing
+ * a manual cost — revenue entries are kept, only cost entries are removed).
+ * Properly reverses account balances before deleting entries.
+ */
+export async function reverseCOGSEntriesForSale(saleId: string): Promise<number> {
+  const { data: entries, error: fetchError } = await supabase
+    .from('journal_entries')
+    .select('id')
+    .eq('reference_id', saleId)
+    .eq('reference_type', 'sale')
+    .ilike('description', 'COGS%');
+
+  if (fetchError) throw new Error(`Failed to fetch COGS entries: ${fetchError.message}`);
+  if (!entries || entries.length === 0) return 0;
+
+  for (const je of entries) {
+    const { data: lines, error: linesErr } = await supabase
+      .from('journal_entry_lines')
+      .select('account_id, debit_amount, credit_amount')
+      .eq('journal_entry_id', je.id);
+    if (linesErr) throw new Error(`Failed to fetch JE lines: ${linesErr.message}`);
+
+    for (const line of lines ?? []) {
+      const { data: account, error: acctErr } = await supabase
+        .from('chart_of_accounts')
+        .select('current_balance, normal_balance')
+        .eq('id', line.account_id)
+        .single();
+      if (acctErr) throw new Error(`Failed to fetch account ${line.account_id}: ${acctErr.message}`);
+
+      const debit = Number(line.debit_amount || 0);
+      const credit = Number(line.credit_amount || 0);
+      const current = Number(account.current_balance || 0);
+      const newBal = account.normal_balance === 'debit'
+        ? current - debit + credit
+        : current - credit + debit;
+      const { error: balErr } = await supabase.from('chart_of_accounts').update({ current_balance: newBal }).eq('id', line.account_id);
+      if (balErr) throw new Error(`Failed to update balance for account ${line.account_id}: ${balErr.message}`);
+    }
+
+    const { error: delLinesErr } = await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', je.id);
+    if (delLinesErr) throw new Error(`Failed to delete JE lines: ${delLinesErr.message}`);
+    const { error: delEntryErr } = await supabase.from('journal_entries').delete().eq('id', je.id);
+    if (delEntryErr) throw new Error(`Failed to delete JE: ${delEntryErr.message}`);
+  }
+
+  return entries.length;
 }
 
 /**

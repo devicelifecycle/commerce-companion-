@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/lib/auth';
 
@@ -44,44 +44,27 @@ export function usePermissions() {
   const [permissions, setPermissions] = useState<RolePermission[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
+  // Stale-fetch guard: incremented on each new load; stale responses are discarded.
+  const loadGenRef = useRef(0);
 
-  useEffect(() => {
-    if (user) {
-      loadUserPermissions();
-    }
-  }, [user]);
-
-  // Auto-select first accessible company for non-admin users
-  useEffect(() => {
-    if (!loading && !selectedCompanyId && assignments.length > 0) {
-      const isAdminUser = assignments.some(a => a.role === 'admin');
-      if (!isAdminUser) {
-        setSelectedCompanyId(assignments[0].company_id);
-      }
-    }
-  }, [loading, assignments, selectedCompanyId]);
-
-  const loadUserPermissions = async () => {
+  const loadUserPermissions = useCallback(async () => {
     if (!user) return;
-    
+    const gen = ++loadGenRef.current;
     setLoading(true);
     try {
-      const { data: companiesData } = await supabase
-        .from('companies')
-        .select('*');
-      
-      if (companiesData) {
-        setCompanies(companiesData as Company[]);
-      }
+      // Parallelize companies + assignments — they have no dependency on each other.
+      const [companiesRes, assignmentsRes] = await Promise.all([
+        supabase.from('companies').select('*'),
+        supabase.from('user_company_assignments')
+          .select('*, company:companies(*)')
+          .eq('user_id', user.id),
+      ]);
 
-      const { data: assignmentsData } = await supabase
-        .from('user_company_assignments')
-        .select('*, company:companies(*)')
-        .eq('user_id', user.id);
-      
-      if (assignmentsData) {
-        setAssignments(assignmentsData as unknown as UserCompanyAssignment[]);
-      }
+      if (gen !== loadGenRef.current) return; // stale — newer load in flight
+
+      if (companiesRes.data) setCompanies(companiesRes.data as Company[]);
+      const assignmentsData = assignmentsRes.data;
+      if (assignmentsData) setAssignments(assignmentsData as unknown as UserCompanyAssignment[]);
 
       if (assignmentsData && assignmentsData.length > 0) {
         const roles = [...new Set(assignmentsData.map(a => a.role))];
@@ -89,25 +72,35 @@ export function usePermissions() {
           .from('role_permissions')
           .select('*, permission:permissions(*)')
           .in('role', roles);
-        
-        if (rolePermsData) {
-          setPermissions(rolePermsData as unknown as RolePermission[]);
-        }
+
+        if (gen !== loadGenRef.current) return; // stale
+        if (rolePermsData) setPermissions(rolePermsData as unknown as RolePermission[]);
       }
     } catch (error) {
       console.error('Error loading permissions:', error);
     } finally {
-      setLoading(false);
+      if (gen === loadGenRef.current) setLoading(false);
     }
-  };
+  }, [user]);
 
-  const isSuperAdmin = useCallback(() => {
-    return assignments.some(a => a.role === 'admin');
-  }, [assignments]);
+  useEffect(() => {
+    if (user) loadUserPermissions();
+  }, [user, loadUserPermissions]);
+
+  // Auto-select first accessible company for non-admin users
+  useEffect(() => {
+    if (!loading && !selectedCompanyId && assignments.length > 0) {
+      const isAdminUser = assignments.some(a => a.role === 'admin');
+      if (!isAdminUser) setSelectedCompanyId(assignments[0].company_id);
+    }
+  }, [loading, assignments, selectedCompanyId]);
 
   const isAdmin = useCallback(() => {
     return assignments.some(a => a.role === 'admin');
   }, [assignments]);
+
+  // Alias kept for backwards-compatibility with call sites that use isSuperAdmin()
+  const isSuperAdmin = isAdmin;
 
   const hasCompanyAccess = useCallback((companyId: string) => {
     if (isAdmin()) return true;

@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDataRefetch } from '@/hooks/useDataRefetch';
 import { supabase } from '@/integrations/supabase/client';
+import { cleanupBeforeInvoiceDelete } from '@/lib/accounting/reversalUtils';
+import { createAutoJournalEntry, getAccountIdByCode } from '@/lib/accounting/journalAutomation';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/lib/auth';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -339,7 +341,7 @@ export default function Invoices() {
           const isVES = companyCode === 'VES';
           const arAccount = isVES ? '1050' : '1051';
           const revenueAccount = isVES ? '4400' : '4401';
-          const { createAutoJournalEntry, getAccountIdByCode } = await import('@/lib/accounting/journalAutomation');
+          // createAutoJournalEntry and getAccountIdByCode imported statically at top of file
           const [arAccId, revAccId] = await Promise.all([
             getAccountIdByCode(viewInvoice.company_id!, arAccount),
             getAccountIdByCode(viewInvoice.company_id!, revenueAccount),
@@ -748,7 +750,6 @@ export default function Invoices() {
 
   const deleteInvoice = async (id: string) => {
     try {
-      const { cleanupBeforeInvoiceDelete } = await import('@/lib/accounting/reversalUtils');
       const { journalCount } = await cleanupBeforeInvoiceDelete(id);
 
       const { error: delErr } = await supabase.from('invoices').delete().eq('id', id);

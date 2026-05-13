@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 
 import ExcelJS from 'exceljs';
 import { supabase } from '@/integrations/supabase/client';
+import { createPurchaseJournalEntry, createPaymentMadeJournalEntry } from '@/lib/accounting/journalAutomation';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { useAuth } from '@/lib/auth';
 import { useCompany } from '@/contexts/CompanyContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -234,7 +236,7 @@ export default function Import() {
 
       // Journal Entry: Dr. Inventory / Cr. AP
       try {
-        const { createPurchaseJournalEntry } = await import('@/lib/accounting/journalAutomation');
+        // createPurchaseJournalEntry imported statically at top of file
         await createPurchaseJournalEntry({
           companyId: targetCompany.id,
           purchaseId: apRecord?.id || crypto.randomUUID(),
@@ -264,7 +266,7 @@ export default function Import() {
         });
 
         try {
-          const { createPaymentMadeJournalEntry } = await import('@/lib/accounting/journalAutomation');
+          // createPaymentMadeJournalEntry imported statically at top of file
           await createPaymentMadeJournalEntry({
             companyId: targetCompany.id,
             paymentDate: manualForm.purchase_date,
@@ -282,7 +284,7 @@ export default function Import() {
       }
 
       // Emit refetch for financials
-      const { emitRefetch } = await import('@/hooks/useDataRefetch');
+      // emitRefetch imported statically at top of file
       emitRefetch('financials');
       emitRefetch('dashboard');
 
@@ -905,7 +907,7 @@ export default function Import() {
 
           // Post JE: Dr. AP / Cr. Cash
           try {
-            const { createPaymentMadeJournalEntry } = await import('@/lib/accounting/journalAutomation');
+            // createPaymentMadeJournalEntry imported statically at top of file
             await createPaymentMadeJournalEntry({
               companyId: batchInfo.company_id,
               paymentDate: draft.paymentDate,

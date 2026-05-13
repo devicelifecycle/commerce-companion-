@@ -5,35 +5,61 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { CompanyProvider } from "@/contexts/CompanyContext";
-import Index from "./pages/Index";
-import Home from "./pages/Home";
-import Dashboard from "./pages/Dashboard";
-import Auth from "./pages/Auth";
-import Inventory from "./pages/Inventory";
-import Import from "./pages/Import";
-import Sales from "./pages/Sales";
-import Suppliers from "./pages/Suppliers";
-import Settings from "./pages/Settings";
-import Expenses from "./pages/Expenses";
-import Invoices from "./pages/Invoices";
-import Financials from "./pages/Financials";
-import Forecasting from "./pages/Forecasting";
-import NotFound from "./pages/NotFound";
-
-import HelpAndGuides from "./pages/HelpAndGuides";
-import PurchaseOrders from "./pages/PurchaseOrders";
-import Returns from "./pages/Returns";
-import IntegrationHealth from "./pages/IntegrationHealth";
-import Customers from "./pages/Customers";
-import ActivityLogPage from "./pages/ActivityLogPage";
-import Partners from "./pages/Partners";
-import PartnerDetail from "./pages/PartnerDetail";
-import PartnerDeviceDetail from "./pages/PartnerDeviceDetail";
-
-
+import { lazy, Suspense } from "react";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
-const queryClient = new QueryClient();
+// Eagerly loaded — always needed on first paint
+import Index from "./pages/Index";
+import Auth from "./pages/Auth";
+import NotFound from "./pages/NotFound";
+
+// Lazily loaded — only fetched when the user navigates to that route
+const Home             = lazy(() => import("./pages/Home"));
+const Dashboard        = lazy(() => import("./pages/Dashboard"));
+const Inventory        = lazy(() => import("./pages/Inventory"));
+const Import           = lazy(() => import("./pages/Import"));
+const Sales            = lazy(() => import("./pages/Sales"));
+const Suppliers        = lazy(() => import("./pages/Suppliers"));
+const Settings         = lazy(() => import("./pages/Settings"));
+const Expenses         = lazy(() => import("./pages/Expenses"));
+const Invoices         = lazy(() => import("./pages/Invoices"));
+const Financials       = lazy(() => import("./pages/Financials"));
+const Forecasting      = lazy(() => import("./pages/Forecasting"));
+const HelpAndGuides    = lazy(() => import("./pages/HelpAndGuides"));
+const PurchaseOrders   = lazy(() => import("./pages/PurchaseOrders"));
+const Returns          = lazy(() => import("./pages/Returns"));
+const IntegrationHealth = lazy(() => import("./pages/IntegrationHealth"));
+const Customers        = lazy(() => import("./pages/Customers"));
+const ActivityLogPage  = lazy(() => import("./pages/ActivityLogPage"));
+const Partners             = lazy(() => import("./pages/Partners"));
+const PartnerDetail        = lazy(() => import("./pages/PartnerDetail"));
+const PartnerDeviceDetail  = lazy(() => import("./pages/PartnerDeviceDetail"));
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-10 h-10 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+    </div>
+  );
+}
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Don't retry on 4xx — those are permanent failures (auth, not found)
+      retry: (failureCount, error: unknown) => {
+        if (error instanceof Error && /4\d\d/.test(error.message)) return false;
+        return failureCount < 2;
+      },
+      staleTime: 30_000,      // 30s before background refetch
+      gcTime: 5 * 60_000,     // 5min before cache eviction
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: false,
+    },
+  },
+});
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -55,7 +81,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/auth" replace />;
   }
 
-  return <ErrorBoundary fallbackTitle="This page encountered an error">{children}</ErrorBoundary>;
+  return (
+    <ErrorBoundary fallbackTitle="This page encountered an error">
+      <Suspense fallback={<PageLoader />}>{children}</Suspense>
+    </ErrorBoundary>
+  );
 }
 
 const App = () => (

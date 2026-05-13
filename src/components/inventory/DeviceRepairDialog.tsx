@@ -219,7 +219,7 @@ export function DeviceRepairDialog({ open, onOpenChange, device, onSuccess }: De
           }
         }
 
-        // Preserve original cost if not already set, then add PARTS cost only (not labor)
+        // Preserve original cost if not already set, then add PARTS cost only (labor tracked separately via management_labor_cost)
         const originalCost = device.original_cost_price ?? device.cost_price;
         const newCostPrice = Number(device.cost_price) + totalPartsCost;
         await supabase.from('devices').update({
@@ -227,23 +227,23 @@ export function DeviceRepairDialog({ open, onOpenChange, device, onSuccess }: De
           original_cost_price: originalCost,
         }).eq('id', device.id);
 
-        // === JOURNAL ENTRIES ===
-        // Look up chart of accounts for this company
+        // === JOURNAL ENTRY: Dr. Inventory (Device) / Cr. Repair Parts Inventory ===
+        // Parts cost is capitalized into the device asset.
+        // Labor is NOT capitalized here — it is tracked via management_labor_cost on the device
+        // for management P&L reporting and does not create a ledger entry.
         const { data: accounts } = await supabase
           .from('chart_of_accounts')
           .select('id, account_code')
           .eq('company_id', device.company_id)
-          .in('account_code', ['1100', '1101', '1110', '1111', '2300', '2301']);
+          .in('account_code', ['1100', '1101', '1110', '1111']);
 
         const deviceInventoryId = accounts?.find(a => ['1100', '1101'].includes(a.account_code))?.id;
         const partsInventoryId = accounts?.find(a => ['1110', '1111'].includes(a.account_code))?.id;
-        const accruedLaborId = accounts?.find(a => ['2300', '2301'].includes(a.account_code))?.id;
 
         const today = new Date().toISOString().split('T')[0];
         const entryPrefix = `RPR-${today.replace(/-/g, '')}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
         const deviceDesc = `${device.brand} ${device.model}${device.imei ? ` (${device.imei})` : ''}`;
 
-        // Entry 1: Dr. Inventory (Device) / Cr. Repair Parts Inventory — move parts cost into device asset
         if (totalPartsCost > 0 && deviceInventoryId && partsInventoryId) {
           const { data: partsEntry } = await supabase.from('journal_entries').insert({
             company_id: device.company_id,
@@ -277,55 +277,15 @@ export function DeviceRepairDialog({ open, onOpenChange, device, onSuccess }: De
               },
             ]);
 
-            // Update account balances
-            const { data: devInvAcct } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', deviceInventoryId).single();
-            await supabase.from('chart_of_accounts').update({ current_balance: Number(devInvAcct?.current_balance || 0) + totalPartsCost }).eq('id', deviceInventoryId);
+            const { data: devInvAcct, error: devReadErr } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', deviceInventoryId).single();
+            if (devReadErr) throw devReadErr;
+            const { error: devWriteErr } = await supabase.from('chart_of_accounts').update({ current_balance: Number(devInvAcct?.current_balance || 0) + totalPartsCost }).eq('id', deviceInventoryId);
+            if (devWriteErr) throw devWriteErr;
 
-            const { data: partsInvAcct } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', partsInventoryId).single();
-            await supabase.from('chart_of_accounts').update({ current_balance: Number(partsInvAcct?.current_balance || 0) - totalPartsCost }).eq('id', partsInventoryId);
-          }
-        }
-
-        // Entry 2: Dr. Inventory (Device) / Cr. Accrued Repair Labor — capitalize labour into asset
-        if (totalLaborCost > 0 && deviceInventoryId && accruedLaborId) {
-          const { data: laborEntry } = await supabase.from('journal_entries').insert({
-            company_id: device.company_id,
-            entry_number: `${entryPrefix}-L`,
-            entry_date: today,
-            description: `Repair labor capitalized — ${deviceDesc}`,
-            reference_type: 'repair',
-            reference_id: repairId,
-            total_debit: totalLaborCost,
-            total_credit: totalLaborCost,
-            is_auto_generated: true,
-            status: 'posted',
-            posted_at: new Date().toISOString(),
-          }).select('id').single();
-
-          if (laborEntry) {
-            await supabase.from('journal_entry_lines').insert([
-              {
-                journal_entry_id: laborEntry.id,
-                account_id: deviceInventoryId,
-                description: `Labor capitalized to device — ${deviceDesc}`,
-                debit_amount: totalLaborCost,
-                credit_amount: 0,
-              },
-              {
-                journal_entry_id: laborEntry.id,
-                account_id: accruedLaborId,
-                description: `Accrued repair labor — ${deviceDesc}`,
-                debit_amount: 0,
-                credit_amount: totalLaborCost,
-              },
-            ]);
-
-            // Update account balances
-            const { data: devInvAcct2 } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', deviceInventoryId).single();
-            await supabase.from('chart_of_accounts').update({ current_balance: Number(devInvAcct2?.current_balance || 0) + totalLaborCost }).eq('id', deviceInventoryId);
-
-            const { data: laborAcct } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', accruedLaborId).single();
-            await supabase.from('chart_of_accounts').update({ current_balance: Number(laborAcct?.current_balance || 0) + totalLaborCost }).eq('id', accruedLaborId);
+            const { data: partsInvAcct, error: partsReadErr } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', partsInventoryId).single();
+            if (partsReadErr) throw partsReadErr;
+            const { error: partsWriteErr } = await supabase.from('chart_of_accounts').update({ current_balance: Number(partsInvAcct?.current_balance || 0) - totalPartsCost }).eq('id', partsInventoryId);
+            if (partsWriteErr) throw partsWriteErr;
           }
         }
 
@@ -334,10 +294,10 @@ export function DeviceRepairDialog({ open, onOpenChange, device, onSuccess }: De
           tableName: 'devices',
           module: 'Inventory',
           recordId: device.id,
-          notes: `Repair completed: parts cost $${totalPartsCost.toFixed(2)} added to device cost. Labor $${totalLaborCost.toFixed(2)} capitalized (Dr. Inventory / Cr. Accrued Labor). Original cost: $${Number(originalCost).toFixed(2)}, new cost: $${newCostPrice.toFixed(2)}.`,
+          notes: `Repair completed: parts $${totalPartsCost.toFixed(2)} capitalized to device cost (Dr. Inventory / Cr. Repair Parts). Labor $${totalLaborCost.toFixed(2)} tracked for management reporting only. Original cost: $${Number(originalCost).toFixed(2)}, new cost: $${newCostPrice.toFixed(2)}.`,
         });
 
-        toast.success(`Repair completed — parts $${totalPartsCost.toFixed(2)} + labor $${totalLaborCost.toFixed(2)} posted to books`);
+        toast.success(`Repair completed — parts $${totalPartsCost.toFixed(2)} added to device cost${totalLaborCost > 0 ? ` · labor $${totalLaborCost.toFixed(2)} tracked for mgmt P&L` : ''}`);
       } else {
         toast.success('Repair saved as in progress');
       }
@@ -507,8 +467,8 @@ export function DeviceRepairDialog({ open, onOpenChange, device, onSuccess }: De
                   <span>Total Repair Cost:</span><span>${totalRepairCost.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground text-xs pt-1 border-t">
-                  <span>New device cost:</span>
-                  <span>${(Number(device.cost_price) + totalRepairCost).toFixed(2)}</span>
+                  <span>New device cost (accounting):</span>
+                  <span>${(Number(device.cost_price) + totalPartsCost).toFixed(2)}</span>
                 </div>
               </div>
             </div>

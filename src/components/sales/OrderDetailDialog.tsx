@@ -1,6 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { emitRefetch } from '@/hooks/useDataRefetch';
+import { reverseCOGSEntriesForSale } from '@/lib/accounting/reversalUtils';
+import { edgeFunctions } from '@/lib/api';
 import {
   Dialog, DialogContent, DialogDescription, DialogTitle,
 } from '@/components/ui/dialog';
@@ -254,18 +256,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
     setSavingManualCost(true);
     try {
       const costValue = manualCostAmount ? parseFloat(manualCostAmount) : null;
-      const { data: existingCOGS } = await supabase
-        .from('journal_entries')
-        .select('id')
-        .eq('reference_id', sale.id)
-        .eq('reference_type', 'sale')
-        .ilike('description', 'COGS%');
-      if (existingCOGS && existingCOGS.length > 0) {
-        for (const entry of existingCOGS) {
-          await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', entry.id);
-          await supabase.from('journal_entries').delete().eq('id', entry.id);
-        }
-      }
+      await reverseCOGSEntriesForSale(sale.id);
 
       const { error } = await supabase.from('sales').update({
         manual_cost: costValue,
@@ -276,11 +267,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
 
       if (costValue && costValue > 0) {
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          await supabase.functions.invoke('process-sale-accounting', {
-            body: { sale_ids: [sale.id] },
-            headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : undefined,
-          });
+          await edgeFunctions.processSaleAccounting([sale.id]);
         } catch (accErr: any) {
           console.error('Accounting trigger error:', accErr);
           toast.error('Cost saved but accounting entries failed — re-run accounting from Financials');
@@ -301,18 +288,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
   const handleClearManualCost = async () => {
     setSavingManualCost(true);
     try {
-      const { data: existingCOGS } = await supabase
-        .from('journal_entries')
-        .select('id')
-        .eq('reference_id', sale.id)
-        .eq('reference_type', 'sale')
-        .ilike('description', 'COGS%');
-      if (existingCOGS && existingCOGS.length > 0) {
-        for (const entry of existingCOGS) {
-          await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', entry.id);
-          await supabase.from('journal_entries').delete().eq('id', entry.id);
-        }
-      }
+      await reverseCOGSEntriesForSale(sale.id);
 
       const { error } = await supabase.from('sales').update({
         manual_cost: null,
@@ -427,18 +403,7 @@ export function OrderDetailDialog({ open, onOpenChange, sale, onInitiateReturn, 
       }).eq('id', sale.device_id);
       if (deviceError) throw deviceError;
 
-      const { data: cogsEntries } = await supabase
-        .from('journal_entries')
-        .select('id')
-        .eq('reference_id', sale.id)
-        .eq('reference_type', 'sale')
-        .ilike('description', 'COGS%');
-
-      if (cogsEntries && cogsEntries.length > 0) {
-        const entryIds = cogsEntries.map(e => e.id);
-        await supabase.from('journal_entry_lines').delete().in('journal_entry_id', entryIds);
-        await supabase.from('journal_entries').delete().in('id', entryIds);
-      }
+      await reverseCOGSEntriesForSale(sale.id);
 
       toast.success('Device unlinked — COGS entries reversed');
       onSaleUpdated?.();

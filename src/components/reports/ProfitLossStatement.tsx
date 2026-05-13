@@ -764,40 +764,43 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
 
           {/* Operating Profit */}
           <div className="bg-muted/30 p-4 rounded-lg">
-            <LineItem
-              label="OPERATING PROFIT (EBITDA)"
-              value={data.current.operatingProfit}
-              prevValue={data.previous.operatingProfit}
-              bold
-            />
+            {(() => {
+              const cur = costingView === 'management'
+                ? data.current.operatingProfit - data.current.managementLaborCost + data.current.payrollExpenses
+                : data.current.operatingProfit;
+              const prev = costingView === 'management'
+                ? data.previous.operatingProfit - data.previous.managementLaborCost + data.previous.payrollExpenses
+                : data.previous.operatingProfit;
+              return <LineItem label="OPERATING PROFIT (EBITDA)" value={cur} prevValue={prev} bold />;
+            })()}
           </div>
 
           {/* Net Profit */}
-          <div>
-            <LineItem
-              label="NET PROFIT BEFORE TAX"
-              value={data.current.netProfitBeforeTax}
-              prevValue={data.previous.netProfitBeforeTax}
-              bold
-            />
-            <LineItem
-              label="Income Tax (Est. 15%)"
-              value={data.current.incomeTax}
-              prevValue={data.previous.incomeTax}
-              indent
-              negative
-            />
-          </div>
-
-          {/* Final Net Profit */}
-          <div className={`p-4 rounded-lg ${data.current.netProfitAfterTax >= 0 ? 'bg-emerald-500/10' : 'bg-destructive/10'}`}>
-            <LineItem
-              label="NET PROFIT AFTER TAX"
-              value={data.current.netProfitAfterTax}
-              prevValue={data.previous.netProfitAfterTax}
-              bold
-            />
-          </div>
+          {(() => {
+            const curOp = costingView === 'management'
+              ? data.current.operatingProfit - data.current.managementLaborCost + data.current.payrollExpenses
+              : data.current.operatingProfit;
+            const prevOp = costingView === 'management'
+              ? data.previous.operatingProfit - data.previous.managementLaborCost + data.previous.payrollExpenses
+              : data.previous.operatingProfit;
+            const curNpbt = curOp + data.current.otherIncome - data.current.intercompanyCharges;
+            const prevNpbt = prevOp + data.previous.otherIncome - data.previous.intercompanyCharges;
+            const curTax = curNpbt > 0 ? curNpbt * 0.15 : 0;
+            const prevTax = prevNpbt > 0 ? prevNpbt * 0.15 : 0;
+            const curNpat = curNpbt - curTax;
+            const prevNpat = prevNpbt - prevTax;
+            return (
+              <>
+                <div>
+                  <LineItem label="NET PROFIT BEFORE TAX" value={curNpbt} prevValue={prevNpbt} bold />
+                  <LineItem label="Income Tax (Est. 15%)" value={curTax} prevValue={prevTax} indent negative />
+                </div>
+                <div className={`p-4 rounded-lg ${curNpat >= 0 ? 'bg-emerald-500/10' : 'bg-destructive/10'}`}>
+                  <LineItem label="NET PROFIT AFTER TAX" value={curNpat} prevValue={prevNpat} bold />
+                </div>
+              </>
+            );
+          })()}
         </CardContent>
       </Card>
     </div>

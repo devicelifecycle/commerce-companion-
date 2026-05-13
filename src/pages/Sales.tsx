@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { supabase } from '@/integrations/supabase/client';
-import { cleanupBeforeSaleDelete } from '@/lib/accounting/reversalUtils';
+import { cleanupBeforeSaleDelete, reverseCOGSEntriesForSale } from '@/lib/accounting/reversalUtils';
+import { unlinkDeviceFromSale, updateSaleFulfillmentStatus } from '@/lib/api';
 
 import { ManualSaleDialog } from '@/components/sales/ManualSaleDialog';
 import { useAuth } from '@/lib/auth';
@@ -211,58 +212,8 @@ export default function Sales() {
 
   const handleUnlinkDevice = async (saleId: string, deviceId: string) => {
     try {
-      // Revert accounting status so COGS entries can be re-evaluated
-      const { error: saleError } = await supabase.from('sales').update({ 
-        device_id: null, 
-        accounting_status: 'revenue_only' 
-      }).eq('id', saleId);
-      if (saleError) throw saleError;
-      const { error: deviceError } = await supabase.from('devices').update({ status: 'in_stock' as any, sale_price: null }).eq('id', deviceId);
-      if (deviceError) throw deviceError;
-
-      // Reverse COGS journal entries for this sale (properly reverses account balances)
-      const { data: cogsEntries } = await supabase
-        .from('journal_entries')
-        .select('id')
-        .eq('reference_id', saleId)
-        .eq('reference_type', 'sale')
-        .ilike('description', 'COGS%');
-
-      if (cogsEntries && cogsEntries.length > 0) {
-        for (const entry of cogsEntries) {
-          // Use the centralized reversal utility which properly reverses account balances
-          const { reverseJournalEntries } = await import('@/lib/accounting/reversalUtils');
-          // reverseJournalEntries works by reference_id, so we reverse each entry individually
-          const { data: lines } = await supabase
-            .from('journal_entry_lines')
-            .select('account_id, debit_amount, credit_amount')
-            .eq('journal_entry_id', entry.id);
-
-          if (lines) {
-            for (const line of lines) {
-              const { data: account } = await supabase
-                .from('chart_of_accounts')
-                .select('current_balance, normal_balance')
-                .eq('id', line.account_id)
-                .single();
-
-              if (account) {
-                const debit = Number(line.debit_amount || 0);
-                const credit = Number(line.credit_amount || 0);
-                const current = Number(account.current_balance || 0);
-                const newBal = account.normal_balance === 'debit'
-                  ? current - debit + credit
-                  : current - credit + debit;
-                await supabase.from('chart_of_accounts').update({ current_balance: newBal }).eq('id', line.account_id);
-              }
-            }
-          }
-
-          await supabase.from('journal_entry_lines').delete().eq('journal_entry_id', entry.id);
-          await supabase.from('journal_entries').delete().eq('id', entry.id);
-        }
-      }
-
+      await unlinkDeviceFromSale(saleId, deviceId);
+      await reverseCOGSEntriesForSale(saleId);
       toast.success('Device unlinked — COGS entries & account balances reversed');
       fetchSales();
       emitRefetch('financials');
@@ -273,8 +224,7 @@ export default function Sales() {
 
   const handleUpdateStatus = async (saleId: string, status: FulfillmentStatus) => {
     try {
-      const { error } = await supabase.from('sales').update({ fulfillment_status: status }).eq('id', saleId);
-      if (error) throw error;
+      await updateSaleFulfillmentStatus(saleId, status);
       logEvent({ action: 'UPDATE' as any, tableName: 'sales', recordId: saleId, module: 'Sales', notes: `Status changed to ${status}` });
       toast.success(`Status updated to ${status}`);
       fetchSales();

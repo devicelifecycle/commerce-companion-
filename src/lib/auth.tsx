@@ -33,18 +33,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
 
         if (event === 'SIGNED_IN' && session?.user) {
-          // Mark session as active in sessionStorage (cleared when browser closes)
           sessionStorage.setItem(SESSION_STORAGE_KEY, 'true');
-          setTimeout(() => {
-            supabase.from('audit_logs').insert({
-              action: 'LOGIN',
-              table_name: 'auth.users',
-              module: 'System',
-              notes: `User signed in: ${session.user.email}`,
-              user_id: session.user.id,
-              status: 'success',
-            }).then(() => {});
-          }, 0);
+          // Fire-and-forget audit log — intentionally non-blocking, non-critical
+          void supabase.from('audit_logs').insert({
+            action: 'LOGIN',
+            table_name: 'auth.users',
+            module: 'System',
+            notes: `User signed in: ${session.user.email}`,
+            user_id: session.user.id,
+            status: 'success',
+          }).then(({ error }) => {
+            if (error) console.warn('Audit log insert failed (non-critical):', error.message);
+          });
         }
         if (event === 'SIGNED_OUT') {
           sessionStorage.removeItem(SESSION_STORAGE_KEY);
