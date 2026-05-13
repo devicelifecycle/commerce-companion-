@@ -15,6 +15,7 @@ import { Plus, ArrowLeft, Handshake, Download, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { fmtMoney, STATUS_COLORS, STATUS_LABELS, logPartnerEvent } from '@/lib/partnerEvents';
 import { PartnerSettleDialog, PartnerBulkIntakeDialog } from '@/components/partners/PartnerActions';
+import { useCompany } from '@/contexts/CompanyContext';
 
 interface Partner {
   id: string; name: string; commission_pct: number; company_id: string;
@@ -37,6 +38,9 @@ interface Payable { id: string; amount: number; status: string; created_at: stri
 
 export default function PartnerDetail() {
   const { id } = useParams<{ id: string }>();
+  const { hasPermission, isSuperAdmin } = useCompany();
+  const canView   = hasPermission('partners_view', 'view')   || hasPermission('partners_manage', 'view')   || isSuperAdmin;
+  const canManage = hasPermission('partners_manage', 'edit') || isSuperAdmin;
   const [partner, setPartner] = useState<Partner | null>(null);
   const [devices, setDevices] = useState<PartnerDevice[]>([]);
   const [sales, setSales] = useState<PartnerSale[]>([]);
@@ -128,6 +132,16 @@ export default function PartnerDetail() {
     refurb: acc.refurb + Number(s.refurb_fee),
     proceeds: acc.proceeds + Number(s.partner_proceeds),
   }), { sales: 0, netProfit: 0, commission: 0, refurb: 0, proceeds: 0 });
+
+  if (!canView) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <p className="text-muted-foreground">You don't have permission to view partner consignment.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

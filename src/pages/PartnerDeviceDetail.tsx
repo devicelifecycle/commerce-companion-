@@ -13,9 +13,13 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { ArrowLeft, Save, ListChecks, RefreshCw, LinkIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { fmtMoney, STATUS_COLORS, STATUS_LABELS, PARTNER_STATUSES, logPartnerEvent } from '@/lib/partnerEvents';
+import { useCompany } from '@/contexts/CompanyContext';
 
 export default function PartnerDeviceDetail() {
   const { partnerId, deviceId } = useParams<{ partnerId: string; deviceId: string }>();
+  const { hasPermission, isSuperAdmin } = useCompany();
+  const canView   = hasPermission('partners_view', 'view')   || hasPermission('partners_manage', 'view')   || isSuperAdmin;
+  const canManage = hasPermission('partners_manage', 'edit') || isSuperAdmin;
   const [device, setDevice] = useState<any>(null);
   const [events, setEvents] = useState<any[]>([]);
   const [parts, setParts] = useState<any[]>([]);
@@ -190,6 +194,16 @@ export default function PartnerDeviceDetail() {
 
   const totalParts = parts.reduce((s, p) => s + Number(p.total_cost), 0);
   const totalLabor = labor.reduce((s, l) => s + Number(l.total_cost), 0);
+
+  if (!canView) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <p className="text-muted-foreground">You don't have permission to view partner consignment.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>

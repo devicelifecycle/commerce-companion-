@@ -35,7 +35,9 @@ interface PartnerStats {
 }
 
 export default function Partners() {
-  const { selectedCompany } = useCompany();
+  const { selectedCompany, hasPermission, isSuperAdmin } = useCompany();
+  const canView   = hasPermission('partners_view', 'view')   || hasPermission('partners_manage', 'view')   || isSuperAdmin;
+  const canManage = hasPermission('partners_manage', 'edit') || isSuperAdmin;
   const [partners, setPartners] = useState<Partner[]>([]);
   const [stats, setStats] = useState<Record<string, PartnerStats>>({});
   const [loading, setLoading] = useState(true);
@@ -97,6 +99,16 @@ export default function Partners() {
     load();
   };
 
+  if (!canView) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <p className="text-muted-foreground">You don't have permission to view partner consignment.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -110,9 +122,9 @@ export default function Partners() {
             </p>
           </div>
           <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
+            {canManage && <DialogTrigger asChild>
               <Button><Plus className="h-4 w-4 mr-2" />New Partner</Button>
-            </DialogTrigger>
+            </DialogTrigger>}
             <DialogContent>
               <DialogHeader><DialogTitle>New Partner</DialogTitle></DialogHeader>
               <div className="space-y-3">
