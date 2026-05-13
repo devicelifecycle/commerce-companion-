@@ -212,7 +212,7 @@ export function CreatePurchaseOrderDialog({ open, onOpenChange, onSuccess }: Cre
     return () => {
       // (timers are cleared lazily; no leak because they're keyed)
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [lineItems.map(li => `${li.id}:${li.new_sku}:${li.item_type}:${li.matched_sku ?? ''}`).join('|'), selectedCompanyId]);
 
   /** Format-error string per line (sync). */

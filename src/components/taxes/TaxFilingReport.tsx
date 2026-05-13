@@ -108,11 +108,12 @@ export function TaxFilingReport() {
         setPeriodStart(format(startOfQuarter(now), 'yyyy-MM-dd'));
         setPeriodEnd(format(endOfQuarter(now), 'yyyy-MM-dd'));
         break;
-      case 'previous':
+      case 'previous': {
         const prevQ = subQuarters(now, 1);
         setPeriodStart(format(startOfQuarter(prevQ), 'yyyy-MM-dd'));
         setPeriodEnd(format(endOfQuarter(prevQ), 'yyyy-MM-dd'));
         break;
+      }
     }
   };
 

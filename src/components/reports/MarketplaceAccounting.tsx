@@ -43,7 +43,7 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
     try {
       const now = new Date();
       let start: Date;
-      let end: Date = now;
+      const end: Date = now;
 
       if (dateRange === 'mtd') {
         start = startOfMonth(now);
@@ -73,7 +73,7 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
 
       // Fetch device costs for COGS
       const deviceIds = sales?.filter(s => s.device_id).map(s => s.device_id!) || [];
-      let deviceCosts: Record<string, number> = {};
+      const deviceCosts: Record<string, number> = {};
       if (deviceIds.length > 0) {
         const { data: devices } = await supabase
           .from('devices')

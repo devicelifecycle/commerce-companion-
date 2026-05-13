@@ -263,7 +263,7 @@ export function ProfitLossStatement({ companyView = 'consolidated' }: ProfitLoss
 
         // Check which expenses have JEs already
         const expenseIds = expenses?.map(e => e.id) || [];
-        let expensesWithJEs = new Set<string>();
+        const expensesWithJEs = new Set<string>();
         if (expenseIds.length > 0) {
           for (let i = 0; i < expenseIds.length; i += 200) {
             const chunk = expenseIds.slice(i, i + 200);

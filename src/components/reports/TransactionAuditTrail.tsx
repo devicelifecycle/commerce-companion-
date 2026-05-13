@@ -170,7 +170,7 @@ export function TransactionAuditTrail({ saleId, open, onOpenChange }: Transactio
               .eq('journal_entry_id', entry.id);
 
             const accountIds = lines?.map(l => l.account_id) || [];
-            let accountMap: Record<string, { name: string; code: string }> = {};
+            const accountMap: Record<string, { name: string; code: string }> = {};
             if (accountIds.length > 0) {
               const { data: accounts } = await supabase
                 .from('chart_of_accounts')

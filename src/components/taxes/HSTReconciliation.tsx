@@ -48,7 +48,7 @@ export function HSTReconciliation() {
       const endStr = end.toISOString().split('T')[0];
 
       // 1. LEDGER: Tax collected from journal entries (accounts 4200/4201)
-      let jeQuery = supabase
+      const jeQuery = supabase
         .from('journal_entry_lines')
         .select('credit_amount, debit_amount, account_id, journal_entry_id')
         .gt('credit_amount', 0);
@@ -94,7 +94,7 @@ export function HSTReconciliation() {
         .reduce((sum, l) => sum + Number(l.credit_amount || 0) - Number(l.debit_amount || 0), 0);
 
       // ITC from ledger (debit side of 8000/8001)
-      let allJeLines = await supabase
+      const allJeLines = await supabase
         .from('journal_entry_lines')
         .select('credit_amount, debit_amount, account_id, journal_entry_id');
 

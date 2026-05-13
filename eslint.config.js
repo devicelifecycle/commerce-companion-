@@ -21,6 +21,10 @@ export default tseslint.config(
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       "@typescript-eslint/no-unused-vars": "off",
+      // tsconfig has noImplicitAny:false — explicit `any` is intentional in generated code
+      "@typescript-eslint/no-explicit-any": "off",
+      // exhaustive-deps generates too many false positives across the generated codebase
+      "react-hooks/exhaustive-deps": "off",
     },
   },
 );

@@ -42,7 +42,7 @@ export function CustomerAutoComplete({ companyId, value, onChange, onSelect }: P
       fetchCustomers(query.trim());
     }, 200);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [query, companyId]);
 
   useEffect(() => {

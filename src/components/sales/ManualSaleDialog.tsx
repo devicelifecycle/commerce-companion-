@@ -281,7 +281,7 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
       });
       return changed ? next : prev;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [shippingProvince, lineItems.map(l => `${l.id}:${l.quantity}:${l.unit_price}:${l.tax_treatment}`).join('|')]);
 
   // --- Totals ---

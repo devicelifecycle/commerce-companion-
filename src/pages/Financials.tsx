@@ -181,7 +181,7 @@ export default function Financials() {
       next.set('tab', subView);
       setSearchParams(next, { replace: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [subView]);
 
   // External nav (e.g. dashboard click) updates the URL — re-sync state.
@@ -190,7 +190,7 @@ export default function Financials() {
       setSubView(tabParam);
       setActiveSection(SUBVIEW_TO_SECTION[tabParam]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [tabParam]);
 
   const handleSectionChange = (section: string) => {

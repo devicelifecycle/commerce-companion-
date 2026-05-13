@@ -39,7 +39,7 @@ export function TransferPricingRules() {
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      try { setRules(JSON.parse(stored)); } catch { }
+      try { setRules(JSON.parse(stored)); } catch { /* ignore corrupt storage */ }
     }
   }, []);
 
