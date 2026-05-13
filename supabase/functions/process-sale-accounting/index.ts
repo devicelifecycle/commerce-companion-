@@ -113,10 +113,11 @@ async function updateAccountBalance(
       ? current + debitAmount - creditAmount
       : current + creditAmount - debitAmount;
 
-  await supabase
+  const { error: updErr } = await supabase
     .from("chart_of_accounts")
     .update({ current_balance: newBalance })
     .eq("id", accountId);
+  if (updErr) throw new Error(`updateAccountBalance failed for ${accountId}: ${updErr.message}`);
 }
 
 async function createJournalEntry(
@@ -370,7 +371,8 @@ serve(async (req) => {
             }
           } else {
             if (sale.accounting_status !== "ready_to_post" && sale.accounting_status !== "fully_processed") {
-              await supabase.from("sales").update({ accounting_status: "ready_to_post", review_reason: null }).eq("id", sale.id);
+              const { error: statusErr } = await supabase.from("sales").update({ accounting_status: "ready_to_post", review_reason: null }).eq("id", sale.id);
+              if (statusErr) throw new Error(`Failed to update sale status: ${statusErr.message}`);
             }
           }
           continue;

@@ -94,7 +94,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
   const loadPOData = async () => {
     if (!poId) return;
     const [{ data: poData }, { data: items }] = await Promise.all([
-      supabase.from('purchase_orders').select('*').eq('id', poId).single(),
+      supabase.from('purchase_orders').select('*, companies(code)').eq('id', poId).single(),
       supabase.from('purchase_order_items').select('*').eq('purchase_order_id', poId),
     ]);
 
@@ -552,8 +552,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
 
           // 8. Auto-post journal entry
           if (po.company_id) {
-            const VES_ID = '4e0fa3a6-06a9-4618-8513-f66143c05b28';
-            const isVES = po.company_id === VES_ID;
+            const isVES = (po as any).companies?.code === 'VES';
             try {
               await createPurchaseJournalEntry({
                 companyId: po.company_id,

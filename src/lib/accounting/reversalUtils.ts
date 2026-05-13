@@ -78,8 +78,10 @@ export async function reverseARForSale(saleId: string): Promise<void> {
 
   if (arRecords && arRecords.length > 0) {
     const arIds = arRecords.map(r => r.id);
-    await supabase.from('ar_payments').delete().in('accounts_receivable_id', arIds);
-    await supabase.from('accounts_receivable').delete().in('id', arIds);
+    const { error: pmtErr } = await supabase.from('ar_payments').delete().in('accounts_receivable_id', arIds);
+    if (pmtErr) throw new Error(`Failed to delete AR payments: ${pmtErr.message}`);
+    const { error: arErr } = await supabase.from('accounts_receivable').delete().in('id', arIds);
+    if (arErr) throw new Error(`Failed to delete AR records: ${arErr.message}`);
   }
 }
 
@@ -105,8 +107,10 @@ export async function reverseAPForPO(poNumber: string, companyId: string): Promi
 
   if (apRecords && apRecords.length > 0) {
     const apIds = apRecords.map(r => r.id);
-    await supabase.from('ap_payments').delete().in('accounts_payable_id', apIds);
-    await supabase.from('accounts_payable').delete().in('id', apIds);
+    const { error: pmtErr } = await supabase.from('ap_payments').delete().in('accounts_payable_id', apIds);
+    if (pmtErr) throw new Error(`Failed to delete AP payments: ${pmtErr.message}`);
+    const { error: apErr } = await supabase.from('accounts_payable').delete().in('id', apIds);
+    if (apErr) throw new Error(`Failed to delete AP records: ${apErr.message}`);
   }
 }
 
@@ -140,14 +144,16 @@ export async function reversePartnerSaleAccrual(saleId: string): Promise<void> {
   await reverseJournalEntries(ps.id);
 
   // Mark payables reversed
-  await supabase.from('partner_payables')
+  const { error: payErr } = await supabase.from('partner_payables')
     .update({ status: 'reversed' })
     .eq('partner_sale_id', ps.id);
+  if (payErr) throw new Error(`Failed to reverse partner payables: ${payErr.message}`);
 
   // Mark partner sale reversed
-  await supabase.from('partner_sales')
+  const { error: psErr } = await supabase.from('partner_sales')
     .update({ status: 'reversed' })
     .eq('id', ps.id);
+  if (psErr) throw new Error(`Failed to reverse partner sale: ${psErr.message}`);
 
   // Re-list the partner device for resale
   if (ps.partner_device_id) {
@@ -156,17 +162,19 @@ export async function reversePartnerSaleAccrual(saleId: string): Promise<void> {
       .select('partner_id, company_id')
       .eq('id', ps.partner_device_id)
       .maybeSingle();
-    await supabase.from('partner_devices')
+    const { error: pdErr } = await supabase.from('partner_devices')
       .update({ status: 'listed' })
       .eq('id', ps.partner_device_id);
+    if (pdErr) throw new Error(`Failed to re-list partner device: ${pdErr.message}`);
     if (pd) {
-      await supabase.from('partner_device_events').insert({
+      const { error: evtErr } = await supabase.from('partner_device_events').insert({
         partner_device_id: ps.partner_device_id,
         partner_id: pd.partner_id,
         company_id: pd.company_id,
         event_type: 'sale_reversed',
         payload: { sale_id: saleId, partner_sale_id: ps.id },
       });
+      if (evtErr) throw new Error(`Failed to insert partner device event: ${evtErr.message}`);
     }
   }
 }
@@ -190,10 +198,12 @@ export async function cleanupBeforeSaleDelete(saleId: string, deviceId: string |
   }
 
   // Clean up sale items
-  await supabase.from('sale_items').delete().eq('sale_id', saleId);
+  const { error: siErr } = await supabase.from('sale_items').delete().eq('sale_id', saleId);
+  if (siErr) throw new Error(`Failed to delete sale items: ${siErr.message}`);
 
   // Clean up sales tax details
-  await supabase.from('sales_tax_details').delete().eq('sale_id', saleId);
+  const { error: stErr } = await supabase.from('sales_tax_details').delete().eq('sale_id', saleId);
+  if (stErr) throw new Error(`Failed to delete sales tax details: ${stErr.message}`);
 
   return { journalCount };
 }
@@ -207,7 +217,8 @@ export async function cleanupBeforeSaleDelete(saleId: string, deviceId: string |
 export async function cleanupBeforeExpenseDelete(expenseId: string): Promise<{ journalCount: number }> {
   const journalCount = await reverseJournalEntries(expenseId);
   await reverseITCsForExpense(expenseId);
-  await supabase.from('expense_refunds').delete().eq('expense_id', expenseId);
+  const { error: refundErr } = await supabase.from('expense_refunds').delete().eq('expense_id', expenseId);
+  if (refundErr) throw new Error(`Failed to delete expense refunds: ${refundErr.message}`);
   return { journalCount };
 }
 
@@ -253,19 +264,23 @@ export async function cleanupBeforePODelete(
   let grnCount = 0;
   if (grns && grns.length > 0) {
     const grnIds = grns.map(g => g.id);
-    await supabase.from('grn_items').delete().in('grn_id', grnIds);
-    await supabase.from('goods_received_notes').delete().in('id', grnIds);
+    const { error: grnItemErr } = await supabase.from('grn_items').delete().in('grn_id', grnIds);
+    if (grnItemErr) throw new Error(`Failed to delete GRN items: ${grnItemErr.message}`);
+    const { error: grnErr } = await supabase.from('goods_received_notes').delete().in('id', grnIds);
+    if (grnErr) throw new Error(`Failed to delete GRNs: ${grnErr.message}`);
     grnCount = grnIds.length;
   }
 
   // Remove linked RMAs (purchase returns)
-  await supabase
+  const { error: rmaErr } = await supabase
     .from('return_authorizations')
     .delete()
     .eq('purchase_order_id', poId);
+  if (rmaErr) throw new Error(`Failed to delete RMAs for PO: ${rmaErr.message}`);
 
   // Remove PO items
-  await supabase.from('purchase_order_items').delete().eq('purchase_order_id', poId);
+  const { error: poItemErr } = await supabase.from('purchase_order_items').delete().eq('purchase_order_id', poId);
+  if (poItemErr) throw new Error(`Failed to delete PO items: ${poItemErr.message}`);
 
   return { journalCount, grnCount };
 }

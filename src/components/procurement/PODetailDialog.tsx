@@ -123,7 +123,7 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, 
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [syncToAP, setSyncToAP] = useState(true);
 
-  const VES_ID = '4e0fa3a6-06a9-4618-8513-f66143c05b28';
+  // Identify VES by company code, not UUID (UUIDs differ per Supabase project)
 
   useEffect(() => {
     if (open && poId) loadAll();
@@ -132,7 +132,7 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, 
   const loadAll = async () => {
     if (!poId) return;
     const [poRes, itemsRes, grnsRes, paymentsRes] = await Promise.all([
-      supabase.from('purchase_orders').select('*').eq('id', poId).single(),
+      supabase.from('purchase_orders').select('*, companies(code)').eq('id', poId).single(),
       supabase.from('purchase_order_items').select('*').eq('purchase_order_id', poId),
       supabase.from('goods_received_notes').select('*').eq('purchase_order_id', poId).order('received_date', { ascending: false }),
       supabase.from('po_payments').select('*').eq('purchase_order_id', poId).order('payment_date', { ascending: false }),
@@ -256,7 +256,7 @@ export function PODetailDialog({ open, onOpenChange, onUpdate, poId, canManage, 
           }).eq('id', apRecord.id);
 
           // 4. Post journal entry: Dr. AP / Cr. Cash
-          const isVES = po.company_id === VES_ID;
+          const isVES = (po as any).companies?.code === 'VES';
           try {
             await createPaymentMadeJournalEntry({
               companyId: po.company_id,
