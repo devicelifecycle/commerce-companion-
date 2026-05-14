@@ -69,19 +69,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // Set guardPending BEFORE signInWithPassword. Supabase fires onAuthStateChange('SIGNED_IN')
+    // synchronously during the await (before the promise resolves), which sets user state and
+    // triggers navigation. guardPending=true ensures ProtectedRoute shows a spinner instead of
+    // the authenticated app during that window — eliminating the flicker entirely.
+    setGuardPending(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    if (error) return { error: error as Error | null };
+      if (error) return { error: error as Error | null };
 
-    // Run the post-login guard while keeping the UI in a loading/spinner state.
-    // guardPending = true prevents ProtectedRoute from rendering the authenticated
-    // app before we've verified the account — eliminating the sign-in flicker.
-    if (data.user) {
-      setGuardPending(true);
-      try {
+      if (data.user) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('is_active')
@@ -103,12 +101,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await supabase.auth.signOut();
           return { error: new Error('Your account has no company access. Contact your administrator.') };
         }
-      } finally {
-        setGuardPending(false);
       }
-    }
 
-    return { error: null };
+      return { error: null };
+    } finally {
+      setGuardPending(false);
+    }
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
