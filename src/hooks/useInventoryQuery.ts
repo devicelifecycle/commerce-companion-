@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { usePaginatedQuery } from '@/hooks/usePaginatedQuery';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { toast } from 'sonner';
 import { useCallback } from 'react';
 
@@ -70,6 +71,8 @@ export function useInventoryQuery({ statusFilter, categoryFilter, channelFilter,
 
   const handleRealtimeChange = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['devices'] });
+    emitRefetch('financials');
+    emitRefetch('dashboard');
     toast.info('Inventory updated', { duration: 2000, id: 'devices-realtime' });
   }, [queryClient]);
 

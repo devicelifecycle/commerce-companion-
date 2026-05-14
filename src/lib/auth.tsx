@@ -106,15 +106,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    // Log logout before signing out (while we still have the session)
+    // Fire-and-forget audit log — non-critical, must not block sign-out
     if (user) {
-      await supabase.from('audit_logs').insert({
+      void supabase.from('audit_logs').insert({
         action: 'LOGOUT',
         table_name: 'auth.users',
         module: 'System',
         notes: `User signed out: ${user.email}`,
         user_id: user.id,
         status: 'success',
+      }).then(({ error }) => {
+        if (error) console.warn('Logout audit log failed (non-critical):', error.message);
       });
     }
     await supabase.auth.signOut();

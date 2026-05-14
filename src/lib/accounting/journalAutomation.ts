@@ -21,11 +21,12 @@ interface AutoJournalEntryParams {
   lines: JournalEntryLine[];
 }
 
-// Generate unique entry number
+// Generate unique entry number — uses HHmmssSSS for sub-second precision + 5-digit random
+// to make same-second collisions astronomically unlikely under concurrent bulk processing.
 function generateEntryNumber(prefix: string = 'JE'): string {
-  const date = format(new Date(), 'yyyyMMdd');
-  const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
-  return `${prefix}-${date}-${random}`;
+  const ts = format(new Date(), 'yyyyMMddHHmmssSSS');
+  const random = Math.floor(Math.random() * 100000).toString().padStart(5, '0');
+  return `${prefix}-${ts}-${random}`;
 }
 
 // Create automated journal entry

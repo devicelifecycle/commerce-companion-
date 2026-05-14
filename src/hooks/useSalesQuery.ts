@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import { usePaginatedQuery } from '@/hooks/usePaginatedQuery';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
+import { emitRefetch } from '@/hooks/useDataRefetch';
 import { toast } from 'sonner';
 import { useCallback } from 'react';
 
@@ -142,6 +143,9 @@ export function useSalesQuery({ companyFilter, marketplaceFilter, statusFilter, 
   // Realtime: invalidate query on any change
   const handleRealtimeChange = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['sales'] });
+    // Cascade: keep financial reports and dashboard fresh when orders change
+    emitRefetch('financials');
+    emitRefetch('dashboard');
     toast.info('Orders updated', { duration: 2000, id: 'sales-realtime' });
   }, [queryClient]);
 

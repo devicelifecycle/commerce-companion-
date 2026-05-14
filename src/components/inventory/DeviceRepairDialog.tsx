@@ -55,40 +55,46 @@ export function DeviceRepairDialog({ open, onOpenChange, device, onSuccess }: De
   useEffect(() => {
     if (!open || !device) return;
     const loadRepair = async () => {
-      const { data: repairs } = await supabase
-        .from('device_repairs')
-        .select('*')
-        .eq('device_id', device.id)
-        .eq('status', 'in_progress')
-        .limit(1);
-      
-      if (repairs && repairs.length > 0) {
-        const repair = repairs[0];
-        setExistingRepair(repair);
-        setNotes(repair.notes || '');
-        // Load existing items
-        const { data: existingItems } = await supabase
-          .from('repair_items')
+      try {
+        const { data: repairs, error: repairErr } = await supabase
+          .from('device_repairs')
           .select('*')
-          .eq('repair_id', repair.id);
-        if (existingItems) {
-          setItems(existingItems.map((i: any) => ({
-            id: i.id,
-            item_type: i.item_type,
-            repair_part_id: i.repair_part_id,
-            description: i.description,
-            quantity: i.quantity,
-            unit_cost: i.unit_cost,
-            total_cost: i.total_cost,
-            labor_hours: i.labor_hours,
-            labor_rate: i.labor_rate,
-            isNew: false,
-          })));
+          .eq('device_id', device.id)
+          .eq('status', 'in_progress')
+          .limit(1);
+        if (repairErr) throw repairErr;
+
+        if (repairs && repairs.length > 0) {
+          const repair = repairs[0];
+          setExistingRepair(repair);
+          setNotes(repair.notes || '');
+          const { data: existingItems, error: itemsErr } = await supabase
+            .from('repair_items')
+            .select('*')
+            .eq('repair_id', repair.id);
+          if (itemsErr) throw itemsErr;
+          if (existingItems) {
+            setItems(existingItems.map((i: any) => ({
+              id: i.id,
+              item_type: i.item_type,
+              repair_part_id: i.repair_part_id,
+              description: i.description,
+              quantity: i.quantity,
+              unit_cost: i.unit_cost,
+              total_cost: i.total_cost,
+              labor_hours: i.labor_hours,
+              labor_rate: i.labor_rate,
+              isNew: false,
+            })));
+          }
+        } else {
+          setExistingRepair(null);
+          setNotes('');
+          setItems([]);
         }
-      } else {
-        setExistingRepair(null);
-        setNotes('');
-        setItems([]);
+      } catch (err: any) {
+        console.error('Failed to load repair data:', err.message);
+        toast.error('Failed to load existing repair — please close and reopen');
       }
     };
     loadRepair();
@@ -189,7 +195,8 @@ export function DeviceRepairDialog({ open, onOpenChange, device, onSuccess }: De
         if (error) throw error;
 
         // Delete old items and re-insert
-        await supabase.from('repair_items').delete().eq('repair_id', repairId);
+        const { error: delItemsErr } = await supabase.from('repair_items').delete().eq('repair_id', repairId);
+        if (delItemsErr) throw delItemsErr;
       }
 
       // Insert all items

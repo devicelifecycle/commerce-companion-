@@ -1,6 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
 import { useDataRefetch, emitRefetch } from '@/hooks/useDataRefetch';
-import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { SupplierReturnDialog } from '@/components/inventory/SupplierReturnDialog';
 import { InventoryWriteOffDialog } from '@/components/inventory/InventoryWriteOffDialog';
 import { supabase } from '@/integrations/supabase/client';
@@ -95,7 +94,6 @@ export default function Inventory() {
   });
 
   useDataRefetch('inventory', refetch);
-  useRealtimeSubscription({ table: 'devices', onChanged: () => emitRefetch('inventory') });
 
   // Refurbishment queries
   const { data: pendingRefurb = [], isLoading: refurbLoading, refetch: refetchRefurb } = useQuery({
