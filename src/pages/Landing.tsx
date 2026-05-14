@@ -219,7 +219,6 @@ function Hero({ onSignIn }: { onSignIn: () => void }) {
         {[
           { value: '2', label: 'Entities' },
           { value: '4+', label: 'Marketplaces' },
-          { value: '90+', label: 'DB Migrations' },
           { value: 'CRA', label: 'Tax Compliant' },
         ].map(({ value, label }) => (
           <div key={label} className="text-center">
@@ -277,8 +276,6 @@ function Integrations() {
     { name: 'Amazon', color: '#ff9900' },
     { name: 'Best Buy', color: '#0046be' },
     { name: 'Temu', color: '#ff5722' },
-    { name: 'Supabase', color: '#3ecf8e' },
-    { name: 'Vercel', color: '#ffffff' },
   ];
   return (
     <section id="integrations" className="relative z-20 px-5 sm:px-8 lg:px-16 py-20 max-w-6xl mx-auto">
