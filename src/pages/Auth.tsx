@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Lock, Mail, ArrowRight, Package, BarChart3, Globe, Shield, Zap, TrendingUp } from 'lucide-react';
+import { Lock, Mail, ArrowRight, ArrowLeft, Package, BarChart3, Globe, Shield, Zap, TrendingUp } from 'lucide-react';
 import { z } from 'zod';
 import warehouseLogo from '@/assets/warehouse-logo.png';
 
@@ -164,6 +164,15 @@ export default function Auth() {
         </div>
 
         <div className="relative z-10 w-full max-w-[420px] mx-6">
+          {/* Back to landing page */}
+          <button
+            onClick={() => navigate('/')}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors duration-200 mb-6 group"
+          >
+            <ArrowLeft size={13} className="group-hover:-translate-x-0.5 transition-transform duration-200" />
+            Back to home
+          </button>
+
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8 animate-fade-in">
             <div className="inline-block relative mb-4">
