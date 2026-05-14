@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  guardPending: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -13,21 +14,33 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Use sessionStorage so sessions end when the browser is fully closed
+// sessionStorage clears when the browser is fully closed (unlike localStorage).
+// We use this to detect a fresh browser open vs. a page refresh within the same session.
 const SESSION_STORAGE_KEY = 'sb-session-active';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  // true while the post-login guard (profile + company assignment checks) is running.
+  // ProtectedRoute stays in spinner mode during this window to prevent flicker.
+  const [guardPending, setGuardPending] = useState(false);
 
   useEffect(() => {
-    // If sessionStorage marker is missing, the browser was closed — sign out any stale session
+    // Captured synchronously at mount — before any async auth events fire.
     const wasActive = sessionStorage.getItem(SESSION_STORAGE_KEY);
 
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        // INITIAL_SESSION fires when the auth library restores a session from localStorage
+        // on page load. If wasActive is null, the browser was closed and this is a stale
+        // session — sign out immediately WITHOUT updating state, so the user never sees
+        // the authenticated UI (eliminates the 1-2s flicker before forced logout).
+        if (event === 'INITIAL_SESSION' && session && !wasActive) {
+          supabase.auth.signOut();
+          return; // loading stays true; SIGNED_OUT event below will finalize state
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
@@ -52,18 +65,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && !wasActive) {
-        // Browser was closed and reopened — clear stale session
-        supabase.auth.signOut();
-        return;
-      }
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -72,31 +73,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       password,
     });
-    
+
     if (error) return { error: error as Error | null };
 
-    // Login guard: check if user account is active and has company assignments
+    // Run the post-login guard while keeping the UI in a loading/spinner state.
+    // guardPending = true prevents ProtectedRoute from rendering the authenticated
+    // app before we've verified the account — eliminating the sign-in flicker.
     if (data.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_active')
-        .eq('user_id', data.user.id)
-        .single();
+      setGuardPending(true);
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_active')
+          .eq('user_id', data.user.id)
+          .single();
 
-      if (profile && !profile.is_active) {
-        await supabase.auth.signOut();
-        return { error: new Error('Your account has been deactivated. Contact your administrator.') };
-      }
+        if (profile && !profile.is_active) {
+          await supabase.auth.signOut();
+          return { error: new Error('Your account has been deactivated. Contact your administrator.') };
+        }
 
-      const { data: assignments } = await supabase
-        .from('user_company_assignments')
-        .select('id')
-        .eq('user_id', data.user.id)
-        .limit(1);
+        const { data: assignments } = await supabase
+          .from('user_company_assignments')
+          .select('id')
+          .eq('user_id', data.user.id)
+          .limit(1);
 
-      if (!assignments || assignments.length === 0) {
-        await supabase.auth.signOut();
-        return { error: new Error('Your account has no company access. Contact your administrator.') };
+        if (!assignments || assignments.length === 0) {
+          await supabase.auth.signOut();
+          return { error: new Error('Your account has no company access. Contact your administrator.') };
+        }
+      } finally {
+        setGuardPending(false);
       }
     }
 
@@ -135,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, guardPending, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
