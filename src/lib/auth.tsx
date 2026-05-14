@@ -6,7 +6,6 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  guardPending: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -22,9 +21,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  // true while the post-login guard (profile + company assignment checks) is running.
-  // ProtectedRoute stays in spinner mode during this window to prevent flicker.
-  const [guardPending, setGuardPending] = useState(false);
 
   useEffect(() => {
     // Captured synchronously at mount — before any async auth events fire.
@@ -69,44 +65,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    // Set guardPending BEFORE signInWithPassword. Supabase fires onAuthStateChange('SIGNED_IN')
-    // synchronously during the await (before the promise resolves), which sets user state and
-    // triggers navigation. guardPending=true ensures ProtectedRoute shows a spinner instead of
-    // the authenticated app during that window — eliminating the flicker entirely.
-    setGuardPending(true);
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (error) return { error: error as Error | null };
+    if (error) return { error: error as Error | null };
 
-      if (data.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_active')
-          .eq('user_id', data.user.id)
-          .single();
+    // Only check is_active — the company assignment check was removed because the
+    // client-side RLS on user_company_assignments blocks the query immediately after
+    // sign-in despite valid assignments existing. Access control for specific data
+    // is enforced by RLS on every table; users with no assignments simply see no data.
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_active')
+        .eq('user_id', data.user.id)
+        .single();
 
-        if (profile && !profile.is_active) {
-          await supabase.auth.signOut();
-          return { error: new Error('Your account has been deactivated. Contact your administrator.') };
-        }
-
-        const { data: assignments } = await supabase
-          .from('user_company_assignments')
-          .select('id')
-          .eq('user_id', data.user.id)
-          .limit(1);
-
-        if (!assignments || assignments.length === 0) {
-          await supabase.auth.signOut();
-          return { error: new Error('Your account has no company access. Contact your administrator.') };
-        }
+      if (profile && !profile.is_active) {
+        await supabase.auth.signOut();
+        return { error: new Error('Your account has been deactivated. Contact your administrator.') };
       }
-
-      return { error: null };
-    } finally {
-      setGuardPending(false);
     }
+
+    return { error: null };
   };
 
   const signUp = async (email: string, password: string, fullName: string) => {
@@ -141,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, guardPending, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

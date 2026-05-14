@@ -62,9 +62,9 @@ const queryClient = new QueryClient({
 });
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading, guardPending } = useAuth();
+  const { user, loading } = useAuth();
 
-  if (loading || guardPending) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
