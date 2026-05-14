@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAllPaged } from '@/lib/utils/fetchAllPaged';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,21 +62,18 @@ export function InventoryReports({ companyView = 'consolidated' }: InventoryRepo
   const fetchData = async () => {
     setLoading(true);
     try {
-      let query = supabase.from('devices').select('*').eq('is_partner_owned', false).limit(5000);
-      
-      if (companyView !== 'consolidated') {
-        query = query.eq('company_id', companyView);
-      }
-
-      const { data: devicesData } = await query;
-      setDevices((devicesData || []) as Device[]);
+      const devicesData = await fetchAllPaged<Device>((from, to) => {
+        let q = supabase.from('devices').select('*').eq('is_partner_owned', false).range(from, to);
+        if (companyView !== 'consolidated') q = q.eq('company_id', companyView);
+        return q as any;
+      });
+      setDevices(devicesData);
 
       // Fetch sales for turnover calculation
-      const { data: salesDataResult } = await supabase
-        .from('sales')
-        .select('device_id, sale_date')
-        .limit(5000);
-      setSalesData(salesDataResult || []);
+      const salesDataResult = await fetchAllPaged<{ device_id: string; sale_date: string }>((from, to) =>
+        supabase.from('sales').select('device_id, sale_date').range(from, to) as any
+      );
+      setSalesData(salesDataResult);
 
     } catch (error) {
       console.error('Error fetching inventory data:', error);

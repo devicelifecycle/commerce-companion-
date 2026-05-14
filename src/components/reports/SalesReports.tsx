@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAllPaged } from '@/lib/utils/fetchAllPaged';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,20 +62,17 @@ export function SalesReports({ companyView = 'consolidated' }: SalesReportsProps
       const months = parseInt(dateRange);
       const startDate = startOfMonth(subMonths(new Date(), months - 1));
 
-      let query = supabase
-        .from('sales')
-        .select('id, sale_price, profit, marketplace, marketplace_account, sale_date, shipping_address, devices(brand, model, category)')
-        .gte('sale_date', startDate.toISOString())
-        .limit(5000);
+      const data = await fetchAllPaged<any>((from, to) => {
+        let q = supabase
+          .from('sales')
+          .select('id, sale_price, profit, marketplace, marketplace_account, sale_date, shipping_address, devices(brand, model, category)')
+          .gte('sale_date', startDate.toISOString())
+          .range(from, to);
+        if (companyView !== 'consolidated') q = q.eq('company_id', companyView);
+        return q as any;
+      });
 
-      if (companyView !== 'consolidated') {
-        query = query.eq('company_id', companyView);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      setSales((data || []).map(s => ({
+      setSales(data.map(s => ({
         ...s,
         device: s.devices as any,
       })));

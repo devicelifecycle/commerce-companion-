@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAllPaged } from '@/lib/utils/fetchAllPaged';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { MetricCard } from '@/components/ui/metric-card';
@@ -58,20 +59,17 @@ export function MarketplaceFeeAnalytics({ companyView = 'consolidated' }: Market
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - parseInt(period));
 
-      let query = supabase
-        .from('sales')
-        .select('id, order_number, marketplace, marketplace_account, sale_price, shipping_cost, marketplace_fees, tax_amount, profit, sale_date, company_id, is_marketplace_remitted')
-        .gte('sale_date', startDate.toISOString())
-        .order('sale_date', { ascending: false })
-        .limit(5000);
-
-      if (companyView !== 'consolidated') {
-        query = query.eq('company_id', companyView);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-      setSales((data || []) as SaleRecord[]);
+      const data = await fetchAllPaged<SaleRecord>((from, to) => {
+        let q = supabase
+          .from('sales')
+          .select('id, order_number, marketplace, marketplace_account, sale_price, shipping_cost, marketplace_fees, tax_amount, profit, sale_date, company_id, is_marketplace_remitted')
+          .gte('sale_date', startDate.toISOString())
+          .order('sale_date', { ascending: false })
+          .range(from, to);
+        if (companyView !== 'consolidated') q = q.eq('company_id', companyView);
+        return q as any;
+      });
+      setSales(data);
     } catch (err) {
       console.error('Error fetching sales for fee analytics:', err);
     } finally {

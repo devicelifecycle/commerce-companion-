@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/lib/auth";
 import { CompanyProvider } from "@/contexts/CompanyContext";
 import { lazy, Suspense } from "react";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { IntegrationHealthBanner } from "@/components/IntegrationHealthBanner";
 
 // Eagerly loaded — always needed on first paint
 import Index from "./pages/Index";
@@ -83,6 +84,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   return (
     <ErrorBoundary fallbackTitle="This page encountered an error">
+      <IntegrationHealthBanner />
       <Suspense fallback={<PageLoader />}>{children}</Suspense>
     </ErrorBoundary>
   );

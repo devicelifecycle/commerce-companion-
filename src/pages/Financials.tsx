@@ -43,6 +43,7 @@ import { SalesAccountingAudit } from '@/components/financials/SalesAccountingAud
 
 // Year-End Closing
 import { YearEndClosing } from '@/components/accounting/YearEndClosing';
+import { FiscalPeriods } from '@/components/accounting/FiscalPeriods';
 
 // Data Integrity (moved from Audit Logs)
 import { UnaccountedMarketplaceData } from '@/components/audit/UnaccountedMarketplaceData';
@@ -63,7 +64,7 @@ type SubView =
   | 'tax-dashboard' | 'tax-collected' | 'tax-itc' | 'tax-filing' | 'tax-reconciliation'
   | 'cost-devices'
   | 'accounting-trail' | 'sales-audit'
-  | 'year-end-closing'
+  | 'year-end-closing' | 'fiscal-periods'
   | 'relationships' | 'unaccounted';
 
 const SECTIONS = [
@@ -151,6 +152,7 @@ const SECTIONS = [
     icon: Lock,
     views: [
       { value: 'year-end-closing' as SubView, label: 'Year-End Closing', icon: Lock },
+      { value: 'fiscal-periods' as SubView, label: 'Fiscal Periods', icon: Lock },
     ],
   },
 ];
@@ -307,6 +309,7 @@ export default function Financials() {
             {subView === 'accounting-trail' && <AccountingAuditTrail companyView={companyView} />}
             {subView === 'sales-audit' && <SalesAccountingAudit companyView={companyView} />}
             {subView === 'year-end-closing' && <YearEndClosing />}
+            {subView === 'fiscal-periods' && <FiscalPeriods />}
           </div>
         </div>
       </DashboardLayout>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAllPaged } from '@/lib/utils/fetchAllPaged';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -58,18 +59,16 @@ export function MarketplaceAccounting({ companyView = 'consolidated' }: Marketpl
 
       // Fetch sales with device cost (include marketplace_account so we can
       // split Best Buy into TGW vs VES channels).
-      let salesQuery = supabase
-        .from('sales')
-        .select('marketplace, marketplace_account, sale_price, shipping_cost, marketplace_fees, profit, device_id, company_id')
-        .gte('sale_date', start.toISOString())
-        .lte('sale_date', end.toISOString())
-        .limit(5000);
-
-      if (companyView !== 'consolidated') {
-        salesQuery = salesQuery.eq('company_id', companyView);
-      }
-
-      const { data: sales } = await salesQuery;
+      const sales = await fetchAllPaged((from, to) => {
+        let q = supabase
+          .from('sales')
+          .select('marketplace, marketplace_account, sale_price, shipping_cost, marketplace_fees, profit, device_id, company_id')
+          .gte('sale_date', start.toISOString())
+          .lte('sale_date', end.toISOString())
+          .range(from, to);
+        if (companyView !== 'consolidated') q = q.eq('company_id', companyView);
+        return q;
+      });
 
       // Fetch device costs for COGS
       const deviceIds = sales?.filter(s => s.device_id).map(s => s.device_id!) || [];

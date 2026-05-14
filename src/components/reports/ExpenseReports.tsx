@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { fetchAllPaged } from '@/lib/utils/fetchAllPaged';
 import { useCompany } from '@/contexts/CompanyContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -76,20 +77,16 @@ export function ExpenseReports({ companyView = 'consolidated' }: ExpenseReportsP
       const months = parseInt(dateRange);
       const startDate = startOfMonth(subMonths(new Date(), months - 1));
 
-      let query = supabase
-        .from('expenses')
-        .select('id, amount, gst_hst_amount, pst_amount, category, vendor, expense_date, company_id, is_shared, allocation_ves, allocation_tgw')
-        .gte('expense_date', startDate.toISOString().split('T')[0])
-        .limit(5000);
-
-      if (companyView !== 'consolidated') {
-        query = query.or(`company_id.eq.${companyView},is_shared.eq.true`);
-      }
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      setExpenses((data || []) as Expense[]);
+      const data = await fetchAllPaged<Expense>((from, to) => {
+        let q = supabase
+          .from('expenses')
+          .select('id, amount, gst_hst_amount, pst_amount, category, vendor, expense_date, company_id, is_shared, allocation_ves, allocation_tgw')
+          .gte('expense_date', startDate.toISOString().split('T')[0])
+          .range(from, to);
+        if (companyView !== 'consolidated') q = q.or(`company_id.eq.${companyView},is_shared.eq.true`);
+        return q as any;
+      });
+      setExpenses(data);
     } catch (error) {
       console.error('Error fetching expenses:', error);
     } finally {
