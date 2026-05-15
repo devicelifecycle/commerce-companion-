@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 
 /**
  * Lightweight event bus for sitewide data refetch.
@@ -67,13 +67,23 @@ export function emitRefetch(channel: string) {
 
 /**
  * Subscribe a page/component to refetch events on one or more channels.
+ *
+ * Uses a string key derived from the channel list so callers can safely pass
+ * inline array literals (e.g. ['financials', 'sales']) without causing
+ * subscribe/unsubscribe on every render due to new array references.
  */
 export function useDataRefetch(channels: string | string[], handler: RefetchHandler) {
-  const stableHandler = useCallback(handler, [handler]);
+  // Stable string key — array reference changes are ignored; only content changes matter.
+  const channelsKey = Array.isArray(channels) ? channels.join(',') : channels;
+
+  // Keep the latest handler in a ref so we never need to re-subscribe when it changes.
+  const handlerRef = useRef(handler);
+  handlerRef.current = handler;
+  const stableHandler = useCallback(() => handlerRef.current(), []);
 
   useEffect(() => {
-    const channelList = Array.isArray(channels) ? channels : [channels];
+    const channelList = channelsKey.split(',');
     const unsubscribes = channelList.map(ch => subscribe(ch, stableHandler));
     return () => unsubscribes.forEach(unsub => unsub());
-  }, [channels, stableHandler]);
+  }, [channelsKey, stableHandler]);
 }

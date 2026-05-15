@@ -246,7 +246,8 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
 
       // 4. Update PO status
       const newStatus = isPartial ? 'partially_received' : 'received';
-      await supabase.from('purchase_orders').update({ status: newStatus }).eq('id', po.id);
+      const { error: poStatusErr } = await supabase.from('purchase_orders').update({ status: newStatus }).eq('id', po.id);
+      if (poStatusErr) throw poStatusErr;
 
       // 4b. If partial, auto-create a back-order PO for the unreceived quantities.
       //     The back-order PO is linked to the parent via parent_po_id and inherits
@@ -408,12 +409,13 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
           }
 
           if (existingPart) {
-            await supabase.from('repair_parts').update({
+            const { error: rpUpdErr } = await supabase.from('repair_parts').update({
               quantity_on_hand: existingPart.quantity_on_hand + item.qty,
               unit_cost: poItem.unit_cost,
             }).eq('id', existingPart.id);
+            if (rpUpdErr) throw rpUpdErr;
           } else {
-            await supabase.from('repair_parts').insert({
+            const { error: rpInsErr } = await supabase.from('repair_parts').insert({
               name: item.description,
               sku: poItem.sku || null,
               company_id: po.company_id,
@@ -424,24 +426,26 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
               is_active: true,
               created_by: user.id,
             });
+            if (rpInsErr) throw rpInsErr;
           }
         } else {
           // Route to products table (inventory & product types)
-          const { data: existingProduct } = await supabase
+          const { data: existingProduct, error: prodFetchErr } = await supabase
             .from('products')
             .select('id, quantity_on_hand')
             .eq('company_id', po.company_id!)
             .ilike('name', item.description)
             .maybeSingle();
+          if (prodFetchErr) throw prodFetchErr;
 
           if (existingProduct) {
-            await supabase.from('products').update({
+            const { error: prodUpdErr } = await supabase.from('products').update({
               quantity_on_hand: existingProduct.quantity_on_hand + item.qty,
               cost_price: poItem.unit_cost,
             }).eq('id', existingProduct.id);
+            if (prodUpdErr) throw prodUpdErr;
           } else {
-            // Auto-create product if it doesn't exist
-            await supabase.from('products').insert({
+            const { error: prodInsErr } = await supabase.from('products').insert({
               name: item.description,
               sku: poItem.sku || null,
               company_id: po.company_id,
@@ -451,6 +455,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
               status: 'active',
               created_by: user.id,
             });
+            if (prodInsErr) throw prodInsErr;
             toast.info(`New product "${item.description}" auto-created${poItem.sku ? ` with SKU ${poItem.sku}` : ''}`);
           }
         }
@@ -513,12 +518,13 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
           if (existingAP && existingAP.length > 0) {
             // Update existing AP with final received amounts
             apRecordId = existingAP[0].id;
-            await supabase.from('accounts_payable').update({
+            const { error: apUpdErr } = await supabase.from('accounts_payable').update({
               original_amount: apAmount,
               gst_hst_amount: apGst,
               pst_amount: apPst,
               description: `PO ${po.po_number} — ${po.supplier_name} (received)`,
             }).eq('id', apRecordId);
+            if (apUpdErr) throw apUpdErr;
             toast.success(`AP entry updated for ${fmtCurrency(apAmount)}`);
           } else {
             // Create AP if it doesn't exist (e.g., legacy POs created before this fix)
@@ -591,7 +597,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
 
         if (product) {
           const lotNumber = `LOT-${po.po_number}-${item.po_item_id.slice(0, 4)}`;
-          await supabase.from('product_lots').insert({
+          const { error: lotErr } = await supabase.from('product_lots').insert({
             product_id: product.id,
             lot_number: lotNumber,
             quantity: item.qty,
@@ -600,6 +606,7 @@ export function ReceivePODialog({ open, onOpenChange, onSuccess, poId }: Receive
             supplier_id: po.supplier_id,
             notes: `From PO ${po.po_number}`,
           });
+          if (lotErr) throw lotErr;
         }
       }
 

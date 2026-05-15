@@ -171,41 +171,48 @@ export function ReturnFromOrderDialog({ open, onOpenChange, sale, onSuccess }: R
 
       if (resolutionType !== 'adjustment') {
         if (restockDevice && sale.device_id) {
-          await supabase.from('devices').update({ status: 'in_stock', sale_price: null }).eq('id', sale.device_id);
-          await supabase.from('sales').update({ device_id: null, accounting_status: 'revenue_only' }).eq('id', sale.id);
+          const { error: devErr } = await supabase.from('devices').update({ status: 'in_stock', sale_price: null }).eq('id', sale.device_id);
+          if (devErr) throw devErr;
+          const { error: saleDevErr } = await supabase.from('sales').update({ device_id: null, accounting_status: 'revenue_only' }).eq('id', sale.id);
+          if (saleDevErr) throw saleDevErr;
         }
         if (resolutionType === 'exchange') {
           if (sale.device_id && !restockDevice) {
-            await supabase.from('devices').update({ status: 'in_stock' }).eq('id', sale.device_id);
+            const { error: exDevErr } = await supabase.from('devices').update({ status: 'in_stock' }).eq('id', sale.device_id);
+            if (exDevErr) throw exDevErr;
           }
           if (replacementDeviceId) {
-            await supabase.from('devices').update({ status: 'sold', sale_price: sale.sale_price }).eq('id', replacementDeviceId);
+            const { error: replErr } = await supabase.from('devices').update({ status: 'sold', sale_price: sale.sale_price }).eq('id', replacementDeviceId);
+            if (replErr) throw replErr;
           }
         }
         if (resolutionType === 'repair' && sale.device_id) {
           // Route the device into the Refurbishment Queue.
           // device.status is the master ('in_repair'); refurbishment_status tracks the sub-stage so the
           // queue picks it up immediately (Refurbishment.tsx filters on refurbishment_status in pending/in_progress).
-          await supabase.from('devices').update({
+          const { error: repDevErr } = await supabase.from('devices').update({
             status: 'in_repair',
             refurbishment_status: 'pending',
             refurbishment_started_at: new Date().toISOString(),
             refurbishment_notes: repairNotes || null,
           }).eq('id', sale.device_id);
-          await supabase.from('device_repairs').insert({
+          if (repDevErr) throw repDevErr;
+          const { error: repInsErr } = await supabase.from('device_repairs').insert({
             device_id: sale.device_id,
             company_id: sale.company_id,
             status: 'pending',
             notes: `Linked to RMA ${rmaNumber}. ${repairNotes || ''}`.trim(),
             created_by: user?.id,
           });
+          if (repInsErr) throw repInsErr;
         }
       }
 
       if (rmaData?.id) {
-        try {
-          await supabase.functions.invoke('process-return-accounting', { body: { return_id: rmaData.id } });
-        } catch (accErr) {
+        const { error: accErr } = await supabase.functions.invoke('process-return-accounting', { body: { return_id: rmaData.id } });
+        if (accErr) {
+          // Accounting failure is non-blocking — RMA is recorded, GL will need manual entry
+          toast.warning('Return recorded but GL posting failed — post manually in Journal Entries');
           console.error('Return accounting error:', accErr);
         }
       }

@@ -278,16 +278,18 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
         if (rate.qst_rate) qst = +(sale.sale_price * rate.qst_rate / 100).toFixed(2);
         newTax = gst + pst + qst;
       }
-      await supabase.from('sales').update({
+      const { error: saleUpd } = await supabase.from('sales').update({
         shipping_province: code,
         province_inferred: false,
         tax_amount: newTax,
       }).eq('id', sale.id);
-      await supabase.from('sales_tax_details').update({
+      if (saleUpd) throw saleUpd;
+      const { error: taxUpd } = await supabase.from('sales_tax_details').update({
         customer_province: code,
         gst_amount: gst, hst_amount: hst, pst_amount: pst, qst_amount: qst,
         total_tax: newTax,
       }).eq('sale_id', sale.id);
+      if (taxUpd) throw taxUpd;
       toast.success(`Province set to ${code} — tax ${fmt(newTax)}`);
       await reload();
     } catch (e: any) {
@@ -300,11 +302,12 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
     if (!sale || !pendingDeviceId) return;
     setSavingLink(true);
     try {
-      await supabase.from('sales').update({
+      const { error } = await supabase.from('sales').update({
         device_id: pendingDeviceId,
         manual_cost: null,
         manual_cost_description: null,
       }).eq('id', sale.id);
+      if (error) throw error;
       toast.success('Device linked');
       await reload();
       emitRefetch('sales');
@@ -318,7 +321,8 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
     if (!sale) return;
     setSavingLink(true);
     try {
-      await supabase.from('sales').update({ device_id: null }).eq('id', sale.id);
+      const { error } = await supabase.from('sales').update({ device_id: null }).eq('id', sale.id);
+      if (error) throw error;
       setPendingDeviceId(null);
       toast.success('Device unlinked');
       await reload();
@@ -338,11 +342,12 @@ export function PendingOrderDialog({ open, onOpenChange, saleId, onPosted }: Pen
     }
     setSavingLink(true);
     try {
-      await supabase.from('sales').update({
+      const { error } = await supabase.from('sales').update({
         manual_cost: n,
         manual_cost_description: manualDesc || null,
         device_id: null,
       }).eq('id', sale.id);
+      if (error) throw error;
       toast.success('Manual cost saved');
       await reload();
       emitRefetch('sales');

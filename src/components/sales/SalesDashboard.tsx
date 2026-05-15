@@ -87,9 +87,7 @@ export function SalesDashboard() {
           schema: 'public',
           table: 'sales',
         },
-        (payload) => {
-          console.log('Realtime sale event:', payload.eventType);
-          // Refetch to get properly filtered data
+        () => {
           fetchSales();
         }
       )

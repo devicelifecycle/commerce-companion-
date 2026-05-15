@@ -105,7 +105,7 @@ export function InventoryWriteOffDialog({ open, onOpenChange, devices, onSuccess
 
       if (entryErr) throw entryErr;
 
-      await supabase.from('journal_entry_lines').insert([
+      const { error: linesErr } = await supabase.from('journal_entry_lines').insert([
         {
           journal_entry_id: entry.id,
           account_id: writeOffAccountId,
@@ -121,26 +121,30 @@ export function InventoryWriteOffDialog({ open, onOpenChange, devices, onSuccess
           credit_amount: totalCost,
         },
       ]);
+      if (linesErr) throw linesErr;
 
       // 3. Update account balances
-      // Write-off expense (debit normal) increases
-      const { data: woAcct } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', writeOffAccountId).single();
-      await supabase.from('chart_of_accounts').update({
+      const { data: woAcct, error: woFetchErr } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', writeOffAccountId).single();
+      if (woFetchErr) throw woFetchErr;
+      const { error: woUpdErr } = await supabase.from('chart_of_accounts').update({
         current_balance: Number(woAcct?.current_balance || 0) + totalCost
       }).eq('id', writeOffAccountId);
+      if (woUpdErr) throw woUpdErr;
 
-      // Inventory (debit normal) decreases
-      const { data: invAcct } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', inventoryAccountId).single();
-      await supabase.from('chart_of_accounts').update({
+      const { data: invAcct, error: invFetchErr } = await supabase.from('chart_of_accounts').select('current_balance').eq('id', inventoryAccountId).single();
+      if (invFetchErr) throw invFetchErr;
+      const { error: invUpdErr } = await supabase.from('chart_of_accounts').update({
         current_balance: Number(invAcct?.current_balance || 0) - totalCost
       }).eq('id', inventoryAccountId);
+      if (invUpdErr) throw invUpdErr;
 
       // 4. Mark devices as written off
       const deviceIds = devices.map(d => d.id);
-      await supabase.from('devices').update({
+      const { error: devUpdErr } = await supabase.from('devices').update({
         status: 'written_off' as any,
         notes: `Written off: ${reason}. ${notes}`.trim(),
       }).in('id', deviceIds);
+      if (devUpdErr) throw devUpdErr;
 
       toast.success(`${devices.length} device(s) written off — $${totalCost.toFixed(2)} expensed`);
       emitRefetch('inventory');

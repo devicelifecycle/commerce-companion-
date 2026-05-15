@@ -179,18 +179,20 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
 
   const handleAddCustomTask = async () => {
     if (!customTaskName.trim()) return;
-    await supabase.from('device_refurbishment_tasks').insert({
+    const { error } = await supabase.from('device_refurbishment_tasks').insert({
       device_id: deviceId,
       company_id: device?.company_id,
       task_name: customTaskName.trim(),
       is_custom: true,
     });
+    if (error) { toast.error(error.message); return; }
     setCustomTaskName('');
     refetchTasks();
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    await supabase.from('device_refurbishment_tasks').delete().eq('id', taskId);
+    const { error } = await supabase.from('device_refurbishment_tasks').delete().eq('id', taskId);
+    if (error) { toast.error(error.message); return; }
     refetchTasks();
   };
 
@@ -203,8 +205,7 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
       return;
     }
 
-    // Insert refurbishment part record
-    await supabase.from('device_refurbishment_parts').insert({
+    const { error: insErr } = await supabase.from('device_refurbishment_parts').insert({
       device_id: deviceId,
       repair_part_id: selectedPartId,
       company_id: device?.company_id,
@@ -213,11 +214,12 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
       total_cost: part.unit_cost * partQty,
       created_by: user?.id,
     });
+    if (insErr) { toast.error(insErr.message); return; }
 
-    // Deduct from repair_parts inventory
-    await supabase.from('repair_parts').update({
+    const { error: deductErr } = await supabase.from('repair_parts').update({
       quantity_on_hand: part.quantity_on_hand - partQty,
     }).eq('id', selectedPartId);
+    if (deductErr) { toast.error(`Part added but inventory deduction failed: ${deductErr.message}`); }
 
     setSelectedPartId('');
     setPartQty(1);
@@ -227,14 +229,16 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
   };
 
   const handleRemovePart = async (partRecord: any) => {
-    // Restore inventory
-    const { data: rp } = await supabase.from('repair_parts').select('quantity_on_hand').eq('id', partRecord.repair_part_id).single();
+    const { data: rp, error: rpErr } = await supabase.from('repair_parts').select('quantity_on_hand').eq('id', partRecord.repair_part_id).single();
+    if (rpErr) { toast.error(rpErr.message); return; }
     if (rp) {
-      await supabase.from('repair_parts').update({
+      const { error: restoreErr } = await supabase.from('repair_parts').update({
         quantity_on_hand: rp.quantity_on_hand + partRecord.quantity_used,
       }).eq('id', partRecord.repair_part_id);
+      if (restoreErr) { toast.error(`Inventory restore failed: ${restoreErr.message}`); return; }
     }
-    await supabase.from('device_refurbishment_parts').delete().eq('id', partRecord.id);
+    const { error: delErr } = await supabase.from('device_refurbishment_parts').delete().eq('id', partRecord.id);
+    if (delErr) { toast.error(delErr.message); return; }
     refetchParts();
     queryClient.invalidateQueries({ queryKey: ['repair-parts-available'] });
     toast.success('Part removed and inventory restored');
@@ -243,11 +247,12 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
   const handleSave = async () => {
     setSaving(true);
     try {
-      await supabase.from('devices').update({
+      const { error } = await supabase.from('devices').update({
         refurbishment_labor_cost: laborCost ? parseFloat(laborCost) : 0,
         refurbishment_notes: notes || null,
         management_labor_cost: laborCost ? parseFloat(laborCost) : null,
       }).eq('id', deviceId);
+      if (error) throw error;
       toast.success('Saved');
     } finally {
       setSaving(false);
@@ -263,7 +268,7 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
       // Capitalize parts cost into device cost_price
       const newCostPrice = Number(device.cost_price) + totalPartsCost;
 
-      await supabase.from('devices').update({
+      const { error: completeErr } = await supabase.from('devices').update({
         status: 'in_stock',
         refurbishment_status: 'completed',
         refurbishment_completed_at: new Date().toISOString(),
@@ -274,23 +279,24 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
         management_labor_cost: totalLaborCost || null,
         cosmetic_grade: cosmeticGrade || null,
       } as any).eq('id', deviceId);
+      if (completeErr) throw completeErr;
 
       // Create accounting entries: Dr. Inventory (device cost) / Cr. Repair Parts Inventory
       if (totalPartsCost > 0) {
         const companyId = device.company_id;
-        // Look up chart accounts
-        const { data: accounts } = await supabase
+        const { data: accounts, error: acctErr } = await supabase
           .from('chart_of_accounts')
           .select('id, account_code')
           .eq('company_id', companyId)
           .in('account_code', ['1200', '1201', '1110', '1111']);
+        if (acctErr) throw acctErr;
 
         const inventoryAcct = accounts?.find((a: any) => ['1200', '1201'].includes(a.account_code));
         const partsAcct = accounts?.find((a: any) => ['1110', '1111'].includes(a.account_code));
 
         if (inventoryAcct && partsAcct) {
           const entryNumber = `JE-REFURB-${Date.now()}`;
-          const { data: je } = await supabase.from('journal_entries').insert({
+          const { data: je, error: jeErr } = await supabase.from('journal_entries').insert({
             company_id: companyId,
             entry_number: entryNumber,
             entry_date: new Date().toISOString().split('T')[0],
@@ -305,9 +311,10 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
             total_debit: totalPartsCost,
             total_credit: totalPartsCost,
           }).select().single();
+          if (jeErr) throw jeErr;
 
           if (je) {
-            await supabase.from('journal_entry_lines').insert([
+            const { error: linesErr } = await supabase.from('journal_entry_lines').insert([
               {
                 journal_entry_id: je.id,
                 account_id: inventoryAcct.id,
@@ -323,6 +330,7 @@ export function RefurbishmentDetail({ deviceId, onBack, canManage }: Refurbishme
                 description: 'Repair parts consumed in refurbishment',
               },
             ]);
+            if (linesErr) throw linesErr;
           }
         }
       }

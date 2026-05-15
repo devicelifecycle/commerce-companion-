@@ -393,9 +393,10 @@ export function ManualSaleDialog({ open, onOpenChange, onSuccess }: ManualSaleDi
 
         for (const item of validItems) {
           if (item.product_id && item.product) {
-            await supabase.from('products').update({
+            const { error: qtyErr } = await supabase.from('products').update({
               quantity_on_hand: Math.max(0, item.product.quantity_on_hand - item.quantity),
             }).eq('id', item.product_id);
+            if (qtyErr) throw qtyErr;
           }
         }
 
