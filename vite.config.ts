@@ -20,8 +20,8 @@ export default defineConfig(({ mode }) => ({
     dedupe: ["react", "react-dom", "react/jsx-runtime"],
   },
   build: {
-    // Warn when a single chunk exceeds 500kb
-    chunkSizeWarningLimit: 500,
+    // exceljs is 938kB but is already lazy-split (only loads on /import)
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { emitRefetch } from '@/hooks/useDataRefetch';
-import { getTransferPriceFromRules } from '@/components/inventory/TransferPricingRules';
+import { getTransferPriceFromRules } from '@/lib/transferPricingUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/contexts/CompanyContext';
 import {

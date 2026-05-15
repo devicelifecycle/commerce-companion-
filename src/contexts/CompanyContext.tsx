@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { usePermissions, Company, UserCompanyAssignment, UserRole } from '@/hooks/usePermissions';
 
